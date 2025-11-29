@@ -1,9 +1,19 @@
 import os
-
 from kucoin_universal_sdk.api import DefaultClient
 from kucoin_universal_sdk.generate.spot.market import (
     GetPartOrderBookReqBuilder,
     GetAllSymbolsReqBuilder,
+)
+from kucoin_universal_sdk.generate.spot.order import (
+    AddOrderReqBuilder,
+    AddOrderReq,
+    CancelOrderByOrderIdReqBuilder,
+    CancelAllOrdersBySymbolReqBuilder,
+    GetOrderByOrderIdReqBuilder,
+    GetOpenOrdersReqBuilder,
+)
+from kucoin_universal_sdk.generate.margin.order import (
+    AddOrderReqBuilder as MarginAddOrderReqBuilder,
 )
 from kucoin_universal_sdk.model import ClientOptionBuilder
 from kucoin_universal_sdk.model import (
@@ -45,8 +55,11 @@ class KucoinApi:
         self.spot_market_api = (
             self.kucoin_rest_service.get_spot_service().get_market_api()
         )
-        self.margin_market_api = (
-            self.kucoin_rest_service.get_margin_service().get_market_api()
+        self.spot_order_api = (
+            self.kucoin_rest_service.get_spot_service().get_order_api()
+        )
+        self.margin_order_api = (
+            self.kucoin_rest_service.get_margin_service().get_order_api()
         )
 
     def get_server_time(self):
@@ -62,3 +75,188 @@ class KucoinApi:
         request = GetAllSymbolsReqBuilder().build()
         response = self.spot_market_api.get_all_symbols(request)
         return response
+
+    def add_order(
+        self,
+        symbol: str,
+        side: AddOrderReq.SideEnum,
+        order_type: AddOrderReq.TypeEnum,
+        size: float,
+        price: float = 0,
+        time_in_force: AddOrderReq.TimeInForceEnum = AddOrderReq.TimeInForceEnum.GTC,
+    ):
+        """
+        Place an order on KuCoin using the SDK
+
+        Args:
+            symbol: Trading pair (e.g., "BTC-USDT")
+            side: AddOrderReq.SideEnum.BUY or AddOrderReq.SideEnum.SELL
+            order_type: AddOrderReq.TypeEnum.LIMIT or AddOrderReq.TypeEnum.MARKET
+            size: Order size (amount of base currency)
+            price: Order price (required for limit orders)
+            time_in_force: GTC, GTT, IOC, or FOK
+            client_oid: Client order ID
+
+        Returns:
+            Order response with orderId
+            maps to Binance format
+        """
+        builder = AddOrderReqBuilder()
+        builder.set_symbol(symbol)
+        builder.set_side(side)
+        builder.set_type(order_type)
+        builder.set_time_in_force(time_in_force)
+        builder.set_size(str(size))
+
+        if price > 0:
+            builder.set_price(str(price))
+        else:
+            builder.set_type(AddOrderReq.TypeEnum.MARKET)
+
+        req = builder.build()
+        resp = self.spot_order_api.add_order_sync(req)
+        return resp
+
+    # --- Common protocol alias methods ---
+    def cancel_order(self, order_id: str) -> dict:
+        """Alias to match common protocol, delegates to delete_order."""
+        return self.delete_order(order_id)
+
+    def cancel_all_orders(self, symbol: str | None = None) -> dict:
+        """Alias to match common protocol, delegates to close_all_orders."""
+        return self.close_all_orders(symbol)
+
+    def delete_order(self, order_id: str):
+        """Cancel an order by order ID using SDK"""
+        builder = CancelOrderByOrderIdReqBuilder()
+        builder.set_order_id(order_id)
+        req = builder.build()
+        resp = self.spot_order_api.cancel_order_by_order_id(req)
+
+        return {
+            "cancelledOrderIds": [resp.order_id]
+            if hasattr(resp, "order_id")
+            else [order_id]
+        }
+
+    def close_all_orders(self, symbol: str = None):
+        """
+        Cancel all orders using SDK
+
+        Args:
+            symbol: Optional - cancel orders for specific symbol
+
+        Returns:
+            Response with cancelled order IDs
+        """
+        if symbol:
+            # Cancel orders for specific symbol
+            builder = CancelAllOrdersBySymbolReqBuilder()
+            builder.set_symbol(symbol)
+            req = builder.build()
+            resp = self.spot_order_api.cancel_all_orders_by_symbol(req)
+            return {"cancelledOrderIds": [resp.data] if hasattr(resp, "data") else []}
+        else:
+            # Cancel all orders (no parameters)
+            resp = self.spot_order_api.cancel_all_orders()
+            # SDK returns different format, normalize it
+            if hasattr(resp, "cancelled_order_ids"):
+                return {"cancelledOrderIds": resp.cancelled_order_ids}
+            return {"cancelledOrderIds": []}
+
+    def get_order(self, order_id: str):
+        """Get order details by order ID using SDK"""
+        builder = GetOrderByOrderIdReqBuilder()
+        builder.set_order_id(order_id)
+        req = builder.build()
+        resp = self.spot_order_api.get_order_by_order_id(req)
+
+        # Convert SDK response to dict
+        return {
+            "id": resp.id if hasattr(resp, "id") else order_id,
+            "symbol": resp.symbol if hasattr(resp, "symbol") else "",
+            "type": resp.type if hasattr(resp, "type") else "market",
+            "side": resp.side if hasattr(resp, "side") else "",
+            "price": resp.price if hasattr(resp, "price") else "0",
+            "size": resp.size if hasattr(resp, "size") else "0",
+            "dealSize": resp.deal_size if hasattr(resp, "deal_size") else "0",
+            "dealFunds": resp.deal_funds if hasattr(resp, "deal_funds") else "0",
+            "fee": resp.fee if hasattr(resp, "fee") else "0",
+            "feeCurrency": resp.fee_currency
+            if hasattr(resp, "fee_currency")
+            else "USDT",
+            "status": resp.status if hasattr(resp, "status") else "active",
+            "timeInForce": resp.time_in_force
+            if hasattr(resp, "time_in_force")
+            else "GTC",
+            "createdAt": resp.created_at if hasattr(resp, "created_at") else 0,
+            "clientOid": resp.client_oid if hasattr(resp, "client_oid") else "",
+        }
+
+    def get_open_orders(self, symbol: str = None):
+        """
+        Get list of open orders using SDK
+
+        Args:
+            symbol: Optional - filter by symbol
+
+        Returns:
+            List of open orders
+        """
+        builder = GetOpenOrdersReqBuilder()
+        if symbol:
+            builder.set_symbol(symbol)
+
+        req = builder.build()
+        resp = self.spot_order_api.get_open_orders(req)
+
+        # Convert to list format
+        if hasattr(resp, "data"):
+            return resp.data
+        return []
+
+    def add_margin_order(
+        self,
+        symbol: str,
+        side: AddOrderReq.SideEnum,
+        order_type: AddOrderReq.TypeEnum,
+        size: float,
+        price: float = 0,
+        time_in_force: AddOrderReq.TimeInForceEnum = AddOrderReq.TimeInForceEnum.GTC,
+    ) -> MarginAddOrderReqBuilder:
+        """
+        Place a margin order on KuCoin using the SDK
+
+        Args:
+            symbol: Trading pair (e.g., "BTC-USDT")
+            side: AddOrderReq.SideEnum.BUY or AddOrderReq.SideEnum.SELL
+            order_type: AddOrderReq.TypeEnum.LIMIT or AddOrderReq.TypeEnum.MARKET
+            size: Order size (amount of base currency)
+            price: Order price (required for limit orders)
+            time_in_force: GTC, GTT, IOC, or FOK
+            client_oid: Client order ID
+        Returns:
+            Order response with orderId
+            maps to Binance format
+        """
+        builder = AddOrderReqBuilder()
+        builder.set_symbol(symbol)
+        builder.set_side(side)
+        builder.set_type(order_type)
+        builder.set_size(str(size))
+        builder.set_time_in_force(time_in_force)
+
+        if order_type == AddOrderReq.TypeEnum.LIMIT and price:
+            builder.set_price(str(price))
+
+        req = builder.build()
+        resp = self.margin_order_api.add_order(req)
+        return resp
+
+    def get_margin_order(self, order_id: int):
+        """Get margin order details by order ID using SDK"""
+        builder = GetOrderByOrderIdReqBuilder()
+        builder.set_order_id(order_id)
+        req = builder.build()
+        resp = self.margin_order_api.get_order_by_order_id(req)
+        return resp

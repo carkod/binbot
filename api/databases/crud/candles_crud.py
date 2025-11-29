@@ -1,5 +1,5 @@
 import logging
-from exchange_apis.binance import BinanceApi
+from exchange_apis.binance.base import BinanceApi
 from databases.db import setup_kafka_db
 from pandas import DataFrame
 import pandas as pd

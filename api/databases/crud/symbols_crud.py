@@ -8,7 +8,7 @@ from databases.tables.symbol_table import SymbolTable
 from databases.tables.symbol_exchange_table import SymbolExchangeTable
 from typing import Optional
 from tools.exceptions import BinbotErrors
-from exchange_apis.binance import BinanceApi
+from exchange_apis.binance.base import BinanceApi
 from symbols.models import SymbolModel, SymbolRequestPayload
 from decimal import Decimal
 from time import time

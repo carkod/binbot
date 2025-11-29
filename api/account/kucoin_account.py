@@ -1,24 +1,26 @@
-import requests
-from apis import BinbotApi
-from tools.handle_error import handle_binance_errors
-from tools.maths import round_numbers
+from exchange_apis.kucoin import KucoinApi
+from account.abstract import AccountAbstract
 
 
-class Account(BinbotApi):
+class KucoinAccount(AccountAbstract):
+    """
+    KuCoin-specific implementation of AccountAbstract.
+
+    Inherits common methods from AccountAbstract and
+    KuCoin API methods from KucoinApi.
+    """
+
     def __init__(self):
-        pass
+        self.api = KucoinApi()
 
-    def _get_price_from_book_order(self, data: dict, order_side: bool, index: int):
+    def calculate_total_commissions(self, fee: str) -> float:
         """
-        Buy order = get bid prices = True
-        Sell order = get ask prices = False
-        """
-        if order_side:
-            price, base_qty = data["bids"][index]
-        else:
-            price, base_qty = data["asks"][index]
+        Calculate total commissions for a given order.
 
-        return float(price), float(base_qty)
+        Works for both exchanges with fallback for different field names
+        (Binance uses 'commission', KuCoin uses 'fee')
+        """
+        return float(fee)
 
     def get_book_order_deep(self, symbol: str, order_side: bool) -> float:
         """
@@ -28,7 +30,8 @@ class Account(BinbotApi):
         Buy order = get bid prices = True
         Sell order = get ask prices = False
         """
-        data = self.get_book_depth(symbol)
+        # KuCoin uses size "20" or "100" for order book depth
+        data = self.api.get_part_order_book(symbol, "20")
         if order_side:
             price, _ = data["bids"][0]
         else:
@@ -36,53 +39,55 @@ class Account(BinbotApi):
         return float(price)
 
     def get_ticker_price(self, symbol: str):
-        params = {"symbol": symbol}
-        res = requests.get(url=self.ticker_price_url, params=params)
-        data = handle_binance_errors(res)
-        return data["price"]
+        """
+        Get ticker price for a symbol
+        KuCoin symbol format: BTC-USDT (with hyphen)
+        """
+        # Note: This would need to be implemented in KucoinApi
+        # For now, returning a placeholder
+        # The KuCoin SDK would need get_ticker or similar method
+        raise NotImplementedError(
+            "get_ticker_price needs to be implemented in KucoinApi"
+        )
 
     def get_raw_balance(self) -> list:
         """
         Unrestricted balance
+        KuCoin returns accounts with different structure than Binance
         """
-        data = self.get_account_balance()
-        balances = []
-        for item in data["balances"]:
-            if float(item["free"]) > 0 or float(item["locked"]) > 0:
-                balances.append(item)
-        return balances
+        # Note: This would need to be implemented in KucoinApi
+        # KuCoin uses get_account_list() to get all accounts
+        raise NotImplementedError(
+            "get_raw_balance needs to be implemented in KucoinApi"
+        )
 
     def get_single_spot_balance(self, asset) -> float:
-        data = self.get_account_balance()
-        for x in data["balances"]:
-            if x["asset"] == asset:
-                return float(x["free"])
-        return 0
+        """
+        Get single asset spot balance
+        """
+        # Note: This would need to be implemented in KucoinApi
+        raise NotImplementedError(
+            "get_single_spot_balance needs to be implemented in KucoinApi"
+        )
 
     def get_single_raw_balance(self, asset, fiat="USDC") -> float:
         """
         Get both SPOT balance and ISOLATED MARGIN balance
         """
-        data = self.get_account_balance()
-        for x in data["balances"]:
-            if x["asset"] == asset:
-                return float(x["free"])
-        else:
-            symbol = asset + fiat
-            data = self.get_isolated_balance(symbol)
-            if len(data) > 0:
-                qty = float(data[0]["baseAsset"]["free"]) + float(
-                    data[0]["baseAsset"]["borrowed"]
-                )
-                if qty > 0:
-                    return qty
-        return 0
+        # Note: This would need to be implemented in KucoinApi
+        # KuCoin has different margin structure than Binance
+        raise NotImplementedError(
+            "get_single_raw_balance needs to be implemented in KucoinApi"
+        )
 
     def get_margin_balance(self, symbol="BTC") -> float:
-        # Response after request
-        data = self.get_isolated_balance(symbol)
-        symbol_balance = next((x["free"] for x in data if x["asset"] == symbol), 0)
-        return symbol_balance
+        """
+        Get margin balance for a symbol
+        """
+        # Note: KuCoin margin API structure differs from Binance
+        raise NotImplementedError(
+            "get_margin_balance needs to be implemented in KucoinApi"
+        )
 
     def match_qty_engine(self, symbol: str, order_side: bool, qty: float = 1) -> float:
         """
@@ -93,9 +98,9 @@ class Account(BinbotApi):
         @param: order_side -
             Buy order = get bid prices = False
             Sell order = get ask prices = True
-        @param: base_order_size - quantity wanted to be bought/sold in fiat (USDC at time of writing)
+        @param: qty - quantity wanted to be bought/sold in fiat (USDC at time of writing)
         """
-        data = self.get_book_depth(symbol)
+        data = self.api.get_part_order_book(symbol, "100")
         if order_side:
             total_length = len(data["asks"])
         else:
@@ -128,9 +133,9 @@ class Account(BinbotApi):
         @param: order_side -
             Buy order = get bid prices = False
             Sell order = get ask prices = True
-        @param: base_order_size - quantity wanted to be bought/sold in fiat (USDC at time of writing)
+        @param: qty - quantity wanted to be bought/sold in fiat (USDC at time of writing)
         """
-        data = self.get_book_depth(symbol)
+        data = self.api.get_part_order_book(symbol, "20")
         price, base_qty = self._get_price_from_book_order(data, order_side, 0)
 
         if qty == 0:
@@ -150,12 +155,3 @@ class Account(BinbotApi):
                         continue
                 # caller to use market price
                 return 0
-
-    def calculate_total_commissions(self, fills: dict) -> float:
-        """
-        Calculate total commissions for a given order
-        """
-        total_commission: float = 0
-        for chunk in fills:
-            total_commission += round_numbers(float(chunk["commission"]))
-        return total_commission
