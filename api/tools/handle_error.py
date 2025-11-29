@@ -17,6 +17,7 @@ from tools.exceptions import (
     NotEnoughFunds,
     QuantityTooLow,
 )
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError, DataError
 
 
 def post_error(msg):
@@ -165,3 +166,11 @@ DataType = TypeVar("DataType")
 class IResponseBase(BaseModel):
     message: str
     error: Optional[int] = Field(default=0)
+
+
+def format_db_error(e: SQLAlchemyError) -> str:
+    if isinstance(e, IntegrityError):
+        return "Database integrity constraint violated"
+    if isinstance(e, DataError):
+        return "Invalid or out-of-range data for database column"
+    return f"Database error: {e.__class__.__name__}"
