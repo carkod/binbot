@@ -1,6 +1,8 @@
 from typing import Type, Union, Any
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from bots.models import BotModel
+from databases.crud.paper_trading_crud import PaperTradingTableCrud
+from databases.crud.bot_crud import BotTableCrud
 
 
 class KucoinSpotDeal:
@@ -17,8 +19,23 @@ class KucoinSpotDeal:
     ) -> None:
         self.active_bot = bot
         self.db_table = db_table
+        # Provide a controller attribute for polymorphic access
+        self.controller: Union[PaperTradingTableCrud, BotTableCrud, Any]
+        self.controller = None
 
     # Core order / deal lifecycle methods
+    def open_deal(self) -> BotModel:
+        """Open or activate a spot deal. Stub for parity with BinanceSpotDeal."""
+        raise NotImplementedError
+
+    def close_all(self) -> BotModel:
+        """Close all orders and finalize the spot deal. Stub only."""
+        raise NotImplementedError
+
+    def streaming_updates(self, close_price: float, open_price: float) -> BotModel:
+        """Process streaming price updates. Stub only."""
+        raise NotImplementedError
+
     def update_spot_orders(self) -> BotModel:
         raise NotImplementedError
 

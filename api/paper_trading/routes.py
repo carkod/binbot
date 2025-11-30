@@ -2,16 +2,14 @@ from fastapi import APIRouter, Depends
 from sqlmodel import Session
 from pydantic import TypeAdapter, ValidationError
 from api.deals.gateway import DealGateway
-from tools.enum_definitions import Status, Strategy
+from tools.enum_definitions import Status
 from databases.tables.bot_table import PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.utils import get_session
 from tools.exceptions import BinanceErrors, BinbotErrors
 from tools.handle_error import api_response, StandardResponse
 from bots.models import BotModel, BotResponse, BotListResponse, BotBase, BotPairsList
-from typing import List, Union, Optional
-from exchange_apis.binance.deals.margin_deal import BinanceMarginDeal
-from exchange_apis.binance.deals.spot_deal import BinanceSpotDeal
+from typing import List, Optional
 from bots.models import BotModelResponse, ErrorsRequestBody
 
 

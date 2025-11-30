@@ -3,7 +3,6 @@ from api.exchange_apis.kucoin.deals.spot_deal import KucoinSpotDeal
 from tools.enum_definitions import ExchangeId, Strategy
 from bots.models import BotModel
 from typing import Type, Union
-from exchange_apis.binance.deals.spot_deal import BinanceSpotDeal
 from exchange_apis.kucoin.deals.margin_deal import KucoinMarginDeal
 from databases.crud.autotrade_crud import AutotradeCrud
 from exchange_apis.binance.deals.short import BinanceShortDeal
@@ -24,6 +23,9 @@ class DealGateway:
         self.autotrade_settings = AutotradeCrud().get_settings()
         self.bot = bot
         self.db_table = db_table
+        self.deal: Union[
+            BinanceLongDeal, BinanceShortDeal, KucoinSpotDeal, KucoinMarginDeal
+        ]
         if self.autotrade_settings.exchange_id == ExchangeId.KUCOIN:
             if bot.strategy == Strategy.margin_short:
                 self.deal = KucoinMarginDeal(bot, db_table=BotTable)
@@ -43,13 +45,15 @@ class DealGateway:
         """
         return self.deal.open_deal()
 
-    def update_logs(self, message: str | list[str]) -> BotModel:
+    def update_logs(
+        self, message: str | list[str]
+    ) -> Union[BotTable, PaperTradingTable]:
         """
         Abstract method for updating logs during bot runtime
         """
-        return self.deal.controller.update_logs(bot=self.bot, message=message)
+        return self.deal.controller.update_logs(bot=self.bot, log_message=message)
 
-    def deactivation(self) -> BotTable:
+    def deactivation(self) -> Union[BotTable, PaperTradingTable]:
         """
         Abstract method for deactivation (which is pretty much closing all deals) during bot runtime
         """
@@ -63,7 +67,7 @@ class DealGateway:
             close_price=close_price, open_price=open_price
         )
 
-    def save(self, bot: BotModel) -> BotModel:
+    def save(self, bot: BotModel) -> Union[BotTable, PaperTradingTable]:
         """
         Abstract method for saving bot state
         """

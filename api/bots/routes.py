@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from pydantic import ValidationError, TypeAdapter
 from sqlmodel import Session
-from tools.enum_definitions import Status, Strategy
+from tools.enum_definitions import Status
 from databases.crud.bot_crud import BotTableCrud
 from databases.utils import get_session
 from bots.models import (
@@ -14,9 +14,6 @@ from bots.models import (
 )
 from typing import List, Optional
 from tools.exceptions import BinanceErrors, BinbotErrors
-from exchange_apis.binance.deals.margin_deal import BinanceMarginDeal
-from exchange_apis.binance.deals.spot_deal import BinanceSpotDeal
-from exchange_apis.binance.deals.factory import BinanceDeal
 from bots.models import BotModelResponse
 from tools.handle_error import StandardResponse
 from deals.gateway import DealGateway
@@ -187,10 +184,7 @@ def deactivation(id: str, session: Session = Depends(get_session)):
         return BotResponse(message="No active bot found.")
 
     bot_model = BotModel.dump_from_table(bot_table)
-    if bot_model.strategy == Strategy.margin_short:
-        deal_instance: BinanceDeal = BinanceMarginDeal(bot_model)
-    else:
-        deal_instance = BinanceSpotDeal(bot_model)
+    deal_instance = DealGateway(bot_model, db_table=BotTable)
 
     try:
         data = deal_instance.deactivation()

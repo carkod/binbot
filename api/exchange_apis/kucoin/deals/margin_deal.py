@@ -1,6 +1,8 @@
 from typing import Type, Union, Any
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from bots.models import BotModel
+from databases.crud.paper_trading_crud import PaperTradingTableCrud
+from databases.crud.bot_crud import BotTableCrud
 
 
 class KucoinMarginDeal:
@@ -16,6 +18,9 @@ class KucoinMarginDeal:
     ) -> None:
         self.active_bot = bot
         self.db_table = db_table
+        # Provide controller attribute for parity with Binance implementations
+        self.controller: Union[PaperTradingTableCrud, BotTableCrud, Any]
+        self.controller = None
 
     def margin_short_base_order(self) -> BotModel:
         raise NotImplementedError
@@ -27,6 +32,19 @@ class KucoinMarginDeal:
         raise NotImplementedError
 
     def execute_stop_loss(self) -> BotModel:
+        raise NotImplementedError
+
+    # Common deal lifecycle stubs expected by gateway/wrappers
+    def open_deal(self) -> BotModel:
+        """Open or activate margin short deal. Stub only."""
+        raise NotImplementedError
+
+    def close_all(self) -> BotModel:
+        """Close all orders and liquidate margin position. Stub only."""
+        raise NotImplementedError
+
+    def streaming_updates(self, close_price: float, open_price: float = 0) -> BotModel:
+        """Process streaming updates for margin short bots. Stub only."""
         raise NotImplementedError
 
     def margin_liquidation(self, symbol: str) -> dict:

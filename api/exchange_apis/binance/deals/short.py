@@ -2,7 +2,7 @@ from typing import Type, Union
 from databases.crud.autotrade_crud import AutotradeCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from tools.enum_definitions import DealType, ExchangeId, OrderSide, OrderStatus
+from tools.enum_definitions import DealType, OrderSide, OrderStatus
 from bots.models import BotModel, OrderModel
 from tools.enum_definitions import Status
 from tools.exceptions import BinanceErrors
@@ -10,7 +10,6 @@ from tools.maths import (
     round_timestamp,
 )
 from exchange_apis.binance.deals.margin_deal import BinanceMarginDeal
-from exchange_apis.kucoin.deals.margin_deal import KucoinMarginDeal
 
 
 class BinanceShortDeal(BinanceMarginDeal):
@@ -34,16 +33,6 @@ class BinanceShortDeal(BinanceMarginDeal):
         self.db_table = db_table
         self.autotrade_settings = AutotradeCrud().get_settings()
 
-        if self.autotrade_settings.exchange_id == ExchangeId.KUCOIN:
-            self.deal_base = KucoinMarginDeal(bot, db_table=db_table)
-        else:
-            self.deal_base = BinanceMarginDeal(bot, db_table=db_table)
-
-    def __getattr__(self, name: str):
-        # Only called if normal attribute lookup fails
-        attributes = getattr(self.deal_base, name)
-        return attributes
-
     def check_failed_switch_long_bot(self) -> BotModel:
         """
         Check if switch to long bot failed
@@ -61,7 +50,7 @@ class BinanceShortDeal(BinanceMarginDeal):
 
         return self.active_bot
 
-    def streaming_updates(self, close_price: float, open_price: float) -> BotModel:
+    def streaming_updates(self, close_price: float, open_price: float = 0) -> BotModel:
         """
         Margin_short streaming updates
 

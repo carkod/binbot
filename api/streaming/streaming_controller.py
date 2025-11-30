@@ -11,9 +11,6 @@ from databases.crud.candles_crud import CandlesCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
-from exchange_apis.binance.deals.factory import BinanceDeal
-from exchange_apis.binance.deals.margin_deal import BinanceMarginDeal
-from exchange_apis.binance.deals.spot_deal import BinanceSpotDeal
 from exchange_apis.binance.base import BinanceApi
 from streaming.models import HABollinguerSpread
 from tools.enum_definitions import Status, Strategy
@@ -358,7 +355,7 @@ class StreamingController:
                 return
 
             controller.save(bot)
-            spot_deal = BinanceSpotDeal(bot, db_table=db_table)
+            spot_deal = DealGateway(bot, db_table=db_table)
             # reactivate includes saving
             spot_deal.open_deal()
 
@@ -387,7 +384,7 @@ class StreamingController:
             ):
                 return
 
-            margin_deal = BinanceMarginDeal(bot, db_table=db_table)
+            margin_deal = DealGateway(bot, db_table=db_table)
             # reactivate includes saving
             margin_deal.open_deal()
 
