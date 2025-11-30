@@ -121,7 +121,7 @@ class BinanceOrderController(BinanceAccount):
         - side: buy or sell
         """
         qty = 1
-        price = float(self.matching_engine(pair, False, qty))
+        price = self.matching_engine(pair, False, qty)
         order = {
             "symbol": pair,
             "orderId": self.generate_short_id(),

@@ -160,9 +160,7 @@ class ShortDeal(BinanceMarginDeal):
         balance = self.get_single_raw_balance(base_asset)
         if balance > 0:
             if isinstance(self.controller, PaperTradingTableCrud):
-                res = self.simulate_margin_order(
-                    self.active_bot.deal.opening_qty, OrderSide.buy
-                )
+                res = self.simulate_margin_order(self.active_bot.pair, OrderSide.buy)
             else:
                 res = self.margin_liquidation(self.active_bot.pair)
 

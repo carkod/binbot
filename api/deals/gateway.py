@@ -28,12 +28,12 @@ class DealGateway:
         ]
         if self.autotrade_settings.exchange_id == ExchangeId.KUCOIN:
             if bot.strategy == Strategy.margin_short:
-                self.deal = KucoinMarginDeal(bot, db_table=BotTable)
+                self.deal = KucoinMarginDeal(bot, db_table=db_table)
             else:
                 self.deal = KucoinSpotDeal(bot, db_table=db_table)
         else:
             if bot.strategy == Strategy.margin_short:
-                self.deal = BinanceShortDeal(bot, db_table=BotTable)
+                self.deal = BinanceShortDeal(bot, db_table=db_table)
             else:
                 self.deal = BinanceLongDeal(bot, db_table=db_table)
 
