@@ -24,10 +24,10 @@ from tools.maths import (
     round_timestamp,
 )
 from databases.crud.symbols_crud import SymbolsCrud
-from exchange_apis.binance.deals.factory import DealAbstract
+from exchange_apis.binance.deals.factory import BinanceDeal
 
 
-class MarginDealAbstract(DealAbstract):
+class BinanceMarginDeal(BinanceDeal):
     """
     Store here utility functions, setters and getters
     to avoid making MarginDeal too big

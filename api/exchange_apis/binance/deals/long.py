@@ -1,23 +1,26 @@
 from typing import Type, Union
+from databases.crud.autotrade_crud import AutotradeCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from tools.enum_definitions import DealType, Status, OrderSide, OrderStatus
 from bots.models import BotModel, OrderModel
 from tools.maths import round_numbers, round_timestamp
-from exchange_apis.binance.deals.spot_deal_abstract import SpotDealAbstract
+from exchange_apis.binance.deals.spot_deal import BinanceSpotDeal
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from tools.exceptions import BinanceErrors
 
 
-class SpotLongDeal(SpotDealAbstract):
+class BinanceLongDeal(BinanceSpotDeal):
     """
-    Spot (non-margin, no borrowing) long bot deal updates
-    during streaming
+    Long deals are Binbot deals made using a long strategy: buy low, sell high.
+
+    They use the Exchange's SPOT market, so it would be using the spot adaptation of Binance APIs, thus inheriting from BinanceSpotDeal.
     """
 
     def __init__(
         self, bot, db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable
     ) -> None:
         super().__init__(bot, db_table=db_table)
+        self.autotrade_settings = AutotradeCrud().get_settings()
         self.active_bot: BotModel = bot
 
     def check_failed_switch_long_bot(self) -> BotModel:

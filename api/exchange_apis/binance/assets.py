@@ -6,7 +6,7 @@ from databases.crud.balances_crud import BalancesCrud
 from databases.tables.bot_table import BotTable
 from databases.crud.autotrade_crud import AutotradeCrud
 from bots.models import BotModel
-from exchange_apis.binance.deals.factory import DealAbstract
+from exchange_apis.binance.deals.factory import BinanceDeal
 from tools.handle_error import json_response, json_response_message
 from tools.maths import (
     round_numbers,
@@ -371,7 +371,7 @@ class Assets(BinanceOrderController):
             return bot
 
         active_bot = BotModel.dump_from_table(bot)
-        deal = DealAbstract(active_bot, db_table=BotTable)
+        deal = BinanceDeal(active_bot, db_table=BotTable)
 
         if strategy == Strategy.margin_short:
             deal.margin_liquidation(pair)

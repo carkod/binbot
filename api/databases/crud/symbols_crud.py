@@ -1,4 +1,4 @@
-from exchange_apis.kucoin import KucoinApi
+from exchange_apis.kucoin.base import KucoinApi
 from databases.crud.asset_index_crud import AssetIndexCrud
 from databases.crud.autotrade_crud import AutotradeCrud
 from databases.tables.asset_index_table import AssetIndexTable, SymbolIndexLink

@@ -12,6 +12,7 @@ from tools.handle_error import format_db_error
 
 symbols_blueprint = APIRouter()
 
+
 @symbols_blueprint.get("/symbols", tags=["Symbols"])
 def get_all_symbols(
     active: Optional[bool] = None,
@@ -43,7 +44,9 @@ def get_all_symbols(
     except BinbotErrors as e:
         return StandardResponse(message=str(e), error=1)
     except Exception as e:
-        return StandardResponse(message=f"Unexpected error retrieving symbols: {e}", error=1)
+        return StandardResponse(
+            message=f"Unexpected error retrieving symbols: {e}", error=1
+        )
 
 
 @symbols_blueprint.get("/symbol/store", tags=["Symbols"])
@@ -61,7 +64,6 @@ def store_symbols(
         return StandardResponse(message=format_db_error(e), error=1)
     except BinbotErrors as e:
         return StandardResponse(message=str(e), error=1)
-    
 
 
 @symbols_blueprint.put("/symbol/asset-index", tags=["Symbols"])
@@ -82,7 +84,9 @@ def update_indexes(
     except BinbotErrors as e:
         return StandardResponse(message=str(e), error=1)
     except Exception as e:
-        return StandardResponse(message=f"Unexpected error updating symbol indexes: {e}", error=1)
+        return StandardResponse(
+            message=f"Unexpected error updating symbol indexes: {e}", error=1
+        )
 
     return GetOneSymbolResponse(message="Symbol asset index updated", data=data)
 
@@ -179,7 +183,9 @@ def delete_symbol(pair: str, session: Session = Depends(get_session)):
     except BinbotErrors as e:
         return StandardResponse(message=str(e), error=1)
     except Exception as e:
-        return StandardResponse(message=f"Unexpected error deleting symbol: {e}", error=1)
+        return StandardResponse(
+            message=f"Unexpected error deleting symbol: {e}", error=1
+        )
 
 
 @symbols_blueprint.put("/symbol", response_model=GetOneSymbolResponse, tags=["Symbols"])
@@ -201,4 +207,6 @@ def edit_symbol(
     except BinbotErrors as e:
         return StandardResponse(message=str(e), error=1)
     except Exception as e:
-        return StandardResponse(message=f"Unexpected error editing symbol: {e}", error=1)
+        return StandardResponse(
+            message=f"Unexpected error editing symbol: {e}", error=1
+        )

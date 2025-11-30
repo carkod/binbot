@@ -1,20 +1,23 @@
 from typing import Type, Union
+from databases.crud.autotrade_crud import AutotradeCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from tools.enum_definitions import DealType, OrderSide, OrderStatus
+from tools.enum_definitions import DealType, ExchangeId, OrderSide, OrderStatus
 from bots.models import BotModel, OrderModel
 from tools.enum_definitions import Status
 from tools.exceptions import BinanceErrors
 from tools.maths import (
     round_timestamp,
 )
-from exchange_apis.binance.deals.margin_deal_abstract import MarginDealAbstract
+from exchange_apis.binance.deals.margin_deal import BinanceMarginDeal
+from exchange_apis.kucoin.deals.margin_deal import KucoinMarginDeal
 
 
-class MarginDeal(MarginDealAbstract):
+class BinanceShortDeal(BinanceMarginDeal):
     """
-    High-level functions for margin short bots
-    used elsewhere in the codebase
+    Short deals are Binbot deals made using a short strategy: sell high, buy low.
+
+    They use the Exchange's MARGIN ISOLATED market, so it would be using the margin adaptation of Binance APIs, thus inheriting from BinanceMarginDeal.
 
     - streaming_updates: updates for market_updates bot streaming
     - close_all: deactivation, panic close, quick liquidation
@@ -26,9 +29,20 @@ class MarginDeal(MarginDealAbstract):
         bot: BotModel,
         db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable,
     ):
-        super().__init__(bot, db_table)
+        super().__init__(bot, db_table=db_table)
         self.active_bot = bot
         self.db_table = db_table
+        self.autotrade_settings = AutotradeCrud().get_settings()
+
+        if self.autotrade_settings.exchange_id == ExchangeId.KUCOIN:
+            self.deal_base = KucoinMarginDeal(bot, db_table=db_table)
+        else:
+            self.deal_base = BinanceMarginDeal(bot, db_table=db_table)
+
+    def __getattr__(self, name: str):
+        # Only called if normal attribute lookup fails
+        attributes = getattr(self.deal_base, name)
+        return attributes
 
     def check_failed_switch_long_bot(self) -> BotModel:
         """
@@ -47,9 +61,11 @@ class MarginDeal(MarginDealAbstract):
 
         return self.active_bot
 
-    def streaming_updates(self, close_price: float) -> BotModel:
+    def streaming_updates(self, close_price: float, open_price: float) -> BotModel:
         """
         Margin_short streaming updates
+
+        open_price is unused, but kept for interface consistency
         """
 
         # Check for switch to long bot that failed

@@ -12,21 +12,21 @@ from tools.enum_definitions import (
     OrderStatus,
 )
 from bots.models import BotModel, OrderModel, BotBase
-from exchange_apis.binance.deals.factory import DealAbstract
-from deals.margin import MarginDeal
+from exchange_apis.binance.deals.factory import BinanceDeal
+from exchange_apis.binance.deals.margin_deal import BinanceMarginDeal
 from tools.maths import round_numbers, round_timestamp
 from urllib.error import HTTPError
 
 
-class SpotDealAbstract(DealAbstract):
+class BinanceSpotDeal(BinanceDeal):
     """
     Store here utility functions, setters and getters
-    to avoid making MarginDeal too big
+    to avoid making BinanceMarginDeal too big
     and decreases amount of code needed to read -
     for new tasks, you'd just create a new function here
-    and call it from MarginDeal
+    and call it from BinanceMarginDeal
 
-    tip: write functions first in MarginDeal
+    tip: write functions first in BinanceMarginDeal
     then move them to this
     if it's a reused utility function
     """
@@ -115,7 +115,9 @@ class SpotDealAbstract(DealAbstract):
 
         # Activate bot
         self.active_bot = BotModel.dump_from_table(bot_table)
-        margin_strategy_deal = MarginDeal(bot=self.active_bot, db_table=self.db_table)
+        margin_strategy_deal = BinanceMarginDeal(
+            bot=self.active_bot, db_table=self.db_table
+        )
         self.active_bot = margin_strategy_deal.margin_short_base_order()
 
         return self.active_bot

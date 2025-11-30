@@ -12,12 +12,15 @@ from bots.models import (
     BotListResponse,
     IResponseBase,
 )
-from typing import List, Union, Optional
+from typing import List, Optional
 from tools.exceptions import BinanceErrors, BinbotErrors
-from deals.margin import MarginDeal
-from deals.spot import SpotLongDeal
+from exchange_apis.binance.deals.margin_deal import BinanceMarginDeal
+from exchange_apis.binance.deals.spot_deal import BinanceSpotDeal
+from exchange_apis.binance.deals.factory import BinanceDeal
 from bots.models import BotModelResponse
 from tools.handle_error import StandardResponse
+from deals.gateway import DealGateway
+from databases.tables.bot_table import BotTable
 
 bot_blueprint = APIRouter()
 bot_ta = TypeAdapter(BotModelResponse)
@@ -155,16 +158,7 @@ def activate_by_id(id: str, session: Session = Depends(get_session)):
         return BotResponse(message="Bot not found.")
 
     bot_model = BotModel.dump_from_table(bot)
-    if bot_model.strategy == Strategy.margin_short:
-        deal_instance: Union[MarginDeal, SpotLongDeal] = MarginDeal(bot_model)
-        if not deal_instance.symbol_info.is_margin_trading_allowed:
-            return BotResponse(
-                message=f"Margin trading is not allowed for {bot_model.pair}. Cannot activate margin_short bot.",
-                data=bot_model,
-                error=1,
-            )
-    else:
-        deal_instance = SpotLongDeal(bot_model)
+    deal_instance = DealGateway(bot_model, db_table=BotTable)
 
     try:
         data = deal_instance.open_deal()
@@ -175,10 +169,10 @@ def activate_by_id(id: str, session: Session = Depends(get_session)):
 
         return BotResponse(message=message, data=response_data)
     except BinbotErrors as error:
-        deal_instance.controller.update_logs(bot=bot_model, log_message=error.message)
+        deal_instance.update_logs(message=error.message)
         return BotResponse(data=bot_model, message=error.message, error=1)
     except BinanceErrors as error:
-        deal_instance.controller.update_logs(bot=bot_model, log_message=error.message)
+        deal_instance.update_logs(message=error.message)
         return BotResponse(data=bot_model, message=error.message, error=1)
 
 
@@ -194,12 +188,12 @@ def deactivation(id: str, session: Session = Depends(get_session)):
 
     bot_model = BotModel.dump_from_table(bot_table)
     if bot_model.strategy == Strategy.margin_short:
-        deal_instance: Union[MarginDeal, SpotLongDeal] = MarginDeal(bot_model)
+        deal_instance: BinanceDeal = BinanceMarginDeal(bot_model)
     else:
-        deal_instance = SpotLongDeal(bot_model)
+        deal_instance = BinanceSpotDeal(bot_model)
 
     try:
-        data = deal_instance.close_all()
+        data = deal_instance.deactivation()
         response_data = BotModelResponse.model_construct(**data.model_dump())
         return {
             "message": "Successfully triggered panic sell! Bot deactivated.",

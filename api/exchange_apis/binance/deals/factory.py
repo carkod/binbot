@@ -15,7 +15,7 @@ from exchange_apis.binance.deals.base_deal import BaseDeal
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 
 
-class DealAbstract(BaseDeal):
+class BinanceDeal(BaseDeal):
     MIN_EXCHANGE_AMOUNT = 15
     """
     Centralized deal controller.
