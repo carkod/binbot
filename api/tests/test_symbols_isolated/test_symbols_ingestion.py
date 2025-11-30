@@ -1,6 +1,7 @@
 """
 Tests for symbol ingestion functions to verify TRY symbols are excluded from Binance
 """
+
 import pytest
 from unittest.mock import patch, MagicMock
 from databases.crud.symbols_crud import SymbolsCrud

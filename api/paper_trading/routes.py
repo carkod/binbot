@@ -1,16 +1,15 @@
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
 from pydantic import TypeAdapter, ValidationError
-from tools.enum_definitions import Status, Strategy
+from deals.gateway import DealGateway
+from tools.enum_definitions import Status
 from databases.tables.bot_table import PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.utils import get_session
 from tools.exceptions import BinanceErrors, BinbotErrors
 from tools.handle_error import api_response, StandardResponse
 from bots.models import BotModel, BotResponse, BotListResponse, BotBase, BotPairsList
-from typing import List, Union, Optional
-from deals.margin import MarginDeal
-from deals.spot import SpotLongDeal
+from typing import List, Optional
 from bots.models import BotModelResponse, ErrorsRequestBody
 
 
@@ -136,22 +135,17 @@ def activate(id: str, session: Session = Depends(get_session)):
 
     bot_model = BotModel.dump_from_table(bot)
 
-    if bot_model.strategy == Strategy.margin_short:
-        bot_instance: Union[MarginDeal, SpotLongDeal] = MarginDeal(
-            bot=bot_model, db_table=PaperTradingTable
-        )
-    else:
-        bot_instance = SpotLongDeal(bot=bot_model, db_table=PaperTradingTable)
+    deal_instance = DealGateway(bot=bot_model, db_table=PaperTradingTable)
 
     try:
-        bot_instance.open_deal()
+        deal_instance.open_deal()
         return BotResponse(message="Successfully activated bot!", data=bot_model)
 
     except BinbotErrors as error:
-        bot_instance.controller.update_logs(bot=bot_model, log_message=error.message)
+        deal_instance.update_logs(message=error.message)
         return BotResponse(data=bot_model, message=error.message, error=1)
     except BinanceErrors as error:
-        bot_instance.controller.update_logs(bot=bot_model, log_message=error.message)
+        deal_instance.update_logs(message=error.message)
         return BotResponse(data=bot_model, message=error.message, error=1)
 
 
@@ -168,14 +162,10 @@ def deactivate(id: str, session: Session = Depends(get_session)):
         return api_response("No active bot found. Can't deactivate")
 
     bot_model = BotModel.model_construct(**bot_model.model_dump())
-    if bot_model.strategy == Strategy.margin_short:
-        deal_instance: Union[MarginDeal, SpotLongDeal] = MarginDeal(
-            bot_model, db_table=PaperTradingTable
-        )
-    else:
-        deal_instance = SpotLongDeal(bot_model, db_table=PaperTradingTable)
+    deal_instance = DealGateway(bot=bot_model, db_table=PaperTradingTable)
+
     try:
-        data = deal_instance.close_all()
+        data = deal_instance.deactivation()
         response_data = BotModelResponse(**data.model_dump())
         return {
             "message": "Successfully triggered panic sell! Bot deactivated.",

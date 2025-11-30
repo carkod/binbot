@@ -11,11 +11,11 @@ from tools.maths import (
     round_numbers_floor,
     round_numbers_ceiling,
 )
-from deals.abstractions.base import BaseDeal
+from exchange_apis.binance.deals.base_deal import BaseDeal
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 
 
-class DealAbstract(BaseDeal):
+class BinanceDeal(BaseDeal):
     MIN_EXCHANGE_AMOUNT = 15
     """
     Centralized deal controller.
@@ -44,7 +44,9 @@ class DealAbstract(BaseDeal):
         self.conversion_threshold = 1.05
 
     def handle_existing_quote_balance(self, symbol: str, is_quote_balance: float):
-        """Handle case when we have existing quote balance"""
+        """
+        Handle case when we have existing quote balance
+        """
         quote_balance = round_numbers_floor(is_quote_balance, self.quote_qty_precision)
         quote_fiat_price = self.get_book_order_deep(
             symbol=symbol, order_side=not self.active_bot.quote_asset.is_fiat()
@@ -319,6 +321,7 @@ class DealAbstract(BaseDeal):
                     qty=buy_qty,
                     qty_precision=self.quote_qty_precision,
                 )
+
             else:
                 quote_fiat_price = self.matching_engine(symbol=symbol, order_side=False)
 

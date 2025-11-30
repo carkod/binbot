@@ -9,7 +9,7 @@ from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from tools.exceptions import BinanceErrors
 
 
-class LongDeal(BinanceSpotDeal):
+class BinanceLongDeal(BinanceSpotDeal):
     """
     Long deals are Binbot deals made using a long strategy: buy low, sell high.
 
@@ -40,7 +40,9 @@ class LongDeal(BinanceSpotDeal):
 
         return self.active_bot
 
-    def streaming_updates(self, current_price: float, open_price: float):
+    def streaming_updates(self, close_price: float, open_price: float):
+        # interface consistency
+        current_price = close_price
         self.check_failed_switch_long_bot()
         self.close_conditions(current_price)
 

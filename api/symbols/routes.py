@@ -1,12 +1,14 @@
 from fastapi import APIRouter, Depends
 from tools.enum_definitions import ExchangeId
 from databases.crud.symbols_crud import SymbolsCrud
-from symbols.models import SymbolsResponse, GetOneSymbolResponse
+from symbols.models import GetOneSymbolResponse
 from databases.utils import get_session
 from sqlmodel import Session
 from tools.handle_error import StandardResponse, BinbotErrors
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError, DataError
 from symbols.models import SymbolRequestPayload
 from typing import Optional
+from tools.handle_error import format_db_error
 
 symbols_blueprint = APIRouter()
 
@@ -36,8 +38,15 @@ def get_all_symbols(
             "message": "Successfully retrieved active symbols",
             "data": response_model,
         }
+    except (IntegrityError, DataError, SQLAlchemyError) as e:
+        session.rollback()
+        return StandardResponse(message=format_db_error(e), error=1)
+    except BinbotErrors as e:
+        return StandardResponse(message=str(e), error=1)
     except Exception as e:
-        return SymbolsResponse(message=f"Error retrieving active symbols: {e}", error=1)
+        return StandardResponse(
+            message=f"Unexpected error retrieving symbols: {e}", error=1
+        )
 
 
 @symbols_blueprint.get("/symbol/store", tags=["Symbols"])
@@ -50,6 +59,9 @@ def store_symbols(
     try:
         SymbolsCrud(session=session).etl_symbols_ingestion(delete_existing)
         return GetOneSymbolResponse(message="Symbols stored!")
+    except (IntegrityError, DataError, SQLAlchemyError) as e:
+        session.rollback()
+        return StandardResponse(message=format_db_error(e), error=1)
     except BinbotErrors as e:
         return StandardResponse(message=str(e), error=1)
 
@@ -66,8 +78,15 @@ def update_indexes(
     """
     try:
         data = SymbolsCrud(session=session).update_symbol_indexes(data)
-    except Exception as e:
+    except (IntegrityError, DataError, SQLAlchemyError) as e:
+        session.rollback()
+        return StandardResponse(message=format_db_error(e), error=1)
+    except BinbotErrors as e:
         return StandardResponse(message=str(e), error=1)
+    except Exception as e:
+        return StandardResponse(
+            message=f"Unexpected error updating symbol indexes: {e}", error=1
+        )
 
     return GetOneSymbolResponse(message="Symbol asset index updated", data=data)
 
@@ -91,6 +110,9 @@ def get_one_symbol(
             "message": "Successfully retrieved symbols!",
             "data": data,
         }
+    except (IntegrityError, DataError, SQLAlchemyError) as e:
+        session.rollback()
+        return StandardResponse(message=format_db_error(e), error=1)
     except BinbotErrors as e:
         return StandardResponse(message=str(e), error=1)
 
@@ -127,11 +149,14 @@ def add_symbol(
             qty_precision=qty_precision,
             exchange_id=exchange_id,
         )
-        return GetOneSymbolResponse(message="Symbols found!", data=data)
+        return GetOneSymbolResponse(message="Symbol added", data=data)
+    except (IntegrityError, DataError, SQLAlchemyError) as e:
+        session.rollback()
+        return StandardResponse(message=format_db_error(e), error=1)
     except BinbotErrors as e:
         return StandardResponse(message=str(e), error=1)
     except Exception as e:
-        return StandardResponse(message=f"Error adding symbol: {str(e)}", error=1)
+        return StandardResponse(message=f"Unexpected error adding symbol: {e}", error=1)
 
 
 @symbols_blueprint.delete(
@@ -152,10 +177,15 @@ def delete_symbol(pair: str, session: Session = Depends(get_session)):
     try:
         data = SymbolsCrud(session=session).delete_symbol(pair)
         return GetOneSymbolResponse(message="Symbol deleted", data=data)
+    except (IntegrityError, DataError, SQLAlchemyError) as e:
+        session.rollback()
+        return StandardResponse(message=format_db_error(e), error=1)
     except BinbotErrors as e:
         return StandardResponse(message=str(e), error=1)
     except Exception as e:
-        return StandardResponse(message=f"Error deleting symbol: {str(e)}", error=1)
+        return StandardResponse(
+            message=f"Unexpected error deleting symbol: {e}", error=1
+        )
 
 
 @symbols_blueprint.put("/symbol", response_model=GetOneSymbolResponse, tags=["Symbols"])
@@ -171,7 +201,12 @@ def edit_symbol(
         return GetOneSymbolResponse(
             message="Symbol edited and candles removed", data=data
         )
+    except (IntegrityError, DataError, SQLAlchemyError) as e:
+        session.rollback()
+        return StandardResponse(message=format_db_error(e), error=1)
     except BinbotErrors as e:
         return StandardResponse(message=str(e), error=1)
     except Exception as e:
-        return StandardResponse(message=f"Error editing symbol: {str(e)}", error=1)
+        return StandardResponse(
+            message=f"Unexpected error editing symbol: {e}", error=1
+        )

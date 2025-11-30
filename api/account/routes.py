@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime, timedelta
-from account.assets import Assets
+from exchange_apis.binance.assets import Assets
 from account.schemas import (
     BalanceResponse,
     GainersLosersResponse,
@@ -14,7 +14,6 @@ from tools.exceptions import (
 )
 from tools.handle_error import json_response, json_response_error, json_response_message
 from sqlmodel import Session
-
 from databases.utils import get_session
 from databases.crud.balances_crud import BalancesCrud
 from typing import Literal

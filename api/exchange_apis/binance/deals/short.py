@@ -12,7 +12,7 @@ from tools.maths import (
 from exchange_apis.binance.deals.margin_deal import BinanceMarginDeal
 
 
-class ShortDeal(BinanceMarginDeal):
+class BinanceShortDeal(BinanceMarginDeal):
     """
     Short deals are Binbot deals made using a short strategy: sell high, buy low.
 
@@ -50,9 +50,11 @@ class ShortDeal(BinanceMarginDeal):
 
         return self.active_bot
 
-    def streaming_updates(self, close_price: float) -> BotModel:
+    def streaming_updates(self, close_price: float, open_price: float = 0) -> BotModel:
         """
         Margin_short streaming updates
+
+        open_price is unused, but kept for interface consistency
         """
 
         # Check for switch to long bot that failed

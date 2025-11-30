@@ -7,7 +7,7 @@ from time import sleep
 from databases.crud.bot_crud import BotTableCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from deals.abstractions.factory import DealAbstract
+
 from tools.enum_definitions import (
     CloseConditions,
     DealType,
@@ -24,9 +24,10 @@ from tools.maths import (
     round_timestamp,
 )
 from databases.crud.symbols_crud import SymbolsCrud
+from exchange_apis.binance.deals.factory import BinanceDeal
 
 
-class MarginDealAbstract(DealAbstract):
+class BinanceMarginDeal(BinanceDeal):
     """
     Store here utility functions, setters and getters
     to avoid making MarginDeal too big
@@ -413,9 +414,7 @@ class MarginDealAbstract(DealAbstract):
         """
         # Margin buy (buy back)
         if isinstance(self.controller, PaperTradingTableCrud):
-            res = self.simulate_margin_order(
-                self.active_bot.deal.opening_qty, OrderSide.buy
-            )
+            res = self.simulate_margin_order(self.active_bot.pair, OrderSide.buy)
         else:
             res = self.margin_liquidation(self.active_bot.pair)
 
@@ -481,9 +480,7 @@ class MarginDealAbstract(DealAbstract):
 
         # Margin buy (buy back)
         if isinstance(self.controller, PaperTradingTableCrud):
-            res = self.simulate_margin_order(
-                self.active_bot.deal.opening_qty, OrderSide.buy
-            )
+            res = self.simulate_margin_order(self.active_bot.pair, OrderSide.buy)
         else:
             self.controller.update_logs("Attempting to liquidate loan", self.active_bot)
             try:

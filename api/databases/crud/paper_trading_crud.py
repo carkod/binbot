@@ -20,7 +20,9 @@ class PaperTradingTableCrud:
         self.session = session
         pass
 
-    def update_logs(self, log_message: str, bot: BotModel = None) -> PaperTradingTable:
+    def update_logs(
+        self, log_message: str | list[str], bot: BotModel = None
+    ) -> PaperTradingTable:
         """
         Update logs for a bot
 

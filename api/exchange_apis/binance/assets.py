@@ -1,12 +1,12 @@
 from datetime import datetime, timedelta
 from time import sleep
-from orders.controller import OrderController
+from exchange_apis.binance.orders import BinanceOrderController
 from databases.crud.symbols_crud import SymbolsCrud
 from databases.crud.balances_crud import BalancesCrud
 from databases.tables.bot_table import BotTable
 from databases.crud.autotrade_crud import AutotradeCrud
 from bots.models import BotModel
-from deals.abstractions.factory import DealAbstract
+from exchange_apis.binance.deals.factory import BinanceDeal
 from tools.handle_error import json_response, json_response_message
 from tools.maths import (
     round_numbers,
@@ -21,7 +21,7 @@ from tools.exceptions import BinbotErrors
 from typing import Sequence
 
 
-class Assets(OrderController):
+class Assets(BinanceOrderController):
     """
     Assets class inherits from OrderController
     which inherits from Account class
@@ -371,7 +371,7 @@ class Assets(OrderController):
             return bot
 
         active_bot = BotModel.dump_from_table(bot)
-        deal = DealAbstract(active_bot, db_table=BotTable)
+        deal = BinanceDeal(active_bot, db_table=BotTable)
 
         if strategy == Strategy.margin_short:
             deal.margin_liquidation(pair)

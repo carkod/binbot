@@ -1,6 +1,6 @@
 from time import time
 from uuid import uuid4
-from account.account import Account
+from exchange_apis.binance.account import BinanceAccount
 from databases.crud.autotrade_crud import AutotradeCrud
 from tools.exceptions import DeleteOrderError
 from tools.enum_definitions import (
@@ -18,7 +18,7 @@ from tools.maths import (
 from databases.crud.symbols_crud import SymbolsCrud
 
 
-class OrderController(Account):
+class BinanceOrderController(BinanceAccount):
     """
     Always GTC and limit orders
     limit/market orders will be decided by matching_engine
@@ -121,7 +121,7 @@ class OrderController(Account):
         - side: buy or sell
         """
         qty = 1
-        price = float(self.matching_engine(pair, False, qty))
+        price = self.matching_engine(pair, False, qty)
         order = {
             "symbol": pair,
             "orderId": self.generate_short_id(),

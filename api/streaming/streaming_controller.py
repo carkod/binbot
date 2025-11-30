@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Type, Union
 
 import pandas as pd
+from deals.gateway import DealGateway
 from bots.models import BotModel
 from databases.crud.autotrade_crud import AutotradeCrud
 from databases.crud.bot_crud import BotTableCrud
@@ -10,10 +11,7 @@ from databases.crud.candles_crud import CandlesCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
-from deals.abstractions.factory import DealAbstract
-from deals.margin import MarginDeal
-from deals.spot import SpotLongDeal
-from exchange_apis.binance import BinanceApi
+from exchange_apis.binance.base import BinanceApi
 from streaming.models import HABollinguerSpread
 from tools.enum_definitions import Status, Strategy
 from tools.exceptions import BinanceErrors, BinbotErrors
@@ -116,31 +114,6 @@ class StreamingController:
         quantile_value = float(rolling_vol.quantile(quantile))
         return quantile_value
 
-    def execute_strategies(
-        self,
-        current_bot: BotModel,
-        close_price: float,
-        open_price: float,
-        db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable,
-    ) -> None:
-        """
-        Processes the deal market websocket price updates
-
-        It updates the bots deals, safety orders, trailling orders, stop loss
-        for both paper trading test bots and real bots
-        """
-
-        # Margin short
-        if current_bot.strategy == Strategy.margin_short:
-            margin_deal = MarginDeal(current_bot, db_table=db_table)
-            margin_deal.streaming_updates(float(close_price))
-
-        elif current_bot.strategy == Strategy.long:
-            spot_long_deal = SpotLongDeal(current_bot, db_table=db_table)
-            spot_long_deal.streaming_updates(float(close_price), float(open_price))
-
-        pass
-
     def process_klines(self) -> None:
         """
         Updates deals with klines websockets,
@@ -157,27 +130,20 @@ class StreamingController:
 
             try:
                 if current_bot:
-                    create_deal_controller = DealAbstract(
-                        bot=current_bot, db_table=BotTable
-                    )
-                    self.execute_strategies(
-                        current_bot,
+                    deal = DealGateway(bot=current_bot, db_table=BotTable)
+                    deal.deal_updates(
                         close_price,
                         open_price,
-                        db_table=BotTable,
                     )
                 elif current_test_bot:
-                    create_deal_controller = DealAbstract(
-                        bot=current_test_bot, db_table=PaperTradingTable
-                    )
-                    self.execute_strategies(
-                        current_test_bot,
+                    deal = DealGateway(bot=current_test_bot, db_table=PaperTradingTable)
+                    deal.deal_updates(
                         close_price,
                         open_price,
-                        db_table=PaperTradingTable,
                     )
                 else:
                     return
+
             except BinanceErrors as error:
                 if error.code in (-2010, -1013):
                     if current_bot:
@@ -189,7 +155,7 @@ class StreamingController:
 
                     bot.add_log(error.message)
                     bot.status = Status.error
-                    create_deal_controller.controller.save(bot)
+                    deal.save(bot)
 
         return
 
@@ -389,7 +355,7 @@ class StreamingController:
                 return
 
             controller.save(bot)
-            spot_deal = SpotLongDeal(bot, db_table=db_table)
+            spot_deal = DealGateway(bot, db_table=db_table)
             # reactivate includes saving
             spot_deal.open_deal()
 
@@ -418,7 +384,7 @@ class StreamingController:
             ):
                 return
 
-            margin_deal = MarginDeal(bot, db_table=db_table)
+            margin_deal = DealGateway(bot, db_table=db_table)
             # reactivate includes saving
             margin_deal.open_deal()
 
