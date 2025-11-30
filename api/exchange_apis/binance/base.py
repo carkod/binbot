@@ -246,6 +246,11 @@ class BinanceApi:
         data = self.request(url=self.ticker24_url, params=params)
         return data
 
+    def get_ticker_price(self, symbol: str):
+        params = {"symbol": symbol}
+        res = self.request(url=self.ticker_price_url, params=params)
+        return float(res["price"])
+
     def last_ticker_price(self, symbol: str) -> float:
         data = self.request(url=f"{self.ticker_price_url}", params={"symbol": symbol})
         return float(data["price"])

@@ -1,22 +1,12 @@
-from apis import BinbotApi
+import requests
+from tools.handle_error import handle_binance_errors
 from tools.maths import round_numbers
+from exchange_apis.kucoin.base import KucoinApi
 
 
-class BinanceAccount(BinbotApi):
+class KucoinAccount(KucoinApi):
     def __init__(self):
-        pass
-
-    def _get_price_from_book_order(self, data: dict, order_side: bool, index: int):
-        """
-        Buy order = get bid prices = True
-        Sell order = get ask prices = False
-        """
-        if order_side:
-            price, base_qty = data["bids"][index]
-        else:
-            price, base_qty = data["asks"][index]
-
-        return float(price), float(base_qty)
+        super().__init__()
 
     def get_book_order_deep(self, symbol: str, order_side: bool) -> float:
         """
