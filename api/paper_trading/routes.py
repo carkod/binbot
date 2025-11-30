@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
 from pydantic import TypeAdapter, ValidationError
-from api.deals.gateway import DealGateway
+from deals.gateway import DealGateway
 from tools.enum_definitions import Status
 from databases.tables.bot_table import PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud

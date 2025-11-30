@@ -80,7 +80,8 @@ def test_add_symbol(client: TestClient):
 
     assert response.status_code == 200
     content = response.json()
-    assert content["message"] == "Symbols found!"
+    # Message reverted in symbols route; expect updated text
+    assert content["message"] == "Symbol added"
     assert content["data"]["id"] == test_new_symbol
 
 

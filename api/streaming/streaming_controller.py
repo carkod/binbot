@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Type, Union
 
 import pandas as pd
-from api.deals.gateway import DealGateway
+from deals.gateway import DealGateway
 from bots.models import BotModel
 from databases.crud.autotrade_crud import AutotradeCrud
 from databases.crud.bot_crud import BotTableCrud

@@ -1,5 +1,5 @@
-from api.databases.tables.bot_table import BotTable, PaperTradingTable
-from api.exchange_apis.kucoin.deals.spot_deal import KucoinSpotDeal
+from databases.tables.bot_table import BotTable, PaperTradingTable
+from exchange_apis.kucoin.deals.spot_deal import KucoinSpotDeal
 from tools.enum_definitions import ExchangeId, Strategy
 from bots.models import BotModel
 from typing import Type, Union
@@ -53,7 +53,7 @@ class DealGateway:
         """
         return self.deal.controller.update_logs(bot=self.bot, log_message=message)
 
-    def deactivation(self) -> Union[BotTable, PaperTradingTable]:
+    def deactivation(self) -> BotModel:
         """
         Abstract method for deactivation (which is pretty much closing all deals) during bot runtime
         """
