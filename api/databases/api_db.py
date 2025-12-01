@@ -38,8 +38,8 @@ class ApiDb:
 
     def init_db(self):
         self.init_users()
-        self.init_autotrade_settings(delete_existing=True)
-        self.init_test_autotrade_settings(delete_existing=True)
+        self.init_autotrade_settings()
+        self.init_test_autotrade_settings()
         self.create_dummy_bot()
         self.init_symbols()
         # Depends on autotrade settings

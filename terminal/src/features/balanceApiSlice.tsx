@@ -38,7 +38,7 @@ export const balancesApiSlice = userApiSlice.injectEndpoints({
   endpoints: (build) => ({
     getRawBalance: build.query<AssetCollection[], void>({
       query: () => ({
-        url: `${import.meta.env.VITE_ACCOUNT_BALANCE_RAW}` || "/balance",
+        url: `${import.meta.env.VITE_ACCOUNT_BALANCE}` || "/balance",
         providesTags: ["balances"],
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
@@ -46,12 +46,12 @@ export const balancesApiSlice = userApiSlice.injectEndpoints({
           notifification("error", message);
         }
 
-        return data;
+        return data.balances;
       },
     }),
     getEstimate: build.query<BalanceEstimateData, void>({
       query: () => ({
-        url: `${import.meta.env.VITE_BALANCE_ESTIMATE}` || "/balance",
+        url: `${import.meta.env.VITE_ACCOUNT_BALANCE}` || "/balance",
         providesTags: ["balances"],
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {

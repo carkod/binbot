@@ -29,8 +29,7 @@ class BinbotApi(BinanceApi):
     bb_close_order_url = f"{bb_base_url}/order/close"
 
     # balances
-    bb_balance_url = f"{bb_base_url}/account/balance/raw"
-    bb_balance_estimate_url = f"{bb_base_url}/account/balance/estimate"
+    bb_balance_url = f"{bb_base_url}/account/balance"
     bb_liquidation_url = f"{bb_base_url}/account/one-click-liquidation"
 
     # research

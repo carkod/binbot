@@ -4,6 +4,7 @@ from tools.enum_definitions import (
     AutotradeSettingsDocument,
     BinanceKlineIntervals,
     CloseConditions,
+    ExchangeId,
 )
 from tools.handle_error import StandardResponse
 
@@ -30,10 +31,18 @@ class AutotradeSettingsSchema(BaseModel):
     telegram_signals: bool = Field(default=True)
     max_active_autotrade_bots: int = Field(default=1)
     autoswitch: bool = Field(default=True)
+    exchange_id: ExchangeId = Field(
+        default=ExchangeId.BINANCE,
+        description="Exchange where autotrade bots will operate",
+    )
 
 
 class AutotradeSettingsResponse(StandardResponse):
     data: AutotradeSettingsSchema
+    model_config = {
+        "ser_json_exclude": {"id"},
+        "ser_dict_exclude": {"id"},
+    }
 
 
 class TestAutotradeSettingsSchema(BaseModel):
@@ -58,3 +67,7 @@ class TestAutotradeSettingsSchema(BaseModel):
     telegram_signals: bool = Field(default=True)
     max_active_autotrade_bots: int = Field(default=1)
     autoswitch: bool = Field(default=True)
+    exchange_id: ExchangeId = Field(
+        default=ExchangeId.BINANCE,
+        description="Exchange where autotrade bots will operate",
+    )

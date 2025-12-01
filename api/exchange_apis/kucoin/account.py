@@ -1,5 +1,3 @@
-import requests
-from tools.handle_error import handle_binance_errors
 from tools.maths import round_numbers
 from exchange_apis.kucoin.base import KucoinApi
 
@@ -65,37 +63,6 @@ class KucoinAccount(KucoinApi):
         data = self.get_isolated_balance(symbol)
         symbol_balance = next((x["free"] for x in data if x["asset"] == symbol), 0)
         return symbol_balance
-
-    def match_qty_engine(self, symbol: str, order_side: bool, qty: float = 1) -> float:
-        """
-        Similar to matching_engine,
-        it is used to find a price that matches the quantity provided
-        so qty != 0
-
-        @param: order_side -
-            Buy order = get bid prices = False
-            Sell order = get ask prices = True
-        @param: base_order_size - quantity wanted to be bought/sold in fiat (USDC at time of writing)
-        """
-        data = self.get_book_depth(symbol)
-        if order_side:
-            total_length = len(data["asks"])
-        else:
-            total_length = len(data["bids"])
-
-        price, base_qty = self._get_price_from_book_order(data, order_side, 0)
-
-        buyable_qty = float(qty) / float(price)
-        if buyable_qty < base_qty:
-            return base_qty
-        else:
-            for i in range(1, total_length):
-                price, base_qty = self._get_price_from_book_order(data, order_side, i)
-                if buyable_qty > base_qty:
-                    return base_qty
-                else:
-                    continue
-            raise Exception("Not enough liquidity to match the order quantity")
 
     def matching_engine(self, symbol: str, order_side: bool, qty: float = 0) -> float:
         """

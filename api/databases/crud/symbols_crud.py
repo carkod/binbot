@@ -284,7 +284,7 @@ class SymbolsCrud:
         self.session.refresh(exchange_link)
         self.session.close()
         # Return the full symbol with exchange data
-        return self.get_symbol(symbol)
+        return symbol_table
 
     def edit_symbol_item(
         self,
@@ -584,8 +584,9 @@ class SymbolsCrud:
                 qty_precision = item.base_increment.find("1") - 2
                 min_notional = float(item.base_min_size)
 
-                try:
-                    self.get_symbol(symbol=symbol)
+                statement = select(SymbolTable).where(SymbolTable.id == symbol)
+                result = self.session.exec(statement).first()
+                if result:
                     self._add_exchange_link_if_not_exists(
                         symbol=symbol,
                         exchange_id=ExchangeId.KUCOIN,
@@ -596,36 +597,28 @@ class SymbolsCrud:
                         base_asset=item.base_currency,
                         is_margin_trading_allowed=item.is_margin_enabled,
                     )
+                else:
+                    self.add_symbol(
+                        symbol=symbol,
+                        quote_asset=item.quote_currency,
+                        base_asset=item.base_currency,
+                        exchange_id=ExchangeId.KUCOIN,
+                        active=active,
+                        price_precision=price_precision,
+                        qty_precision=qty_precision,
+                        min_notional=min_notional,
+                    )
 
-                except BinbotErrors as error:
-                    if "Symbol not found" in str(error):
-                        self.add_symbol(
-                            symbol=symbol,
-                            quote_asset=item.quote_currency,
-                            base_asset=item.base_currency,
-                            exchange_id=ExchangeId.KUCOIN,
-                            active=active,
-                            price_precision=price_precision,
-                            qty_precision=qty_precision,
-                            min_notional=min_notional,
-                        )
-
-                        self._add_exchange_link_if_not_exists(
-                            symbol=symbol,
-                            exchange_id=ExchangeId.KUCOIN,
-                            min_notional=min_notional,
-                            price_precision=price_precision,
-                            qty_precision=qty_precision,
-                            quote_asset=item.quote_currency,
-                            base_asset=item.base_currency,
-                            is_margin_trading_allowed=item.is_margin_enabled,
-                        )
-
-                except Exception as error:
-                    print(f"Error adding symbol {symbol}: {error}")
-                    # Create SymbolTable entry
-
-                    pass
+                    self._add_exchange_link_if_not_exists(
+                        symbol=symbol,
+                        exchange_id=ExchangeId.KUCOIN,
+                        min_notional=min_notional,
+                        price_precision=price_precision,
+                        qty_precision=qty_precision,
+                        quote_asset=item.quote_currency,
+                        base_asset=item.base_currency,
+                        is_margin_trading_allowed=item.is_margin_enabled,
+                    )
 
         self.session.close()
 
