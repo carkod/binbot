@@ -38,7 +38,7 @@ class SymbolTable(SQLModel, table=True):
     exchange_values: list["SymbolExchangeTable"] = Relationship(
         back_populates="symbol",
         sa_relationship_kwargs={
-            "lazy": "joined",
+            "lazy": "selectin",
             "single_parent": True,
         },
     )
@@ -46,7 +46,7 @@ class SymbolTable(SQLModel, table=True):
         back_populates="symbols",
         link_model=SymbolIndexLink,
         sa_relationship_kwargs={
-            "lazy": "joined",
+            "lazy": "selectin",
             "single_parent": True,
         },
     )

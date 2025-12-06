@@ -55,11 +55,11 @@ class ConsolidatedBalancesTable(SQLModel, table=True):
         { asset: 'GBP', free: 9.87392004, locked: 0 },
         { asset: 'NFT', free: 26387.614932, locked: 0 }
       ],
-      estimated_total_btc: 0.008809462952797817,
-      estimated_total_gbp: 203.25007925973117
+      estimated_total_fiat: 28.23,
     }
 
       - id is a unique timestamp to support series. This should be ingested as before, once per day
+      - estimated_total_fiat usually in a real currency or stablecoin equivalent (USDT, USDC)
 
     """
 

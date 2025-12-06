@@ -1,10 +1,7 @@
-import os
-from typing import Sequence, Union, Type
+from typing import Sequence
 from databases.tables.account_balances import (
     BalancesTable,
     ConsolidatedBalancesTable,
-    StagingBalancesTable,
-    StagingConsolidatedBalancesTable,
 )
 from databases.utils import independent_session, timestamp
 from sqlmodel import Session, select, desc
@@ -29,26 +26,15 @@ class BalancesCrud:
         updates balances DB collection
         """
 
-        balances_table: Union[Type[BalancesTable], Type[StagingBalancesTable]] = (
-            BalancesTable
-        )
-        consolidated_balances_table: Union[
-            Type[ConsolidatedBalancesTable], Type[StagingConsolidatedBalancesTable]
-        ] = ConsolidatedBalancesTable
-
-        if os.environ["ENV"] == "staging":
-            balances_table = StagingBalancesTable
-            consolidated_balances_table = StagingConsolidatedBalancesTable
-
         ts = timestamp()
         balances = []
         for item in total_balance:
-            balance = balances_table(
+            balance = BalancesTable(
                 asset=item["asset"], quantity=item["free"], timestamp=ts
             )
             balances.append(balance)
 
-        consolidated_balance_series = consolidated_balances_table(
+        consolidated_balance_series = ConsolidatedBalancesTable(
             id=ts,
             balances=balances,
             estimated_total_fiat=total_estimated_fiat,

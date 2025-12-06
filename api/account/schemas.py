@@ -1,5 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from tools.handle_error import StandardResponse
+from typing import Dict
 
 
 class BalanceSchema(BaseModel):
@@ -8,12 +9,24 @@ class BalanceSchema(BaseModel):
     All validation and database fields new or old handled here
     """
 
-    balances: list = []
-    estimated_total_fiat: float = 0
+    balances: Dict[str, float] = Field(
+        default={}, description="Dictionary of asset balances 'BTC': 0.5, 'ETH': 0.01"
+    )
+    estimated_total_fiat: float = Field(
+        default=0,
+        description="Estimated total in fiat currency e.g. USD or tether token",
+    )
+    fiat_available: float = Field(
+        default=0, description="Amount of fiat currency left unallocated"
+    )
+    fiat_currency: str = Field(
+        default="USDT",
+        description="Fiat currency use for trading, this should match autotrade.settings.fiat",
+    )
 
 
 class BalanceResponse(StandardResponse):
-    data: list[BalanceSchema]
+    data: BalanceSchema
 
 
 class ListSymbolsResponse(StandardResponse):

@@ -13,10 +13,10 @@ import BotInfo from "../components/BotInfo";
 import ChartContainer from "../components/ChartContainer";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import LogsInfo from "../components/LogsInfo";
-import BalanceAnalysis from "../components/BalanceAnalysis";
-import { useGetEstimateQuery } from "../../features/balanceApiSlice";
 import { singleBot } from "../../features/bots/botInitialState";
 import { SpinnerContext } from "../Layout";
+import { useGetBalanceQuery } from "../../features/balanceApiSlice";
+import BalanceAnalysis from "../components/BalanceAnalysis";
 
 export const BotDetail: FC<{}> = () => {
   const { id } = useParams();
@@ -27,7 +27,7 @@ export const BotDetail: FC<{}> = () => {
     skip: Boolean(!id),
   });
   const { data: accountData, isLoading: loadingEstimates } =
-    useGetEstimateQuery();
+    useGetBalanceQuery();
   const { spinner, setSpinner } = useContext(SpinnerContext);
 
   useEffect(() => {

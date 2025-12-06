@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime, timedelta
+from account.controller import ConsolidatedAccounts
 from exchange_apis.binance.assets import Assets
 from account.schemas import (
     BalanceResponse,
@@ -21,44 +22,41 @@ from typing import Literal
 account_blueprint = APIRouter()
 
 
-@account_blueprint.get("/balance/raw", response_model=BalanceResponse, tags=["account"])
-def raw_balance(session: Session = Depends(get_session)):
-    data = Assets(session=session).get_raw_balance()
-    return json_response({"data": data})
-
-
-@account_blueprint.get("/balance/estimate", tags=["assets"])
-def balance_estimated(session: Session = Depends(get_session)):
-    try:
-        balance = Assets(session=session).balance_estimate()
-        if balance:
-            return json_response(
-                {
-                    "data": balance,
-                    "message": "Successfully retrieved estimated balance.",
-                }
-            )
-    except BinanceErrors as error:
-        return json_response_error(f"Failed to estimate balance: {error}")
+@account_blueprint.get("/balance", response_model=BalanceResponse, tags=["account"])
+def get_balance(session: Session = Depends(get_session)):
+    accounts = ConsolidatedAccounts(session=session)
+    data = accounts.get_balance()
+    return {
+        "data": data,
+        "message": f"Successfully retrieved {accounts.autotrade_settings.exchange_id.name} balance.",
+    }
 
 
 @account_blueprint.get("/pnl", tags=["assets"])
 def get_pnl(days: int = 7, session: Session = Depends(get_session)):
+    """
+    PnL data is the same across exchanges, because the moment we switch exchange,
+    we stop tracking previous exchange's PnL.
+    """
+
     current_time = datetime.now()
     start = current_time - timedelta(days=days)
     ts = int(start.timestamp())
     end_ts = int(current_time.timestamp())
     data = BalancesCrud(session=session).query_balance_series(ts, end_ts)
 
-    resp = json_response({"data": data})
-    return resp
+    return {"data": data, "message": "Successfully retrieved PnL data."}
 
 
 @account_blueprint.get("/store-balance", tags=["assets"])
 def store_balance(session: Session = Depends(get_session)):
     try:
-        Assets(session=session).store_balance()
-        response = json_response_message("Successfully stored balance.")
+        accounts = ConsolidatedAccounts(session=session)
+        data = accounts.store_balance()
+        return {
+            "data": data,
+            "message": f"Successfully stored {accounts.autotrade_settings.exchange_id.name} balance.",
+        }
     except Exception as error:
         response = json_response_error(f"Failed to store balance: {error}")
     return response

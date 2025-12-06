@@ -1,22 +1,10 @@
-from apis import BinbotApi
 from tools.maths import round_numbers
+from exchange_apis.kucoin.base import KucoinApi
 
 
-class BinanceAccount(BinbotApi):
+class KucoinAccount(KucoinApi):
     def __init__(self):
-        pass
-
-    def _get_price_from_book_order(self, data: dict, order_side: bool, index: int):
-        """
-        Buy order = get bid prices = True
-        Sell order = get ask prices = False
-        """
-        if order_side:
-            price, base_qty = data["bids"][index]
-        else:
-            price, base_qty = data["asks"][index]
-
-        return float(price), float(base_qty)
+        super().__init__()
 
     def get_book_order_deep(self, symbol: str, order_side: bool) -> float:
         """
@@ -62,9 +50,9 @@ class BinanceAccount(BinbotApi):
         else:
             symbol = asset + fiat
             data = self.get_isolated_balance(symbol)
-            if len(data) > 0:
-                qty = float(data[0]["baseAsset"]["free"]) + float(
-                    data[0]["baseAsset"]["borrowed"]
+            if len(data.assets) > 0:
+                qty = float(data.assets[0]["baseAsset"]["free"]) + float(
+                    data.assets[0]["baseAsset"]["borrowed"]
                 )
                 if qty > 0:
                     return qty
@@ -76,54 +64,20 @@ class BinanceAccount(BinbotApi):
         symbol_balance = next((x["free"] for x in data if x["asset"] == symbol), 0)
         return symbol_balance
 
-    def match_qty_engine(self, symbol: str, order_side: bool, qty: float = 1) -> float:
-        """
-        Similar to matching_engine,
-        it is used to find a price that matches the quantity provided
-        so qty != 0
-
-        @param: order_side -
-            Buy order = get bid prices = False
-            Sell order = get ask prices = True
-        @param: base_order_size - quantity wanted to be bought/sold in fiat (USDC at time of writing)
-        """
-        data = self.get_book_depth(symbol)
-        if order_side:
-            total_length = len(data["asks"])
-        else:
-            total_length = len(data["bids"])
-
-        price, base_qty = self._get_price_from_book_order(data, order_side, 0)
-
-        buyable_qty = float(qty) / float(price)
-        if buyable_qty < base_qty:
-            return base_qty
-        else:
-            for i in range(1, total_length):
-                price, base_qty = self._get_price_from_book_order(data, order_side, i)
-                if buyable_qty > base_qty:
-                    return base_qty
-                else:
-                    continue
-            raise Exception("Not enough liquidity to match the order quantity")
-
     def matching_engine(self, symbol: str, order_side: bool, qty: float = 0) -> float:
         """
         Match quantity with available 100% fill order price,
         so that order can immediately buy/sell
 
-        _get_price_from_book_order previously did max 100 ask/bid levels,
-        however that causes trading price to be too far from market price,
-        therefore incurring in impossible sell or losses.
-        Setting it to 10 levels max to avoid drifting too much from market price.
+        AMMEND
 
         @param: order_side -
             Buy order = get bid prices = False
             Sell order = get ask prices = True
-        @param: base_order_size - quantity wanted to be bought/sold in fiat (USDC at time of writing)
         """
         data = self.get_book_depth(symbol)
-        price, base_qty = self._get_price_from_book_order(data, order_side, 0)
+        price = data.bids[0][0] if order_side else data.asks[0][0]
+        base_qty = data.bids[0][1] if order_side else data.asks[0][1]
 
         if qty == 0:
             return price
@@ -133,9 +87,10 @@ class BinanceAccount(BinbotApi):
                 return price
             else:
                 for i in range(1, 11):
-                    price, base_qty = self._get_price_from_book_order(
-                        data, order_side, i
-                    )
+                    price = data.bids[i][0] if order_side else data.asks[i][0]
+                    base_qty = data.bids[i][1] if order_side else data.asks[i][1]
+                    buyable_qty = float(qty) / float(price)
+                    base_qty = 1
                     if buyable_qty > base_qty:
                         return price
                     else:

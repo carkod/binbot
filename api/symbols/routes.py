@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends
-from tools.enum_definitions import ExchangeId
 from databases.crud.symbols_crud import SymbolsCrud
 from symbols.models import GetOneSymbolResponse
 from databases.utils import get_session
@@ -118,19 +117,13 @@ def get_one_symbol(
 
 
 @symbols_blueprint.post(
-    "/symbol", response_model=GetOneSymbolResponse, tags=["Symbols"]
+    "/symbol",
+    response_model=GetOneSymbolResponse,
+    tags=["Symbols"],
 )
 def add_symbol(
-    symbol: str,
-    quote_asset: str,
-    base_asset: str,
-    min_notional: float = 0,
-    price_precision: int = 0,
-    qty_precision: int = 0,
-    reason: str = "",
-    active: bool = True,
+    data: SymbolRequestPayload,
     session: Session = Depends(get_session),
-    exchange_id: ExchangeId = ExchangeId.BINANCE,
 ):
     """
     Create a new symbol/pair.
@@ -138,18 +131,21 @@ def add_symbol(
     If active=False, the pair is blacklisted
     """
     try:
-        data = SymbolsCrud(session=session).add_symbol(
-            symbol=symbol,
-            reason=reason,
-            active=active,
-            quote_asset=quote_asset,
-            base_asset=base_asset,
-            min_notional=min_notional,
-            price_precision=price_precision,
-            qty_precision=qty_precision,
-            exchange_id=exchange_id,
+        result = SymbolsCrud(session=session).add_symbol(
+            symbol=data.symbol,
+            reason=data.blacklist_reason,
+            active=data.active,
+            quote_asset=data.quote_asset,
+            base_asset=data.base_asset,
+            min_notional=data.min_notional,
+            price_precision=data.price_precision,
+            qty_precision=data.qty_precision,
+            exchange_id=data.exchange_id,
         )
-        return GetOneSymbolResponse(message="Symbol added", data=data)
+        return {
+            "message": "Symbol added",
+            "data": result,
+        }
     except (IntegrityError, DataError, SQLAlchemyError) as e:
         session.rollback()
         return StandardResponse(message=format_db_error(e), error=1)
@@ -197,10 +193,11 @@ def edit_symbol(
     Modify a blacklisted item
     """
     try:
-        data = SymbolsCrud(session=session).edit_symbol_item(data)
-        return GetOneSymbolResponse(
-            message="Symbol edited and candles removed", data=data
-        )
+        result = SymbolsCrud(session=session).edit_symbol_item(data)
+        return {
+            "message": "Symbol edited correctly",
+            "data": result,
+        }
     except (IntegrityError, DataError, SQLAlchemyError) as e:
         session.rollback()
         return StandardResponse(message=format_db_error(e), error=1)

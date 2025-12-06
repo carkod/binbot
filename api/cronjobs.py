@@ -1,5 +1,6 @@
 import os
 from apscheduler.schedulers.blocking import BlockingScheduler
+from account.controller import ConsolidatedAccounts
 from exchange_apis.binance.assets import Assets
 from databases.crud.symbols_crud import SymbolsCrud
 from charts.controllers import MarketDominationController
@@ -12,6 +13,7 @@ def main():
     configure_logging(force=True)
     scheduler = BlockingScheduler()
     assets = Assets(session=independent_session())
+    consolidated_accounts = ConsolidatedAccounts(session=independent_session())
     market_domination = MarketDominationController()
     symbols_crud = SymbolsCrud()
     timezone = "Europe/London"
@@ -29,7 +31,7 @@ def main():
         id="update_symbols",
     )
     scheduler.add_job(
-        func=assets.store_balance,
+        func=consolidated_accounts.store_balance,
         trigger="cron",
         timezone=timezone,
         hour=1,

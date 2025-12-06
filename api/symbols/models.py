@@ -88,22 +88,23 @@ class SymbolsResponse(StandardResponse):
 
 
 class SymbolRequestPayload(BaseModel):
-    id: str
+    symbol: str
     blacklist_reason: str = ""
     active: bool = True
-    cooldown: int = 0
-    cooldown_start_ts: int = Field(
+    cooldown: Optional[int] = 0
+    cooldown_start_ts: Optional[int] = Field(
         default=0,
         description="Timestamp to indicate when cooldown should start in milliseconds. Combined with cooldown this will put the symbol in inactive for that period of time.",
     )
     exchange_id: ExchangeId = Field(
         description="Exchange name where this symbol belongs to",
     )
-    symbol_id: str = Field(description="Symbol/Pair")
     min_notional: float = 0
     is_margin_trading_allowed: bool = False
     price_precision: int = 0
     qty_precision: int = 0
+    quote_asset: str = Field(default="")
+    base_asset: str = Field(default="")
     asset_indices: list[AssetIndexModel] = Field(
         default=[], description="List of asset index IDs"
     )

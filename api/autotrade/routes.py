@@ -5,6 +5,7 @@ from databases.crud.autotrade_crud import AutotradeCrud
 from tools.enum_definitions import AutotradeSettingsDocument
 from databases.utils import get_session
 from autotrade.schemas import (
+    AutotradeSettingsResponse,
     AutotradeSettingsSchema,
     TestAutotradeSettingsSchema,
 )
@@ -37,16 +38,16 @@ def edit_settings(
         return resp
 
 
-@autotrade_settings_blueprint.get("/bots", tags=["autotrade settings"])
+@autotrade_settings_blueprint.get(
+    "/bots", tags=["autotrade settings"], response_model=AutotradeSettingsResponse
+)
 def get_settings(session: Session = Depends(get_session)):
     try:
         deserialized_data = AutotradeCrud(session=session).get_settings()
-        return json_response(
-            {
-                "message": "Successfully retrieved settings",
-                "data": deserialized_data.model_dump(),
-            }
-        )
+        return {
+            "message": "Successfully retrieved settings",
+            "data": deserialized_data.model_dump(),
+        }
     except Exception as error:
         return json_response_error(f"Error getting settings: {error}")
 
