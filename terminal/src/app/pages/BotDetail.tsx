@@ -16,6 +16,7 @@ import LogsInfo from "../components/LogsInfo";
 import { singleBot } from "../../features/bots/botInitialState";
 import { SpinnerContext } from "../Layout";
 import { useGetBalanceQuery } from "../../features/balanceApiSlice";
+import BalanceAnalysis from "../components/BalanceAnalysis";
 
 export const BotDetail: FC<{}> = () => {
   const { id } = useParams();
@@ -75,7 +76,7 @@ export const BotDetail: FC<{}> = () => {
             </Card>
           </Col>
           <Col md="5" sm="12">
-            {/* {accountData && <BalanceAnalysis accountData={accountData} />} */}
+            {accountData && <BalanceAnalysis accountData={accountData} />}
           </Col>
         </Row>
       </Container>

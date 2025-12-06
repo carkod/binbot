@@ -24,7 +24,7 @@ class KucoinApi:
     def __init__(self):
         self.key = os.getenv("KUCOIN_KEY", "")
         self.secret = os.getenv("KUCOIN_SECRET", "")
-        self.passphrase = "Carlitos-1"
+        self.passphrase = os.getenv("KUCOIN_PASSPHRASE", "")
         self.setup_client()
 
     def setup_client(self):

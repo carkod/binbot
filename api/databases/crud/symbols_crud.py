@@ -62,15 +62,17 @@ class SymbolsCrud:
         """
         exchange_exists = (
             exists()
-            .where(SymbolExchangeTable.symbol_id == SymbolTable.id)
-            .where(SymbolExchangeTable.exchange_id == self.exchange_id)
+            .where(cast(ColumnElement, SymbolExchangeTable.symbol_id == SymbolTable.id))
+            .where(
+                cast(ColumnElement, SymbolExchangeTable.exchange_id == self.exchange_id)
+            )
         )
 
         statement = (
             select(SymbolTable)
             .options(
-                selectinload(SymbolTable.exchange_values),
-                selectinload(SymbolTable.asset_indices),
+                selectinload(cast(QueryableAttribute, SymbolTable.exchange_values)),
+                selectinload(cast(QueryableAttribute, SymbolTable.asset_indices)),
             )
             .where(exchange_exists)
         )
@@ -364,7 +366,10 @@ class SymbolsCrud:
         Update the asset indices (tags) for a symbol.
         Only updates the link table, so multiple symbols can share the same asset index.
         """
-        symbol_model = self.get_symbol(data.id)
+        data_id = getattr(data, "id", None)
+        if data_id is None:
+            data_id = getattr(data, "symbol", None)
+        symbol_model = self.get_symbol(cast(str, data_id))
 
         # Remove all existing links for this symbol
         stmt = delete(SymbolIndexLink).where(

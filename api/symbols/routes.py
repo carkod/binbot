@@ -193,10 +193,11 @@ def edit_symbol(
     Modify a blacklisted item
     """
     try:
-        data = SymbolsCrud(session=session).edit_symbol_item(data)
-        return GetOneSymbolResponse(
-            message="Symbol edited and candles removed", data=data
-        )
+        result = SymbolsCrud(session=session).edit_symbol_item(data)
+        return {
+            "message": "Symbol edited correctly",
+            "data": result,
+        }
     except (IntegrityError, DataError, SQLAlchemyError) as e:
         session.rollback()
         return StandardResponse(message=format_db_error(e), error=1)
