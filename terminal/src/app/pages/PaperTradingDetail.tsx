@@ -12,10 +12,10 @@ import ChartContainer from "../components/ChartContainer";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import LogsInfo from "../components/LogsInfo";
 import BalanceAnalysis from "../components/BalanceAnalysis";
-import { useGetEstimateQuery } from "../../features/balanceApiSlice";
 import { singleBot } from "../../features/bots/botInitialState";
 import PaperTradingDetailTabs from "../components/PaperTradingDetailTabs";
 import { useGetSingleTestBotQuery } from "../../features/bots/paperTradingApiSlice";
+import { useGetBalanceQuery } from "../../features/balanceApiSlice";
 
 export const PaperTradingDetail: FC = () => {
   const { id } = useParams();
@@ -23,7 +23,7 @@ export const PaperTradingDetail: FC = () => {
   const dispatch = useAppDispatch();
   const { paperTrading } = useAppSelector(selectTestBot);
   const { data } = useGetSingleTestBotQuery(id, { skip: Boolean(!id) });
-  const { data: accountData } = useGetEstimateQuery();
+  const { data: accountData } = useGetBalanceQuery();
 
   useEffect(() => {
     if (data && !matchNewRoute) {
@@ -32,7 +32,7 @@ export const PaperTradingDetail: FC = () => {
       dispatch(
         setTestBot({
           bot: singleBot,
-        }),
+        })
       );
     }
   }, [data, matchNewRoute, dispatch]);
@@ -70,7 +70,7 @@ export const PaperTradingDetail: FC = () => {
             </Card>
           </Col>
           <Col md="5" sm="12">
-            {accountData && <BalanceAnalysis accountData={accountData} />}
+            {/* {accountData && <BalanceAnalysis accountData={accountData} />} */}
           </Col>
         </Row>
       </Container>

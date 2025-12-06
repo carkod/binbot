@@ -39,10 +39,6 @@ class AutotradeSettingsSchema(BaseModel):
 
 class AutotradeSettingsResponse(StandardResponse):
     data: AutotradeSettingsSchema
-    model_config = {
-        "ser_json_exclude": {"id"},
-        "ser_dict_exclude": {"id"},
-    }
 
 
 class TestAutotradeSettingsSchema(BaseModel):

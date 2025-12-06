@@ -1,9 +1,9 @@
 import React, { type FC } from "react";
 import { Card, Col, Row } from "react-bootstrap";
-import { type BalanceEstimateData } from "../../features/balanceApiSlice";
+import { type BalanceData } from "../../features/balanceApiSlice";
 
 const BalanceAnalysis: FC<{
-  accountData: BalanceEstimateData;
+  accountData: BalanceData;
 }> = ({ accountData }) => {
   return (
     <Card>
@@ -20,8 +20,8 @@ const BalanceAnalysis: FC<{
           <Col md="4" sm="12">
             <div className="u-primary-color">
               <strong>{`${
-                accountData?.total_fiat > 0
-                  ? accountData.total_fiat.toFixed(2)
+                accountData?.estimated_total_fiat > 0
+                  ? accountData.estimated_total_fiat.toFixed(2)
                   : 0
               } USDC`}</strong>
             </div>
@@ -34,9 +34,9 @@ const BalanceAnalysis: FC<{
             (actual)
           </Col>
           <Col md="4" sm="12">
-            {accountData.balances.map((e, i) => (
+            {Object.entries(accountData.balances).map(([asset, amount], i) => (
               <div key={i} className="u-primary-color">
-                <strong>{`${e.free} ${e.asset}`}</strong>
+                <strong>{`${amount} ${asset}`}</strong>
               </div>
             ))}
           </Col>
@@ -49,7 +49,9 @@ const BalanceAnalysis: FC<{
           <Col md="4" sm="12">
             <div className="u-primary-color">
               <strong>{`${
-                accountData.fiat_left > 0 ? accountData.fiat_left.toFixed(8) : 0
+                accountData.fiat_available > 0
+                  ? accountData.fiat_available.toFixed(8)
+                  : 0
               } USDC`}</strong>
             </div>
           </Col>

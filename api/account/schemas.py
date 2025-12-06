@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 from tools.handle_error import StandardResponse
 from typing import Dict
 
+
 class BalanceSchema(BaseModel):
     """
     Blueprint of the bots collection on MongoDB
@@ -15,17 +16,17 @@ class BalanceSchema(BaseModel):
         default=0,
         description="Estimated total in fiat currency e.g. USD or tether token",
     )
-    fiat_left: float = Field(
+    fiat_available: float = Field(
         default=0, description="Amount of fiat currency left unallocated"
     )
     fiat_currency: str = Field(
-        default="USDC",
-        description="Fiat currency trading pair base e.g. USDC, USD, TUSD",
+        default="USDT",
+        description="Fiat currency use for trading, this should match autotrade.settings.fiat",
     )
 
 
 class BalanceResponse(StandardResponse):
-    data: list[BalanceSchema]
+    data: BalanceSchema
 
 
 class ListSymbolsResponse(StandardResponse):

@@ -49,6 +49,10 @@ def api_response(detail: str, data: Any = None, error: Union[str, int] = 0, stat
 
 
 def json_response(content, status=200):
+    """
+    Legacy JSON response wrapper
+    Use Pydantic response_model instead, it handles JSON serialization automatically
+    """
     content = json.loads(json_util.dumps(content))  # Objectid serialization
     response = JSONResponse(
         status_code=status,

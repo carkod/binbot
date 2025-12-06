@@ -26,30 +26,37 @@ account_blueprint = APIRouter()
 def get_balance(session: Session = Depends(get_session)):
     accounts = ConsolidatedAccounts(session=session)
     data = accounts.get_balance()
-    return json_response(
-        {
-            "data": data,
-            "message": f"Successfully retrieved {accounts.autotrade_settings.exchange_id.name} balance.",
-        }
-    )
+    return {
+        "data": data,
+        "message": f"Successfully retrieved {accounts.autotrade_settings.exchange_id.name} balance.",
+    }
+
 
 @account_blueprint.get("/pnl", tags=["assets"])
 def get_pnl(days: int = 7, session: Session = Depends(get_session)):
+    """
+    PnL data is the same across exchanges, because the moment we switch exchange,
+    we stop tracking previous exchange's PnL.
+    """
+
     current_time = datetime.now()
     start = current_time - timedelta(days=days)
     ts = int(start.timestamp())
     end_ts = int(current_time.timestamp())
     data = BalancesCrud(session=session).query_balance_series(ts, end_ts)
 
-    resp = json_response({"data": data, "message": "Successfully retrieved PnL data."})
-    return resp
+    return {"data": data, "message": "Successfully retrieved PnL data."}
 
 
 @account_blueprint.get("/store-balance", tags=["assets"])
 def store_balance(session: Session = Depends(get_session)):
     try:
-        Assets(session=session).store_balance()
-        response = json_response_message("Successfully stored balance.")
+        accounts = ConsolidatedAccounts(session=session)
+        data = accounts.store_balance()
+        return {
+            "data": data,
+            "message": f"Successfully stored {accounts.autotrade_settings.exchange_id.name} balance.",
+        }
     except Exception as error:
         response = json_response_error(f"Failed to store balance: {error}")
     return response

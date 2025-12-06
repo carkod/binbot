@@ -14,6 +14,10 @@ from kucoin_universal_sdk.model import (
     GLOBAL_API_ENDPOINT,
 )
 from kucoin_universal_sdk.model import TransportOptionBuilder
+from kucoin_universal_sdk.generate.spot.market import GetPartOrderBookResp
+from kucoin_universal_sdk.generate.account.account.model_get_isolated_margin_account_resp import (
+    GetIsolatedMarginAccountResp,
+)
 
 
 class KucoinApi:
@@ -89,12 +93,12 @@ class KucoinApi:
 
         return balance_items
 
-    def get_isolated_balance(self, symbol: str) -> list:
+    def get_isolated_balance(self, symbol: str) -> GetIsolatedMarginAccountResp:
         request = GetIsolatedMarginAccountReqBuilder().set_symbol(symbol).build()
         response = self.account_api.get_isolated_margin_account(request)
-        return response.total_asset_of_quote_currency
+        return response
 
-    def get_book_depth(self, symbol: str) -> dict:
+    def get_book_depth(self, symbol: str) -> GetPartOrderBookResp:
         request = GetPartOrderBookReqBuilder().set_symbol(symbol).build()
         response = self.spot_api.get_part_order_book(request)
         return response

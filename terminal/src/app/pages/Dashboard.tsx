@@ -1,10 +1,9 @@
 import React, { useContext, useEffect, useState, type FC } from "react";
 import { Card, Col, Row } from "react-bootstrap";
 import {
+  useGetBalanceQuery,
   useGetBenchmarkQuery,
-  useGetEstimateQuery,
 } from "../../features/balanceApiSlice";
-import { useGainerLosersQuery } from "../../features/binanceApiSlice";
 import { useGetBotsQuery } from "../../features/bots/botsApiSlice";
 import { useAdSeriesQuery } from "../../features/marketApiSlice";
 import { calculateTotalRevenue } from "../../utils/dashboard-computations";
@@ -18,7 +17,7 @@ import { useFilteredGainerLosers } from "../filter-gainers-losers";
 
 export const DashboardPage: FC<{}> = () => {
   const { data: accountData, isLoading: loadingEstimates } =
-    useGetEstimateQuery();
+    useGetBalanceQuery();
   const { data: activeBotEntities, isLoading: loadingActiveBots } =
     useGetBotsQuery({
       status: BotStatus.ACTIVE,
@@ -45,15 +44,13 @@ export const DashboardPage: FC<{}> = () => {
   useEffect(() => {
     if (activeBotEntities) {
       setActiveBotsCount(activeBotEntities.bots.ids.length);
-    }
-    if (errorBotEntities) {
-      setErrorBotsCount(errorBotEntities.bots.ids.length);
+      setErrorBotsCount(0);
     }
 
     if (benchmark) {
       if (benchmark.benchmarkData) {
         const { revenue, percentage } = calculateTotalRevenue(
-          benchmark.benchmarkData,
+          benchmark.benchmarkData
         );
         setRevenue(revenue);
         setPercentageRevenue(percentage);
@@ -108,8 +105,8 @@ export const DashboardPage: FC<{}> = () => {
                       Total Balance
                     </p>
                     <Card.Title as="h3" className="fs-4 text-end text-info">
-                      {roundDecimals(accountData.total_fiat, 2)}{" "}
-                      {accountData.asset}
+                      {roundDecimals(accountData?.estimated_total_fiat, 2)}{" "}
+                      {accountData.fiat_currency}
                     </Card.Title>
                   </Col>
                 </Row>
@@ -124,7 +121,8 @@ export const DashboardPage: FC<{}> = () => {
                   </Col>
                   <Col>
                     <p className="text-body-secondary text-end">
-                      {roundDecimals(accountData.fiat_left)} {accountData.asset}
+                      {roundDecimals(accountData.fiat_available)}{" "}
+                      {accountData.fiat_currency}
                     </p>
                   </Col>
                 </Row>

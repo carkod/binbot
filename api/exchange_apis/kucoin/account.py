@@ -50,9 +50,9 @@ class KucoinAccount(KucoinApi):
         else:
             symbol = asset + fiat
             data = self.get_isolated_balance(symbol)
-            if len(data) > 0:
-                qty = float(data[0]["baseAsset"]["free"]) + float(
-                    data[0]["baseAsset"]["borrowed"]
+            if len(data.assets) > 0:
+                qty = float(data.assets[0]["baseAsset"]["free"]) + float(
+                    data.assets[0]["baseAsset"]["borrowed"]
                 )
                 if qty > 0:
                     return qty
@@ -69,18 +69,15 @@ class KucoinAccount(KucoinApi):
         Match quantity with available 100% fill order price,
         so that order can immediately buy/sell
 
-        _get_price_from_book_order previously did max 100 ask/bid levels,
-        however that causes trading price to be too far from market price,
-        therefore incurring in impossible sell or losses.
-        Setting it to 10 levels max to avoid drifting too much from market price.
+        AMMEND
 
         @param: order_side -
             Buy order = get bid prices = False
             Sell order = get ask prices = True
-        @param: base_order_size - quantity wanted to be bought/sold in fiat (USDC at time of writing)
         """
         data = self.get_book_depth(symbol)
-        price, base_qty = self._get_price_from_book_order(data, order_side, 0)
+        price = data.bids[0][0] if order_side else data.asks[0][0]
+        base_qty = data.bids[0][1] if order_side else data.asks[0][1]
 
         if qty == 0:
             return price
@@ -90,9 +87,10 @@ class KucoinAccount(KucoinApi):
                 return price
             else:
                 for i in range(1, 11):
-                    price, base_qty = self._get_price_from_book_order(
-                        data, order_side, i
-                    )
+                    price = data.bids[i][0] if order_side else data.asks[i][0]
+                    base_qty = data.bids[i][1] if order_side else data.asks[i][1]
+                    buyable_qty = float(qty) / float(price)
+                    base_qty = 1
                     if buyable_qty > base_qty:
                         return price
                     else:

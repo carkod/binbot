@@ -254,7 +254,7 @@ class SymbolsCrud:
         cooldown: int = 0,
         cooldown_start_ts: int = 0,
         is_margin_trading_allowed: bool = False,
-    ) -> SymbolModel:
+    ) -> SymbolTable:
         """
         Add a new symbol and its exchange-specific data
         """
