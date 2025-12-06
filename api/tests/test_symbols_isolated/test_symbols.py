@@ -40,6 +40,7 @@ def test_one_symbol(client: TestClient):
     assert content["data"]["base_asset"] == ""
     assert content["data"]["quote_asset"] == ""
     assert content["data"]["active"] is True
+    assert content["data"]["min_notional"] == 0.0001
     assert content["data"]["price_precision"] == 7
     assert content["data"]["qty_precision"] == 1
     assert content["data"]["is_margin_trading_allowed"] is False
@@ -67,20 +68,21 @@ def test_one_symbol_error(client: TestClient):
 def test_add_symbol(client: TestClient):
     response = client.post(
         "/symbol",
-        params={
+        json={
             "symbol": test_new_symbol,
-            "quote_asset": "USDC",
-            "base_asset": "NEW",
+            "quote_asset": "NEW",
+            "base_asset": "USDC",
             "min_notional": 1.0,
             "price_precision": 6,
             "qty_precision": 2,
             "active": True,
+            "exchange_id": "binance",
         },
     )
 
     assert response.status_code == 200
     content = response.json()
-    # Message reverted in symbols route; expect updated text
+    print("content of content", content)
     assert content["message"] == "Symbol added"
     assert content["data"]["id"] == test_new_symbol
 
@@ -96,23 +98,23 @@ def test_delete_symbol(client: TestClient):
 
 def test_edit_symbol(client: TestClient):
     payload = {
-        "active": False,
+        "symbol": test_symbol,
         "blacklist_reason": "test blacklist reason",
-        "quote_asset": "BTC",
-        "price_precision": 7,
-        "min_notional": 0.0001,
-        "cooldown_start_ts": 0,
-        "id": test_symbol,
-        "exchange_id": "binance",
-        "symbol_id": test_symbol,
-        "is_margin_trading_allowed": False,
-        "base_asset": "GAS",
-        "qty_precision": 1,
+        "active": False,
         "cooldown": 0,
+        "cooldown_start_ts": 0,
+        "exchange_id": "binance",
+        "min_notional": 0.0001,
+        "is_margin_trading_allowed": False,
+        "price_precision": 7,
+        "qty_precision": 1,
+        "quote_asset": "BTC",
+        "base_asset": "GAS",
         "asset_indices": [],
     }
     response = client.put(url="/symbol", json=payload)
     assert response.status_code == 200
     content = response.json()
+    print("test_edit_symbol", content)
     assert content["data"]["blacklist_reason"] == "test blacklist reason"
     assert content["data"]["active"] is False

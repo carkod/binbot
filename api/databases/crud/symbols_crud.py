@@ -18,7 +18,7 @@ from sqlalchemy.sql import delete
 from databases.utils import engine
 from tools.enum_definitions import QuoteAssets, ExchangeId
 from sqlalchemy.sql.expression import ColumnElement
-from sqlalchemy import text
+from sqlalchemy import text, exists
 
 
 class SymbolsCrud:
@@ -60,20 +60,21 @@ class SymbolsCrud:
         Query becomes quite complex and we always need to do this
         only to be used in this CRUD class
         """
+        exchange_exists = (
+            exists()
+            .where(SymbolExchangeTable.symbol_id == SymbolTable.id)
+            .where(SymbolExchangeTable.exchange_id == self.exchange_id)
+        )
+
         statement = (
             select(SymbolTable)
             .options(
-                selectinload(cast(QueryableAttribute, SymbolTable.exchange_values)),
-                selectinload(cast(QueryableAttribute, SymbolTable.asset_indices)),
+                selectinload(SymbolTable.exchange_values),
+                selectinload(SymbolTable.asset_indices),
             )
-            .join(
-                SymbolExchangeTable,
-                onclause=cast(
-                    ColumnElement, SymbolExchangeTable.symbol_id == SymbolTable.id
-                ),
-            )
-            .where(SymbolExchangeTable.exchange_id == self.exchange_id)
+            .where(exchange_exists)
         )
+
         return statement
 
     def _add_exchange_link_if_not_exists(
@@ -178,6 +179,11 @@ class SymbolsCrud:
         # Normalise data
         list_results = []
         for result in results:
+            exchange_values = result.exchange_values or []
+            if not exchange_values:
+                # Skip symbols without exchange values for the selected exchange
+                continue
+            ev = exchange_values[0]
             data = SymbolModel(
                 active=result.active,
                 blacklist_reason=result.blacklist_reason,
@@ -190,13 +196,11 @@ class SymbolsCrud:
                     AssetIndexTable(id=index.id, name=index.name)
                     for index in result.asset_indices
                 ],
-                exchange_id=result.exchange_values[0].exchange_id,
-                is_margin_trading_allowed=result.exchange_values[
-                    0
-                ].is_margin_trading_allowed,
-                price_precision=result.exchange_values[0].price_precision,
-                qty_precision=result.exchange_values[0].qty_precision,
-                min_notional=result.exchange_values[0].min_notional,
+                exchange_id=ev.exchange_id,
+                is_margin_trading_allowed=ev.is_margin_trading_allowed,
+                price_precision=ev.price_precision,
+                qty_precision=ev.qty_precision,
+                min_notional=ev.min_notional,
             )
             list_results.append(data)
         self.session.close()
@@ -213,6 +217,10 @@ class SymbolsCrud:
         result = self.session.exec(statement).first()
         if result:
             # normalise data
+            exchange_values = result.exchange_values or []
+            if not exchange_values:
+                raise BinbotErrors("No exchange values found for symbol and exchange")
+            ev = exchange_values[0]
             data = SymbolModel(
                 active=result.active,
                 blacklist_reason=result.blacklist_reason,
@@ -225,19 +233,15 @@ class SymbolsCrud:
                     AssetIndexTable(id=index.id, name=index.name)
                     for index in result.asset_indices
                 ],
-                exchange_id=result.exchange_values[0].exchange_id,
-                is_margin_trading_allowed=result.exchange_values[
-                    0
-                ].is_margin_trading_allowed,
-                price_precision=result.exchange_values[0].price_precision,
-                qty_precision=result.exchange_values[0].qty_precision,
-                min_notional=result.exchange_values[0].min_notional,
+                exchange_id=ev.exchange_id,
+                is_margin_trading_allowed=ev.is_margin_trading_allowed,
+                price_precision=ev.price_precision,
+                qty_precision=ev.qty_precision,
+                min_notional=ev.min_notional,
             )
 
-            self.session.close()
             return data
         else:
-            self.session.close()
             raise BinbotErrors("Symbol not found")
 
     def add_symbol(
@@ -245,7 +249,7 @@ class SymbolsCrud:
         symbol: str,
         quote_asset: str,
         base_asset: str,
-        exchange_id: str,
+        exchange_id: ExchangeId,
         active: bool = True,
         reason: Optional[str] = "",
         price_precision: int = 0,
@@ -254,7 +258,7 @@ class SymbolsCrud:
         cooldown: int = 0,
         cooldown_start_ts: int = 0,
         is_margin_trading_allowed: bool = False,
-    ) -> SymbolTable:
+    ) -> SymbolModel:
         """
         Add a new symbol and its exchange-specific data
         """
@@ -282,14 +286,27 @@ class SymbolsCrud:
         self.session.add(exchange_link)
         self.session.commit()
         self.session.refresh(exchange_link)
-        self.session.close()
-        # Return the full symbol with exchange data
-        return symbol_table
+        result = SymbolModel(
+            id=symbol_table.id,
+            active=symbol_table.active,
+            blacklist_reason=symbol_table.blacklist_reason,
+            cooldown=symbol_table.cooldown,
+            cooldown_start_ts=symbol_table.cooldown_start_ts,
+            quote_asset=symbol_table.quote_asset,
+            base_asset=symbol_table.base_asset,
+            exchange_id=exchange_link.exchange_id,
+            is_margin_trading_allowed=exchange_link.is_margin_trading_allowed,
+            price_precision=exchange_link.price_precision,
+            qty_precision=exchange_link.qty_precision,
+            min_notional=exchange_link.min_notional,
+            asset_indices=[],
+        )
+        return result
 
     def edit_symbol_item(
         self,
         data: SymbolRequestPayload,
-    ):
+    ) -> SymbolModel:
         """
         Edit a symbol item (previously known as blacklisted)
 
@@ -301,7 +318,7 @@ class SymbolsCrud:
         """
 
         # Get the actual database table object
-        statement = select(SymbolTable).where(SymbolTable.id == data.id)
+        statement = select(SymbolTable).where(SymbolTable.id == data.symbol)
         symbol_table = self.session.exec(statement).first()
 
         if not symbol_table:
@@ -321,9 +338,26 @@ class SymbolsCrud:
         self.session.add(symbol_table)
         self.session.commit()
         self.session.refresh(symbol_table)
-        self.session.close()
-        # Return as SymbolModel
-        return self.get_symbol(data.id)
+        # Materialize and return as dict
+        result = SymbolModel(
+            id=symbol_table.id,
+            active=symbol_table.active,
+            blacklist_reason=symbol_table.blacklist_reason,
+            cooldown=symbol_table.cooldown,
+            cooldown_start_ts=symbol_table.cooldown_start_ts,
+            quote_asset=symbol_table.quote_asset,
+            base_asset=symbol_table.base_asset,
+            exchange_id=data.exchange_id,
+            is_margin_trading_allowed=data.is_margin_trading_allowed,
+            price_precision=data.price_precision,
+            qty_precision=data.qty_precision,
+            min_notional=data.min_notional,
+            asset_indices=[
+                AssetIndexTable(id=index.id, name=index.name)
+                for index in symbol_table.asset_indices
+            ],
+        )
+        return result
 
     def update_symbol_indexes(self, data: SymbolRequestPayload):
         """
@@ -418,15 +452,9 @@ class SymbolsCrud:
             try:
                 self.get_symbol(item["symbol"])
             except BinbotErrors:
-                price_filter = next(
-                    (m for m in item["filters"] if m["filterType"] == "PRICE_FILTER"),
-                    None,
-                )
-                quantity_filter = next(
-                    (m for m in item["filters"] if m["filterType"] == "LOT_SIZE"), None
-                )
-                min_notional_filter = next(
-                    (m for m in item["filters"] if m["filterType"] == "NOTIONAL"), None
+                # Calculate numeric precisions and min_notional using helper
+                price_precision, qty_precision, min_notional = (
+                    self.calculate_precisions(item)
                 )
                 self.add_symbol(
                     symbol=item["symbol"],
@@ -434,11 +462,9 @@ class SymbolsCrud:
                     base_asset=item["baseAsset"],
                     exchange_id=ExchangeId.BINANCE,
                     active=True,
-                    price_precision=price_filter["tickSize"] if price_filter else 0,
-                    qty_precision=quantity_filter["stepSize"] if quantity_filter else 0,
-                    min_notional=min_notional_filter["minNotional"]
-                    if min_notional_filter
-                    else 0,
+                    price_precision=price_precision,
+                    qty_precision=qty_precision,
+                    min_notional=min_notional,
                     is_margin_trading_allowed=item["isMarginTradingAllowed"],
                 )
 
