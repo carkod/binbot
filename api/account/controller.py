@@ -6,6 +6,8 @@ from tools.enum_definitions import ExchangeId
 from databases.utils import get_session
 from sqlmodel import Session
 from tools.maths import round_numbers
+from exchange_apis.kucoin.deals.base import KucoinBaseBalance
+from typing import Dict
 
 
 class ConsolidatedAccounts:
@@ -33,29 +35,14 @@ class ConsolidatedAccounts:
         """
 
         result = BalanceSchema()
-        total_balances = dict()
+        total_balances: Dict[str, float] = dict()
         estimated_total_fiat = 0.0
         fiat_available = 0.0
         if self.autotrade_settings.exchange_id == ExchangeId.KUCOIN:
-            kucoin_balances = self.kucoin_api.get_account_balance()
-            for key, value in kucoin_balances.items():
-                if float(value["balance"]) > 0:
-                    # we don't want to convert USDC, USDC, TUSD or USDT to itself
-                    if key not in [
-                        self.autotrade_settings.fiat,
-                        "USDC",
-                        "TUSD",
-                        "USDT",
-                    ]:
-                        rate = self.kucoin_api.get_ticker_price(
-                            f"{key}-{self.autotrade_settings.fiat}"
-                        )
-                        fiat_available += float(value["balance"]) * float(rate)
-                        estimated_total_fiat += float(value["balance"]) * float(rate)
-                    else:
-                        estimated_total_fiat += float(value["balance"])
-
-                    total_balances[key] = float(value["balance"])
+            kucoin_balance = KucoinBaseBalance()
+            total_balances, estimated_total_fiat, fiat_available = (
+                kucoin_balance.compute_balance()
+            )
 
         else:
             binance_balances = self.binance_assets.get_raw_balance()

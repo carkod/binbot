@@ -18,6 +18,36 @@ from kucoin_universal_sdk.generate.spot.market import GetPartOrderBookResp
 from kucoin_universal_sdk.generate.account.account.model_get_isolated_margin_account_resp import (
     GetIsolatedMarginAccountResp,
 )
+from kucoin_universal_sdk.generate.spot.order.model_add_order_sync_resp import (
+    AddOrderSyncResp,
+)
+from kucoin_universal_sdk.generate.spot.order.model_add_order_sync_req import (
+    AddOrderSyncReq,
+    AddOrderSyncReqBuilder,
+)
+from kucoin_universal_sdk.generate.spot.order.model_batch_add_orders_sync_req import (
+    BatchAddOrdersSyncReqBuilder,
+)
+from kucoin_universal_sdk.generate.spot.order.model_batch_add_orders_sync_order_list import (
+    BatchAddOrdersSyncOrderList,
+)
+from kucoin_universal_sdk.generate.spot.order.model_cancel_order_by_order_id_sync_req import (
+    CancelOrderByOrderIdSyncReqBuilder,
+)
+from kucoin_universal_sdk.generate.spot.order.model_get_order_by_order_id_req import (
+    GetOrderByOrderIdReqBuilder,
+)
+from kucoin_universal_sdk.generate.spot.order.model_get_open_orders_req import (
+    GetOpenOrdersReqBuilder,
+)
+from kucoin_universal_sdk.generate.margin.order.model_add_order_req import (
+    AddOrderReq,
+    AddOrderReqBuilder,
+)
+import kucoin_universal_sdk.generate.margin.order.model_add_order_resp
+import kucoin_universal_sdk.generate.margin.order.model_cancel_order_by_order_id_req
+import kucoin_universal_sdk.generate.margin.order.model_get_order_by_order_id_req
+import kucoin_universal_sdk.generate.margin.order.model_get_open_orders_req
 
 
 class KucoinApi:
@@ -52,6 +82,10 @@ class KucoinApi:
         self.margin_api = (
             self.client.rest_service().get_margin_service().get_market_api()
         )
+        self.margin_order_api = (
+            self.client.rest_service().get_margin_service().get_order_api()
+        )
+        self.order_api = self.client.rest_service().get_spot_service().get_order_api()
 
     def get_part_order_book(self, symbol: str, size: str):
         request = GetPartOrderBookReqBuilder().set_symbol(symbol).set_size(size).build()
@@ -71,7 +105,17 @@ class KucoinApi:
     def get_account_balance(self):
         """
         Aggregate all balances from all account types (spot, main, trade, margin, futures).
-        Returns a dict: {asset: {total: float, breakdown: {account_type: float, ...}}}
+        Returns a dict:
+            {
+                asset:
+                    {
+                        total: float,
+                        breakdown:
+                            {
+                                    account_type: float, ...
+                            }
+                    }
+            }
         """
         spot_request = GetSpotAccountListReqBuilder().build()
         margin_request = GetIsolatedMarginAccountReqBuilder().build()
@@ -93,6 +137,16 @@ class KucoinApi:
 
         return balance_items
 
+    def get_single_spot_balance(self, asset: str) -> float:
+        spot_request = GetSpotAccountListReqBuilder().build()
+        all_accounts = self.account_api.get_spot_account_list(spot_request)
+        total_balance = 0.0
+        for item in all_accounts.data:
+            if item.currency == asset:
+                return float(item.balance)
+
+        return total_balance
+
     def get_isolated_balance(self, symbol: str) -> GetIsolatedMarginAccountResp:
         request = GetIsolatedMarginAccountReqBuilder().set_symbol(symbol).build()
         response = self.account_api.get_isolated_margin_account(request)
@@ -102,3 +156,248 @@ class KucoinApi:
         request = GetPartOrderBookReqBuilder().set_symbol(symbol).build()
         response = self.spot_api.get_part_order_book(request)
         return response
+
+    def simulate_order(
+        self,
+        symbol: str,
+        side: AddOrderSyncReq.SideEnum,
+        order_type: AddOrderSyncReq.TypeEnum,
+        qty: float,
+        price: float = 0,
+    ) -> AddOrderSyncResp:
+        """
+        Fake synchronous order response shaped similarly to add_order_sync.
+        Returns a dict echoing inputs and a computed price when missing.
+        """
+        book_price = self.matching_engine(
+            symbol, order_side=(side == AddOrderSyncReq.SideEnum.SELL), qty=qty
+        )
+        final_price = price if price > 0 else book_price
+        return AddOrderSyncResp.model_validate(
+            {
+                "symbol": symbol,
+                "side": side.value,
+                "type": order_type.value,
+                "timeInForce": AddOrderSyncReq.TimeInForceEnum.GTC.value,
+                "size": str(qty),
+                "price": str(final_price) if final_price else "0",
+                "status": "Done",
+                "inOrderBook": True,
+                "filledSize": str(qty),
+                "fills": [],
+            }
+        )
+
+    def matching_engine(self, symbol: str, order_side: bool, qty: float = 0) -> float:
+        """
+        Match quantity with available 100% fill order price,
+        so that order can immediately buy/sell
+
+        AMMEND
+
+        @param: order_side -
+            Buy order = get bid prices = False
+            Sell order = get ask prices = True
+        """
+        data = self.get_book_depth(symbol)
+        price = data.bids[0][0] if order_side else data.asks[0][0]
+        base_qty = data.bids[0][1] if order_side else data.asks[0][1]
+
+        if qty == 0:
+            return price
+        else:
+            buyable_qty = float(qty) / float(price)
+            if buyable_qty < base_qty:
+                return price
+            else:
+                for i in range(1, 11):
+                    price = data.bids[i][0] if order_side else data.asks[i][0]
+                    base_qty = data.bids[i][1] if order_side else data.asks[i][1]
+                    buyable_qty = float(qty) / float(price)
+                    base_qty = 1
+                    if buyable_qty > base_qty:
+                        return price
+                    else:
+                        continue
+                # caller to use market price
+                return 0
+
+    def buy_order(
+        self,
+        symbol: str,
+        qty: float,
+        order_type: AddOrderSyncReq.TypeEnum = AddOrderSyncReq.TypeEnum.LIMIT,
+        price: float = 0,
+    ) -> AddOrderSyncResp:
+        builder = (
+            AddOrderSyncReqBuilder()
+            .set_symbol(symbol)
+            .set_side(AddOrderSyncReq.SideEnum.BUY)
+            .set_type(order_type)
+            .set_size(str(qty))
+        )
+        if order_type == AddOrderSyncReq.TypeEnum.LIMIT and price > 0:
+            builder = builder.set_price(str(price)).set_time_in_force(
+                AddOrderSyncReq.TimeInForceEnum.GTC
+            )
+        req = builder.build()
+        return self.order_api.add_order_sync(req)
+
+    def sell_order(
+        self,
+        symbol: str,
+        qty: float,
+        order_type: AddOrderSyncReq.TypeEnum = AddOrderSyncReq.TypeEnum.LIMIT,
+        price: float = 0,
+    ) -> AddOrderSyncResp:
+        builder = (
+            AddOrderSyncReqBuilder()
+            .set_symbol(symbol)
+            .set_side(AddOrderSyncReq.SideEnum.SELL)
+            .set_type(order_type)
+            .set_size(str(qty))
+        )
+        if order_type == AddOrderSyncReq.TypeEnum.LIMIT and price > 0:
+            builder = builder.set_price(str(price)).set_time_in_force(
+                AddOrderSyncReq.TimeInForceEnum.GTC
+            )
+        req = builder.build()
+        return self.order_api.add_order_sync(req)
+
+    def batch_add_orders_sync(self, orders: list[dict]) -> AddOrderSyncResp:
+        """
+        Batch place up to 5 limit orders for the same symbol.
+        Each dict in `orders` should contain: symbol, side, type, size, price (for limit), optional fields as per SDK.
+        """
+        order_list: list[BatchAddOrdersSyncOrderList] = []
+        for o in orders:
+            item = BatchAddOrdersSyncOrderList(
+                client_oid=o.get("clientOid"),
+                symbol=o["symbol"],
+                side=(
+                    BatchAddOrdersSyncOrderList.SideEnum.BUY
+                    if str(o["side"]).lower() == "buy"
+                    else BatchAddOrdersSyncOrderList.SideEnum.SELL
+                ),
+                type=BatchAddOrdersSyncOrderList.TypeEnum.LIMIT,
+                size=str(o["size"]),
+                price=str(o["price"]) if "price" in o else None,
+                time_in_force=BatchAddOrdersSyncOrderList.TimeInForceEnum.GTC,
+            )
+            order_list.append(item)
+
+        req = BatchAddOrdersSyncReqBuilder().set_order_list(order_list).build()
+        return self.order_api.batch_add_orders_sync(req)
+
+    def cancel_order_by_order_id_sync(self, symbol: str, order_id: str):
+        req = (
+            CancelOrderByOrderIdSyncReqBuilder()
+            .set_symbol(symbol)
+            .set_order_id(order_id)
+            .build()
+        )
+        return self.order_api.cancel_order_by_order_id_sync(req)
+
+    def get_order_by_order_id(self, symbol: str, order_id: str):
+        req = (
+            GetOrderByOrderIdReqBuilder()
+            .set_symbol(symbol)
+            .set_order_id(order_id)
+            .build()
+        )
+        return self.order_api.get_order_by_order_id(req)
+
+    def get_open_orders(self, symbol: str):
+        req = GetOpenOrdersReqBuilder().set_symbol(symbol).build()
+        return self.order_api.get_open_orders(req)
+
+    # --- Margin (Isolated) operations ---
+    def create_margin_order(
+        self,
+        symbol: str,
+        side: AddOrderReq.SideEnum,
+        order_type: AddOrderReq.TypeEnum,
+        qty: float,
+        price: float = 0,
+        time_in_force: AddOrderReq.TimeInForceEnum = AddOrderReq.TimeInForceEnum.GTC,
+        client_oid: str | None = None,
+        auto_borrow: bool = False,
+        auto_repay: bool = False,
+    ):
+        builder = (
+            AddOrderReqBuilder()
+            .set_symbol(symbol)
+            .set_side(side)
+            .set_type(order_type)
+            .set_size(str(qty))
+            .set_time_in_force(time_in_force)
+            .set_is_isolated(True)
+        )
+        if client_oid:
+            builder = builder.set_client_oid(client_oid)
+        if order_type == AddOrderReq.TypeEnum.LIMIT and price > 0:
+            builder = builder.set_price(str(price))
+        if auto_borrow:
+            builder = builder.set_auto_borrow(True)
+        if auto_repay:
+            builder = builder.set_auto_repay(True)
+
+        req = builder.build()
+        return self.margin_order_api.add_order(req)
+
+    def cancel_margin_order_by_order_id(self, symbol: str, order_id: str):
+        # Margin API uses cancel by order id req builder from margin.order
+        req_cancel = (
+            kucoin_universal_sdk.generate.margin.order.model_cancel_order_by_order_id_req.CancelOrderByOrderIdReqBuilder()
+            .set_symbol(symbol)
+            .set_order_id(order_id)
+            .build()
+        )
+        return self.margin_order_api.cancel_order_by_order_id(req_cancel)
+
+    def get_margin_order_by_order_id(self, symbol: str, order_id: str):
+        req = (
+            kucoin_universal_sdk.generate.margin.order.model_get_order_by_order_id_req.GetOrderByOrderIdReqBuilder()
+            .set_symbol(symbol)
+            .set_order_id(order_id)
+            .build()
+        )
+        return self.margin_order_api.get_order_by_order_id(req)
+
+    def get_margin_open_orders(self, symbol: str):
+        req = (
+            kucoin_universal_sdk.generate.margin.order.model_get_open_orders_req.GetOpenOrdersReqBuilder()
+            .set_symbol(symbol)
+            .build()
+        )
+        return self.margin_order_api.get_open_orders(req)
+
+    def simulate_margin_order(
+        self,
+        symbol: str,
+        side: AddOrderReq.SideEnum,
+        order_type: AddOrderReq.TypeEnum,
+        qty: float,
+        price: float = 0,
+    ) -> kucoin_universal_sdk.generate.margin.order.model_add_order_resp.AddOrderResp:
+        """
+        Fake isolated margin order response echoing inputs.
+        """
+        book_price = self.matching_engine(
+            symbol, order_side=(side == AddOrderReq.SideEnum.SELL), qty=qty
+        )
+        final_price = price if price > 0 else book_price
+        return kucoin_universal_sdk.generate.margin.order.model_add_order_resp.AddOrderResp.model_validate(
+            {
+                "symbol": symbol,
+                "side": side.value,
+                "type": order_type.value,
+                "timeInForce": AddOrderReq.TimeInForceEnum.GTC.value,
+                "size": str(qty),
+                "price": str(final_price) if final_price else "0",
+                "status": "Done",
+                "isIsolated": True,
+                "filledSize": str(qty),
+                "fills": [],
+            }
+        )
