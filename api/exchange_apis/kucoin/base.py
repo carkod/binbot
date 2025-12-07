@@ -1,5 +1,4 @@
 import os
-
 from kucoin_universal_sdk.api import DefaultClient
 from kucoin_universal_sdk.generate.spot.market import (
     GetPartOrderBookReqBuilder,
@@ -44,10 +43,16 @@ from kucoin_universal_sdk.generate.margin.order.model_add_order_req import (
     AddOrderReq,
     AddOrderReqBuilder,
 )
-import kucoin_universal_sdk.generate.margin.order.model_add_order_resp
-import kucoin_universal_sdk.generate.margin.order.model_cancel_order_by_order_id_req
-import kucoin_universal_sdk.generate.margin.order.model_get_order_by_order_id_req
-import kucoin_universal_sdk.generate.margin.order.model_get_open_orders_req
+from kucoin_universal_sdk.generate.margin.order.model_add_order_resp import (
+    AddOrderResp,
+)
+from kucoin_universal_sdk.generate.margin.order.model_cancel_order_by_order_id_req import (
+    CancelOrderByOrderIdReqBuilder,
+)
+from kucoin_universal_sdk.generate.margin.order.model_get_order_by_order_id_resp import (
+    GetOrderByOrderIdResp,
+)
+from typing import Tuple
 
 
 class KucoinApi:
@@ -228,7 +233,7 @@ class KucoinApi:
         qty: float,
         order_type: AddOrderSyncReq.TypeEnum = AddOrderSyncReq.TypeEnum.LIMIT,
         price: float = 0,
-    ) -> AddOrderSyncResp:
+    ) -> Tuple[AddOrderSyncResp, GetOrderByOrderIdResp]:
         builder = (
             AddOrderSyncReqBuilder()
             .set_symbol(symbol)
@@ -241,7 +246,12 @@ class KucoinApi:
                 AddOrderSyncReq.TimeInForceEnum.GTC
             )
         req = builder.build()
-        return self.order_api.add_order_sync(req)
+        order_response = self.order_api.add_order_sync(req)
+        # order_response returns incomplete info
+        system_order = self.get_order_by_order_id(
+            symbol=symbol, order_id=order_response.order_id
+        )
+        return order_response, system_order
 
     def sell_order(
         self,
@@ -249,7 +259,7 @@ class KucoinApi:
         qty: float,
         order_type: AddOrderSyncReq.TypeEnum = AddOrderSyncReq.TypeEnum.LIMIT,
         price: float = 0,
-    ) -> AddOrderSyncResp:
+    ) -> Tuple[AddOrderSyncResp, GetOrderByOrderIdResp]:
         builder = (
             AddOrderSyncReqBuilder()
             .set_symbol(symbol)
@@ -262,7 +272,11 @@ class KucoinApi:
                 AddOrderSyncReq.TimeInForceEnum.GTC
             )
         req = builder.build()
-        return self.order_api.add_order_sync(req)
+        order_response = self.order_api.add_order_sync(req)
+        system_order = self.get_order_by_order_id(
+            symbol=symbol, order_id=order_response.order_id
+        )
+        return order_response, system_order
 
     def batch_add_orders_sync(self, orders: list[dict]) -> AddOrderSyncResp:
         """
@@ -298,7 +312,9 @@ class KucoinApi:
         )
         return self.order_api.cancel_order_by_order_id_sync(req)
 
-    def get_order_by_order_id(self, symbol: str, order_id: str):
+    def get_order_by_order_id(
+        self, symbol: str, order_id: str
+    ) -> GetOrderByOrderIdResp:
         req = (
             GetOrderByOrderIdReqBuilder()
             .set_symbol(symbol)
@@ -348,16 +364,18 @@ class KucoinApi:
     def cancel_margin_order_by_order_id(self, symbol: str, order_id: str):
         # Margin API uses cancel by order id req builder from margin.order
         req_cancel = (
-            kucoin_universal_sdk.generate.margin.order.model_cancel_order_by_order_id_req.CancelOrderByOrderIdReqBuilder()
+            CancelOrderByOrderIdReqBuilder()
             .set_symbol(symbol)
             .set_order_id(order_id)
             .build()
         )
         return self.margin_order_api.cancel_order_by_order_id(req_cancel)
 
-    def get_margin_order_by_order_id(self, symbol: str, order_id: str):
+    def get_margin_order_by_order_id(
+        self, symbol: str, order_id: str
+    ) -> GetOrderByOrderIdResp:
         req = (
-            kucoin_universal_sdk.generate.margin.order.model_get_order_by_order_id_req.GetOrderByOrderIdReqBuilder()
+            GetOrderByOrderIdReqBuilder()
             .set_symbol(symbol)
             .set_order_id(order_id)
             .build()
@@ -365,11 +383,7 @@ class KucoinApi:
         return self.margin_order_api.get_order_by_order_id(req)
 
     def get_margin_open_orders(self, symbol: str):
-        req = (
-            kucoin_universal_sdk.generate.margin.order.model_get_open_orders_req.GetOpenOrdersReqBuilder()
-            .set_symbol(symbol)
-            .build()
-        )
+        req = GetOpenOrdersReqBuilder().set_symbol(symbol).build()
         return self.margin_order_api.get_open_orders(req)
 
     def simulate_margin_order(
@@ -379,7 +393,7 @@ class KucoinApi:
         order_type: AddOrderReq.TypeEnum,
         qty: float,
         price: float = 0,
-    ) -> kucoin_universal_sdk.generate.margin.order.model_add_order_resp.AddOrderResp:
+    ) -> AddOrderResp:
         """
         Fake isolated margin order response echoing inputs.
         """
@@ -387,7 +401,7 @@ class KucoinApi:
             symbol, order_side=(side == AddOrderReq.SideEnum.SELL), qty=qty
         )
         final_price = price if price > 0 else book_price
-        return kucoin_universal_sdk.generate.margin.order.model_add_order_resp.AddOrderResp.model_validate(
+        return AddOrderResp.model_validate(
             {
                 "symbol": symbol,
                 "side": side.value,

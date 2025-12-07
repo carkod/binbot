@@ -1,5 +1,5 @@
 import logging
-from typing import Type, Union, Any
+from typing import Tuple, Type, Union, Any
 from tools.maths import round_numbers_floor, round_numbers
 from tools.enum_definitions import DealType, QuoteAssets, Status, Strategy, OrderSide
 from databases.tables.bot_table import BotTable, PaperTradingTable
@@ -10,6 +10,15 @@ from bots.models import BotModel, OrderModel
 from exchange_apis.kucoin.deals.base import KucoinBaseBalance
 from tools.handle_error import BinanceErrors
 from time import sleep
+from kucoin_universal_sdk.generate.spot.order.model_add_order_sync_resp import (
+    AddOrderSyncResp,
+)
+from kucoin_universal_sdk.generate.margin.order.model_add_order_req import (
+    AddOrderReq,
+)
+from kucoin_universal_sdk.generate.margin.order.model_get_order_by_order_id_resp import (
+    GetOrderByOrderIdResp,
+)
 
 
 class KucoinSpotDeal(KucoinBaseBalance):
@@ -34,7 +43,9 @@ class KucoinSpotDeal(KucoinBaseBalance):
         self.price_precision = self.symbol_info.price_precision
         self.qty_precision = self.symbol_info.qty_precision
 
-    def buy_order_with_available_balance(self) -> dict | None:
+    def buy_order_with_available_balance(
+        self,
+    ) -> Tuple[AddOrderSyncResp, GetOrderByOrderIdResp] | Tuple[None, None]:
         """
         Places a buy order using the available balance for the base asset.
 
@@ -50,9 +61,12 @@ class KucoinSpotDeal(KucoinBaseBalance):
             available_balance = float(result_balances[quote_asset])
             if available_balance > 0:
                 qty = available_balance / last_ticker_price
-                order_response = self.buy_order(symbol=symbol, qty=qty)
-                return order_response
-        return None
+                order_response = self.kucoin_api.buy_order(symbol=symbol, qty=qty)
+                order = self.kucoin_api.get_order_by_order_id(
+                    symbol=symbol, order_id=order_response.order_id
+                )
+                return order_response, order
+        return None, None
 
     def long_open_deal_trailling_parameters(self) -> BotModel:
         """
@@ -151,29 +165,29 @@ class KucoinSpotDeal(KucoinBaseBalance):
         2. Set take_profit
         """
         if self.active_bot.quote_asset != QuoteAssets.USDC:
-            response = self.buy_order_with_available_balance()
-            if response:
+            order_response, system_order = self.buy_order_with_available_balance()
+            if order_response and system_order:
                 order = OrderModel(
-                    timestamp=int(response["transactTime"]),
-                    order_id=int(response["orderId"]),
+                    timestamp=order_response.order_time,
+                    order_id=order_response.order_id,
                     deal_type=DealType.conversion,
-                    pair=response["symbol"],
-                    order_side=response["side"],
-                    order_type=response["type"],
-                    price=float(response["price"]),
-                    qty=float(response["origQty"]),
-                    time_in_force=response["timeInForce"],
-                    status=response["status"],
+                    pair=self.active_bot.pair,
+                    order_side=AddOrderReq.SideEnum.BUY,
+                    order_type=system_order.type,
+                    price=system_order.price,
+                    qty=float(system_order.size),
+                    time_in_force=system_order.time_in_force,
+                    status=order_response.status,
                 )
                 self.active_bot.orders.append(order)
                 self.controller.update_logs(
                     bot=self.active_bot, log_message="Quote asset purchase successful."
                 )
-                self.active_bot.deal.base_order_size = float(response["origQty"])
+                self.active_bot.deal.base_order_size = float(system_order.size)
                 if self.active_bot.quote_asset.is_fiat():
-                    self.active_bot.deal.base_order_size = float(
-                        response["origQty"]
-                    ) * float(response["price"])
+                    self.active_bot.deal.base_order_size = float(order.qty) * float(
+                        order.price
+                    )
                 # give some time for order to complete
                 sleep(3)
 
@@ -207,13 +221,13 @@ class KucoinSpotDeal(KucoinBaseBalance):
             )
 
         if isinstance(self.controller, PaperTradingTableCrud):
-            res = self.simulate_order(
+            res = self.kucoin_api.simulate_order(
                 self.active_bot.pair,
                 OrderSide.buy,
             )
         else:
             try:
-                res = self.buy_order(
+                order_response, system_order = self.kucoin_api.buy_order(
                     symbol=self.active_bot.pair,
                     qty=(qty * repurchase_multiplier),
                 )
@@ -235,41 +249,47 @@ class KucoinSpotDeal(KucoinBaseBalance):
                         )
                     return self.active_bot
 
+        # mostly for mypy to be happy
+        if not order_response or not system_order:
+            self.controller.update_logs(
+                bot=self.active_bot,
+                log_message=f"Base order failed, order_response: {order_response}, system_order: {system_order}.",
+            )
+            return self.active_bot
+
         self.controller.update_logs(
             bot=self.active_bot, log_message="Base order executed."
         )
 
-        res_price = float(res["price"])
+        res_price = float(system_order.price)
 
         if self.active_bot.deal.base_order_size == 0:
-            self.active_bot.deal.base_order_size = float(res["origQty"]) * res_price
+            self.active_bot.deal.base_order_size = float(system_order.size) * res_price
 
         if res_price == 0:
             # Market orders return 0
             res_price = self.calculate_avg_price(res["fills"])
 
         order_data = OrderModel(
-            timestamp=int(res["transactTime"]),
-            order_id=res["orderId"],
+            timestamp=order_response.order_time,
+            order_id=order_response.order_id,
             deal_type=DealType.base_order,
-            pair=res["symbol"],
-            order_side=res["side"],
-            order_type=res["type"],
+            pair=system_order.symbol,
+            order_side=system_order.side,
+            order_type=system_order.type,
             price=res_price,
-            qty=float(res["origQty"]),
-            time_in_force=res["timeInForce"],
-            status=res["status"],
+            qty=float(system_order.size),
+            time_in_force=system_order.time_in_force,
+            status=order_response.status,
         )
 
         self.active_bot.orders.append(order_data)
-        self.active_bot.deal.total_commissions += self.calculate_total_commissions(
-            res["fills"]
-        )
+        self.active_bot.deal.total_commissions = system_order.fee
 
-        self.active_bot.deal.opening_timestamp = int(res["transactTime"])
+        self.active_bot.deal.opening_timestamp = order_response.order_time
         self.active_bot.deal.opening_price = res_price
-        self.active_bot.deal.opening_qty = float(res["origQty"])
-        self.active_bot.deal.current_price = float(res["price"])
+        self.active_bot.deal.opening_qty = float(system_order.size)
+        self.active_bot.deal.current_price = float(system_order.price)
 
         # temporary measures to keep deal up to date
         # once bugs are fixed, this can be removed to improve efficiency
@@ -332,19 +352,6 @@ class KucoinSpotDeal(KucoinBaseBalance):
         raise NotImplementedError
 
     def close_conditions(self, current_price: float) -> None:
-        raise NotImplementedError
-
-    # Order operations expected by LongDeal
-    def buy_order(self, symbol: str, qty: float) -> dict:
-        raise NotImplementedError
-
-    def sell_order(self, symbol: str, qty: float) -> dict:
-        raise NotImplementedError
-
-    def delete_order(self, symbol: str, order_id: int) -> Any:
-        raise NotImplementedError
-
-    def simulate_order(self, pair: str, side: Any, qty: float = 1) -> dict:
         raise NotImplementedError
 
     # Utilities referenced indirectly
