@@ -1,7 +1,13 @@
 import logging
 from typing import Tuple, Type, Union, Any
 from tools.maths import round_numbers_floor, round_numbers
-from tools.enum_definitions import DealType, QuoteAssets, Status, Strategy, OrderSide
+from tools.enum_definitions import (
+    DealType,
+    QuoteAssets,
+    Status,
+    Strategy,
+    OrderSide,
+)
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.bot_crud import BotTableCrud
@@ -22,10 +28,11 @@ from kucoin_universal_sdk.generate.margin.order.model_get_order_by_order_id_resp
 
 
 class KucoinSpotDeal(KucoinBaseBalance):
-    """Stub KuCoin spot deal implementation matching BinanceSpotDeal interface.
+    """
+    Spot deal implementation matching BinanceSpotDeal interface.
 
-    Methods raise NotImplementedError until proper KuCoin spot logic is added.
-    Used for polymorphic delegation via `deal_base`.
+    Starts when a bot is activated
+    deal object is then filled up ready for Long Deal (streaming) operations.
     """
 
     def __init__(
@@ -61,7 +68,9 @@ class KucoinSpotDeal(KucoinBaseBalance):
             available_balance = float(result_balances[quote_asset])
             if available_balance > 0:
                 qty = available_balance / last_ticker_price
-                order_response = self.kucoin_api.buy_order(symbol=symbol, qty=qty)
+                order_response, system_order = self.kucoin_api.buy_order(
+                    symbol=symbol, qty=qty
+                )
                 order = self.kucoin_api.get_order_by_order_id(
                     symbol=symbol, order_id=order_response.order_id
                 )
@@ -221,9 +230,9 @@ class KucoinSpotDeal(KucoinBaseBalance):
             )
 
         if isinstance(self.controller, PaperTradingTableCrud):
-            res = self.kucoin_api.simulate_order(
-                self.active_bot.pair,
-                OrderSide.buy,
+            order_response, system_order = self.kucoin_api.simulate_order(
+                symbol=self.active_bot.pair,
+                side=OrderSide.buy,
             )
         else:
             try:
@@ -265,10 +274,6 @@ class KucoinSpotDeal(KucoinBaseBalance):
 
         if self.active_bot.deal.base_order_size == 0:
             self.active_bot.deal.base_order_size = float(system_order.size) * res_price
-
-        if res_price == 0:
-            # Market orders return 0
-            res_price = self.calculate_avg_price(res["fills"])
 
         order_data = OrderModel(
             timestamp=order_response.order_time,
@@ -335,40 +340,47 @@ class KucoinSpotDeal(KucoinBaseBalance):
         return self.active_bot
 
     def close_all(self) -> BotModel:
-        """Close all orders and finalize the spot deal. Stub only."""
-        raise NotImplementedError
+        """
+        Close all open positions for spot long bot
+        """
 
-    def streaming_updates(self, close_price: float, open_price: float) -> BotModel:
-        """Process streaming price updates. Stub only."""
-        raise NotImplementedError
+        last_ticker_price = float(
+            self.kucoin_api.get_ticker_price(self.active_bot.pair)
+        )
 
-    def update_spot_orders(self) -> BotModel:
-        raise NotImplementedError
+        if self.active_bot.deal.opening_qty > 0:
+            if isinstance(self.controller, PaperTradingTableCrud):
+                order_response, system_order = self.kucoin_api.simulate_order(
+                    symbol=self.active_bot.pair,
+                    side=OrderSide.sell,
+                )
+            else:
+                order_response, system_order = self.kucoin_api.sell_order(
+                    symbol=self.active_bot.pair,
+                    qty=self.active_bot.deal.opening_qty,
+                )
 
-    def execute_stop_loss(self) -> BotModel:
-        raise NotImplementedError
+            if order_response and system_order:
+                order = OrderModel(
+                    timestamp=order_response.order_time,
+                    order_id=order_response.order_id,
+                    deal_type=DealType.panic_close,
+                    pair=self.active_bot.pair,
+                    order_side=AddOrderReq.SideEnum.SELL,
+                    order_type=system_order.type,
+                    price=system_order.price,
+                    qty=float(system_order.size),
+                    time_in_force=system_order.time_in_force,
+                    status=order_response.status,
+                )
+                self.active_bot.orders.append(order)
+                self.controller.update_logs(
+                    bot=self.active_bot, log_message="Spot position closed."
+                )
 
-    def trailling_profit(self) -> BotModel | None:
-        raise NotImplementedError
-
-    def close_conditions(self, current_price: float) -> None:
-        raise NotImplementedError
-
-    # Utilities referenced indirectly
-    def calculate_avg_price(self, fills: list[dict]) -> float:
-        raise NotImplementedError
-
-    def calculate_total_commissions(self, fills: list[dict]) -> float:
-        raise NotImplementedError
-
-    def sell_quote_asset(self) -> BotModel:
-        raise NotImplementedError
-
-    def compute_qty(self, symbol: str) -> float:
-        raise NotImplementedError
-
-    def close_open_orders(self, symbol: str):
-        raise NotImplementedError
-
-    def verify_deal_close_order(self):
-        raise NotImplementedError
+        self.active_bot.deal.closing_price = last_ticker_price
+        self.active_bot.deal.closing_timestamp = order_response.order_time
+        self.active_bot.status = Status.completed
+        self.active_bot.add_log("Spot deal closed.")
+        self.controller.save(self.active_bot)
+        return self.active_bot

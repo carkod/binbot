@@ -1,4 +1,5 @@
 import os
+from time import time
 from kucoin_universal_sdk.api import DefaultClient
 from kucoin_universal_sdk.generate.spot.market import (
     GetPartOrderBookReqBuilder,
@@ -43,9 +44,6 @@ from kucoin_universal_sdk.generate.margin.order.model_add_order_req import (
     AddOrderReq,
     AddOrderReqBuilder,
 )
-from kucoin_universal_sdk.generate.margin.order.model_add_order_resp import (
-    AddOrderResp,
-)
 from kucoin_universal_sdk.generate.margin.order.model_cancel_order_by_order_id_req import (
     CancelOrderByOrderIdReqBuilder,
 )
@@ -53,6 +51,7 @@ from kucoin_universal_sdk.generate.margin.order.model_get_order_by_order_id_resp
     GetOrderByOrderIdResp,
 )
 from typing import Tuple
+import random
 
 
 class KucoinApi:
@@ -166,32 +165,65 @@ class KucoinApi:
         self,
         symbol: str,
         side: AddOrderSyncReq.SideEnum,
-        order_type: AddOrderSyncReq.TypeEnum,
-        qty: float,
-        price: float = 0,
-    ) -> AddOrderSyncResp:
+        order_type: AddOrderSyncReq.TypeEnum = AddOrderSyncReq.TypeEnum.LIMIT,
+        qty: float = 1,
+    ) -> Tuple[AddOrderSyncResp, GetOrderByOrderIdResp]:
         """
         Fake synchronous order response shaped similarly to add_order_sync.
         Returns a dict echoing inputs and a computed price when missing.
         """
-        book_price = self.matching_engine(
-            symbol, order_side=(side == AddOrderSyncReq.SideEnum.SELL), qty=qty
-        )
-        final_price = price if price > 0 else book_price
-        return AddOrderSyncResp.model_validate(
+        book_price = self.matching_engine(symbol, order_side=side, qty=qty)
+        # fake data
+        ts = int(time() * 1000)
+        order_id = str(random.randint(1000000000, 9999999999))
+        order_response = AddOrderSyncResp.model_validate(
             {
+                "order_time": ts,
+                "order_id": order_id,
                 "symbol": symbol,
-                "side": side.value,
-                "type": order_type.value,
-                "timeInForce": AddOrderSyncReq.TimeInForceEnum.GTC.value,
+                "side": side,
+                "type": order_type,
+                "time_in_force": AddOrderSyncReq.TimeInForceEnum.GTC.value,
                 "size": str(qty),
-                "price": str(final_price) if final_price else "0",
+                "price": str(book_price),
                 "status": "Done",
-                "inOrderBook": True,
-                "filledSize": str(qty),
-                "fills": [],
+                "in_order_book": True,
+                "fee": "0",
             }
         )
+        system_order = GetOrderByOrderIdResp.model_validate(
+            {
+                "order_id": order_id,
+                "symbol": symbol,
+                "op_type": "DEAL",
+                "type": order_type,
+                "side": side,
+                "price": str(book_price),
+                "size": str(qty),
+                "funds": str(float(book_price) * qty),
+                "deal_funds": str(float(book_price) * qty),
+                "deal_size": str(qty),
+                "fee": "0",
+                "fee_currency": symbol.split("-")[1],
+                "stp": "CN",
+                "stop": "",
+                "stop_price": "0",
+                "time_in_force": AddOrderSyncReq.TimeInForceEnum.GTC,
+                "post_only": False,
+                "hidden": False,
+                "iceberg": False,
+                "visible_size": "0",
+                "cancel_after": 0,
+                "channel": "API",
+                "client_oid": "",
+                "remark": "",
+                "tags": "",
+                "is_active": False,
+                "cancel_exist": False,
+                "created_at": ts,
+            }
+        )
+        return order_response, system_order
 
     def matching_engine(self, symbol: str, order_side: bool, qty: float = 0) -> float:
         """
@@ -392,26 +424,60 @@ class KucoinApi:
         side: AddOrderReq.SideEnum,
         order_type: AddOrderReq.TypeEnum,
         qty: float,
-        price: float = 0,
-    ) -> AddOrderResp:
+    ) -> Tuple[AddOrderSyncResp, GetOrderByOrderIdResp]:
         """
         Fake isolated margin order response echoing inputs.
         """
         book_price = self.matching_engine(
             symbol, order_side=(side == AddOrderReq.SideEnum.SELL), qty=qty
         )
-        final_price = price if price > 0 else book_price
-        return AddOrderResp.model_validate(
+        ts = int(time() * 1000)
+        order_id = str(random.randint(1000000000, 9999999999))
+        order_response = AddOrderSyncResp.model_validate(
             {
+                "order_time": ts,
+                "order_id": order_id,
                 "symbol": symbol,
-                "side": side.value,
-                "type": order_type.value,
-                "timeInForce": AddOrderReq.TimeInForceEnum.GTC.value,
+                "side": side,
+                "type": order_type,
+                "time_in_force": AddOrderSyncReq.TimeInForceEnum.GTC.value,
                 "size": str(qty),
-                "price": str(final_price) if final_price else "0",
+                "price": str(book_price),
                 "status": "Done",
-                "isIsolated": True,
-                "filledSize": str(qty),
-                "fills": [],
+                "in_order_book": True,
+                "fee": "0",
             }
         )
+        system_order = GetOrderByOrderIdResp.model_validate(
+            {
+                "order_id": order_id,
+                "symbol": symbol,
+                "op_type": "DEAL",
+                "type": order_type,
+                "side": side,
+                "price": str(book_price),
+                "size": str(qty),
+                "funds": str(float(book_price) * qty),
+                "deal_funds": str(float(book_price) * qty),
+                "deal_size": str(qty),
+                "fee": "0",
+                "fee_currency": symbol.split("-")[1],
+                "stp": "CN",
+                "stop": "",
+                "stop_price": "0",
+                "time_in_force": AddOrderSyncReq.TimeInForceEnum.GTC,
+                "post_only": False,
+                "hidden": False,
+                "iceberg": False,
+                "visible_size": "0",
+                "cancel_after": 0,
+                "channel": "API",
+                "client_oid": "",
+                "remark": "",
+                "tags": "",
+                "is_active": False,
+                "cancel_exist": False,
+                "created_at": ts,
+            }
+        )
+        return order_response, system_order
