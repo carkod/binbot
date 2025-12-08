@@ -481,7 +481,7 @@ class SymbolsCrud:
             # Only store fiat market exclude other fiats.
             # Only store pairs that are actually traded
             if item.enable_trading is not True or item.symbol.startswith(
-                ("DOWN", "UP", "AUD", "USDT", "EUR", "GBP")
+                ("DOWN", "UP", "AUD", "EUR", "GBP")
             ):
                 continue
 
@@ -601,7 +601,7 @@ class SymbolsCrud:
             # Only store fiat market exclude other fiats.
             # Only store pairs that are actually traded
             if item.enable_trading is not True or item.symbol.startswith(
-                ("DOWN", "UP", "AUD", "USDT", "EUR", "GBP")
+                ("DOWN", "UP", "AUD", "EUR", "GBP")
             ):
                 continue
 
