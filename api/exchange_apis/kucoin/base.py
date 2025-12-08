@@ -123,10 +123,10 @@ class KucoinApi:
         response = self.spot_api.get_all_symbols(request)
         return response
 
-    def get_ticker_price(self, symbol: str):
+    def get_ticker_price(self, symbol: str) -> float:
         request = GetPartOrderBookReqBuilder().set_symbol(symbol).build()
         response = self.spot_api.get_ticker(request)
-        return response["price"]
+        return float(response.price)
 
     def get_account_balance(self):
         """

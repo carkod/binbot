@@ -5,6 +5,7 @@ from tools.enum_definitions import (
     Status,
     Strategy,
     OrderSide,
+    OrderStatus,
 )
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
@@ -27,6 +28,7 @@ class KucoinLongDeal(KucoinSpotDeal):
     ) -> None:
         super().__init__(bot=bot, db_table=db_table)
         self.active_bot: BotModel = bot
+        self.symbol = self.get_symbol(bot.pair, bot.quote_asset)
 
     def take_profit_order(self) -> BotModel:
         """
@@ -48,38 +50,34 @@ class KucoinLongDeal(KucoinSpotDeal):
         price = round_numbers(price, self.price_precision)
 
         if self.db_table == PaperTradingTable:
-            order_response, system_order = self.kucoin_api.simulate_order(
-                self.active_bot.pair, OrderSide.sell
-            )
+            system_order = self.kucoin_api.simulate_order(self.symbol, OrderSide.sell)
         else:
             qty = round_numbers(qty, self.qty_precision)
             price = round_numbers(price, self.price_precision)
-            order_response, system_order = self.kucoin_api.sell_order(
-                symbol=self.active_bot.pair, qty=qty
-            )
+            system_order = self.kucoin_api.sell_order(symbol=self.symbol, qty=qty)
 
         price = float(system_order.price)
 
         order_data = OrderModel(
-            timestamp=order_response.order_time,
-            order_id=order_response.order_id,
+            timestamp=system_order.created_at,
+            order_id=system_order.id,
             deal_type=DealType.take_profit,
             pair=system_order.symbol,
             order_side=system_order.side,
             order_type=system_order.type,
             price=price,
-            qty=float(order_response.deal_size),
+            qty=float(system_order.deal_size),
             time_in_force=system_order.time_in_force,
-            status=order_response.status,
+            status=OrderStatus.FILLED if system_order.active else OrderStatus.EXPIRED,
         )
 
-        self.active_bot.deal.total_commissions = system_order.fee
+        self.active_bot.deal.total_commissions += system_order.fee
 
         self.active_bot.orders.append(order_data)
         self.active_bot.deal.closing_price = price
-        self.active_bot.deal.closing_qty = float(order_response.origin_size)
+        self.active_bot.deal.closing_qty = float(system_order.deal_size)
         self.active_bot.deal.closing_timestamp = round_timestamp(
-            order_response.order_time
+            system_order.created_at
         )
         self.active_bot.status = Status.completed
 
@@ -117,14 +115,16 @@ class KucoinLongDeal(KucoinSpotDeal):
         new_bot.status = Status.inactive
 
         # Create new bot
-        bot_table = self.controller.create(data=new_bot)
+        created_bot = self.controller.create(data=new_bot)
 
         # Activate bot
-        self.active_bot = BotModel.dump_from_table(bot_table)
-        margin_strategy_deal = KucoinMarginDeal(
-            bot=self.active_bot, db_table=self.db_table
+        bot_model = BotModel.dump_from_table(created_bot)
+        margin_strategy_deal = KucoinMarginDeal(bot=bot_model, db_table=self.db_table)
+        self.active_bot = margin_strategy_deal.open_deal()
+        self.controller.update_logs(
+            f"Switched to margin_short strategy. New bot id: {bot_model.id}",
+            self.active_bot,
         )
-        self.active_bot = margin_strategy_deal.margin_short_base_order()
 
         return self.active_bot
 
@@ -144,8 +144,8 @@ class KucoinLongDeal(KucoinSpotDeal):
 
         # Dispatch fake order
         if isinstance(self.controller, PaperTradingTableCrud):
-            order_response, system_order = self.kucoin_api.simulate_order(
-                symbol=self.active_bot.pair, side=OrderSide.sell
+            system_order = self.kucoin_api.simulate_order(
+                symbol=self.symbol, side=OrderSide.sell
             )
 
         else:
@@ -154,31 +154,29 @@ class KucoinLongDeal(KucoinSpotDeal):
                 self.active_bot,
             )
             # Dispatch real order
-            order_response, system_order = self.kucoin_api.sell_order(
-                symbol=self.active_bot.pair, qty=qty
-            )
+            system_order = self.kucoin_api.sell_order(symbol=self.symbol, qty=qty)
 
         price = float(system_order.price)
 
         stop_loss_order = OrderModel(
-            timestamp=order_response.order_time,
-            order_id=order_response.order_id,
+            timestamp=system_order.created_at,
+            order_id=int(system_order.id),
             deal_type=DealType.take_profit,
             pair=system_order.symbol,
             order_side=system_order.side,
             order_type=system_order.type,
             price=price,
-            qty=float(order_response.deal_size),
+            qty=float(system_order.deal_size),
             time_in_force=system_order.time_in_force,
-            status=order_response.status,
+            status=OrderStatus.FILLED if system_order.active else OrderStatus.EXPIRED,
         )
 
-        self.active_bot.deal.total_commissions = system_order.fee
+        self.active_bot.deal.total_commissions += system_order.fee
 
         self.active_bot.orders.append(stop_loss_order)
         self.active_bot.deal.closing_price = price
-        self.active_bot.deal.closing_qty = float(order_response.deal_size)
-        self.active_bot.deal.closing_timestamp = order_response.order_time
+        self.active_bot.deal.closing_qty = float(system_order.deal_size)
+        self.active_bot.deal.closing_timestamp = system_order.created_at
         msg = "Completed Stop loss."
         if self.active_bot.margin_short_reversal:
             msg += " Scheduled to switch strategy"
@@ -211,7 +209,7 @@ class KucoinLongDeal(KucoinSpotDeal):
 
         # Dispatch fake order
         if isinstance(self.controller, PaperTradingTableCrud):
-            order_response, system_order = self.kucoin_api.simulate_order(
+            system_order = self.kucoin_api.simulate_order(
                 self.active_bot.pair,
                 OrderSide.sell,
             )
@@ -223,27 +221,27 @@ class KucoinLongDeal(KucoinSpotDeal):
             )
             # Dispatch real order
             # No price means market order
-            order_response, system_order = self.kucoin_api.sell_order(
-                symbol=self.active_bot.pair,
+            system_order = self.kucoin_api.sell_order(
+                symbol=self.symbol,
                 qty=round_numbers(qty, self.qty_precision),
             )
 
         price = float(system_order.price)
 
         order_data = OrderModel(
-            timestamp=order_response.order_time,
-            order_id=int(order_response.order_id),
+            timestamp=system_order.created_at,
+            order_id=int(system_order.id),
             deal_type=DealType.trailling_profit,
-            pair=order_response.symbol,
+            pair=system_order.symbol,
             order_side=system_order.side,
             order_type=system_order.type,
             price=price,
-            qty=float(system_order.orig_qty),
+            qty=float(system_order.deal_size),
             time_in_force=system_order.time_in_force,
-            status=order_response.status,
+            status=OrderStatus.FILLED if system_order.active else OrderStatus.EXPIRED,
         )
 
-        self.active_bot.deal.total_commissions = system_order.fee
+        self.active_bot.deal.total_commissions += system_order.fee
 
         self.active_bot.orders.append(order_data)
 
@@ -257,9 +255,9 @@ class KucoinLongDeal(KucoinSpotDeal):
 
         # new deal parameters to replace previous
         self.active_bot.deal.closing_price = price
-        self.active_bot.deal.closing_qty = float(order_response.origin_size)
+        self.active_bot.deal.closing_qty = float(system_order.deal_size)
         self.active_bot.deal.closing_timestamp = round_timestamp(
-            order_response.order_time
+            system_order.created_at
         )
 
         self.active_bot.status = Status.completed

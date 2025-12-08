@@ -281,8 +281,7 @@ class BaseDeal(BinanceOrderController):
             # Funds are transferred back by now,
             # disabling pair should be done by cronjob,
             # therefore no reason not to complete the bot
-            if hasattr(self, "active_bot"):
-                self.active_bot.status = Status.completed
+            self.active_bot.status = Status.completed
 
             self.disable_isolated_margin_account(pair)
             raise MarginLoanNotFound("Isolated margin loan already liquidated")

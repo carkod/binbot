@@ -43,7 +43,7 @@ class KucoinShortDeal(KucoinMarginDeal):
                 symbol=self.symbol, side=AddOrderReq.SideEnum.BUY
             )
         else:
-            system_order = self.margin_liquidation(self.active_bot.pair)
+            system_order = self.margin_liquidation()
         price = float(system_order.price)
 
         stop_loss_order = OrderModel(
@@ -59,7 +59,7 @@ class KucoinShortDeal(KucoinMarginDeal):
             status=OrderStatus.FILLED if system_order.active else OrderStatus.EXPIRED,
         )
 
-        self.active_bot.deal.total_commissions = system_order.fee
+        self.active_bot.deal.total_commissions += system_order.fee
 
         self.active_bot.orders.append(stop_loss_order)
 
@@ -93,11 +93,11 @@ class KucoinShortDeal(KucoinMarginDeal):
         # Margin buy (buy back)
         if isinstance(self.controller, PaperTradingTableCrud):
             system_order = self.kucoin_api.simulate_margin_order(
-                self.active_bot.pair, AddOrderReq.SideEnum.BUY
+                self.symbol, AddOrderReq.SideEnum.BUY
             )
         else:
             self.controller.update_logs("Attempting to liquidate loan", self.active_bot)
-            system_order = self.margin_liquidation(self.active_bot.pair)
+            system_order = self.margin_liquidation()
 
         price = float(system_order.price)
 
@@ -115,7 +115,7 @@ class KucoinShortDeal(KucoinMarginDeal):
             status=OrderStatus.FILLED if system_order.active else OrderStatus.EXPIRED,
         )
 
-        self.active_bot.deal.total_commissions = system_order.fee
+        self.active_bot.deal.total_commissions += system_order.fee
 
         self.active_bot.orders.append(take_profit_order)
         self.active_bot.deal.closing_price = price
@@ -158,14 +158,14 @@ class KucoinShortDeal(KucoinMarginDeal):
 
         # Create new bot
         created_bot = self.controller.create(new_bot)
-        bot_model = BotModel.model_validate(created_bot.model_dump())
+        bot_model = BotModel.dump_from_table(created_bot)
         spot_deal = KucoinSpotDeal(bot=bot_model, db_table=self.db_table)
 
         # to avoid circular imports make network request
         # This class is already imported for switch_to_margin_short
-        bot_id = spot_deal.open_deal()
+        self.active_bot = spot_deal.open_deal()
         self.controller.update_logs(
-            f"Switched margin_short to long strategy. New bot id: {bot_id}",
+            f"Switched margin_short to long strategy. New bot id: {bot_model.id}",
             self.active_bot,
         )
         return self.active_bot
@@ -323,17 +323,13 @@ class KucoinShortDeal(KucoinMarginDeal):
         # Close all active orders
         if len(orders) > 0:
             for d in orders:
-                if (
-                    d.status == OrderStatus.NEW
-                    or d.status == OrderStatus.PARTIALLY_FILLED
-                ):
-                    self.controller.update_logs(
-                        "Failed to close all active orders (status NEW), retrying...",
-                        self.active_bot,
-                    )
-                    self.kucoin_api.cancel_margin_order_by_order_id(
-                        symbol=self.symbol, order_id=d.order_id
-                    )
+                self.controller.update_logs(
+                    "Failed to close all active orders (status NEW), retrying...",
+                    self.active_bot,
+                )
+                self.kucoin_api.cancel_margin_order_by_order_id(
+                    symbol=self.symbol, order_id=d.order_id
+                )
 
         # Sell everything
         balance = self.get_isolated_balance()
@@ -343,7 +339,7 @@ class KucoinShortDeal(KucoinMarginDeal):
                     symbol=self.symbol, side=AddOrderReq.SideEnum.BUY
                 )
             else:
-                system_order = self.margin_liquidation(self.active_bot.pair)
+                system_order = self.margin_liquidation()
 
             price = float(system_order.price)
 
@@ -363,7 +359,7 @@ class KucoinShortDeal(KucoinMarginDeal):
                     else OrderStatus.EXPIRED,
                 )
 
-                self.active_bot.deal.total_commissions = system_order.fee
+                self.active_bot.deal.total_commissions += system_order.fee
 
                 self.active_bot.orders.append(order)
 

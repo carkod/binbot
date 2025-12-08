@@ -17,7 +17,6 @@ from kucoin_universal_sdk.generate.spot.order.model_get_order_by_order_id_resp i
     GetOrderByOrderIdResp,
 )
 from time import sleep
-from kucoin_universal_sdk.model.common import RestError
 from kucoin_universal_sdk.generate.margin.order.model_add_order_req import (
     AddOrderReq,
 )
@@ -60,23 +59,20 @@ class KucoinMarginDeal(KucoinBaseBalance):
         self,
     ) -> GetOrderByOrderIdResp | None:
         """
-        Buys quote asset with all available balance in margin account.
-        Used when quote asset is not USDC.
-
-        Returns:
-            Tuple[AddOrderResp, Any]: The order response and system order.
+        Combines buy_order and balance checks
+        encapuslates common logic
         """
         balance = self.get_isolated_balance()
         if balance:
             available_balance = balance.quote_asset.available
-            last_ticker_price = self.kucoin_api.get_ticker_price(self.active_bot.pair)
+            last_ticker_price = self.kucoin_api.get_ticker_price(self.symbol)
             qty = round_numbers_floor(
                 (available_balance / last_ticker_price),
                 self.qty_precision,
             )
 
             order = self.kucoin_api.buy_margin_order(
-                symbol=self.active_bot.pair,
+                symbol=self.symbol,
                 qty=qty,
             )
             return order
@@ -110,7 +106,7 @@ class KucoinMarginDeal(KucoinBaseBalance):
         free = float(balance.base_asset.available)
         return qty, free
 
-    def margin_liquidation(self, pair: str) -> GetOrderByOrderIdResp:
+    def margin_liquidation(self) -> GetOrderByOrderIdResp:
         """
         Emulate Binance Dashboard One click liquidation function
 
@@ -120,7 +116,6 @@ class KucoinMarginDeal(KucoinBaseBalance):
         reduce number of requests to avoid rate limit.
         """
         balance = self.get_isolated_balance()
-        symbol = self.get_symbol(pair, self.active_bot.quote_asset)
         if not balance:
             raise MarginLoanNotFound("Isolated margin balance not found")
 
@@ -139,7 +134,7 @@ class KucoinMarginDeal(KucoinBaseBalance):
             if free == 0 or free < repay_amount:
                 qty = round_numbers_ceiling(repay_amount - free, self.qty_precision)
                 system_order = self.kucoin_api.buy_margin_order(
-                    symbol=symbol,
+                    symbol=self.symbol,
                     qty=qty,
                 )
                 repay_amount, free = self.compute_margin_buy_back()
@@ -150,7 +145,7 @@ class KucoinMarginDeal(KucoinBaseBalance):
 
             self.kucoin_api.repay_margin_loan(
                 asset=self.active_bot.quote_asset,
-                symbol=self.active_bot.pair,
+                symbol=self.symbol,
                 amount=repay_amount,
             )
 
@@ -161,13 +156,13 @@ class KucoinMarginDeal(KucoinBaseBalance):
             # transfer back to SPOT account
             self.kucoin_api.transfer_isolated_margin_to_spot(
                 asset=quote,
-                symbol=pair,
+                symbol=self.symbol,
                 amount=balance.quote_asset.available,
             )
         if balance and float(balance.base_asset.available) != 0:
             self.kucoin_api.transfer_isolated_margin_to_spot(
                 asset=base,
-                symbol=pair,
+                symbol=self.symbol,
                 amount=balance.base_asset.available,
             )
 
@@ -175,8 +170,7 @@ class KucoinMarginDeal(KucoinBaseBalance):
             # Funds are transferred back by now,
             # disabling pair should be done by cronjob,
             # therefore no reason not to complete the bot
-            if hasattr(self, "active_bot"):
-                self.active_bot.status = Status.completed
+            self.active_bot.status = Status.completed
 
             raise MarginLoanNotFound("Isolated margin loan already liquidated")
 
@@ -227,7 +221,7 @@ class KucoinMarginDeal(KucoinBaseBalance):
             # initial price with 1 qty should return first match
             # also use always last_ticker_price rather than book depth
             # because bid/ask prices wicks can go way out of the candle
-            last_ticker_price = self.kucoin_api.get_ticker_price(self.active_bot.pair)
+            last_ticker_price = self.kucoin_api.get_ticker_price(self.symbol)
 
             # Use all available quote asset balance
             # this avoids diffs in ups and downs in prices and fees
@@ -235,7 +229,7 @@ class KucoinMarginDeal(KucoinBaseBalance):
             qty = available_quote_asset / last_ticker_price
         else:
             self.active_bot.deal.base_order_size = self.active_bot.fiat_order_size
-            last_ticker_price = self.kucoin_api.get_ticker_price(self.active_bot.pair)
+            last_ticker_price = self.kucoin_api.get_ticker_price(self.symbol)
             qty = round_numbers_floor(
                 (self.active_bot.deal.base_order_size / last_ticker_price),
                 self.qty_precision,
@@ -248,21 +242,11 @@ class KucoinMarginDeal(KucoinBaseBalance):
 
         else:
             self.init_margin_short(last_ticker_price)
-            try:
-                # init_margin_short will set opening_qty
-                system_order = self.kucoin_api.sell_margin_order(
-                    symbol=self.active_bot.pair,
-                    qty=(qty * repurchase_multiplier),
-                )
-            except RestError as error:
-                resp = error.get_common_response()
-                code = getattr(resp, "code", None)
-                message = getattr(resp, "message", None)
-                self.controller.update_logs(
-                    bot=self.active_bot,
-                    log_message=f"Error code: {code}, message: {message}",
-                )
-                return self.active_bot
+            # init_margin_short will set opening_qty
+            system_order = self.kucoin_api.sell_margin_order(
+                symbol=self.symbol,
+                qty=(qty * repurchase_multiplier),
+            )
 
         self.controller.update_logs(
             bot=self.active_bot, log_message="Base order executed."
@@ -286,7 +270,7 @@ class KucoinMarginDeal(KucoinBaseBalance):
             status=OrderStatus.FILLED if system_order.active else OrderStatus.EXPIRED,
         )
 
-        self.active_bot.deal.total_commissions = system_order.fee
+        self.active_bot.deal.total_commissions += system_order.fee
         self.active_bot.orders.append(order_data)
 
         self.active_bot.deal.opening_timestamp = round_timestamp(
@@ -417,7 +401,7 @@ class KucoinMarginDeal(KucoinBaseBalance):
         if balance:
             self.kucoin_api.transfer_spot_to_isolated_margin(
                 asset=self.active_bot.fiat,
-                symbol=self.active_bot.pair,
+                symbol=self.symbol,
                 amount=self.active_bot.deal.base_order_size,
             )
         # Given USDT amount we want to buy,
@@ -428,7 +412,7 @@ class KucoinMarginDeal(KucoinBaseBalance):
         )
 
         loan_created = self.kucoin_api.create_margin_loan(
-            asset=self.active_bot.quote_asset, symbol=self.active_bot.pair, amount=qty
+            asset=self.active_bot.quote_asset, symbol=self.symbol, amount=qty
         )
         self.controller.update_logs("Loan created", self.active_bot)
 

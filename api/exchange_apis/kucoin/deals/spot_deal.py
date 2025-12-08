@@ -1,8 +1,9 @@
 import logging
-from typing import Tuple, Type, Union, Any
+from typing import Type, Union, Any
 from tools.maths import round_numbers_floor, round_numbers
 from tools.enum_definitions import (
     DealType,
+    OrderStatus,
     QuoteAssets,
     Status,
     Strategy,
@@ -13,11 +14,7 @@ from databases.crud.bot_crud import BotTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
 from bots.models import BotModel, OrderModel
 from exchange_apis.kucoin.deals.base import KucoinBaseBalance
-from kucoin_universal_sdk.model.common import RestError
 from time import sleep
-from kucoin_universal_sdk.generate.spot.order.model_add_order_sync_resp import (
-    AddOrderSyncResp,
-)
 from kucoin_universal_sdk.generate.margin.order.model_add_order_req import (
     AddOrderReq,
 )
@@ -48,10 +45,11 @@ class KucoinSpotDeal(KucoinBaseBalance):
         self.symbol_info = SymbolsCrud().get_symbol(bot.pair)
         self.price_precision = self.symbol_info.price_precision
         self.qty_precision = self.symbol_info.qty_precision
+        self.symbol = self.get_symbol(bot.pair, bot.quote_asset)
 
     def buy_order_with_available_balance(
         self,
-    ) -> Tuple[AddOrderSyncResp, GetOrderByOrderIdResp] | Tuple[None, None]:
+    ) -> GetOrderByOrderIdResp | None:
         """
         Places a buy order using the available balance for the base asset.
 
@@ -59,22 +57,16 @@ class KucoinSpotDeal(KucoinBaseBalance):
             The response from the KuCoin API after placing the buy order.
         """
         result_balances, estimated_total_fiat, fiat_available = self.compute_balance()
-        symbol = f"{self.active_bot.quote_asset.value}-{self.active_bot.fiat}"
         quote_asset = self.active_bot.quote_asset.value
-        last_ticker_price = float(self.kucoin_api.get_ticker_price(symbol))
+        last_ticker_price = self.kucoin_api.get_ticker_price(self.symbol)
 
         if quote_asset in result_balances:
             available_balance = float(result_balances[quote_asset])
             if available_balance > 0:
                 qty = available_balance / last_ticker_price
-                order_response, system_order = self.kucoin_api.buy_order(
-                    symbol=symbol, qty=qty
-                )
-                order = self.kucoin_api.get_order_by_order_id(
-                    symbol=symbol, order_id=order_response.order_id
-                )
-                return order_response, order
-        return None, None
+                order = self.kucoin_api.buy_order(symbol=self.symbol, qty=qty)
+                return order
+        return None
 
     def long_open_deal_trailling_parameters(self) -> BotModel:
         """
@@ -173,19 +165,21 @@ class KucoinSpotDeal(KucoinBaseBalance):
         2. Set take_profit
         """
         if self.active_bot.quote_asset != QuoteAssets.USDC:
-            order_response, system_order = self.buy_order_with_available_balance()
-            if order_response and system_order:
+            system_order = self.buy_order_with_available_balance()
+            if system_order:
                 order = OrderModel(
-                    timestamp=order_response.order_time,
-                    order_id=order_response.order_id,
+                    timestamp=system_order.created_at,
+                    order_id=system_order.id,
                     deal_type=DealType.conversion,
-                    pair=self.active_bot.pair,
+                    pair=system_order.symbol,
                     order_side=AddOrderReq.SideEnum.BUY,
                     order_type=system_order.type,
                     price=system_order.price,
                     qty=float(system_order.size),
                     time_in_force=system_order.time_in_force,
-                    status=order_response.status,
+                    status=OrderStatus.FILLED
+                    if system_order.active
+                    else OrderStatus.EXPIRED,
                 )
                 self.active_bot.orders.append(order)
                 self.controller.update_logs(
@@ -201,7 +195,7 @@ class KucoinSpotDeal(KucoinBaseBalance):
 
             # Long position does not need qty in take_profit
             # initial price with 1 qty should return first match
-            last_ticker_price = self.kucoin_api.get_ticker_price(self.active_bot.pair)
+            last_ticker_price = self.kucoin_api.get_ticker_price(self.symbol)
 
             if self.active_bot.strategy == Strategy.margin_short:
                 # Use all available quote asset balance
@@ -221,7 +215,7 @@ class KucoinSpotDeal(KucoinBaseBalance):
 
         else:
             self.active_bot.deal.base_order_size = self.active_bot.fiat_order_size
-            last_ticker_price = self.kucoin_api.get_ticker_price(self.active_bot.pair)
+            last_ticker_price = self.kucoin_api.get_ticker_price(self.symbol)
 
             qty = round_numbers_floor(
                 (self.active_bot.deal.base_order_size / last_ticker_price),
@@ -229,41 +223,20 @@ class KucoinSpotDeal(KucoinBaseBalance):
             )
 
         if isinstance(self.controller, PaperTradingTableCrud):
-            order_response, system_order = self.kucoin_api.simulate_order(
-                symbol=self.active_bot.pair,
+            system_order = self.kucoin_api.simulate_order(
+                symbol=self.symbol,
                 side=AddOrderReq.SideEnum.BUY,
             )
         else:
-            try:
-                order_response, system_order = self.kucoin_api.buy_order(
-                    symbol=self.active_bot.pair,
-                    qty=(qty * repurchase_multiplier),
-                )
-            except RestError as error:
-                resp = error.get_common_response()
-                code = getattr(resp, "code", None)
-                message = getattr(resp, "message", None)
-                # Fallback to raw error payload if top-level fields are empty
-                try:
-                    raw_err = resp.error()
-                    if raw_err and isinstance(raw_err, dict):
-                        code = raw_err.get("code", code)
-                        message = raw_err.get("msg", message)
-                except Exception:
-                    pass
-
-                # Log useful error details
-                self.controller.update_logs(
-                    bot=self.active_bot,
-                    log_message=f"Order failed (code={code}): {message}",
-                )
-                return self.active_bot
-
+            system_order = self.kucoin_api.buy_order(
+                symbol=self.symbol,
+                qty=(qty * repurchase_multiplier),
+            )
         # mostly for mypy to be happy
-        if not order_response or not system_order:
+        if not system_order:
             self.controller.update_logs(
                 bot=self.active_bot,
-                log_message=f"Base order failed, order_response: {order_response}, system_order: {system_order}.",
+                log_message=f"Base order failed, system_order: {system_order}.",
             )
             return self.active_bot
 
@@ -277,8 +250,8 @@ class KucoinSpotDeal(KucoinBaseBalance):
             self.active_bot.deal.base_order_size = float(system_order.size) * res_price
 
         order_data = OrderModel(
-            timestamp=order_response.order_time,
-            order_id=order_response.order_id,
+            timestamp=system_order.created_at,
+            order_id=system_order.id,
             deal_type=DealType.base_order,
             pair=system_order.symbol,
             order_side=system_order.side,
@@ -286,13 +259,13 @@ class KucoinSpotDeal(KucoinBaseBalance):
             price=res_price,
             qty=float(system_order.size),
             time_in_force=system_order.time_in_force,
-            status=order_response.status,
+            status=OrderStatus.FILLED if system_order.active else OrderStatus.EXPIRED,
         )
 
         self.active_bot.orders.append(order_data)
         self.active_bot.deal.total_commissions = system_order.fee
 
-        self.active_bot.deal.opening_timestamp = order_response.order_time
+        self.active_bot.deal.opening_timestamp = system_order.created_at
         self.active_bot.deal.opening_price = res_price
         self.active_bot.deal.opening_qty = float(system_order.size)
         self.active_bot.deal.current_price = float(system_order.price)
@@ -344,43 +317,40 @@ class KucoinSpotDeal(KucoinBaseBalance):
         """
         Close all open positions for spot long bot
         """
-
-        last_ticker_price = float(
-            self.kucoin_api.get_ticker_price(self.active_bot.pair)
-        )
-
         if self.active_bot.deal.opening_qty > 0:
             if isinstance(self.controller, PaperTradingTableCrud):
-                order_response, system_order = self.kucoin_api.simulate_order(
-                    symbol=self.active_bot.pair,
+                system_order = self.kucoin_api.simulate_order(
+                    symbol=self.symbol,
                     side=AddOrderReq.SideEnum.SELL,
                 )
             else:
-                order_response, system_order = self.kucoin_api.sell_order(
-                    symbol=self.active_bot.pair,
+                system_order = self.kucoin_api.sell_order(
+                    symbol=self.symbol,
                     qty=self.active_bot.deal.opening_qty,
                 )
 
-            if order_response and system_order:
+            if system_order:
                 order = OrderModel(
-                    timestamp=order_response.order_time,
-                    order_id=order_response.order_id,
+                    timestamp=system_order.created_at,
+                    order_id=system_order.id,
                     deal_type=DealType.panic_close,
-                    pair=self.active_bot.pair,
+                    pair=system_order.symbol,
                     order_side=AddOrderReq.SideEnum.SELL,
                     order_type=system_order.type,
                     price=system_order.price,
                     qty=float(system_order.size),
                     time_in_force=system_order.time_in_force,
-                    status=order_response.status,
+                    status=OrderStatus.FILLED
+                    if system_order.active
+                    else OrderStatus.EXPIRED,
                 )
                 self.active_bot.orders.append(order)
                 self.controller.update_logs(
                     bot=self.active_bot, log_message="Spot position closed."
                 )
 
-        self.active_bot.deal.closing_price = last_ticker_price
-        self.active_bot.deal.closing_timestamp = order_response.order_time
+        self.active_bot.deal.closing_price = system_order.price
+        self.active_bot.deal.closing_timestamp = system_order.last_updated_at
         self.active_bot.status = Status.completed
         self.active_bot.add_log("Spot deal closed.")
         self.controller.save(self.active_bot)
