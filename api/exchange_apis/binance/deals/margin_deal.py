@@ -138,7 +138,7 @@ class BinanceMarginDeal(BinanceDeal):
             # initial price with 1 qty should return first match
             # also use always last_ticker_price rather than book depth
             # because bid/ask prices wicks can go way out of the candle
-            last_ticker_price = self.last_ticker_price(self.active_bot.pair)
+            last_ticker_price = self.get_ticker_price(self.active_bot.pair)
 
             # Use all available quote asset balance
             # this avoids diffs in ups and downs in prices and fees
@@ -151,7 +151,7 @@ class BinanceMarginDeal(BinanceDeal):
             )
         else:
             self.active_bot.deal.base_order_size = self.active_bot.fiat_order_size
-            last_ticker_price = self.last_ticker_price(self.active_bot.pair)
+            last_ticker_price = self.get_ticker_price(self.active_bot.pair)
             qty = round_numbers_floor(
                 (self.active_bot.deal.base_order_size / last_ticker_price),
                 self.qty_precision,

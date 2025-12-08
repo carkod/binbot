@@ -1,9 +1,9 @@
+from exchange_apis.kucoin.deals.long_deal import KucoinLongDeal
 from databases.tables.bot_table import BotTable, PaperTradingTable
-from exchange_apis.kucoin.deals.spot_deal import KucoinSpotDeal
 from tools.enum_definitions import ExchangeId, Strategy
 from bots.models import BotModel
 from typing import Type, Union
-from exchange_apis.kucoin.deals.margin_deal import KucoinMarginDeal
+from exchange_apis.kucoin.deals.short_deal import KucoinShortDeal
 from databases.crud.autotrade_crud import AutotradeCrud
 from exchange_apis.binance.deals.short import BinanceShortDeal
 from exchange_apis.binance.deals.long import BinanceLongDeal
@@ -24,13 +24,13 @@ class DealGateway:
         self.bot = bot
         self.db_table = db_table
         self.deal: Union[
-            BinanceLongDeal, BinanceShortDeal, KucoinSpotDeal, KucoinMarginDeal
+            BinanceLongDeal, BinanceShortDeal, KucoinLongDeal, KucoinShortDeal
         ]
         if self.autotrade_settings.exchange_id == ExchangeId.KUCOIN:
             if bot.strategy == Strategy.margin_short:
-                self.deal = KucoinMarginDeal(bot, db_table=db_table)
+                self.deal = KucoinShortDeal(bot, db_table=db_table)
             else:
-                self.deal = KucoinSpotDeal(bot, db_table=db_table)
+                self.deal = KucoinLongDeal(bot, db_table=db_table)
         else:
             if bot.strategy == Strategy.margin_short:
                 self.deal = BinanceShortDeal(bot, db_table=db_table)

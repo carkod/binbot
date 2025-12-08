@@ -157,11 +157,11 @@ class QuoteAssets(str, Enum):
     """
 
     # Crypto assets
+    USDT = "USDT"
     USDC = "USDC"
     BTC = "BTC"
     ETH = "ETH"
-
-    # Fiat currencies
+    # Backwards compatibility
     TRY = "TRY"
 
     def is_fiat(self) -> bool:

@@ -207,7 +207,7 @@ class BaseDeal(BinanceOrderController):
                 try:
                     qty = round_numbers_ceiling(repay_amount - free, self.qty_precision)
                     buy_margin_response = self.buy_margin_order(
-                        symbol=pair,
+                        symbol=self.active_bot.pair,
                         qty=qty,
                     )
                     repay_amount, free = self.compute_margin_buy_back()
@@ -281,8 +281,7 @@ class BaseDeal(BinanceOrderController):
             # Funds are transferred back by now,
             # disabling pair should be done by cronjob,
             # therefore no reason not to complete the bot
-            if hasattr(self, "active_bot"):
-                self.active_bot.status = Status.completed
+            self.active_bot.status = Status.completed
 
             self.disable_isolated_margin_account(pair)
             raise MarginLoanNotFound("Isolated margin loan already liquidated")
