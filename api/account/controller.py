@@ -51,24 +51,29 @@ class ConsolidatedAccounts:
                 if float(asset["free"]) > 0 or float(asset["locked"]) > 0:
                     if asset["asset"] not in [
                         self.autotrade_settings.fiat,
-                        "USDC",
                         "TUSD",
                         "USDT",
+                        "TRY",  # blocked, but still in shows in balance
+                        "BAKE",  # delisted, but still in shows in balance
+                        "NFT",
                     ]:
-                        rate = self.binance_assets.get_ticker_price(
-                            f"{asset['asset']}{self.autotrade_settings.fiat}"
-                        )
+                        try:
+                            rate = self.binance_assets.get_ticker_price(
+                                f"{asset['asset']}{self.autotrade_settings.fiat}"
+                            )
+                        except Exception as error:
+                            print(error)
                         fiat_available += float(asset["free"]) * float(rate)
                         estimated_total_fiat += (
                             float(asset["free"]) + float(asset["locked"])
                         ) * float(rate)
                     else:
-                        estimated_total_fiat += float(asset["free"]) + float(
-                            asset["locked"]
-                        )
+                        continue
 
-                    total_balances[asset["asset"]] += float(asset["free"]) + float(
-                        asset["locked"]
+                    total_balances[asset["asset"]] = (
+                        total_balances.get(asset["asset"], 0)
+                        + float(asset["free"])
+                        + float(asset["locked"])
                     )
 
         result.balances = total_balances

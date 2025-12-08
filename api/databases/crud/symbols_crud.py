@@ -1,5 +1,4 @@
 from exchange_apis.kucoin.base import KucoinApi
-from databases.crud.asset_index_crud import AssetIndexCrud
 from databases.crud.autotrade_crud import AutotradeCrud
 from databases.tables.asset_index_table import AssetIndexTable, SymbolIndexLink
 from databases.utils import independent_session
@@ -19,6 +18,7 @@ from databases.utils import engine
 from tools.enum_definitions import QuoteAssets, ExchangeId
 from sqlalchemy.sql.expression import ColumnElement
 from sqlalchemy import text, exists
+from sqlalchemy.orm import close_all_sessions
 
 
 class SymbolsCrud:
@@ -659,14 +659,24 @@ class SymbolsCrud:
         Populates both SymbolTable and SymbolExchangeTable
         """
         if delete_existing:
-            with engine.connect() as conn:
-                conn.execute(text("DROP TABLE IF EXISTS symbol CASCADE"))
+            close_all_sessions()
+            engine.dispose()
+            with engine.begin() as conn:
+                # Drop only the symbol-related tables to avoid affecting other schemas
                 conn.execute(text("DROP TABLE IF EXISTS symbol_exchange CASCADE"))
-                conn.commit()
-                SQLModel.metadata.create_all(engine)
-                # Delete index tables, these will be refilled later
-                asset_index_crud = AssetIndexCrud()
-                asset_index_crud.delete_all()
+                conn.execute(text("DROP TABLE IF EXISTS symbol CASCADE"))
 
+            # Recreate only symbol-related tables to avoid affecting other schemas/types
+            SQLModel.metadata.create_all(engine)
+            engine.dispose()
+
+            # Recreate a fresh session for subsequent ingestion operations
+            self.session = independent_session()
+
+            # Delete index tables, these will be refilled later
+            # asset_index_crud = AssetIndexCrud()
+            # asset_index_crud.delete_all()
+
+        # Run ingestions
         self.binance_symbols_ingestion()
         self.kucoin_symbols_ingestion()

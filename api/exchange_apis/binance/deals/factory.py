@@ -465,7 +465,7 @@ class BinanceDeal(BaseDeal):
 
             # Long position does not need qty in take_profit
             # initial price with 1 qty should return first match
-            last_ticker_price = self.last_ticker_price(self.active_bot.pair)
+            last_ticker_price = self.get_ticker_price(self.active_bot.pair)
 
             if self.active_bot.strategy == Strategy.margin_short:
                 # Use all available quote asset balance
@@ -485,7 +485,7 @@ class BinanceDeal(BaseDeal):
 
         else:
             self.active_bot.deal.base_order_size = self.active_bot.fiat_order_size
-            last_ticker_price = self.last_ticker_price(self.active_bot.pair)
+            last_ticker_price = self.get_ticker_price(self.active_bot.pair)
 
             qty = round_numbers_floor(
                 (self.active_bot.deal.base_order_size / last_ticker_price),
