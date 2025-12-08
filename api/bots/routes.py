@@ -18,6 +18,7 @@ from bots.models import BotModelResponse
 from tools.handle_error import StandardResponse
 from deals.gateway import DealGateway
 from databases.tables.bot_table import BotTable
+from kucoin_universal_sdk.model.common import RestError
 
 bot_blueprint = APIRouter()
 bot_ta = TypeAdapter(BotModelResponse)
@@ -171,6 +172,10 @@ def activate_by_id(id: str, session: Session = Depends(get_session)):
     except BinanceErrors as error:
         deal_instance.update_logs(message=error.message)
         return BotResponse(data=bot_model, message=error.message, error=1)
+    except RestError as error:
+        message = error.response.message if error.response else str(error)
+        deal_instance.update_logs(message=message)
+        return BotResponse(data=bot_model, message=message, error=1)
 
 
 @bot_blueprint.delete("/bot/deactivate/{id}", response_model=BotResponse, tags=["bots"])

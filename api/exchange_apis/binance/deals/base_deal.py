@@ -36,13 +36,11 @@ class BaseDeal(BinanceOrderController):
         db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable,
     ):
         super().__init__()
-        db_controller: Type[Union[PaperTradingTableCrud, BotTableCrud]]
+        self.controller: Union[PaperTradingTableCrud, BotTableCrud]
         if db_table == PaperTradingTable:
-            db_controller = PaperTradingTableCrud
+            self.controller = PaperTradingTableCrud()
         else:
-            db_controller = BotTableCrud
-
-        self.controller = db_controller()
+            self.controller = BotTableCrud()
         self.active_bot = bot
         self.symbols_crud = SymbolsCrud()
         self.market_domination_reversal: bool | None = None

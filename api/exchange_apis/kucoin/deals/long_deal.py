@@ -9,6 +9,7 @@ from tools.enum_definitions import (
 )
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
+from databases.crud.bot_crud import BotTableCrud
 from bots.models import BotModel, OrderModel, BotBase
 from exchange_apis.kucoin.deals.spot_deal import KucoinSpotDeal
 from exchange_apis.kucoin.deals.margin_deal import KucoinMarginDeal
@@ -29,6 +30,7 @@ class KucoinLongDeal(KucoinSpotDeal):
         super().__init__(bot=bot, db_table=db_table)
         self.active_bot: BotModel = bot
         self.symbol = self.get_symbol(bot.pair, bot.quote_asset)
+        self.controller: Union[PaperTradingTableCrud, BotTableCrud] = self.controller
 
     def take_profit_order(self) -> BotModel:
         """

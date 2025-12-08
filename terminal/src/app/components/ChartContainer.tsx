@@ -72,7 +72,7 @@ const ChartContainer: FC<{
                       : "secondary"
                 }
               >
-                {botProfit ? botProfit + "% " : " "}
+                {botProfit ? botProfit + "% " : "0% "}
               </Badge>{" "}
               <Badge
                 bg={

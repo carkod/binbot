@@ -1,6 +1,7 @@
 from typing import Dict, Tuple
 from databases.crud.autotrade_crud import AutotradeCrud
 from exchange_apis.kucoin.base import KucoinApi
+from tools.enum_definitions import QuoteAssets
 
 
 class KucoinBaseBalance:
@@ -9,7 +10,7 @@ class KucoinBaseBalance:
         self.autotrade_settings = AutotradeCrud().get_settings()
         self.fiat = self.autotrade_settings.fiat
 
-    def get_symbol(self, pair: str, quote: str) -> str:
+    def get_symbol(self, pair: str, quote: QuoteAssets | str) -> str:
         """
         Converts a trading pair to KuCoin's symbol format.
 
@@ -19,6 +20,9 @@ class KucoinBaseBalance:
         Returns:
             str: The trading pair in KuCoin's format "BASE-QUOTE" (e.g., "BTC-USDT").
         """
+        if isinstance(quote, QuoteAssets):
+            quote = quote.value
+
         base = pair.replace(quote, "")
         symbol = f"{base}-{quote}"
         return symbol

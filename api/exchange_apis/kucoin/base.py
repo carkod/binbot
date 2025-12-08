@@ -4,6 +4,7 @@ from kucoin_universal_sdk.api import DefaultClient
 from kucoin_universal_sdk.generate.spot.market import (
     GetPartOrderBookReqBuilder,
     GetAllSymbolsReqBuilder,
+    GetFullOrderBookReqBuilder,
 )
 from kucoin_universal_sdk.generate.account.account import (
     GetSpotAccountListReqBuilder,
@@ -14,7 +15,6 @@ from kucoin_universal_sdk.model import (
     GLOBAL_API_ENDPOINT,
 )
 from kucoin_universal_sdk.model import TransportOptionBuilder
-from kucoin_universal_sdk.generate.spot.market import GetPartOrderBookResp
 from kucoin_universal_sdk.generate.account.account.model_get_isolated_margin_account_resp import (
     GetIsolatedMarginAccountResp,
 )
@@ -113,9 +113,16 @@ class KucoinApi:
         )
         self.order_api = self.client.rest_service().get_spot_service().get_order_api()
 
-    def get_part_order_book(self, symbol: str, size: str):
-        request = GetPartOrderBookReqBuilder().set_symbol(symbol).set_size(size).build()
+    def get_part_order_book(self, symbol: str, size: int):
+        request = (
+            GetPartOrderBookReqBuilder().set_symbol(symbol).set_size(str(size)).build()
+        )
         response = self.spot_api.get_part_order_book(request)
+        return response
+
+    def get_full_order_book(self, symbol: str, size: int):
+        request = GetFullOrderBookReqBuilder().set_symbol(symbol).build()
+        response = self.spot_api.get_full_order_book(request)
         return response
 
     def get_all_symbols(self):
@@ -124,7 +131,7 @@ class KucoinApi:
         return response
 
     def get_ticker_price(self, symbol: str) -> float:
-        request = GetPartOrderBookReqBuilder().set_symbol(symbol).build()
+        request = GetPartOrderBookReqBuilder().set_symbol(symbol).set_size("1").build()
         response = self.spot_api.get_ticker(request)
         return float(response.price)
 
@@ -178,11 +185,6 @@ class KucoinApi:
         response = self.account_api.get_isolated_margin_account(request)
         return response
 
-    def get_book_depth(self, symbol: str) -> GetPartOrderBookResp:
-        request = GetPartOrderBookReqBuilder().set_symbol(symbol).build()
-        response = self.spot_api.get_part_order_book(request)
-        return response
-
     def simulate_order(
         self,
         symbol: str,
@@ -233,35 +235,51 @@ class KucoinApi:
         )
         return order
 
-    def matching_engine(self, symbol: str, order_side: bool, qty: float = 0) -> float:
+    def simple_matching_engine(self, symbol: str, order_side: bool) -> float:
         """
-        Match quantity with available 100% fill order price,
-        so that order can immediately buy/sell
-
-        AMMEND
+        Get top of book price for immediate buy/sell
+        this is good for paper trading
+        or initial price estimates
 
         @param: order_side -
             Buy order = get bid prices = False
             Sell order = get ask prices = True
         """
-        data = self.get_book_depth(symbol)
+        # Part order book only returns top 1 level at time of writing
+        data = self.get_part_order_book(symbol, size=1)
+        price = data.bids[0][0] if order_side else data.asks[0][0]
+        return price
+
+    def matching_engine(self, symbol: str, order_side: bool, qty: float = 0) -> float:
+        """
+        Match quantity with available 100% fill order price,
+        so that order can immediately buy/sell
+
+        Only use this if we need to find optimal price for given qty
+
+        @param: order_side -
+            Buy order = get bid prices = False
+            Sell order = get ask prices = True
+        """
+        # Part order book only returns top 1 level at time of writing
+        data = self.get_full_order_book(symbol, size=10)
         price = data.bids[0][0] if order_side else data.asks[0][0]
         base_qty = data.bids[0][1] if order_side else data.asks[0][1]
 
         if qty == 0:
-            return price
+            return float(price)
         else:
             buyable_qty = float(qty) / float(price)
-            if buyable_qty < base_qty:
-                return price
+            if buyable_qty < float(base_qty):
+                return float(price)
             else:
                 for i in range(1, 11):
                     price = data.bids[i][0] if order_side else data.asks[i][0]
                     base_qty = data.bids[i][1] if order_side else data.asks[i][1]
                     buyable_qty = float(qty) / float(price)
                     base_qty = 1
-                    if buyable_qty > base_qty:
-                        return price
+                    if buyable_qty > float(base_qty):
+                        return float(price)
                     else:
                         continue
                 # caller to use market price
@@ -272,19 +290,19 @@ class KucoinApi:
         symbol: str,
         qty: float,
         order_type: AddOrderSyncReq.TypeEnum = AddOrderSyncReq.TypeEnum.LIMIT,
-        price: float = 0,
     ) -> GetOrderByOrderIdResp:
+        book_price = self.matching_engine(
+            symbol, order_side=AddOrderSyncReq.SideEnum.SELL, qty=qty
+        )
         builder = (
             AddOrderSyncReqBuilder()
             .set_symbol(symbol)
             .set_side(AddOrderSyncReq.SideEnum.BUY)
             .set_type(order_type)
             .set_size(str(qty))
+            .set_price(str(book_price))
         )
-        if order_type == AddOrderSyncReq.TypeEnum.LIMIT and price > 0:
-            builder = builder.set_price(str(price)).set_time_in_force(
-                AddOrderSyncReq.TimeInForceEnum.GTC
-            )
+
         req = builder.build()
         order_response = self.order_api.add_order_sync(req)
         # order_response returns incomplete info
@@ -564,6 +582,36 @@ class KucoinApi:
             .set_from_account_type(FlexTransferReq.FromAccountTypeEnum.MAIN)
             .set_to_account_type(FlexTransferReq.ToAccountTypeEnum.ISOLATED)
             .set_to_account_tag(symbol)
+            .build()
+        )
+        return self.transfer_api.flex_transfer(req)
+
+    def transfer_main_to_trade(self, asset: str, amount: float) -> FlexTransferResp:
+        """
+        Transfer funds from main account to trade (spot trading) account.
+        """
+        req = (
+            FlexTransferReqBuilder()
+            .set_currency(asset)
+            .set_amount(str(amount))
+            .set_type(FlexTransferReq.TypeEnum.INTERNAL)
+            .set_from_account_type(FlexTransferReq.FromAccountTypeEnum.MAIN)
+            .set_to_account_type(FlexTransferReq.ToAccountTypeEnum.TRADE)
+            .build()
+        )
+        return self.transfer_api.flex_transfer(req)
+
+    def transfer_trade_to_main(self, asset: str, amount: float) -> FlexTransferResp:
+        """
+        Transfer funds from trade (spot trading) account to main account.
+        """
+        req = (
+            FlexTransferReqBuilder()
+            .set_currency(asset)
+            .set_amount(str(amount))
+            .set_type(FlexTransferReq.TypeEnum.INTERNAL)
+            .set_from_account_type(FlexTransferReq.FromAccountTypeEnum.TRADE)
+            .set_to_account_type(FlexTransferReq.ToAccountTypeEnum.MAIN)
             .build()
         )
         return self.transfer_api.flex_transfer(req)

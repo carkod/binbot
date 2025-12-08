@@ -24,6 +24,7 @@ from exchange_apis.binance.assets import Assets
 from databases.crud.symbols_crud import SymbolsCrud
 from databases.crud.asset_index_crud import AssetIndexCrud
 from databases.db import setup_kafka_db
+from sqlalchemy import text as sa_text
 
 
 class ApiDb:
@@ -38,9 +39,11 @@ class ApiDb:
 
     def init_db(self):
         SQLModel.metadata.create_all(engine)
+        # Ensure enum values exist before inserting data that depends on them
         self.init_users()
         self.init_autotrade_settings()
         self.init_test_autotrade_settings()
+        self.ensure_quoteassets_enum()
         self.create_dummy_bot()
         self.init_symbols()
         # Depends on autotrade settings
@@ -51,6 +54,20 @@ class ApiDb:
     def run_migrations(self):
         alembic_cfg = Config("alembic.ini")
         command.upgrade(alembic_cfg, "head")
+
+    def ensure_quoteassets_enum(self):
+        """
+        Ensure Postgres ENUM type `quoteassets` contains required labels like 'USDT'.
+        Uses SQLAlchemy to run a safe ALTER TYPE command.
+        """
+        try:
+            with engine.begin() as conn:
+                conn.execute(
+                    sa_text("ALTER TYPE quoteassets ADD VALUE IF NOT EXISTS 'USDT'")
+                )
+        except Exception as exc:
+            # If not Postgres or enum already managed via migrations, ignore
+            logging.debug(f"ensure_quoteassets_enum skipped: {exc}")
 
     def delete_autotrade_settings_table(self, table_name: str):
         """

@@ -71,4 +71,4 @@ class DealGateway:
         """
         Abstract method for saving bot state
         """
-        return self.deal.controller.save(bot)
+        return self.deal.controller.save(data=bot)
