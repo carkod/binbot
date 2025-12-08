@@ -50,7 +50,6 @@ from kucoin_universal_sdk.generate.margin.order.model_cancel_order_by_order_id_r
 from kucoin_universal_sdk.generate.margin.order.model_get_order_by_order_id_resp import (
     GetOrderByOrderIdResp,
 )
-from typing import Tuple
 import random
 from kucoin_universal_sdk.generate.margin.debit.model_repay_req import (
     RepayReqBuilder,
@@ -71,7 +70,6 @@ from kucoin_universal_sdk.generate.account.transfer.model_flex_transfer_req impo
 from kucoin_universal_sdk.generate.account.transfer.model_flex_transfer_resp import (
     FlexTransferResp,
 )
-from kucoin_universal_sdk.generate.margin.order.model_add_order_resp import AddOrderResp
 
 
 class KucoinApi:
@@ -442,12 +440,12 @@ class KucoinApi:
         )
         return order
 
-    def cancel_margin_order_by_order_id(self, symbol: str, order_id: str):
+    def cancel_margin_order_by_order_id(self, symbol: str, order_id: int):
         # Margin API uses cancel by order id req builder from margin.order
         req_cancel = (
             CancelOrderByOrderIdReqBuilder()
             .set_symbol(symbol)
-            .set_order_id(order_id)
+            .set_order_id(str(order_id))
             .build()
         )
         return self.margin_order_api.cancel_order_by_order_id(req_cancel)
@@ -471,8 +469,8 @@ class KucoinApi:
         self,
         symbol: str,
         side: AddOrderReq.SideEnum,
-        order_type: AddOrderReq.TypeEnum,
-        qty: float,
+        order_type: AddOrderReq.TypeEnum = AddOrderReq.TypeEnum.LIMIT,
+        qty: float = 1,
     ) -> GetOrderByOrderIdResp:
         """
         Fake isolated margin order response echoing inputs.
@@ -518,13 +516,13 @@ class KucoinApi:
 
     def repay_margin_loan(
         self,
-        quote_asset: str,
+        asset: str,
         symbol: str,
         amount: float,
     ) -> RepayResp:
         req = (
             RepayReqBuilder()
-            .set_currency(quote_asset)
+            .set_currency(asset)
             .set_symbol(symbol)
             .set_size(str(amount))
             .set_is_isolated(True)
@@ -533,7 +531,7 @@ class KucoinApi:
         return self.debit_api.repay(req)
 
     def transfer_isolated_margin_to_spot(
-        self, currency: str, symbol: str, amount: float
+        self, asset: str, symbol: str, amount: float
     ) -> FlexTransferResp:
         """
         Transfer funds from isolated margin account back to spot (main) account.
@@ -541,7 +539,7 @@ class KucoinApi:
         """
         req = (
             FlexTransferReqBuilder()
-            .set_currency(currency)
+            .set_currency(asset)
             .set_amount(str(amount))
             .set_type(FlexTransferReq.TypeEnum.INTERNAL)
             .set_from_account_type(FlexTransferReq.FromAccountTypeEnum.ISOLATED)
@@ -552,7 +550,7 @@ class KucoinApi:
         return self.transfer_api.flex_transfer(req)
 
     def transfer_spot_to_isolated_margin(
-        self, currency: str, symbol: str, amount: float
+        self, asset: str, symbol: str, amount: float
     ) -> FlexTransferResp:
         """
         Transfer funds from spot (main) account to isolated margin account.
@@ -560,7 +558,7 @@ class KucoinApi:
         """
         req = (
             FlexTransferReqBuilder()
-            .set_currency(currency)
+            .set_currency(asset)
             .set_amount(str(amount))
             .set_type(FlexTransferReq.TypeEnum.INTERNAL)
             .set_from_account_type(FlexTransferReq.FromAccountTypeEnum.MAIN)
@@ -572,7 +570,7 @@ class KucoinApi:
 
     def create_margin_loan(
         self,
-        currency: str,
+        asset: str,
         symbol: str,
         amount: float,
         is_isolated: bool = True,
@@ -583,7 +581,7 @@ class KucoinApi:
         """
         req = (
             BorrowReqBuilder()
-            .set_currency(currency)
+            .set_currency(asset)
             .set_symbol(symbol)
             .set_size(str(amount))
             .set_is_isolated(is_isolated)

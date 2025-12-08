@@ -1,6 +1,5 @@
 import logging
 from typing import Type, Union, Any, Tuple
-from exchange_apis.kucoin.deals.spot_deal import KucoinSpotDeal
 from tools.maths import (
     round_numbers_floor,
     round_timestamp,
@@ -9,7 +8,7 @@ from tools.maths import (
 )
 from databases.crud.symbols_crud import SymbolsCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
-from bots.models import BotModel, OrderModel, BotBase
+from bots.models import BotModel, OrderModel
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.bot_crud import BotTableCrud
 from exchange_apis.kucoin.deals.base import KucoinBaseBalance
@@ -26,8 +25,6 @@ from kucoin_universal_sdk.generate.account.account.model_get_isolated_margin_acc
     GetIsolatedMarginAccountAssets,
 )
 from tools.exceptions import MarginLoanNotFound
-from kucoin_universal_sdk.generate.margin.order.model_add_order_resp import AddOrderResp
-from apis import BinbotApi
 
 
 class KucoinMarginDeal(KucoinBaseBalance):
@@ -41,6 +38,7 @@ class KucoinMarginDeal(KucoinBaseBalance):
         bot: BotModel,
         db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable,
     ) -> None:
+        super().__init__()
         self.active_bot = bot
         self.db_table = db_table
         self.symbols_crud = SymbolsCrud()
@@ -49,6 +47,7 @@ class KucoinMarginDeal(KucoinBaseBalance):
         self.symbol_info = SymbolsCrud().get_symbol(bot.pair)
         self.price_precision = self.symbol_info.price_precision
         self.qty_precision = self.symbol_info.qty_precision
+        self.symbol = self.get_symbol(bot.pair, bot.quote_asset)
 
     def get_isolated_balance(self) -> GetIsolatedMarginAccountAssets | None:
         symbol = self.get_symbol(self.active_bot.pair, self.active_bot.quote_asset)
@@ -244,7 +243,7 @@ class KucoinMarginDeal(KucoinBaseBalance):
 
         if isinstance(self.controller, PaperTradingTableCrud):
             system_order = self.kucoin_api.simulate_margin_order(
-                pair=self.active_bot.pair, side=AddOrderReq.SideEnum.SELL, qty=qty
+                symbol=self.symbol, side=AddOrderReq.SideEnum.SELL, qty=qty
             )
 
         else:

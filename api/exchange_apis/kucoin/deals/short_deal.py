@@ -4,7 +4,6 @@ from tools.enum_definitions import (
     DealType,
     Status,
     Strategy,
-    OrderSide,
     OrderStatus,
 )
 from databases.tables.bot_table import BotTable, PaperTradingTable
@@ -40,12 +39,11 @@ class KucoinShortDeal(KucoinMarginDeal):
         """
         # Margin buy (buy back)
         if isinstance(self.controller, PaperTradingTableCrud):
-            order_response, system_order = self.kucoin_api.simulate_margin_order(
+            system_order = self.kucoin_api.simulate_margin_order(
                 symbol=self.symbol, side=AddOrderReq.SideEnum.BUY
             )
         else:
-            order_response, system_order = self.margin_liquidation(self.active_bot.pair)
-
+            system_order = self.margin_liquidation(self.active_bot.pair)
         price = float(system_order.price)
 
         stop_loss_order = OrderModel(
@@ -94,12 +92,12 @@ class KucoinShortDeal(KucoinMarginDeal):
         """
         # Margin buy (buy back)
         if isinstance(self.controller, PaperTradingTableCrud):
-            order_response, system_order = self.kucoin_api.simulate_margin_order(
+            system_order = self.kucoin_api.simulate_margin_order(
                 self.active_bot.pair, AddOrderReq.SideEnum.BUY
             )
         else:
             self.controller.update_logs("Attempting to liquidate loan", self.active_bot)
-            order_response, system_order = self.margin_liquidation(self.active_bot.pair)
+            system_order = self.margin_liquidation(self.active_bot.pair)
 
         price = float(system_order.price)
 
@@ -160,7 +158,8 @@ class KucoinShortDeal(KucoinMarginDeal):
 
         # Create new bot
         created_bot = self.controller.create(new_bot)
-        spot_deal = KucoinSpotDeal(bot=created_bot, db_table=self.db_table)
+        bot_model = BotModel.model_validate(created_bot.model_dump())
+        spot_deal = KucoinSpotDeal(bot=bot_model, db_table=self.db_table)
 
         # to avoid circular imports make network request
         # This class is already imported for switch_to_margin_short
@@ -340,13 +339,11 @@ class KucoinShortDeal(KucoinMarginDeal):
         balance = self.get_isolated_balance()
         if balance:
             if isinstance(self.controller, PaperTradingTableCrud):
-                order_response, system_order = self.kucoin_api.simulate_margin_order(
+                system_order = self.kucoin_api.simulate_margin_order(
                     symbol=self.symbol, side=AddOrderReq.SideEnum.BUY
                 )
             else:
-                order_response, system_order = self.margin_liquidation(
-                    self.active_bot.pair
-                )
+                system_order = self.margin_liquidation(self.active_bot.pair)
 
             price = float(system_order.price)
 
