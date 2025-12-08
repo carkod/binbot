@@ -9,6 +9,20 @@ class KucoinBaseBalance:
         self.autotrade_settings = AutotradeCrud().get_settings()
         self.fiat = self.autotrade_settings.fiat
 
+    def get_symbol(self, pair: str, quote: str) -> str:
+        """
+        Converts a trading pair to KuCoin's symbol format.
+
+        Args:
+            pair (str): The trading pair in the format "BASEQUOTE" (e.g., "BTCUSDT").
+
+        Returns:
+            str: The trading pair in KuCoin's format "BASE-QUOTE" (e.g., "BTC-USDT").
+        """
+        base = pair.replace(quote, "")
+        symbol = f"{base}-{quote}"
+        return symbol
+
     def compute_balance(self) -> Tuple[Dict[str, float], float, float]:
         """
         Computes total balances, estimated total fiat, and fiat available

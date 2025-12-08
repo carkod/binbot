@@ -188,6 +188,7 @@ class BaseDeal(BinanceOrderController):
         reduce number of requests to avoid rate limit.
         """
         self.isolated_balance = self.get_isolated_balance(pair)
+        symbol = self.get_symbol(pair, self.active_bot.quote_asset)
         if not self.isolated_balance:
             raise BinbotErrors("No isolated margin found for pair")
 
@@ -207,7 +208,7 @@ class BaseDeal(BinanceOrderController):
                 try:
                     qty = round_numbers_ceiling(repay_amount - free, self.qty_precision)
                     buy_margin_response = self.buy_margin_order(
-                        symbol=pair,
+                        symbol=symbol,
                         qty=qty,
                     )
                     repay_amount, free = self.compute_margin_buy_back()

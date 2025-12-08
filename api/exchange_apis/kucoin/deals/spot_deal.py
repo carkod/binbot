@@ -6,7 +6,6 @@ from tools.enum_definitions import (
     QuoteAssets,
     Status,
     Strategy,
-    OrderSide,
 )
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
@@ -14,7 +13,7 @@ from databases.crud.bot_crud import BotTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
 from bots.models import BotModel, OrderModel
 from exchange_apis.kucoin.deals.base import KucoinBaseBalance
-from tools.handle_error import BinanceErrors
+from kucoin_universal_sdk.model.common import RestError
 from time import sleep
 from kucoin_universal_sdk.generate.spot.order.model_add_order_sync_resp import (
     AddOrderSyncResp,
@@ -232,7 +231,7 @@ class KucoinSpotDeal(KucoinBaseBalance):
         if isinstance(self.controller, PaperTradingTableCrud):
             order_response, system_order = self.kucoin_api.simulate_order(
                 symbol=self.active_bot.pair,
-                side=OrderSide.buy,
+                side=AddOrderReq.SideEnum.BUY,
             )
         else:
             try:
@@ -240,23 +239,25 @@ class KucoinSpotDeal(KucoinBaseBalance):
                     symbol=self.active_bot.pair,
                     qty=(qty * repurchase_multiplier),
                 )
-            except BinanceErrors as error:
-                if error.code == -2010:
-                    self.controller.update_logs(
-                        bot=self.active_bot,
-                        log_message=error.message,
-                    )
-                    if (
-                        error.message
-                        == "This symbol is not permitted for this account."
-                    ):
-                        return self.active_bot
+            except RestError as error:
+                resp = error.get_common_response()
+                code = getattr(resp, "code", None)
+                message = getattr(resp, "message", None)
+                # Fallback to raw error payload if top-level fields are empty
+                try:
+                    raw_err = resp.error()
+                    if raw_err and isinstance(raw_err, dict):
+                        code = raw_err.get("code", code)
+                        message = raw_err.get("msg", message)
+                except Exception:
+                    pass
 
-                    if repurchase_multiplier > 0.80:
-                        self.base_order(
-                            repurchase_multiplier=repurchase_multiplier - 0.05
-                        )
-                    return self.active_bot
+                # Log useful error details
+                self.controller.update_logs(
+                    bot=self.active_bot,
+                    log_message=f"Order failed (code={code}): {message}",
+                )
+                return self.active_bot
 
         # mostly for mypy to be happy
         if not order_response or not system_order:
@@ -352,7 +353,7 @@ class KucoinSpotDeal(KucoinBaseBalance):
             if isinstance(self.controller, PaperTradingTableCrud):
                 order_response, system_order = self.kucoin_api.simulate_order(
                     symbol=self.active_bot.pair,
-                    side=OrderSide.sell,
+                    side=AddOrderReq.SideEnum.SELL,
                 )
             else:
                 order_response, system_order = self.kucoin_api.sell_order(

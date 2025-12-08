@@ -52,6 +52,26 @@ from kucoin_universal_sdk.generate.margin.order.model_get_order_by_order_id_resp
 )
 from typing import Tuple
 import random
+from kucoin_universal_sdk.generate.margin.debit.model_repay_req import (
+    RepayReqBuilder,
+)
+from kucoin_universal_sdk.generate.margin.debit.model_repay_resp import (
+    RepayResp,
+)
+from kucoin_universal_sdk.generate.margin.debit.model_borrow_req import (
+    BorrowReqBuilder,
+)
+from kucoin_universal_sdk.generate.margin.debit.model_borrow_resp import (
+    BorrowResp,
+)
+from kucoin_universal_sdk.generate.account.transfer.model_flex_transfer_req import (
+    FlexTransferReqBuilder,
+    FlexTransferReq,
+)
+from kucoin_universal_sdk.generate.account.transfer.model_flex_transfer_resp import (
+    FlexTransferResp,
+)
+from kucoin_universal_sdk.generate.margin.order.model_add_order_resp import AddOrderResp
 
 
 class KucoinApi:
@@ -88,6 +108,10 @@ class KucoinApi:
         )
         self.margin_order_api = (
             self.client.rest_service().get_margin_service().get_order_api()
+        )
+        self.debit_api = self.client.rest_service().get_margin_service().get_debit_api()
+        self.transfer_api = (
+            self.client.rest_service().get_account_service().get_transfer_api()
         )
         self.order_api = self.client.rest_service().get_spot_service().get_order_api()
 
@@ -167,7 +191,7 @@ class KucoinApi:
         side: AddOrderSyncReq.SideEnum,
         order_type: AddOrderSyncReq.TypeEnum = AddOrderSyncReq.TypeEnum.LIMIT,
         qty: float = 1,
-    ) -> Tuple[AddOrderSyncResp, GetOrderByOrderIdResp]:
+    ) -> GetOrderByOrderIdResp:
         """
         Fake synchronous order response shaped similarly to add_order_sync.
         Returns a dict echoing inputs and a computed price when missing.
@@ -176,22 +200,8 @@ class KucoinApi:
         # fake data
         ts = int(time() * 1000)
         order_id = str(random.randint(1000000000, 9999999999))
-        order_response = AddOrderSyncResp.model_validate(
-            {
-                "order_time": ts,
-                "order_id": order_id,
-                "symbol": symbol,
-                "side": side,
-                "type": order_type,
-                "time_in_force": AddOrderSyncReq.TimeInForceEnum.GTC.value,
-                "size": str(qty),
-                "price": str(book_price),
-                "status": "Done",
-                "in_order_book": True,
-                "fee": "0",
-            }
-        )
-        system_order = GetOrderByOrderIdResp.model_validate(
+
+        order = GetOrderByOrderIdResp.model_validate(
             {
                 "order_id": order_id,
                 "symbol": symbol,
@@ -223,7 +233,7 @@ class KucoinApi:
                 "created_at": ts,
             }
         )
-        return order_response, system_order
+        return order
 
     def matching_engine(self, symbol: str, order_side: bool, qty: float = 0) -> float:
         """
@@ -265,7 +275,7 @@ class KucoinApi:
         qty: float,
         order_type: AddOrderSyncReq.TypeEnum = AddOrderSyncReq.TypeEnum.LIMIT,
         price: float = 0,
-    ) -> Tuple[AddOrderSyncResp, GetOrderByOrderIdResp]:
+    ) -> GetOrderByOrderIdResp:
         builder = (
             AddOrderSyncReqBuilder()
             .set_symbol(symbol)
@@ -280,10 +290,10 @@ class KucoinApi:
         req = builder.build()
         order_response = self.order_api.add_order_sync(req)
         # order_response returns incomplete info
-        system_order = self.get_order_by_order_id(
+        order = self.get_order_by_order_id(
             symbol=symbol, order_id=order_response.order_id
         )
-        return order_response, system_order
+        return order
 
     def sell_order(
         self,
@@ -291,7 +301,7 @@ class KucoinApi:
         qty: float,
         order_type: AddOrderSyncReq.TypeEnum = AddOrderSyncReq.TypeEnum.LIMIT,
         price: float = 0,
-    ) -> Tuple[AddOrderSyncResp, GetOrderByOrderIdResp]:
+    ) -> GetOrderByOrderIdResp:
         builder = (
             AddOrderSyncReqBuilder()
             .set_symbol(symbol)
@@ -305,10 +315,10 @@ class KucoinApi:
             )
         req = builder.build()
         order_response = self.order_api.add_order_sync(req)
-        system_order = self.get_order_by_order_id(
+        order = self.get_order_by_order_id(
             symbol=symbol, order_id=order_response.order_id
         )
-        return order_response, system_order
+        return order
 
     def batch_add_orders_sync(self, orders: list[dict]) -> AddOrderSyncResp:
         """
@@ -360,22 +370,21 @@ class KucoinApi:
         return self.order_api.get_open_orders(req)
 
     # --- Margin (Isolated) operations ---
-    def create_margin_order(
+    def buy_margin_order(
         self,
         symbol: str,
-        side: AddOrderReq.SideEnum,
-        order_type: AddOrderReq.TypeEnum,
         qty: float,
+        order_type: AddOrderReq.TypeEnum = AddOrderReq.TypeEnum.LIMIT,
         price: float = 0,
         time_in_force: AddOrderReq.TimeInForceEnum = AddOrderReq.TimeInForceEnum.GTC,
         client_oid: str | None = None,
         auto_borrow: bool = False,
         auto_repay: bool = False,
-    ):
+    ) -> GetOrderByOrderIdResp:
         builder = (
             AddOrderReqBuilder()
             .set_symbol(symbol)
-            .set_side(side)
+            .set_side(AddOrderReq.SideEnum.BUY)
             .set_type(order_type)
             .set_size(str(qty))
             .set_time_in_force(time_in_force)
@@ -391,7 +400,47 @@ class KucoinApi:
             builder = builder.set_auto_repay(True)
 
         req = builder.build()
-        return self.margin_order_api.add_order(req)
+        order_response = self.margin_order_api.add_order(req)
+        order = self.get_margin_order_by_order_id(
+            symbol=symbol, order_id=order_response.order_id
+        )
+        return order
+
+    def sell_margin_order(
+        self,
+        symbol: str,
+        qty: float,
+        order_type: AddOrderReq.TypeEnum = AddOrderReq.TypeEnum.LIMIT,
+        price: float = 0,
+        time_in_force: AddOrderReq.TimeInForceEnum = AddOrderReq.TimeInForceEnum.GTC,
+        client_oid: str | None = None,
+        auto_borrow: bool = False,
+        auto_repay: bool = False,
+    ) -> GetOrderByOrderIdResp:
+        builder = (
+            AddOrderReqBuilder()
+            .set_symbol(symbol)
+            .set_side(AddOrderReq.SideEnum.SELL)
+            .set_type(order_type)
+            .set_size(str(qty))
+            .set_time_in_force(time_in_force)
+            .set_is_isolated(True)
+        )
+        if client_oid:
+            builder = builder.set_client_oid(client_oid)
+        if order_type == AddOrderReq.TypeEnum.LIMIT and price > 0:
+            builder = builder.set_price(str(price))
+        if auto_borrow:
+            builder = builder.set_auto_borrow(True)
+        if auto_repay:
+            builder = builder.set_auto_repay(True)
+
+        req = builder.build()
+        order_response = self.margin_order_api.add_order(req)
+        order = self.get_margin_order_by_order_id(
+            symbol=symbol, order_id=order_response.order_id
+        )
+        return order
 
     def cancel_margin_order_by_order_id(self, symbol: str, order_id: str):
         # Margin API uses cancel by order id req builder from margin.order
@@ -424,7 +473,7 @@ class KucoinApi:
         side: AddOrderReq.SideEnum,
         order_type: AddOrderReq.TypeEnum,
         qty: float,
-    ) -> Tuple[AddOrderSyncResp, GetOrderByOrderIdResp]:
+    ) -> GetOrderByOrderIdResp:
         """
         Fake isolated margin order response echoing inputs.
         """
@@ -433,22 +482,7 @@ class KucoinApi:
         )
         ts = int(time() * 1000)
         order_id = str(random.randint(1000000000, 9999999999))
-        order_response = AddOrderSyncResp.model_validate(
-            {
-                "order_time": ts,
-                "order_id": order_id,
-                "symbol": symbol,
-                "side": side,
-                "type": order_type,
-                "time_in_force": AddOrderSyncReq.TimeInForceEnum.GTC.value,
-                "size": str(qty),
-                "price": str(book_price),
-                "status": "Done",
-                "in_order_book": True,
-                "fee": "0",
-            }
-        )
-        system_order = GetOrderByOrderIdResp.model_validate(
+        order = GetOrderByOrderIdResp.model_validate(
             {
                 "order_id": order_id,
                 "symbol": symbol,
@@ -480,4 +514,79 @@ class KucoinApi:
                 "created_at": ts,
             }
         )
-        return order_response, system_order
+        return order
+
+    def repay_margin_loan(
+        self,
+        quote_asset: str,
+        symbol: str,
+        amount: float,
+    ) -> RepayResp:
+        req = (
+            RepayReqBuilder()
+            .set_currency(quote_asset)
+            .set_symbol(symbol)
+            .set_size(str(amount))
+            .set_is_isolated(True)
+            .build()
+        )
+        return self.debit_api.repay(req)
+
+    def transfer_isolated_margin_to_spot(
+        self, currency: str, symbol: str, amount: float
+    ) -> FlexTransferResp:
+        """
+        Transfer funds from isolated margin account back to spot (main) account.
+        `symbol` must be the isolated pair like "BTC-USDT".
+        """
+        req = (
+            FlexTransferReqBuilder()
+            .set_currency(currency)
+            .set_amount(str(amount))
+            .set_type(FlexTransferReq.TypeEnum.INTERNAL)
+            .set_from_account_type(FlexTransferReq.FromAccountTypeEnum.ISOLATED)
+            .set_from_account_tag(symbol)
+            .set_to_account_type(FlexTransferReq.ToAccountTypeEnum.MAIN)
+            .build()
+        )
+        return self.transfer_api.flex_transfer(req)
+
+    def transfer_spot_to_isolated_margin(
+        self, currency: str, symbol: str, amount: float
+    ) -> FlexTransferResp:
+        """
+        Transfer funds from spot (main) account to isolated margin account.
+        `symbol` must be the isolated pair like "BTC-USDT".
+        """
+        req = (
+            FlexTransferReqBuilder()
+            .set_currency(currency)
+            .set_amount(str(amount))
+            .set_type(FlexTransferReq.TypeEnum.INTERNAL)
+            .set_from_account_type(FlexTransferReq.FromAccountTypeEnum.MAIN)
+            .set_to_account_type(FlexTransferReq.ToAccountTypeEnum.ISOLATED)
+            .set_to_account_tag(symbol)
+            .build()
+        )
+        return self.transfer_api.flex_transfer(req)
+
+    def create_margin_loan(
+        self,
+        currency: str,
+        symbol: str,
+        amount: float,
+        is_isolated: bool = True,
+    ) -> BorrowResp:
+        """
+        Create a margin loan (borrow) on KuCoin.
+        For isolated margin, pass the trading pair in `symbol` (e.g., "BTC-USDT") and set `is_isolated=True`.
+        """
+        req = (
+            BorrowReqBuilder()
+            .set_currency(currency)
+            .set_symbol(symbol)
+            .set_size(str(amount))
+            .set_is_isolated(is_isolated)
+            .build()
+        )
+        return self.debit_api.borrow(req)
