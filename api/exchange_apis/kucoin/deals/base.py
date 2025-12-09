@@ -27,10 +27,48 @@ class KucoinBaseBalance:
         symbol = f"{base}-{quote}"
         return symbol
 
-    def compute_balance(self) -> Tuple[Dict[str, float], float, float]:
+    def compute_balance(self) -> Tuple[Dict[str, Dict[str, float]], float, float]:
         """
         Computes total balances, estimated total fiat, and fiat available
         using the KuCoin APIs available on the passed `accounts` instance.
+
+        Returns:
+            (total_balances, estimated_total_fiat, fiat_available)
+        """
+
+        result_balances: Dict[str, Dict[str, float]] = {}
+        estimated_total_fiat = 0.0
+        fiat_available = 0.0
+
+        kucoin_balances = self.kucoin_api.get_account_balance_by_type()
+        for account_type, balances in kucoin_balances.items():
+            if account_type.value not in result_balances:
+                result_balances[account_type.value] = {}
+            for key, value in balances.items():
+                if float(value["balance"]) > 0:
+                    # we don't want to convert USDC, TUSD or USDT to itself
+                    if key not in [
+                        self.fiat,
+                        "USDC",
+                        "TUSD",
+                        "USDT",
+                    ]:
+                        rate = self.kucoin_api.get_ticker_price(f"{key}-{self.fiat}")
+                        fiat_available += float(value["balance"]) * float(rate)
+                        estimated_total_fiat += float(value["balance"]) * float(rate)
+                    else:
+                        estimated_total_fiat += float(value["balance"])
+
+                    result_balances[account_type.value][key] = float(value["balance"])
+
+        return result_balances, estimated_total_fiat, fiat_available
+
+    def normalized_compute_balance(
+        self,
+    ) -> Tuple[Dict[str, float], float, float]:
+        """
+        compute_balance but backwards compatible with currently stored
+        balances structure.
 
         Returns:
             (total_balances, estimated_total_fiat, fiat_available)
@@ -40,23 +78,24 @@ class KucoinBaseBalance:
         estimated_total_fiat = 0.0
         fiat_available = 0.0
 
-        kucoin_balances = self.kucoin_api.get_account_balance()
-        for key, value in kucoin_balances.items():
-            if float(value["balance"]) > 0:
-                # we don't want to convert USDC, TUSD or USDT to itself
-                if key not in [
-                    self.fiat,
-                    "USDC",
-                    "TUSD",
-                    "USDT",
-                ]:
-                    rate = self.kucoin_api.get_ticker_price(f"{key}-{self.fiat}")
-                    fiat_available += float(value["balance"]) * float(rate)
-                    estimated_total_fiat += float(value["balance"]) * float(rate)
-                else:
-                    estimated_total_fiat += float(value["balance"])
+        kucoin_balances = self.kucoin_api.get_account_balance_by_type()
+        for account_type, balances in kucoin_balances.items():
+            for key, value in balances.items():
+                if float(value["balance"]) > 0:
+                    # we don't want to convert USDC, TUSD or USDT to itself
+                    if key not in [
+                        self.fiat,
+                        "USDC",
+                        "TUSD",
+                        "USDT",
+                    ]:
+                        rate = self.kucoin_api.get_ticker_price(f"{key}-{self.fiat}")
+                        fiat_available += float(value["balance"]) * float(rate)
+                        estimated_total_fiat += float(value["balance"]) * float(rate)
+                    else:
+                        estimated_total_fiat += float(value["balance"])
 
-                result_balances[key] = float(value["balance"])
+                    result_balances[key] = float(value["balance"])
 
         return result_balances, estimated_total_fiat, fiat_available
 

@@ -237,7 +237,7 @@ class BotTableCrud:
                         order_type=order.order_type,
                         time_in_force=order.time_in_force,
                         timestamp=order.timestamp,
-                        order_id=order.order_id,
+                        order_id=str(order.order_id),
                         order_side=order.order_side,
                         pair=order.pair,
                         qty=order.qty,

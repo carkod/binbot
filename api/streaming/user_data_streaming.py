@@ -45,7 +45,7 @@ class UserDataStreaming(Database, BinanceApi):
         else:
             price = float(result["L"])
 
-        initial_order.order_id = int(result["i"])
+        initial_order.order_id = str(result["i"])
         initial_order.status = result["X"]
         initial_order.qty = float(result["q"])
         initial_order.order_side = result["S"]

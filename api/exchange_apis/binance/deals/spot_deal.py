@@ -50,7 +50,7 @@ class BinanceSpotDeal(BinanceDeal):
             if order.status == OrderStatus.NEW:
                 try:
                     self.delete_order(
-                        symbol=self.active_bot.pair, order_id=order.order_id
+                        symbol=self.active_bot.pair, order_id=int(order.order_id)
                     )
                 except HTTPError:
                     # No order to cancel

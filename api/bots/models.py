@@ -11,7 +11,7 @@ from deals.models import DealModel
 from pydantic import BaseModel, Field, field_validator
 from databases.utils import timestamp
 from tools.handle_error import IResponseBase
-from tools.enum_definitions import DealType, OrderType, OrderStatus
+from tools.enum_definitions import DealType, OrderStatus
 from tools.maths import ts_to_humandate
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.tables.deal_table import DealTable
@@ -20,11 +20,17 @@ from databases.utils import Amount
 
 
 class OrderModel(BaseModel):
-    order_type: OrderType
+    order_type: str = Field(
+        description="Because every exchange has different naming, we should keep it as a str rather than OrderType enum"
+    )
     time_in_force: str
     timestamp: int = Field(default=0)
-    order_id: int
-    order_side: str
+    order_id: int | str = Field(
+        description="Because every exchange has id type, we should keep it as looose as possible. Int is for backwards compatibility"
+    )
+    order_side: str = Field(
+        description="Because every exchange has different naming, we should keep it as a str rather than OrderType enum"
+    )
     pair: str
     qty: float
     status: OrderStatus

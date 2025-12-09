@@ -150,7 +150,7 @@ class ShortDeal(BinanceMarginDeal):
                     )
                     try:
                         self.cancel_margin_order(
-                            symbol=self.active_bot.pair, order_id=d.order_id
+                            symbol=self.active_bot.pair, order_id=int(d.order_id)
                         )
                     except BinanceErrors:
                         break

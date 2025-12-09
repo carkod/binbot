@@ -48,6 +48,7 @@ class ApiDb:
         self.init_symbols()
         # Depends on autotrade settings
         self.init_balances()
+        self.migrations()
 
         logging.info("Finishing db operations")
 
@@ -68,6 +69,65 @@ class ApiDb:
         except Exception as exc:
             # If not Postgres or enum already managed via migrations, ignore
             logging.debug(f"ensure_quoteassets_enum skipped: {exc}")
+
+    def migrations(self):
+        """
+        Migrate exchange_order table columns from enums to strings:
+        - order_type: OrderType enum -> VARCHAR
+        - order_side: OrderSide enum -> VARCHAR
+        - order_id: BIGINT -> VARCHAR
+
+        Handles conversion of existing data including hex order_ids.
+        """
+        try:
+            with engine.begin() as conn:
+                # 1. Convert order_id from BIGINT to VARCHAR
+                # First add a temporary column
+                conn.execute(
+                    sa_text(
+                        "ALTER TABLE exchange_order ADD COLUMN order_id_temp VARCHAR"
+                    )
+                )
+                # Copy data, converting integers to strings
+                conn.execute(
+                    sa_text(
+                        "UPDATE exchange_order SET order_id_temp = CAST(order_id AS VARCHAR)"
+                    )
+                )
+                # Drop old column and rename temp
+                conn.execute(sa_text("ALTER TABLE exchange_order DROP COLUMN order_id"))
+                conn.execute(
+                    sa_text(
+                        "ALTER TABLE exchange_order RENAME COLUMN order_id_temp TO order_id"
+                    )
+                )
+                conn.execute(
+                    sa_text(
+                        "ALTER TABLE exchange_order ALTER COLUMN order_id SET NOT NULL"
+                    )
+                )
+
+                # 2. Convert order_type from enum to VARCHAR
+                conn.execute(
+                    sa_text(
+                        "ALTER TABLE exchange_order ALTER COLUMN order_type TYPE VARCHAR USING order_type::VARCHAR"
+                    )
+                )
+
+                # 3. Convert order_side from enum to VARCHAR
+                conn.execute(
+                    sa_text(
+                        "ALTER TABLE exchange_order ALTER COLUMN order_side TYPE VARCHAR USING order_side::VARCHAR"
+                    )
+                )
+
+                logging.info(
+                    "Successfully migrated exchange_order columns to string types"
+                )
+        except Exception as exc:
+            logging.warning(
+                f"migrate_exchange_order_columns failed (may already be migrated): {exc}"
+            )
 
     def delete_autotrade_settings_table(self, table_name: str):
         """

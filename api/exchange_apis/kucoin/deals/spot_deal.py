@@ -61,22 +61,26 @@ class KucoinSpotDeal(KucoinBaseBalance):
         result_balances, _, fiat_available = self.compute_balance()
         quote_asset = self.active_bot.quote_asset.value
 
-        if quote_asset in result_balances:
-            available_balance = float(result_balances[quote_asset])
-            if available_balance > 0:
-                return True
+        # in theory main account should never be empty
+        if quote_asset in result_balances["main"]:
+            if "trade" in result_balances and quote_asset in result_balances["trade"]:
+                if float(result_balances["trade"][quote_asset]) > 0:
+                    return True
 
-        response = self.kucoin_api.transfer_main_to_trade(
-            asset=quote_asset, amount=self.active_bot.fiat_order_size
-        )
-
-        order_id = response.get("orderId", None)
-        if order_id:
-            self.controller.update_logs(
-                bot=self.active_bot,
-                log_message=f"Transferred {self.active_bot.fiat_order_size} {quote_asset} from main to trading account.",
+            response = self.kucoin_api.transfer_main_to_trade(
+                asset=quote_asset, amount=self.active_bot.fiat_order_size
             )
-            return True
+            if response.order_id:
+                self.controller.update_logs(
+                    bot=self.active_bot,
+                    log_message=f"Transferred {self.active_bot.fiat_order_size} {quote_asset} from main to trading account.",
+                )
+                return True
+            else:
+                self.controller.update_logs(
+                    bot=self.active_bot,
+                    log_message=f"Failed to transfer {self.active_bot.fiat_order_size} {quote_asset} from main to trading account.",
+                )
 
         return False
 
@@ -94,7 +98,7 @@ class KucoinSpotDeal(KucoinBaseBalance):
         last_ticker_price = self.kucoin_api.get_ticker_price(self.symbol)
 
         if quote_asset in result_balances:
-            available_balance = float(result_balances[quote_asset])
+            available_balance = float(result_balances["trade"][quote_asset])
             if available_balance > 0:
                 qty = round_numbers(
                     available_balance / last_ticker_price, self.qty_precision
