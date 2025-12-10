@@ -1,20 +1,19 @@
 from __future__ import annotations
 from typing import Callable, Optional, Sequence
 from streaming.socket_manager import AsyncBinanceWebsocketClient
-import json
 import requests
 
 
 class AsyncKucoinWebsocketStreamClient(AsyncBinanceWebsocketClient):
     """
     Kucoin WebSocket client for market data streaming.
-    
+
     Kucoin uses a different connection model than Binance:
     1. First, obtain connection details via REST API
     2. Connect to the websocket with token
     3. Subscribe to channels
     """
-    
+
     def __init__(
         self,
         stream_url: str = None,  # Will be obtained from API
@@ -29,7 +28,7 @@ class AsyncKucoinWebsocketStreamClient(AsyncBinanceWebsocketClient):
         # Get Kucoin websocket connection details
         if stream_url is None:
             stream_url = self._get_kucoin_ws_url()
-        
+
         super().__init__(
             stream_url=stream_url,
             on_message=on_message,
@@ -50,11 +49,10 @@ class AsyncKucoinWebsocketStreamClient(AsyncBinanceWebsocketClient):
         try:
             # Public websocket endpoint (no authentication needed for market data)
             response = requests.post(
-                "https://api.kucoin.com/api/v1/bullet-public",
-                timeout=10
+                "https://api.kucoin.com/api/v1/bullet-public", timeout=10
             )
             data = response.json()
-            
+
             if data.get("code") == "200000" and data.get("data"):
                 token = data["data"]["token"]
                 endpoint = data["data"]["instanceServers"][0]["endpoint"]
@@ -64,7 +62,7 @@ class AsyncKucoinWebsocketStreamClient(AsyncBinanceWebsocketClient):
             else:
                 # Fallback to default endpoint
                 return "wss://ws-api-spot.kucoin.com"
-        except Exception as e:
+        except Exception:
             # Fallback to default endpoint if API call fails
             return "wss://ws-api-spot.kucoin.com"
 
@@ -77,11 +75,11 @@ class AsyncKucoinWebsocketStreamClient(AsyncBinanceWebsocketClient):
     ) -> None:
         """
         Subscribe/unsubscribe to Kucoin kline (candle) streams.
-        
+
         Kucoin uses a different format:
         - Topic: /market/candles:{symbol}_{interval}
         - Example: /market/candles:BTC-USDT_15min
-        
+
         Args:
             markets: List of trading pairs (e.g., ["BTC-USDT", "ETH-USDT"])
             interval: Kline interval (e.g., "15min", "1hour", "1day")
@@ -90,33 +88,33 @@ class AsyncKucoinWebsocketStreamClient(AsyncBinanceWebsocketClient):
         """
         if id is None:
             id = self.get_timestamp()
-        
+
         # Build Kucoin topic list
         topics = []
         if not markets:
             markets = ["BTC-USDT"]  # Default pair
-        
+
         for market in markets:
             # Kucoin format: /market/candles:SYMBOL_INTERVAL
             topic = f"/market/candles:{market}_{interval}"
             topics.append(topic)
-        
+
         # Kucoin subscription format
         if action == self.ACTION_UNSUBSCRIBE:
             message = {
                 "id": str(id),
                 "type": "unsubscribe",
                 "topic": ",".join(topics),
-                "response": True
+                "response": True,
             }
         else:
             message = {
                 "id": str(id),
                 "type": "subscribe",
                 "topic": ",".join(topics),
-                "response": True
+                "response": True,
             }
-        
+
         await self.send_json(message)
 
     async def user_data(

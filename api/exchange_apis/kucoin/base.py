@@ -133,32 +133,37 @@ class KucoinApi:
         return response
 
     def get_raw_klines(
-        self, symbol: str, interval: str, limit: int = 500, start_time=None, end_time=None
+        self,
+        symbol: str,
+        interval: str,
+        limit: int = 500,
+        start_time=None,
+        end_time=None,
     ):
         """
         Get raw klines/candlestick data from Kucoin.
-        
+
         Args:
             symbol: Trading pair symbol (e.g., "BTC-USDT")
             interval: Kline interval (e.g., "15min", "1hour", "1day")
             limit: Number of klines to retrieve (max 1500, default 500)
             start_time: Start time in milliseconds (optional)
             end_time: End time in milliseconds (optional)
-        
+
         Returns:
             List of klines in format compatible with Binance format:
             [timestamp, open, high, low, close, volume, close_time, ...]
         """
         builder = GetKLinesReqBuilder().set_symbol(symbol).set_type(interval)
-        
+
         if start_time:
             builder = builder.set_start_at(int(start_time / 1000))  # Convert to seconds
         if end_time:
             builder = builder.set_end_at(int(end_time / 1000))  # Convert to seconds
-            
+
         request = builder.build()
         response = self.spot_api.get_k_lines(request)
-        
+
         # Convert Kucoin format to Binance-compatible format
         # Kucoin returns: [time, open, close, high, low, volume, turnover]
         # Binance format: [open_time, open, high, low, close, volume, close_time, ...]
@@ -166,16 +171,18 @@ class KucoinApi:
         if response.data:
             for k in response.data[:limit]:
                 # k format: [timestamp(seconds), open, close, high, low, volume, turnover]
-                klines.append([
-                    int(k[0]) * 1000,  # open_time in milliseconds
-                    k[1],  # open
-                    k[3],  # high
-                    k[4],  # low
-                    k[2],  # close
-                    k[5],  # volume
-                    int(k[0]) * 1000,  # close_time (using same as open_time)
-                ])
-        
+                klines.append(
+                    [
+                        int(k[0]) * 1000,  # open_time in milliseconds
+                        k[1],  # open
+                        k[3],  # high
+                        k[4],  # low
+                        k[2],  # close
+                        k[5],  # volume
+                        int(k[0]) * 1000,  # close_time (using same as open_time)
+                    ]
+                )
+
         return klines
 
     def get_ticker_price(self, symbol: str) -> float:

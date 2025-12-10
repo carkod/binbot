@@ -62,9 +62,7 @@ class TestStreamingController:
         monkeypatch.setattr(
             "streaming.streaming_controller.BinanceApi", DummyBinanceApi
         )
-        monkeypatch.setattr(
-            "streaming.streaming_controller.KucoinApi", DummyKucoinApi
-        )
+        monkeypatch.setattr("streaming.streaming_controller.KucoinApi", DummyKucoinApi)
 
         base = BaseStreaming()
 
@@ -273,44 +271,41 @@ class TestStreamingController:
         # Controller should have attempted save on error
         assert base.bot_controller.saved or base.paper_trading_controller.saved
 
-    def test_streaming_controller_uses_kucoin_api_for_kucoin_symbols(
-        self, monkeypatch
-    ):
+    def test_streaming_controller_uses_kucoin_api_for_kucoin_symbols(self, monkeypatch):
         """Test that StreamingController uses KucoinApi when exchange_id is KUCOIN"""
         base = self._make_base_streaming(monkeypatch)
-        
+
         # Mock get_exchange_id_for_symbol to return KUCOIN
         from tools.enum_definitions import ExchangeId
-        
+
         def mock_get_exchange_id(symbol):
             return ExchangeId.KUCOIN
-        
-        monkeypatch.setattr(
-            base, "get_exchange_id_for_symbol", mock_get_exchange_id
-        )
-        
+
+        monkeypatch.setattr(base, "get_exchange_id_for_symbol", mock_get_exchange_id)
+
         # Track which API's get_raw_klines was called
         kucoin_called = []
         binance_called = []
-        
-        original_kucoin_get_klines = base.kucoin_api.get_raw_klines
-        original_binance_get_klines = base.binance_api.get_raw_klines
-        
+
         def track_kucoin_klines(*args, **kwargs):
             kucoin_called.append(True)
             return [[0, 100, 101, 99, 100, 0, 0]] * 200
-        
+
         def track_binance_klines(*args, **kwargs):
             binance_called.append(True)
             return [[0, 100, 101, 99, 100, 0, 0]] * 200
-        
+
         base.kucoin_api.get_raw_klines = track_kucoin_klines
         base.binance_api.get_raw_klines = track_binance_klines
-        
+
         # Create StreamingController with a Kucoin symbol
         sc = StreamingController(base, symbol="BTC-USDT")
-        
+
         # Assert that KucoinApi was used, not BinanceApi
-        assert len(kucoin_called) > 0, "KucoinApi.get_raw_klines should have been called"
-        assert len(binance_called) == 0, "BinanceApi.get_raw_klines should not have been called"
+        assert len(kucoin_called) > 0, (
+            "KucoinApi.get_raw_klines should have been called"
+        )
+        assert len(binance_called) == 0, (
+            "BinanceApi.get_raw_klines should not have been called"
+        )
         assert sc.exchange_id == ExchangeId.KUCOIN

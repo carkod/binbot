@@ -136,7 +136,7 @@ class BinanceKlineIntervals(str, Enum):
     def to_kucoin_interval(self) -> str:
         """
         Convert Binance interval format to Kucoin interval format.
-        
+
         Binance: 1m, 5m, 15m, 1h, 4h, 1d, 1w
         Kucoin: 1min, 5min, 15min, 1hour, 4hour, 1day, 1week
         """
