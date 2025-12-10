@@ -2,7 +2,7 @@ import logging
 import os
 from databases.tables.autotrade_table import AutotradeTable, TestAutotradeTable
 from databases.tables.deal_table import DealTable
-from databases.tables.order_table import ExchangeOrderTable
+from databases.tables.order_table import ExchangeOrderTable, FakeOrderTable
 from databases.tables.user_table import UserTable
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from sqlmodel import SQLModel, Session, select, text
@@ -24,7 +24,6 @@ from exchange_apis.binance.assets import Assets
 from databases.crud.symbols_crud import SymbolsCrud
 from databases.crud.asset_index_crud import AssetIndexCrud
 from databases.db import setup_kafka_db
-from sqlalchemy import text as sa_text
 
 
 class ApiDb:
@@ -38,96 +37,33 @@ class ApiDb:
         pass
 
     def init_db(self):
-        SQLModel.metadata.create_all(engine)
-        # Ensure enum values exist before inserting data that depends on them
+        self.run_migrations()
         self.init_users()
         self.init_autotrade_settings()
         self.init_test_autotrade_settings()
-        self.ensure_quoteassets_enum()
         self.create_dummy_bot()
         self.init_symbols()
         # Depends on autotrade settings
         self.init_balances()
-        self.migrations()
 
         logging.info("Finishing db operations")
 
     def run_migrations(self):
-        alembic_cfg = Config("alembic.ini")
-        command.upgrade(alembic_cfg, "head")
-
-    def ensure_quoteassets_enum(self):
-        """
-        Ensure Postgres ENUM type `quoteassets` contains required labels like 'USDT'.
-        Uses SQLAlchemy to run a safe ALTER TYPE command.
-        """
+        """Run alembic migrations to upgrade database schema."""
         try:
-            with engine.begin() as conn:
-                conn.execute(
-                    sa_text("ALTER TYPE quoteassets ADD VALUE IF NOT EXISTS 'USDT'")
-                )
+            alembic_cfg = Config("alembic.ini")
+            # Only stamp on first run (when alembic_version table doesn't exist)
+            with engine.connect() as conn:
+                try:
+                    conn.execute(text("SELECT 1 FROM alembic_version LIMIT 1"))
+                except Exception:
+                    # Table doesn't exist, this is first run
+                    command.stamp(alembic_cfg, "head")
+            # Always run upgrade to apply any pending migrations
+            command.upgrade(alembic_cfg, "head")
+            logging.info("Alembic migrations completed successfully")
         except Exception as exc:
-            # If not Postgres or enum already managed via migrations, ignore
-            logging.debug(f"ensure_quoteassets_enum skipped: {exc}")
-
-    def migrations(self):
-        """
-        Migrate exchange_order table columns from enums to strings:
-        - order_type: OrderType enum -> VARCHAR
-        - order_side: OrderSide enum -> VARCHAR
-        - order_id: BIGINT -> VARCHAR
-
-        Handles conversion of existing data including hex order_ids.
-        """
-        try:
-            with engine.begin() as conn:
-                # 1. Convert order_id from BIGINT to VARCHAR
-                # First add a temporary column
-                conn.execute(
-                    sa_text(
-                        "ALTER TABLE exchange_order ADD COLUMN order_id_temp VARCHAR"
-                    )
-                )
-                # Copy data, converting integers to strings
-                conn.execute(
-                    sa_text(
-                        "UPDATE exchange_order SET order_id_temp = CAST(order_id AS VARCHAR)"
-                    )
-                )
-                # Drop old column and rename temp
-                conn.execute(sa_text("ALTER TABLE exchange_order DROP COLUMN order_id"))
-                conn.execute(
-                    sa_text(
-                        "ALTER TABLE exchange_order RENAME COLUMN order_id_temp TO order_id"
-                    )
-                )
-                conn.execute(
-                    sa_text(
-                        "ALTER TABLE exchange_order ALTER COLUMN order_id SET NOT NULL"
-                    )
-                )
-
-                # 2. Convert order_type from enum to VARCHAR
-                conn.execute(
-                    sa_text(
-                        "ALTER TABLE exchange_order ALTER COLUMN order_type TYPE VARCHAR USING order_type::VARCHAR"
-                    )
-                )
-
-                # 3. Convert order_side from enum to VARCHAR
-                conn.execute(
-                    sa_text(
-                        "ALTER TABLE exchange_order ALTER COLUMN order_side TYPE VARCHAR USING order_side::VARCHAR"
-                    )
-                )
-
-                logging.info(
-                    "Successfully migrated exchange_order columns to string types"
-                )
-        except Exception as exc:
-            logging.warning(
-                f"migrate_exchange_order_columns failed (may already be migrated): {exc}"
-            )
+            logging.error(f"Alembic migrations failed: {exc}", exc_info=True)
 
     def delete_autotrade_settings_table(self, table_name: str):
         """
@@ -242,7 +178,7 @@ class ApiDb:
             return
         self.session.close()
         base_order = ExchangeOrderTable(
-            order_id=123,
+            order_id="123",
             order_type="market",
             time_in_force="GTC",
             timestamp=0,
@@ -255,7 +191,7 @@ class ApiDb:
             total_commission=0,
         )
         take_profit_order = ExchangeOrderTable(
-            order_id=456,
+            order_id="456",
             order_type="limit",
             time_in_force="GTC",
             timestamp=0,
@@ -312,6 +248,34 @@ class ApiDb:
         if results.first():
             return
 
+        # Create separate fake orders for paper trading bot
+        fake_base_order = FakeOrderTable(
+            order_id="789",
+            order_type="market",
+            time_in_force="GTC",
+            timestamp=0,
+            order_side="buy",
+            pair="BTCUSDC",
+            qty=0.000123,
+            status=OrderStatus.FILLED,
+            price=1.222,
+            deal_type=DealType.base_order,
+            total_commission=0,
+        )
+        fake_take_profit_order = FakeOrderTable(
+            order_id="990",
+            order_type="limit",
+            time_in_force="GTC",
+            timestamp=0,
+            order_side="sell",
+            pair="BTCUSDC",
+            qty=0.000123,
+            status=OrderStatus.FILLED,
+            price=1.222,
+            deal_type=DealType.take_profit,
+            total_commission=0,
+        )
+
         paper_trading_bot = PaperTradingTable(
             pair="BTCUSDC",
             balance_size_to_use=1,
@@ -322,7 +286,7 @@ class ApiDb:
             logs=["Paper trading bot created"],
             mode="manual",
             name="Dummy bot",
-            orders=[base_order, take_profit_order],
+            orders=[fake_base_order, fake_take_profit_order],
             status=Status.inactive,
             stop_loss=0,
             take_profit=2.3,
