@@ -164,6 +164,28 @@ class KucoinApi:
         request = builder.build()
         response = self.spot_api.get_k_lines(request)
 
+        # Helper to calculate interval duration in milliseconds
+        def get_interval_ms(interval_str: str) -> int:
+            """Convert Kucoin interval string to milliseconds"""
+            interval_map = {
+                "1min": 60 * 1000,
+                "3min": 3 * 60 * 1000,
+                "5min": 5 * 60 * 1000,
+                "15min": 15 * 60 * 1000,
+                "30min": 30 * 60 * 1000,
+                "1hour": 60 * 60 * 1000,
+                "2hour": 2 * 60 * 60 * 1000,
+                "4hour": 4 * 60 * 60 * 1000,
+                "6hour": 6 * 60 * 60 * 1000,
+                "8hour": 8 * 60 * 60 * 1000,
+                "12hour": 12 * 60 * 60 * 1000,
+                "1day": 24 * 60 * 60 * 1000,
+                "1week": 7 * 24 * 60 * 60 * 1000,
+            }
+            return interval_map.get(interval_str, 60 * 1000)  # Default to 1 minute
+
+        interval_ms = get_interval_ms(interval)
+
         # Convert Kucoin format to Binance-compatible format
         # Kucoin returns: [time, open, close, high, low, volume, turnover]
         # Binance format: [open_time, open, high, low, close, volume, close_time, ...]
@@ -171,15 +193,17 @@ class KucoinApi:
         if response.data:
             for k in response.data[:limit]:
                 # k format: [timestamp(seconds), open, close, high, low, volume, turnover]
+                open_time = int(k[0]) * 1000  # Convert to milliseconds
+                close_time = open_time + interval_ms  # Calculate proper close time
                 klines.append(
                     [
-                        int(k[0]) * 1000,  # open_time in milliseconds
+                        open_time,  # open_time in milliseconds
                         k[1],  # open
                         k[3],  # high
                         k[4],  # low
                         k[2],  # close
                         k[5],  # volume
-                        int(k[0]) * 1000,  # close_time (using same as open_time)
+                        close_time,  # close_time properly calculated
                     ]
                 )
 
