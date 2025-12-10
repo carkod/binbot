@@ -49,7 +49,10 @@ class ApiDb:
         logging.info("Finishing db operations")
 
     def run_migrations(self):
-        """Run alembic migrations to upgrade database schema."""
+        """
+        Run alembic migrations to upgrade database schema.
+        """
+        logging.info("Running alembic migrations")
         try:
             alembic_cfg = Config("alembic.ini")
             # Only stamp on first run (when alembic_version table doesn't exist)
@@ -58,7 +61,7 @@ class ApiDb:
                     conn.execute(text("SELECT 1 FROM alembic_version LIMIT 1"))
                 except Exception:
                     # Table doesn't exist, this is first run
-                    command.stamp(alembic_cfg, "head")
+                    command.stamp(alembic_cfg, "5be29ddb30b9")
             # Always run upgrade to apply any pending migrations
             command.upgrade(alembic_cfg, "head")
             logging.info("Alembic migrations completed successfully")

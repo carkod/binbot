@@ -60,12 +60,9 @@ class SymbolsCrud:
         Query becomes quite complex and we always need to do this
         only to be used in this CRUD class
         """
-        exchange_exists = (
-            exists()
-            .where(cast(ColumnElement, SymbolExchangeTable.symbol_id == SymbolTable.id))
-            .where(
-                cast(ColumnElement, SymbolExchangeTable.exchange_id == self.exchange_id)
-            )
+        exchange_exists = exists().where(
+            cast(ColumnElement, SymbolExchangeTable.exchange_id == self.exchange_id)
+            & cast(ColumnElement, SymbolExchangeTable.symbol_id == SymbolTable.id)
         )
 
         statement = (
@@ -598,6 +595,7 @@ class SymbolsCrud:
         exchange_info_data = kucoin_api.get_all_symbols()
 
         for item in exchange_info_data.data:
+            symbol = item.symbol.replace("-", "")
             # Only store fiat market exclude other fiats.
             # Only store pairs that are actually traded
             if item.enable_trading is not True or item.symbol.startswith(
@@ -606,11 +604,10 @@ class SymbolsCrud:
                 continue
 
             active = True
-            if item.symbol in ("BTCUSDC", "ETHUSDC", "BNBUSDC"):
+            if symbol in ("BTCUSDC", "ETHUSDC", "BNBUSDC"):
                 active = False
 
             if item.quote_currency in list(QuoteAssets):
-                symbol = item.symbol.replace("-", "")
                 price_precision = item.price_increment.find("1") - 2
                 qty_precision = item.base_increment.find("1") - 2
                 min_notional = float(item.base_min_size)

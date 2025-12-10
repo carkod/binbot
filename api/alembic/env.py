@@ -1,8 +1,3 @@
-from logging.config import fileConfig
-
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-
 from alembic import context
 from databases.utils import engine
 from sqlmodel import SQLModel
@@ -70,9 +65,7 @@ def run_migrations_online() -> None:
     """
     # Use the existing engine from databases.utils instead of creating a new one
     with engine.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()
