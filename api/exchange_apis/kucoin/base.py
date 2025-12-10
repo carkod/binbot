@@ -1,9 +1,12 @@
 import os
 from time import time
+import random
+import uuid
 from kucoin_universal_sdk.api import DefaultClient
 from kucoin_universal_sdk.generate.spot.market import (
     GetPartOrderBookReqBuilder,
     GetAllSymbolsReqBuilder,
+    GetFullOrderBookReqBuilder,
 )
 from kucoin_universal_sdk.generate.account.account import (
     GetSpotAccountListReqBuilder,
@@ -14,7 +17,6 @@ from kucoin_universal_sdk.model import (
     GLOBAL_API_ENDPOINT,
 )
 from kucoin_universal_sdk.model import TransportOptionBuilder
-from kucoin_universal_sdk.generate.spot.market import GetPartOrderBookResp
 from kucoin_universal_sdk.generate.account.account.model_get_isolated_margin_account_resp import (
     GetIsolatedMarginAccountResp,
 )
@@ -50,7 +52,6 @@ from kucoin_universal_sdk.generate.margin.order.model_cancel_order_by_order_id_r
 from kucoin_universal_sdk.generate.margin.order.model_get_order_by_order_id_resp import (
     GetOrderByOrderIdResp,
 )
-import random
 from kucoin_universal_sdk.generate.margin.debit.model_repay_req import (
     RepayReqBuilder,
 )
@@ -113,9 +114,16 @@ class KucoinApi:
         )
         self.order_api = self.client.rest_service().get_spot_service().get_order_api()
 
-    def get_part_order_book(self, symbol: str, size: str):
-        request = GetPartOrderBookReqBuilder().set_symbol(symbol).set_size(size).build()
+    def get_part_order_book(self, symbol: str, size: int):
+        request = (
+            GetPartOrderBookReqBuilder().set_symbol(symbol).set_size(str(size)).build()
+        )
         response = self.spot_api.get_part_order_book(request)
+        return response
+
+    def get_full_order_book(self, symbol: str, size: int):
+        request = GetFullOrderBookReqBuilder().set_symbol(symbol).build()
+        response = self.spot_api.get_full_order_book(request)
         return response
 
     def get_all_symbols(self):
@@ -124,13 +132,19 @@ class KucoinApi:
         return response
 
     def get_ticker_price(self, symbol: str) -> float:
-        request = GetPartOrderBookReqBuilder().set_symbol(symbol).build()
+        request = GetPartOrderBookReqBuilder().set_symbol(symbol).set_size("1").build()
         response = self.spot_api.get_ticker(request)
         return float(response.price)
 
     def get_account_balance(self):
         """
         Aggregate all balances from all account types (spot, main, trade, margin, futures).
+
+        The right data shape for Kucion should be provided by
+        get_account_balance_by_type method.
+
+        However, this method provides a normalized version for backwards compatibility (Binance) and consistency with current balances table.
+
         Returns a dict:
             {
                 asset:
@@ -144,7 +158,6 @@ class KucoinApi:
             }
         """
         spot_request = GetSpotAccountListReqBuilder().build()
-        margin_request = GetIsolatedMarginAccountReqBuilder().build()
         all_accounts = self.account_api.get_spot_account_list(spot_request)
         balance_items = dict()
         for item in all_accounts.data:
@@ -155,6 +168,7 @@ class KucoinApi:
                     "locked": float(item.holds),
                 }
 
+        margin_request = GetIsolatedMarginAccountReqBuilder().build()
         margin_accounts = self.account_api.get_isolated_margin_account(margin_request)
         if float(margin_accounts.total_asset_of_quote_currency) > 0:
             balance_items["USDT"]["balance"] += float(
@@ -162,6 +176,35 @@ class KucoinApi:
             )
 
         return balance_items
+
+    def get_account_balance_by_type(self):
+        """
+        Get balances grouped by account type.
+        Returns:
+            {
+                'MAIN': {'USDT': {...}, 'BTC': {...}, ...},
+                'TRADE': {'USDT': {...}, ...},
+                'MARGIN': {...},
+                ...
+            }
+        Each currency has: balance (total), available, holds
+        """
+        spot_request = GetSpotAccountListReqBuilder().build()
+        all_accounts = self.account_api.get_spot_account_list(spot_request)
+
+        balance_by_type: dict[str, dict[str, dict[str, float]]] = {}
+        for item in all_accounts.data:
+            if float(item.balance) > 0:
+                account_type = item.type  # MAIN, TRADE, MARGIN, etc.
+                if account_type not in balance_by_type:
+                    balance_by_type[account_type] = {}
+                balance_by_type[account_type][item.currency] = {
+                    "balance": float(item.balance),
+                    "available": float(item.available),
+                    "holds": float(item.holds),
+                }
+
+        return balance_by_type
 
     def get_single_spot_balance(self, asset: str) -> float:
         spot_request = GetSpotAccountListReqBuilder().build()
@@ -176,11 +219,6 @@ class KucoinApi:
     def get_isolated_balance(self, symbol: str) -> GetIsolatedMarginAccountResp:
         request = GetIsolatedMarginAccountReqBuilder().set_symbol(symbol).build()
         response = self.account_api.get_isolated_margin_account(request)
-        return response
-
-    def get_book_depth(self, symbol: str) -> GetPartOrderBookResp:
-        request = GetPartOrderBookReqBuilder().set_symbol(symbol).build()
-        response = self.spot_api.get_part_order_book(request)
         return response
 
     def simulate_order(
@@ -233,35 +271,51 @@ class KucoinApi:
         )
         return order
 
-    def matching_engine(self, symbol: str, order_side: bool, qty: float = 0) -> float:
+    def simple_matching_engine(self, symbol: str, order_side: bool) -> float:
         """
-        Match quantity with available 100% fill order price,
-        so that order can immediately buy/sell
-
-        AMMEND
+        Get top of book price for immediate buy/sell
+        this is good for paper trading
+        or initial price estimates
 
         @param: order_side -
             Buy order = get bid prices = False
             Sell order = get ask prices = True
         """
-        data = self.get_book_depth(symbol)
+        # Part order book only returns top 1 level at time of writing
+        data = self.get_part_order_book(symbol, size=1)
+        price = data.bids[0][0] if order_side else data.asks[0][0]
+        return price
+
+    def matching_engine(self, symbol: str, order_side: bool, qty: float = 0) -> float:
+        """
+        Match quantity with available 100% fill order price,
+        so that order can immediately buy/sell
+
+        Only use this if we need to find optimal price for given qty
+
+        @param: order_side -
+            Buy order = get bid prices = False
+            Sell order = get ask prices = True
+        """
+        # Part order book only returns top 1 level at time of writing
+        data = self.get_full_order_book(symbol, size=10)
         price = data.bids[0][0] if order_side else data.asks[0][0]
         base_qty = data.bids[0][1] if order_side else data.asks[0][1]
 
         if qty == 0:
-            return price
+            return float(price)
         else:
             buyable_qty = float(qty) / float(price)
-            if buyable_qty < base_qty:
-                return price
+            if buyable_qty < float(base_qty):
+                return float(price)
             else:
                 for i in range(1, 11):
                     price = data.bids[i][0] if order_side else data.asks[i][0]
                     base_qty = data.bids[i][1] if order_side else data.asks[i][1]
                     buyable_qty = float(qty) / float(price)
                     base_qty = 1
-                    if buyable_qty > base_qty:
-                        return price
+                    if buyable_qty > float(base_qty):
+                        return float(price)
                     else:
                         continue
                 # caller to use market price
@@ -272,19 +326,19 @@ class KucoinApi:
         symbol: str,
         qty: float,
         order_type: AddOrderSyncReq.TypeEnum = AddOrderSyncReq.TypeEnum.LIMIT,
-        price: float = 0,
     ) -> GetOrderByOrderIdResp:
+        book_price = self.matching_engine(
+            symbol, order_side=AddOrderSyncReq.SideEnum.SELL, qty=qty
+        )
         builder = (
             AddOrderSyncReqBuilder()
             .set_symbol(symbol)
             .set_side(AddOrderSyncReq.SideEnum.BUY)
             .set_type(order_type)
             .set_size(str(qty))
+            .set_price(str(book_price))
         )
-        if order_type == AddOrderSyncReq.TypeEnum.LIMIT and price > 0:
-            builder = builder.set_price(str(price)).set_time_in_force(
-                AddOrderSyncReq.TimeInForceEnum.GTC
-            )
+
         req = builder.build()
         order_response = self.order_api.add_order_sync(req)
         # order_response returns incomplete info
@@ -440,12 +494,12 @@ class KucoinApi:
         )
         return order
 
-    def cancel_margin_order_by_order_id(self, symbol: str, order_id: int):
+    def cancel_margin_order_by_order_id(self, symbol: str, order_id: str):
         # Margin API uses cancel by order id req builder from margin.order
         req_cancel = (
             CancelOrderByOrderIdReqBuilder()
             .set_symbol(symbol)
-            .set_order_id(str(order_id))
+            .set_order_id(order_id)
             .build()
         )
         return self.margin_order_api.cancel_order_by_order_id(req_cancel)
@@ -534,11 +588,13 @@ class KucoinApi:
         self, asset: str, symbol: str, amount: float
     ) -> FlexTransferResp:
         """
-        Transfer funds from isolated margin account back to spot (main) account.
-        `symbol` must be the isolated pair like "BTC-USDT".
+        Transfer funds from isolated margin to spot (main) account.
+        `symbol` is the isolated pair like "BTC-USDT".
         """
+        client_oid = str(uuid.uuid4())
         req = (
             FlexTransferReqBuilder()
+            .set_client_oid(client_oid)
             .set_currency(asset)
             .set_amount(str(amount))
             .set_type(FlexTransferReq.TypeEnum.INTERNAL)
@@ -556,14 +612,50 @@ class KucoinApi:
         Transfer funds from spot (main) account to isolated margin account.
         `symbol` must be the isolated pair like "BTC-USDT".
         """
+        client_oid = str(uuid.uuid4())
         req = (
             FlexTransferReqBuilder()
+            .set_client_oid(client_oid)
             .set_currency(asset)
             .set_amount(str(amount))
             .set_type(FlexTransferReq.TypeEnum.INTERNAL)
             .set_from_account_type(FlexTransferReq.FromAccountTypeEnum.MAIN)
             .set_to_account_type(FlexTransferReq.ToAccountTypeEnum.ISOLATED)
             .set_to_account_tag(symbol)
+            .build()
+        )
+        return self.transfer_api.flex_transfer(req)
+
+    def transfer_main_to_trade(self, asset: str, amount: float) -> FlexTransferResp:
+        """
+        Transfer funds from main to trade (spot) account.
+        """
+        client_oid = str(uuid.uuid4())
+        req = (
+            FlexTransferReqBuilder()
+            .set_client_oid(client_oid)
+            .set_currency(asset)
+            .set_amount(str(amount))
+            .set_type(FlexTransferReq.TypeEnum.INTERNAL)
+            .set_from_account_type(FlexTransferReq.FromAccountTypeEnum.MAIN)
+            .set_to_account_type(FlexTransferReq.ToAccountTypeEnum.TRADE)
+            .build()
+        )
+        return self.transfer_api.flex_transfer(req)
+
+    def transfer_trade_to_main(self, asset: str, amount: float) -> FlexTransferResp:
+        """
+        Transfer funds from trade (spot) account to main.
+        """
+        client_oid = str(uuid.uuid4())
+        req = (
+            FlexTransferReqBuilder()
+            .set_client_oid(client_oid)
+            .set_currency(asset)
+            .set_amount(str(amount))
+            .set_type(FlexTransferReq.TypeEnum.INTERNAL)
+            .set_from_account_type(FlexTransferReq.FromAccountTypeEnum.TRADE)
+            .set_to_account_type(FlexTransferReq.ToAccountTypeEnum.MAIN)
             .build()
         )
         return self.transfer_api.flex_transfer(req)

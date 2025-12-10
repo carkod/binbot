@@ -328,7 +328,7 @@ class KucoinShortDeal(KucoinMarginDeal):
                     self.active_bot,
                 )
                 self.kucoin_api.cancel_margin_order_by_order_id(
-                    symbol=self.symbol, order_id=d.order_id
+                    symbol=self.symbol, order_id=str(d.order_id)
                 )
 
         # Sell everything

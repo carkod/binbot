@@ -1,5 +1,5 @@
 import logging
-from typing import Type, Union, Any
+from typing import Type, Union
 from tools.maths import round_numbers_floor, round_numbers
 from tools.enum_definitions import (
     DealType,
@@ -39,15 +39,52 @@ class KucoinSpotDeal(KucoinBaseBalance):
         super().__init__()
         self.active_bot = bot
         self.db_table = db_table
+        self.controller: Union[PaperTradingTableCrud, BotTableCrud]
+        if db_table == PaperTradingTable:
+            self.controller = PaperTradingTableCrud()
+        else:
+            self.controller = BotTableCrud()
+
         # Provide a controller attribute for polymorphic access
-        self.controller: Union[PaperTradingTableCrud, BotTableCrud, Any]
-        self.controller = None
         self.symbol_info = SymbolsCrud().get_symbol(bot.pair)
         self.price_precision = self.symbol_info.price_precision
         self.qty_precision = self.symbol_info.qty_precision
         self.symbol = self.get_symbol(bot.pair, bot.quote_asset)
 
-    def buy_order_with_available_balance(
+    def check_trading_balance_and_update(self) -> bool:
+        """
+        Checks if there is available balance in the trading account for the quote asset.
+
+        Returns:
+            bool: True if there is available balance, False otherwise.
+        """
+        result_balances, _, fiat_available = self.compute_balance()
+        quote_asset = self.active_bot.quote_asset.value
+
+        # in theory main account should never be empty
+        if quote_asset in result_balances["main"]:
+            if "trade" in result_balances and quote_asset in result_balances["trade"]:
+                if float(result_balances["trade"][quote_asset]) > 0:
+                    return True
+
+            response = self.kucoin_api.transfer_main_to_trade(
+                asset=quote_asset, amount=self.active_bot.fiat_order_size
+            )
+            if response.order_id:
+                self.controller.update_logs(
+                    bot=self.active_bot,
+                    log_message=f"Transferred {self.active_bot.fiat_order_size} {quote_asset} from main to trading account.",
+                )
+                return True
+            else:
+                self.controller.update_logs(
+                    bot=self.active_bot,
+                    log_message=f"Failed to transfer {self.active_bot.fiat_order_size} {quote_asset} from main to trading account.",
+                )
+
+        return False
+
+    def buy_quote_with_available_balance(
         self,
     ) -> GetOrderByOrderIdResp | None:
         """
@@ -61,9 +98,11 @@ class KucoinSpotDeal(KucoinBaseBalance):
         last_ticker_price = self.kucoin_api.get_ticker_price(self.symbol)
 
         if quote_asset in result_balances:
-            available_balance = float(result_balances[quote_asset])
+            available_balance = float(result_balances["trade"][quote_asset])
             if available_balance > 0:
-                qty = available_balance / last_ticker_price
+                qty = round_numbers(
+                    available_balance / last_ticker_price, self.qty_precision
+                )
                 order = self.kucoin_api.buy_order(symbol=self.symbol, qty=qty)
                 return order
         return None
@@ -154,7 +193,7 @@ class KucoinSpotDeal(KucoinBaseBalance):
 
         return self.active_bot
 
-    def base_order(self, repurchase_multiplier: float = 0.95) -> BotModel:
+    def base_order(self, repurchase_multiplier: float = 1) -> BotModel:
         """
         Required initial order to trigger long strategy bot.
         Other orders require this to execute,
@@ -164,8 +203,11 @@ class KucoinSpotDeal(KucoinBaseBalance):
             1.1 if not enough quote asset to purchase, redo it with exact qty needed
         2. Set take_profit
         """
-        if self.active_bot.quote_asset != QuoteAssets.USDC:
-            system_order = self.buy_order_with_available_balance()
+        if (
+            self.active_bot.quote_asset != QuoteAssets.USDC
+            and self.active_bot.quote_asset != QuoteAssets.USDT
+        ):
+            system_order = self.buy_quote_with_available_balance()
             if system_order:
                 order = OrderModel(
                     timestamp=system_order.created_at,
@@ -196,17 +238,9 @@ class KucoinSpotDeal(KucoinBaseBalance):
             # Long position does not need qty in take_profit
             # initial price with 1 qty should return first match
             last_ticker_price = self.kucoin_api.get_ticker_price(self.symbol)
-
-            if self.active_bot.strategy == Strategy.margin_short:
-                # Use all available quote asset balance
-                # this avoids diffs in ups and downs in prices and fees
-                available_quote_asset = self.kucoin_api.get_single_spot_balance(
-                    self.active_bot.quote_asset
-                )
-            else:
-                available_quote_asset = self.kucoin_api.get_isolated_balance(
-                    self.active_bot.quote_asset
-                )
+            available_quote_asset = self.kucoin_api.get_single_spot_balance(
+                self.active_bot.quote_asset
+            )
 
             qty = round_numbers_floor(
                 (available_quote_asset / last_ticker_price),
@@ -214,11 +248,19 @@ class KucoinSpotDeal(KucoinBaseBalance):
             )
 
         else:
+            is_balance = self.check_trading_balance_and_update()
+            if not is_balance:
+                self.controller.update_logs(
+                    bot=self.active_bot,
+                    log_message="Base order failed due to insufficient balance.",
+                )
+                return self.active_bot
+
             self.active_bot.deal.base_order_size = self.active_bot.fiat_order_size
             last_ticker_price = self.kucoin_api.get_ticker_price(self.symbol)
 
-            qty = round_numbers_floor(
-                (self.active_bot.deal.base_order_size / last_ticker_price),
+            qty = round_numbers(
+                (self.active_bot.fiat_order_size / last_ticker_price),
                 self.qty_precision,
             )
 

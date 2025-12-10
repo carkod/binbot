@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Optional
 from pydantic import ValidationInfo, field_validator
-from tools.enum_definitions import DealType, OrderType, OrderStatus
+from tools.enum_definitions import DealType, OrderStatus
 from sqlmodel import Field, Relationship, SQLModel
 from uuid import UUID, uuid4
 from sqlalchemy import Column, BigInteger
@@ -10,10 +10,14 @@ if TYPE_CHECKING:
 
 
 class OrderBase(SQLModel):
-    order_type: OrderType
+    order_type: str = Field(
+        description="Because every exchange has different naming, we should keep it as a str rather than OrderType enum"
+    )
     time_in_force: str
-    order_id: int = Field(nullable=False, description="For fake orders use -1")
-    order_side: str
+    order_id: str = Field(nullable=False, description="For fake orders use -1")
+    order_side: str = Field(
+        description="Because every exchange has different naming, we should keep it as a str rather than OrderType enum"
+    )
     pair: str
     qty: float
     status: OrderStatus
@@ -79,6 +83,16 @@ class ExchangeOrderTable(OrderBase, table=True):
             return v
         else:
             raise ValueError(f"{info.field_name} must be float")
+
+    @field_validator("order_id")
+    @classmethod
+    def validate_order_id(cls, v, info: ValidationInfo):
+        if isinstance(v, str):
+            return v
+        elif isinstance(v, int):
+            return str(v)
+        else:
+            raise ValueError(f"{info.field_name} must be str or int")
 
 
 class FakeOrderTable(OrderBase, table=True):

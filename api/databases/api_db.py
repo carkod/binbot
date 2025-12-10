@@ -2,7 +2,7 @@ import logging
 import os
 from databases.tables.autotrade_table import AutotradeTable, TestAutotradeTable
 from databases.tables.deal_table import DealTable
-from databases.tables.order_table import ExchangeOrderTable
+from databases.tables.order_table import ExchangeOrderTable, FakeOrderTable
 from databases.tables.user_table import UserTable
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from sqlmodel import SQLModel, Session, select, text
@@ -37,7 +37,7 @@ class ApiDb:
         pass
 
     def init_db(self):
-        SQLModel.metadata.create_all(engine)
+        self.run_migrations()
         self.init_users()
         self.init_autotrade_settings()
         self.init_test_autotrade_settings()
@@ -49,8 +49,24 @@ class ApiDb:
         logging.info("Finishing db operations")
 
     def run_migrations(self):
-        alembic_cfg = Config("alembic.ini")
-        command.upgrade(alembic_cfg, "head")
+        """
+        Run alembic migrations to upgrade database schema.
+        """
+        logging.info("Running alembic migrations")
+        try:
+            alembic_cfg = Config("alembic.ini")
+            # Only stamp on first run (when alembic_version table doesn't exist)
+            with engine.connect() as conn:
+                try:
+                    conn.execute(text("SELECT 1 FROM alembic_version LIMIT 1"))
+                except Exception:
+                    # Table doesn't exist, this is first run
+                    command.stamp(alembic_cfg, "5be29ddb30b9")
+            # Always run upgrade to apply any pending migrations
+            command.upgrade(alembic_cfg, "head")
+            logging.info("Alembic migrations completed successfully")
+        except Exception as exc:
+            logging.error(f"Alembic migrations failed: {exc}", exc_info=True)
 
     def delete_autotrade_settings_table(self, table_name: str):
         """
@@ -165,7 +181,7 @@ class ApiDb:
             return
         self.session.close()
         base_order = ExchangeOrderTable(
-            order_id=123,
+            order_id="123",
             order_type="market",
             time_in_force="GTC",
             timestamp=0,
@@ -178,7 +194,7 @@ class ApiDb:
             total_commission=0,
         )
         take_profit_order = ExchangeOrderTable(
-            order_id=456,
+            order_id="456",
             order_type="limit",
             time_in_force="GTC",
             timestamp=0,
@@ -235,6 +251,34 @@ class ApiDb:
         if results.first():
             return
 
+        # Create separate fake orders for paper trading bot
+        fake_base_order = FakeOrderTable(
+            order_id="789",
+            order_type="market",
+            time_in_force="GTC",
+            timestamp=0,
+            order_side="buy",
+            pair="BTCUSDC",
+            qty=0.000123,
+            status=OrderStatus.FILLED,
+            price=1.222,
+            deal_type=DealType.base_order,
+            total_commission=0,
+        )
+        fake_take_profit_order = FakeOrderTable(
+            order_id="990",
+            order_type="limit",
+            time_in_force="GTC",
+            timestamp=0,
+            order_side="sell",
+            pair="BTCUSDC",
+            qty=0.000123,
+            status=OrderStatus.FILLED,
+            price=1.222,
+            deal_type=DealType.take_profit,
+            total_commission=0,
+        )
+
         paper_trading_bot = PaperTradingTable(
             pair="BTCUSDC",
             balance_size_to_use=1,
@@ -245,7 +289,7 @@ class ApiDb:
             logs=["Paper trading bot created"],
             mode="manual",
             name="Dummy bot",
-            orders=[base_order, take_profit_order],
+            orders=[fake_base_order, fake_take_profit_order],
             status=Status.inactive,
             stop_loss=0,
             take_profit=2.3,

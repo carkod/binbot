@@ -13,7 +13,7 @@
       "outFiles": [
         "${workspaceFolder}/terminal/**/*.js",
         "${workspaceFolder}/terminal/src/node_modules/**"
-      ],
+      ]
     },
     {
       "name": "Python: FastAPI",
@@ -24,7 +24,10 @@
       "args": ["main:app", "--port", "8008"],
       "justMyCode": true,
       "console": "internalConsole",
-      "envFile": "${workspaceFolder}/.env"
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "LOG_LEVEL": "debug"
+      }
     },
     {
       "name": "Binquant: Producer",

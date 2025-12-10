@@ -71,7 +71,9 @@ class BinanceMarginDeal(BinanceDeal):
         if order_id:
             try:
                 # First cancel old order to unlock balance
-                self.cancel_margin_order(symbol=self.active_bot.pair, order_id=order_id)
+                self.cancel_margin_order(
+                    symbol=self.active_bot.pair, order_id=int(order_id)
+                )
                 self.controller.update_logs(
                     "Old take profit order cancelled", self.active_bot
                 )

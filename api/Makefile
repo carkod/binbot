@@ -25,7 +25,10 @@ dump-fixtures:  ## Dump test fixtures from database (requires DB to be running)
 
 migrate:  ## Apply latest alembic migrations
 	uv run alembic upgrade head
-	uv run alembic revision --autogenerate -m "$(message)" --head head
+	uv run alembic stamp head
+	@if [ -n "$(m)" ]; then \
+		uv run alembic revision --autogenerate -m "$(m)" --head head; \
+	fi
 
 migrate-reset:  ## downgrade and upgrade
 	uv run alembic downgrade -1

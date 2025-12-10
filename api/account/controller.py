@@ -41,7 +41,7 @@ class ConsolidatedAccounts:
         if self.autotrade_settings.exchange_id == ExchangeId.KUCOIN:
             kucoin_balance = KucoinBaseBalance()
             total_balances, estimated_total_fiat, fiat_available = (
-                kucoin_balance.compute_balance()
+                kucoin_balance.normalized_compute_balance()
             )
 
         else:
