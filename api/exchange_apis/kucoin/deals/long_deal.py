@@ -39,7 +39,7 @@ class KucoinLongDeal(KucoinSpotDeal):
 
         deal_buy_price = self.active_bot.deal.opening_price
         buy_total_qty = self.active_bot.deal.opening_qty
-        price = (1 + (float(self.active_bot.take_profit) / 100)) * float(deal_buy_price)
+        self.active_bot.deal.take_profit_price = (1 + (float(self.active_bot.take_profit) / 100)) * float(deal_buy_price)
 
         if self.db_table == PaperTradingTable:
             qty = self.active_bot.deal.opening_qty
@@ -47,13 +47,11 @@ class KucoinLongDeal(KucoinSpotDeal):
             qty = self.kucoin_api.get_single_spot_balance(self.symbol_info.base_asset)
 
         qty = round_numbers(buy_total_qty, self.qty_precision)
-        price = round_numbers(price, self.price_precision)
 
         if self.db_table == PaperTradingTable:
             system_order = self.kucoin_api.simulate_order(self.symbol, OrderSide.sell)
         else:
             qty = round_numbers(qty, self.qty_precision)
-            price = round_numbers(price, self.price_precision)
             system_order = self.kucoin_api.sell_order(symbol=self.symbol, qty=qty)
 
         price = float(system_order.price)
@@ -160,7 +158,7 @@ class KucoinLongDeal(KucoinSpotDeal):
 
         stop_loss_order = OrderModel(
             timestamp=system_order.created_at,
-            order_id=int(system_order.id),
+            order_id=system_order.id,
             deal_type=DealType.take_profit,
             pair=system_order.symbol,
             order_side=system_order.side,
@@ -371,7 +369,7 @@ class KucoinLongDeal(KucoinSpotDeal):
                 )
                 self.trailling_profit()
 
-        elif self.active_bot.take_profit > 0 and self.active_bot.deal.opening_price > 0:
+        if self.active_bot.take_profit > 0 and self.active_bot.deal.take_profit_price and self.active_bot.deal.opening_price > 0:
             # Take profit
             if current_price >= self.active_bot.deal.take_profit_price:
                 self.take_profit_order()

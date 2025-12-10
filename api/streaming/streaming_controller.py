@@ -32,7 +32,7 @@ class BaseStreaming:
         self.kucoin_api = KucoinApi()
         self.bot_controller = BotTableCrud()
         self.paper_trading_controller = PaperTradingTableCrud()
-        self.symbols_controller = SymbolsCrud()
+        self.symbols_crud = SymbolsCrud()
         self.cs = CandlesCrud()
         # Always have it active
         self.active_bot_pairs: list = self.get_all_active_pairs()
@@ -43,7 +43,7 @@ class BaseStreaming:
         Returns BINANCE as default if not found.
         """
         try:
-            symbol_data = self.symbols_controller.get_one(symbol)
+            symbol_data = self.symbols_crud.get_symbol(symbol)
             if symbol_data and symbol_data.exchange_id:
                 return symbol_data.exchange_id
         except Exception as e:
