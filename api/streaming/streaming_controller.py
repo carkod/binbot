@@ -12,9 +12,8 @@ from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
 from exchange_apis.binance.base import BinanceApi
-from exchange_apis.kucoin.base import KucoinApi
 from streaming.models import HABollinguerSpread
-from tools.enum_definitions import Status, Strategy, ExchangeId
+from tools.enum_definitions import Status, Strategy
 from tools.exceptions import BinanceErrors, BinbotErrors
 from tools.maths import round_numbers
 from copy import deepcopy
@@ -29,38 +28,12 @@ class BaseStreaming:
 
     def __init__(self) -> None:
         self.binance_api = BinanceApi()
-        self.kucoin_api = KucoinApi()
         self.bot_controller = BotTableCrud()
         self.paper_trading_controller = PaperTradingTableCrud()
         self.symbols_controller = SymbolsCrud()
         self.cs = CandlesCrud()
         # Always have it active
         self.active_bot_pairs: list = self.get_all_active_pairs()
-
-    def get_exchange_id_for_symbol(self, symbol: str) -> ExchangeId:
-        """
-        Get the exchange_id for a given symbol from the database.
-        Returns BINANCE as default if not found.
-        """
-        try:
-            symbol_data = self.symbols_controller.get_one(symbol)
-            if symbol_data and symbol_data.exchange_id:
-                return symbol_data.exchange_id
-        except Exception as e:
-            logging.warning(f"Could not get exchange_id for {symbol}: {e}")
-
-        # Default to BINANCE for backwards compatibility
-        return ExchangeId.BINANCE
-
-    def get_api_for_symbol(self, symbol: str):
-        """
-        Get the appropriate API (Binance or Kucoin) for a given symbol.
-        """
-        exchange_id = self.get_exchange_id_for_symbol(symbol)
-        if exchange_id == ExchangeId.KUCOIN:
-            return self.kucoin_api
-        else:
-            return self.binance_api
 
     def get_all_active_pairs(self) -> list:
         """
@@ -106,22 +79,9 @@ class StreamingController:
         self.autotrade_controller = AutotradeCrud()
         self.base_streaming = base
         self.symbol = symbol
-
-        # Get the appropriate API based on the symbol's exchange
-        self.api = self.base_streaming.get_api_for_symbol(symbol)
-        self.exchange_id = self.base_streaming.get_exchange_id_for_symbol(symbol)
-
-        # Prepare interval based on exchange
-        binance_interval = BinanceKlineIntervals.fifteen_minutes
-        if self.exchange_id == ExchangeId.KUCOIN:
-            interval = binance_interval.to_kucoin_interval()
-        else:
-            interval = binance_interval.value
-
-        # Get klines from the appropriate exchange
-        self.klines = self.api.get_raw_klines(
+        self.klines = self.base_streaming.binance_api.get_raw_klines(
             symbol=self.symbol,
-            interval=interval,
+            interval=BinanceKlineIntervals.fifteen_minutes.value,
             limit=200,
         )
         self.current_bot: BotModel | None = None

@@ -133,32 +133,6 @@ class BinanceKlineIntervals(str, Enum):
         elif self.value[-1:] == "M":
             return "month"
 
-    def to_kucoin_interval(self) -> str:
-        """
-        Convert Binance interval format to Kucoin interval format.
-
-        Binance: 1m, 5m, 15m, 1h, 4h, 1d, 1w
-        Kucoin: 1min, 5min, 15min, 1hour, 4hour, 1day, 1week
-        """
-        interval_map = {
-            "1m": "1min",
-            "3m": "3min",
-            "5m": "5min",
-            "15m": "15min",
-            "30m": "30min",
-            "1h": "1hour",
-            "2h": "2hour",
-            "4h": "4hour",
-            "6h": "6hour",
-            "8h": "8hour",
-            "12h": "12hour",
-            "1d": "1day",
-            "3d": "3day",
-            "1w": "1week",
-            "1M": "1month",
-        }
-        return interval_map.get(self.value, self.value)
-
 
 class AutotradeSettingsDocument(str, Enum):
     # Autotrade settings for test bots

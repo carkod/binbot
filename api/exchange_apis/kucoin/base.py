@@ -7,7 +7,6 @@ from kucoin_universal_sdk.generate.spot.market import (
     GetPartOrderBookReqBuilder,
     GetAllSymbolsReqBuilder,
     GetFullOrderBookReqBuilder,
-    GetKLinesReqBuilder,
 )
 from kucoin_universal_sdk.generate.account.account import (
     GetSpotAccountListReqBuilder,
@@ -131,83 +130,6 @@ class KucoinApi:
         request = GetAllSymbolsReqBuilder().build()
         response = self.spot_api.get_all_symbols(request)
         return response
-
-    def get_raw_klines(
-        self,
-        symbol: str,
-        interval: str,
-        limit: int = 500,
-        start_time=None,
-        end_time=None,
-    ):
-        """
-        Get raw klines/candlestick data from Kucoin.
-
-        Args:
-            symbol: Trading pair symbol (e.g., "BTC-USDT")
-            interval: Kline interval (e.g., "15min", "1hour", "1day")
-            limit: Number of klines to retrieve (max 1500, default 500)
-            start_time: Start time in milliseconds (optional)
-            end_time: End time in milliseconds (optional)
-
-        Returns:
-            List of klines in format compatible with Binance format:
-            [timestamp, open, high, low, close, volume, close_time, ...]
-        """
-        builder = GetKLinesReqBuilder().set_symbol(symbol).set_type(interval)
-
-        if start_time:
-            builder = builder.set_start_at(int(start_time / 1000))  # Convert to seconds
-        if end_time:
-            builder = builder.set_end_at(int(end_time / 1000))  # Convert to seconds
-
-        request = builder.build()
-        response = self.spot_api.get_k_lines(request)
-
-        # Helper to calculate interval duration in milliseconds
-        def get_interval_ms(interval_str: str) -> int:
-            """Convert Kucoin interval string to milliseconds"""
-            interval_map = {
-                "1min": 60 * 1000,
-                "3min": 3 * 60 * 1000,
-                "5min": 5 * 60 * 1000,
-                "15min": 15 * 60 * 1000,
-                "30min": 30 * 60 * 1000,
-                "1hour": 60 * 60 * 1000,
-                "2hour": 2 * 60 * 60 * 1000,
-                "4hour": 4 * 60 * 60 * 1000,
-                "6hour": 6 * 60 * 60 * 1000,
-                "8hour": 8 * 60 * 60 * 1000,
-                "12hour": 12 * 60 * 60 * 1000,
-                "1day": 24 * 60 * 60 * 1000,
-                "1week": 7 * 24 * 60 * 60 * 1000,
-            }
-            return interval_map.get(interval_str, 60 * 1000)  # Default to 1 minute
-
-        interval_ms = get_interval_ms(interval)
-
-        # Convert Kucoin format to Binance-compatible format
-        # Kucoin returns: [time, open, close, high, low, volume, turnover]
-        # Binance format: [open_time, open, high, low, close, volume, close_time, ...]
-        klines = []
-        if response.data:
-            for k in response.data[:limit]:
-                # k format: [timestamp(seconds), open, close, high, low, volume, turnover]
-                open_time = int(k[0]) * 1000  # Convert to milliseconds
-                close_time = open_time + interval_ms  # Calculate proper close time
-                klines.append(
-                    [
-                        open_time,  # open_time in milliseconds
-                        k[1],  # open
-                        k[3],  # high
-                        k[4],  # low
-                        k[2],  # close
-                        k[5],  # volume
-                        close_time,  # close_time properly calculated
-                    ]
-                )
-
-        return klines
 
     def get_ticker_price(self, symbol: str) -> float:
         request = GetPartOrderBookReqBuilder().set_symbol(symbol).set_size("1").build()
