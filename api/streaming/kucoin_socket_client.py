@@ -39,7 +39,7 @@ class AsyncKucoinWebsocketStreamClient(AsyncBinanceWebsocketClient):
             on_pong=on_pong,
             **kwargs,
         )
-        self._connection_id = None
+        self._connection_id: Optional[str] = None
 
     def _get_kucoin_ws_url(self) -> str:
         """

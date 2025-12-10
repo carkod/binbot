@@ -30,6 +30,20 @@ class KucoinLongDeal(KucoinSpotDeal):
         self.active_bot: BotModel = bot
         self.symbol = self.get_symbol(bot.pair, bot.quote_asset)
 
+    def clean_fiat_currency(self) -> BotModel:
+        """
+        Once deal is completed, executes this function to clean up any remaining fiat currency
+        from trade account back to main account.
+        """
+        self.controller.update_logs(
+            "Transferring remaining fiat currency to main account...", self.active_bot
+        )
+        amount = self.get_single_balance(self.symbol_info.base_asset)
+        self.kucoin_api.transfer_trade_to_main(
+            asset=self.symbol_info.base_asset, amount=amount
+        )
+        return self.active_bot
+
     def take_profit_order(self) -> BotModel:
         """
         take profit order (Binance take_profit)
@@ -39,7 +53,9 @@ class KucoinLongDeal(KucoinSpotDeal):
 
         deal_buy_price = self.active_bot.deal.opening_price
         buy_total_qty = self.active_bot.deal.opening_qty
-        self.active_bot.deal.take_profit_price = (1 + (float(self.active_bot.take_profit) / 100)) * float(deal_buy_price)
+        self.active_bot.deal.take_profit_price = (
+            1 + (float(self.active_bot.take_profit) / 100)
+        ) * float(deal_buy_price)
 
         if self.db_table == PaperTradingTable:
             qty = self.active_bot.deal.opening_qty
@@ -84,6 +100,7 @@ class KucoinLongDeal(KucoinSpotDeal):
         self.controller.update_logs(
             bot=self.active_bot, log_message="Completed take profit."
         )
+        self.clean_fiat_currency()
 
         return bot
 
@@ -123,6 +140,7 @@ class KucoinLongDeal(KucoinSpotDeal):
             f"Switched to margin_short strategy. New bot id: {bot_model.id}",
             self.active_bot,
         )
+        self.clean_fiat_currency()
 
         return self.active_bot
 
@@ -140,49 +158,53 @@ class KucoinLongDeal(KucoinSpotDeal):
         else:
             qty = self.kucoin_api.get_single_spot_balance(self.symbol_info.base_asset)
 
-        # Dispatch fake order
-        if isinstance(self.controller, PaperTradingTableCrud):
-            system_order = self.kucoin_api.simulate_order(
-                symbol=self.symbol, side=OrderSide.sell
+        if qty > 0:
+            # Dispatch fake order
+            if isinstance(self.controller, PaperTradingTableCrud):
+                system_order = self.kucoin_api.simulate_order(
+                    symbol=self.symbol, side=OrderSide.sell
+                )
+
+            else:
+                self.controller.update_logs(
+                    "Dispatching sell order for trailling profit...",
+                    self.active_bot,
+                )
+                # Dispatch real order
+                system_order = self.kucoin_api.sell_order(symbol=self.symbol, qty=qty)
+
+            price = float(system_order.price)
+
+            stop_loss_order = OrderModel(
+                timestamp=system_order.created_at,
+                order_id=system_order.id,
+                deal_type=DealType.take_profit,
+                pair=system_order.symbol,
+                order_side=system_order.side,
+                order_type=system_order.type,
+                price=price,
+                qty=float(system_order.deal_size),
+                time_in_force=system_order.time_in_force,
+                status=OrderStatus.FILLED
+                if system_order.active
+                else OrderStatus.EXPIRED,
             )
 
-        else:
-            self.controller.update_logs(
-                "Dispatching sell order for trailling profit...",
-                self.active_bot,
-            )
-            # Dispatch real order
-            system_order = self.kucoin_api.sell_order(symbol=self.symbol, qty=qty)
+            self.active_bot.deal.total_commissions += system_order.fee
 
-        price = float(system_order.price)
+            self.active_bot.orders.append(stop_loss_order)
+            self.active_bot.deal.closing_price = price
+            self.active_bot.deal.closing_qty = float(system_order.deal_size)
+            self.active_bot.deal.closing_timestamp = system_order.created_at
+            msg = "Completed Stop loss."
+            if self.active_bot.margin_short_reversal:
+                msg += " Scheduled to switch strategy"
 
-        stop_loss_order = OrderModel(
-            timestamp=system_order.created_at,
-            order_id=system_order.id,
-            deal_type=DealType.take_profit,
-            pair=system_order.symbol,
-            order_side=system_order.side,
-            order_type=system_order.type,
-            price=price,
-            qty=float(system_order.deal_size),
-            time_in_force=system_order.time_in_force,
-            status=OrderStatus.FILLED if system_order.active else OrderStatus.EXPIRED,
-        )
+            self.active_bot.add_log(msg)
 
-        self.active_bot.deal.total_commissions += system_order.fee
-
-        self.active_bot.orders.append(stop_loss_order)
-        self.active_bot.deal.closing_price = price
-        self.active_bot.deal.closing_qty = float(system_order.deal_size)
-        self.active_bot.deal.closing_timestamp = system_order.created_at
-        msg = "Completed Stop loss."
-        if self.active_bot.margin_short_reversal:
-            msg += " Scheduled to switch strategy"
-
-        self.active_bot.add_log(msg)
         self.active_bot.status = Status.completed
         self.controller.save(self.active_bot)
-        self.controller.update_logs("Selling quote asset...", self.active_bot)
+        self.clean_fiat_currency()
 
         return self.active_bot
 
@@ -263,6 +285,7 @@ class KucoinLongDeal(KucoinSpotDeal):
             "Completed take profit after failing to break trailling"
         )
         self.controller.save(self.active_bot)
+        self.clean_fiat_currency()
 
         return self.active_bot
 
@@ -369,7 +392,11 @@ class KucoinLongDeal(KucoinSpotDeal):
                 )
                 self.trailling_profit()
 
-        if self.active_bot.take_profit > 0 and self.active_bot.deal.take_profit_price and self.active_bot.deal.opening_price > 0:
+        if (
+            self.active_bot.take_profit > 0
+            and self.active_bot.deal.take_profit_price
+            and self.active_bot.deal.opening_price > 0
+        ):
             # Take profit
             if current_price >= self.active_bot.deal.take_profit_price:
                 self.take_profit_order()

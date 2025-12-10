@@ -74,6 +74,7 @@ from kucoin_universal_sdk.generate.account.transfer.model_flex_transfer_resp imp
 )
 from tools.enum_definitions import KucoinKlineIntervals
 
+
 class KucoinApi:
     def __init__(self):
         self.key = os.getenv("KUCOIN_KEY", "")
