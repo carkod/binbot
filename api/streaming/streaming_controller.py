@@ -111,10 +111,17 @@ class StreamingController:
         self.api = self.base_streaming.get_api_for_symbol(symbol)
         self.exchange_id = self.base_streaming.get_exchange_id_for_symbol(symbol)
         
+        # Prepare interval based on exchange
+        binance_interval = BinanceKlineIntervals.fifteen_minutes
+        if self.exchange_id == ExchangeId.KUCOIN:
+            interval = binance_interval.to_kucoin_interval()
+        else:
+            interval = binance_interval.value
+        
         # Get klines from the appropriate exchange
         self.klines = self.api.get_raw_klines(
             symbol=self.symbol,
-            interval=BinanceKlineIntervals.fifteen_minutes.value if self.exchange_id == ExchangeId.BINANCE else "15min",
+            interval=interval,
             limit=200,
         )
         self.current_bot: BotModel | None = None
