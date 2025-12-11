@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, BackgroundTasks
 from databases.crud.symbols_crud import SymbolsCrud
 from symbols.models import GetOneSymbolResponse
 from databases.utils import get_session
@@ -50,14 +50,18 @@ def get_all_symbols(
 
 @symbols_blueprint.get("/symbol/store", tags=["Symbols"])
 def store_symbols(
-    session: Session = Depends(get_session), delete_existing: bool = False
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_session),
+    delete_existing: bool = False,
 ):
     """
-    Store all symbols from Binance
+    Store all symbols from Binance (runs in background)
     """
     try:
-        SymbolsCrud(session=session).etl_symbols_ingestion(delete_existing)
-        return GetOneSymbolResponse(message="Symbols stored!")
+        background_tasks.add_task(
+            SymbolsCrud(session=session).etl_symbols_ingestion, delete_existing
+        )
+        return GetOneSymbolResponse(message="Symbols ingestion started in background!")
     except (IntegrityError, DataError, SQLAlchemyError) as e:
         session.rollback()
         return StandardResponse(message=format_db_error(e), error=1)
