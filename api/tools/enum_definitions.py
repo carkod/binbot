@@ -133,6 +133,68 @@ class BinanceKlineIntervals(str, Enum):
         elif self.value[-1:] == "M":
             return "month"
 
+    def to_kucoin_interval(self) -> str:
+        """
+        Convert Binance interval format to Kucoin interval format.
+
+        Binance: 1m, 5m, 15m, 1h, 4h, 1d, 1w
+        Kucoin: 1min, 5min, 15min, 1hour, 4hour, 1day, 1week
+        """
+        interval_map = {
+            "1m": "1min",
+            "3m": "3min",
+            "5m": "5min",
+            "15m": "15min",
+            "30m": "30min",
+            "1h": "1hour",
+            "2h": "2hour",
+            "4h": "4hour",
+            "6h": "6hour",
+            "8h": "8hour",
+            "12h": "12hour",
+            "1d": "1day",
+            "3d": "3day",
+            "1w": "1week",
+            "1M": "1month",
+        }
+        return interval_map.get(self.value, self.value)
+
+
+class KucoinKlineIntervals(str, Enum):
+    ONE_MINUTE = "1min"
+    THREE_MINUTES = "3min"
+    FIVE_MINUTES = "5min"
+    FIFTEEN_MINUTES = "15min"
+    THIRTY_MINUTES = "30min"
+    ONE_HOUR = "1hour"
+    TWO_HOURS = "2hour"
+    FOUR_HOURS = "4hour"
+    SIX_HOURS = "6hour"
+    EIGHT_HOURS = "8hour"
+    TWELVE_HOURS = "12hour"
+    ONE_DAY = "1day"
+    ONE_WEEK = "1week"
+
+    # Helper to calculate interval duration in milliseconds
+    def get_interval_ms(interval_str: str) -> int:
+        """Convert Kucoin interval string to milliseconds"""
+        interval_map = {
+            "1min": 60 * 1000,
+            "3min": 3 * 60 * 1000,
+            "5min": 5 * 60 * 1000,
+            "15min": 15 * 60 * 1000,
+            "30min": 30 * 60 * 1000,
+            "1hour": 60 * 60 * 1000,
+            "2hour": 2 * 60 * 60 * 1000,
+            "4hour": 4 * 60 * 60 * 1000,
+            "6hour": 6 * 60 * 60 * 1000,
+            "8hour": 8 * 60 * 60 * 1000,
+            "12hour": 12 * 60 * 60 * 1000,
+            "1day": 24 * 60 * 60 * 1000,
+            "1week": 7 * 24 * 60 * 60 * 1000,
+        }
+        return interval_map.get(interval_str, 60 * 1000)  # Default to 1 minute
+
 
 class AutotradeSettingsDocument(str, Enum):
     # Autotrade settings for test bots

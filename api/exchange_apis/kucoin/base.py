@@ -7,6 +7,7 @@ from kucoin_universal_sdk.generate.spot.market import (
     GetPartOrderBookReqBuilder,
     GetAllSymbolsReqBuilder,
     GetFullOrderBookReqBuilder,
+    GetKlinesReqBuilder,
 )
 from kucoin_universal_sdk.generate.account.account import (
     GetSpotAccountListReqBuilder,
@@ -71,6 +72,7 @@ from kucoin_universal_sdk.generate.account.transfer.model_flex_transfer_req impo
 from kucoin_universal_sdk.generate.account.transfer.model_flex_transfer_resp import (
     FlexTransferResp,
 )
+from tools.enum_definitions import KucoinKlineIntervals
 
 
 class KucoinApi:
@@ -352,19 +354,19 @@ class KucoinApi:
         symbol: str,
         qty: float,
         order_type: AddOrderSyncReq.TypeEnum = AddOrderSyncReq.TypeEnum.LIMIT,
-        price: float = 0,
     ) -> GetOrderByOrderIdResp:
+        book_price = self.matching_engine(
+            symbol, order_side=AddOrderSyncReq.SideEnum.BUY, qty=qty
+        )
         builder = (
             AddOrderSyncReqBuilder()
             .set_symbol(symbol)
             .set_side(AddOrderSyncReq.SideEnum.SELL)
             .set_type(order_type)
             .set_size(str(qty))
+            .set_price(str(book_price))
         )
-        if order_type == AddOrderSyncReq.TypeEnum.LIMIT and price > 0:
-            builder = builder.set_price(str(price)).set_time_in_force(
-                AddOrderSyncReq.TimeInForceEnum.GTC
-            )
+
         req = builder.build()
         order_response = self.order_api.add_order_sync(req)
         order = self.get_order_by_order_id(
@@ -680,3 +682,60 @@ class KucoinApi:
             .build()
         )
         return self.debit_api.borrow(req)
+
+    def get_raw_klines(
+        self,
+        symbol: str,
+        interval: str,
+        limit: int = 500,
+        start_time=None,
+        end_time=None,
+    ):
+        """
+        Get raw klines/candlestick data from Kucoin.
+
+        Args:
+            symbol: Trading pair symbol (e.g., "BTC-USDT")
+            interval: Kline interval (e.g., "15min", "1hour", "1day")
+            limit: Number of klines to retrieve (max 1500, default 500)
+            start_time: Start time in milliseconds (optional)
+            end_time: End time in milliseconds (optional)
+
+        Returns:
+            List of klines in format compatible with Binance format:
+            [timestamp, open, high, low, close, volume, close_time, ...]
+        """
+        builder = GetKlinesReqBuilder().set_symbol(symbol).set_type(interval)
+
+        if start_time:
+            builder = builder.set_start_at(int(start_time / 1000))
+        if end_time:
+            builder = builder.set_end_at(int(end_time / 1000))
+
+        request = builder.build()
+        response = self.spot_api.get_klines(request)
+
+        interval_ms = KucoinKlineIntervals.get_interval_ms(interval)
+
+        # Convert Kucoin format to Binance-compatible format
+        # Kucoin returns: [time, open, close, high, low, volume, turnover]
+        # Binance format: [open_time, open, high, low, close, volume, close_time, ...]
+        klines = []
+        if response.data:
+            for k in response.data[:limit]:
+                # k format: [timestamp(seconds), open, close, high, low, volume, turnover]
+                open_time = int(k[0]) * 1000  # Convert to milliseconds
+                close_time = open_time + interval_ms  # Calculate proper close time
+                klines.append(
+                    [
+                        open_time,  # open_time in milliseconds
+                        k[1],  # open
+                        k[3],  # high
+                        k[4],  # low
+                        k[2],  # close
+                        k[5],  # volume
+                        close_time,  # close_time properly calculated
+                    ]
+                )
+
+        return klines

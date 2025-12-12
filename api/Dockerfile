@@ -12,4 +12,4 @@ RUN uv sync --frozen --no-cache
 STOPSIGNAL SIGTERM
 EXPOSE 80 443 5432 8000
 
-CMD [".venv/bin/fastapi", "run", "main.py", "--port", "8000", "--workers", "4"]
+CMD [".venv/bin/fastapi", "run", "main.py", "--port", "8000", "--workers", "8"]
