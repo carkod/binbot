@@ -49,6 +49,9 @@ class ConsolidatedAccounts:
 
             for asset in binance_balances:
                 if float(asset["free"]) > 0 or float(asset["locked"]) > 0:
+                    if asset["asset"] == self.autotrade_settings.fiat:
+                        fiat_available += float(asset["free"])
+
                     if asset["asset"] not in [
                         self.autotrade_settings.fiat,
                         "TUSD",
@@ -63,6 +66,7 @@ class ConsolidatedAccounts:
                             )
                         except Exception as error:
                             print(error)
+
                         fiat_available += float(asset["free"]) * float(rate)
                         estimated_total_fiat += (
                             float(asset["free"]) + float(asset["locked"])
