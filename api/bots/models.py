@@ -126,6 +126,39 @@ class BotBase(BaseModel):
     trailling_profit: Amount = Field(default=0, ge=-1, le=101)
     strategy: Strategy = Field(default=Strategy.long)
 
+    model_config = {
+        "from_attributes": True,
+        "use_enum_values": True,
+        "json_schema_extra": {
+            "description": "Most fields are optional. Deal and orders fields are generated internally and filled by Exchange",
+            "examples": [
+                {
+                    "pair": "BNBUSDT",
+                    "fiat": "USDC",
+                    "quote_asset": "USDC",
+                    "fiat_order_size": 15,
+                    "candlestick_interval": "15m",
+                    "close_condition": "dynamic_trailling",
+                    "cooldown": 0,
+                    "created_at": 1702999999.0,
+                    "updated_at": 1702999999.0,
+                    "dynamic_trailling": False,
+                    "logs": [],
+                    "mode": "manual",
+                    "name": "Default bot",
+                    "status": "inactive",
+                    "stop_loss": 0,
+                    "take_profit": 2.3,
+                    "trailling": True,
+                    "trailling_deviation": 0.63,
+                    "trailling_profit": 2.3,
+                    "margin_short_reversal": False,
+                    "strategy": "long",
+                }
+            ],
+        },
+    }
+
     @field_validator("pair")
     @classmethod
     def check_pair_not_empty(cls, v):
@@ -157,29 +190,33 @@ class BotModel(BotBase):
         "from_attributes": True,
         "use_enum_values": True,
         "json_schema_extra": {
-            "description": "Most fields are optional. Deal field is generated internally, orders are filled up by Exchange",
+            "description": "BotModel with id, deal, and orders. Deal and orders fields are generated internally and filled by Exchange",
             "examples": [
                 {
+                    "id": "550e8400-e29b-41d4-a716-446655440000",
                     "pair": "BNBUSDT",
                     "fiat": "USDC",
-                    "base_order_size": 15,
+                    "quote_asset": "USDC",
+                    "fiat_order_size": 15,
                     "candlestick_interval": "15m",
+                    "close_condition": "dynamic_trailling",
                     "cooldown": 0,
+                    "created_at": 1702999999.0,
+                    "updated_at": 1702999999.0,
+                    "dynamic_trailling": False,
                     "logs": [],
-                    # Manual is triggered by the terminal dashboard, autotrade by research app,
                     "mode": "manual",
                     "name": "Default bot",
-                    "orders": [],
                     "status": "inactive",
                     "stop_loss": 0,
                     "take_profit": 2.3,
                     "trailling": True,
                     "trailling_deviation": 0.63,
                     "trailling_profit": 2.3,
+                    "margin_short_reversal": False,
                     "strategy": "long",
-                    "short_buy_price": 0,
-                    "short_sell_price": 0,
-                    "total_commission": 0,
+                    "deal": {},
+                    "orders": [],
                 }
             ],
         },
@@ -241,29 +278,33 @@ class BotModelResponse(BotBase):
         "from_attributes": True,
         "use_enum_values": True,
         "json_schema_extra": {
-            "description": "Most fields are optional. Deal field is generated internally, orders are filled up by Exchange",
+            "description": "API response model with id, deal, and orders. Deal and orders fields are populated by the system",
             "examples": [
                 {
+                    "id": "550e8400-e29b-41d4-a716-446655440000",
                     "pair": "BNBUSDT",
                     "fiat": "USDC",
-                    "base_order_size": 15,
+                    "quote_asset": "USDC",
+                    "fiat_order_size": 15,
                     "candlestick_interval": "15m",
+                    "close_condition": "dynamic_trailling",
                     "cooldown": 0,
+                    "created_at": 1702999999.0,
+                    "updated_at": 1702999999.0,
+                    "dynamic_trailling": False,
                     "logs": [],
-                    # Manual is triggered by the terminal dashboard, autotrade by research app,
                     "mode": "manual",
                     "name": "Default bot",
-                    "orders": [],
                     "status": "inactive",
                     "stop_loss": 0,
                     "take_profit": 2.3,
                     "trailling": True,
                     "trailling_deviation": 0.63,
                     "trailling_profit": 2.3,
+                    "margin_short_reversal": False,
                     "strategy": "long",
-                    "short_buy_price": 0,
-                    "short_sell_price": 0,
-                    "total_commission": 0,
+                    "deal": {},
+                    "orders": [],
                 }
             ],
         },
