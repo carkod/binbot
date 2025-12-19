@@ -64,7 +64,11 @@ class KucoinSpotDeal(KucoinBaseBalance):
         # in theory main account should never be empty
         if quote_asset in result_balances["main"]:
             if "trade" in result_balances and quote_asset in result_balances["trade"]:
-                if float(result_balances["trade"][quote_asset]) > 0:
+                if (
+                    float(result_balances["trade"][quote_asset])
+                    > self.active_bot.fiat_order_size
+                ):
+                    # There is enough money to trade
                     return True
 
             response = self.kucoin_api.transfer_main_to_trade(
@@ -270,6 +274,7 @@ class KucoinSpotDeal(KucoinBaseBalance):
                 side=AddOrderReq.SideEnum.BUY,
             )
         else:
+            # repurchase multiplier nullified with Kucoin API
             system_order = self.kucoin_api.buy_order(
                 symbol=self.symbol,
                 qty=(qty * repurchase_multiplier),

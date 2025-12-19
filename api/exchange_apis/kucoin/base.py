@@ -16,6 +16,7 @@ from exchange_apis.kucoin.orders import KucoinOrders
 
 class KucoinApi(KucoinOrders):
     def __init__(self):
+        super().__init__()
         self.client = self.setup_client()
         self.spot_api = self.client.rest_service().get_spot_service().get_market_api()
         self.account_api = (

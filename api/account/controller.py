@@ -60,13 +60,9 @@ class ConsolidatedAccounts:
                         "BAKE",  # delisted, but still in shows in balance
                         "NFT",
                     ]:
-                        try:
-                            rate = self.binance_assets.get_ticker_price(
-                                f"{asset['asset']}{self.autotrade_settings.fiat}"
-                            )
-                        except Exception as error:
-                            print(error)
-
+                        rate = self.binance_assets.get_ticker_price(
+                            f"{asset['asset']}{self.autotrade_settings.fiat}"
+                        )
                         fiat_available += float(asset["free"]) * float(rate)
                         estimated_total_fiat += (
                             float(asset["free"]) + float(asset["locked"])

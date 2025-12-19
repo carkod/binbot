@@ -31,6 +31,8 @@ class KucoinBaseBalance:
         """
         Computes total balances, estimated total fiat, and fiat available
         using the KuCoin APIs available on the passed `accounts` instance.
+        Similar to ConsolidatedAccounts.get_balance but with the account type
+        separtion (main, trade, margin, futures).
 
         Returns:
             (total_balances, estimated_total_fiat, fiat_available)
@@ -45,6 +47,8 @@ class KucoinBaseBalance:
             if account_type.value not in result_balances:
                 result_balances[account_type.value] = {}
             for key, value in balances.items():
+                if account_type.value == "main" and key == self.fiat:
+                    fiat_available += float(value["balance"])
                 if float(value["balance"]) > 0:
                     # we don't want to convert USDC, TUSD or USDT to itself
                     if key not in [
@@ -54,7 +58,6 @@ class KucoinBaseBalance:
                         "USDT",
                     ]:
                         rate = self.kucoin_api.get_ticker_price(f"{key}-{self.fiat}")
-                        fiat_available += float(value["balance"]) * float(rate)
                         estimated_total_fiat += float(value["balance"]) * float(rate)
                     else:
                         estimated_total_fiat += float(value["balance"])
@@ -82,6 +85,8 @@ class KucoinBaseBalance:
         for account_type, balances in kucoin_balances.items():
             for key, value in balances.items():
                 if float(value["balance"]) > 0:
+                    if account_type.value == "main" and key == self.fiat:
+                        fiat_available += float(value["balance"])
                     # we don't want to convert USDC, TUSD or USDT to itself
                     if key not in [
                         self.fiat,
@@ -90,7 +95,6 @@ class KucoinBaseBalance:
                         "USDT",
                     ]:
                         rate = self.kucoin_api.get_ticker_price(f"{key}-{self.fiat}")
-                        fiat_available += float(value["balance"]) * float(rate)
                         estimated_total_fiat += float(value["balance"]) * float(rate)
                     else:
                         estimated_total_fiat += float(value["balance"])
