@@ -96,7 +96,9 @@ class KucoinOrders(KucoinRest):
         Fake synchronous order response shaped similarly to add_order_sync.
         Returns a dict echoing inputs and a computed price when missing.
         """
-        book_price = self.matching_engine(symbol, order_side=side, qty=qty)
+        book_price = self.matching_engine(
+            symbol, order_side=(side == AddOrderSyncReq.SideEnum.SELL), qty=qty
+        )
         # fake data
         ts = int(time() * 1000)
         order_id = str(random.randint(1000000000, 9999999999))
@@ -191,9 +193,7 @@ class KucoinOrders(KucoinRest):
         qty: float,
         order_type: AddOrderSyncReq.TypeEnum = AddOrderSyncReq.TypeEnum.LIMIT,
     ) -> GetOrderByOrderIdResp:
-        book_price = self.matching_engine(
-            symbol, order_side=AddOrderSyncReq.SideEnum.SELL, qty=qty
-        )
+        book_price = self.matching_engine(symbol, order_side=False, qty=qty)
         builder = (
             AddOrderSyncReqBuilder()
             .set_symbol(symbol)
@@ -217,9 +217,7 @@ class KucoinOrders(KucoinRest):
         qty: float,
         order_type: AddOrderSyncReq.TypeEnum = AddOrderSyncReq.TypeEnum.LIMIT,
     ) -> GetOrderByOrderIdResp:
-        book_price = self.matching_engine(
-            symbol, order_side=AddOrderSyncReq.SideEnum.BUY, qty=qty
-        )
+        book_price = self.matching_engine(symbol, order_side=True, qty=qty)
         builder = (
             AddOrderSyncReqBuilder()
             .set_symbol(symbol)

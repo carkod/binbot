@@ -85,6 +85,7 @@ class StreamingController:
         self.symbol_data = base.symbols_crud.get_symbol(symbol)
         self.base_streaming = base
         self.symbol = symbol
+        self.api: Union[BinanceApi, KucoinApi]
 
         binance_interval = BinanceKlineIntervals.fifteen_minutes
         # Prepare interval based on exchange
@@ -143,10 +144,13 @@ class StreamingController:
         logging.info(f"Processing klines for {symbol}")
         close_price = float(self.klines[-1][4])
         open_price = float(self.klines[-1][1])
+        converted_symbol = symbol.replace("-", "")
 
-        if symbol in self.base_streaming.active_bot_pairs:
-            current_bot = self.base_streaming.get_current_bot(symbol)
-            current_test_bot = self.base_streaming.get_current_test_bot(symbol)
+        if converted_symbol in self.base_streaming.active_bot_pairs:
+            current_bot = self.base_streaming.get_current_bot(converted_symbol)
+            current_test_bot = self.base_streaming.get_current_test_bot(
+                converted_symbol
+            )
 
             try:
                 if current_bot:
@@ -416,9 +420,10 @@ class StreamingController:
         """
         symbol = self.symbol
         close_price = float(self.klines[-1][4])
+        converted_symbol = symbol.replace("-", "")
 
         # Check if it matches any active bots
-        self.load_current_bots(symbol)
+        self.load_current_bots(converted_symbol)
 
         bb_spreads = self.build_bb_spreads()
 

@@ -88,7 +88,8 @@ def get_portfolio_performance(session: Session = Depends(get_session)):
 @account_blueprint.get("/clean", response_model=BalanceSeriesResponse, tags=["assets"])
 def clean_balance(bypass: bool = False, session: Session = Depends(get_session)):
     try:
-        Assets(session=session).clean_balance_assets(bypass=bypass)
+        accounts = ConsolidatedAccounts(session=session)
+        accounts.clean_balance_assets(bypass=bypass)
         return json_response_message("Sucessfully cleaned balance.")
     except LowBalanceCleanupError as error:
         return json_response_error(f"Failed to clean balance: {error}")

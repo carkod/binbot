@@ -93,3 +93,15 @@ class ConsolidatedAccounts:
             return response
         else:
             return Assets(session=self.session).store_balance()
+
+    def clean_balance_assets(self, bypass: bool = False):
+        """
+        Move any assets from trade or margin accounts to main account that are below a certain threshold
+
+        Kucoin doesn't punish us for using the endpoint too much so no need to bypass
+        """
+        if self.autotrade_settings.exchange_id == ExchangeId.KUCOIN:
+            kucoin_balance = KucoinBaseBalance()
+            kucoin_balance.clean_assets()
+        else:
+            Assets(session=self.session).clean_balance_assets(bypass=bypass)

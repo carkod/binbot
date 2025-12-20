@@ -1,4 +1,5 @@
 from typing import Dict, Tuple
+from enum import Enum
 from databases.crud.autotrade_crud import AutotradeCrud
 from exchange_apis.kucoin.base import KucoinApi
 from tools.enum_definitions import QuoteAssets
@@ -44,10 +45,13 @@ class KucoinBaseBalance:
 
         kucoin_balances = self.kucoin_api.get_account_balance_by_type()
         for account_type, balances in kucoin_balances.items():
-            if account_type.value not in result_balances:
-                result_balances[account_type.value] = {}
+            account_type_str = (
+                account_type.value if isinstance(account_type, Enum) else account_type
+            )
+            if account_type_str not in result_balances:
+                result_balances[account_type_str] = {}
             for key, value in balances.items():
-                if account_type.value == "main" and key == self.fiat:
+                if account_type_str == "main" and key == self.fiat:
                     fiat_available += float(value["balance"])
                 if float(value["balance"]) > 0:
                     # we don't want to convert USDC, TUSD or USDT to itself
@@ -62,7 +66,7 @@ class KucoinBaseBalance:
                     else:
                         estimated_total_fiat += float(value["balance"])
 
-                    result_balances[account_type.value][key] = float(value["balance"])
+                    result_balances[account_type_str][key] = float(value["balance"])
 
         return result_balances, estimated_total_fiat, fiat_available
 
@@ -83,9 +87,12 @@ class KucoinBaseBalance:
 
         kucoin_balances = self.kucoin_api.get_account_balance_by_type()
         for account_type, balances in kucoin_balances.items():
+            account_type_str = (
+                account_type.value if isinstance(account_type, Enum) else account_type
+            )
             for key, value in balances.items():
                 if float(value["balance"]) > 0:
-                    if account_type.value == "main" and key == self.fiat:
+                    if account_type_str == "main" and key == self.fiat:
                         fiat_available += float(value["balance"])
                     # we don't want to convert USDC, TUSD or USDT to itself
                     if key not in [
@@ -116,3 +123,21 @@ class KucoinBaseBalance:
         if asset in kucoin_balances:
             return float(kucoin_balances[asset]["balance"])
         return 0.0
+
+    def clean_assets(self, bypass: bool = False):
+        """
+        Move any assets from trade or margin accounts to main account that are below a certain threshold
+        """
+        kucoin_balances = self.kucoin_api.get_account_balance_by_type()
+        for account_type, balances in kucoin_balances.items():
+            account_type_str = (
+                account_type.value if isinstance(account_type, Enum) else account_type
+            )
+            if account_type_str != "main":
+                for key, value in balances.items():
+                    balance_amount = float(value["balance"])
+                    if balance_amount > 0:
+                        self.kucoin_api.transfer_trade_to_main(
+                            asset=key,
+                            amount=balance_amount,
+                        )

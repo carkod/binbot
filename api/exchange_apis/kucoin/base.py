@@ -74,7 +74,7 @@ class KucoinApi(KucoinOrders):
 
         return balance_items
 
-    def get_account_balance_by_type(self):
+    def get_account_balance_by_type(self) -> dict[str, dict[str, dict[str, float]]]:
         """
         Get balances grouped by account type.
         Returns:
