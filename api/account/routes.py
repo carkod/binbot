@@ -13,7 +13,7 @@ from tools.exceptions import (
     LowBalanceCleanupError,
     MarginLoanNotFound,
 )
-from tools.handle_error import json_response, json_response_error, json_response_message
+from tools.handle_error import json_response_error, json_response_message
 from sqlmodel import Session
 from databases.utils import get_session
 from databases.crud.balances_crud import BalancesCrud
@@ -26,6 +26,18 @@ account_blueprint = APIRouter()
 def get_balance(session: Session = Depends(get_session)):
     accounts = ConsolidatedAccounts(session=session)
     data = accounts.get_balance()
+    return {
+        "data": data,
+        "message": f"Successfully retrieved {accounts.autotrade_settings.exchange_id.name} balance.",
+    }
+
+
+@account_blueprint.get(
+    "/kucoin-balance", response_model=BalanceResponse, tags=["account"]
+)
+def get_balance_by_type(session: Session = Depends(get_session)):
+    accounts = ConsolidatedAccounts(session=session)
+    data = accounts.get_kucoin_balances_by_type()
     return {
         "data": data,
         "message": f"Successfully retrieved {accounts.autotrade_settings.exchange_id.name} balance.",
@@ -95,28 +107,6 @@ def clean_balance(bypass: bool = False, session: Session = Depends(get_session))
         return json_response_error(f"Failed to clean balance: {error}")
     except BinanceErrors as error:
         return json_response_error(f"Failed to clean balance: {error.message}")
-
-
-@account_blueprint.get(
-    "/fiat/available", response_model=BalanceSeriesResponse, tags=["account"]
-)
-def fiat_available(session: Session = Depends(get_session)):
-    """
-    Total USDC in balance
-    Calculated by Binance
-    """
-    total_fiat = Assets(session=session).get_available_fiat()
-    return json_response({"data": total_fiat})
-
-
-@account_blueprint.get("/fiat", response_model=BalanceSeriesResponse, tags=["account"])
-def fiat(session: Session = Depends(get_session)):
-    """
-    Total USDC in balance
-    Calculated by Binance
-    """
-    total_fiat = Assets(session=session).get_total_fiat()
-    return json_response({"data": total_fiat})
 
 
 @account_blueprint.get(

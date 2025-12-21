@@ -105,3 +105,10 @@ class ConsolidatedAccounts:
             kucoin_balance.clean_assets()
         else:
             Assets(session=self.session).clean_balance_assets(bypass=bypass)
+
+    def get_kucoin_balances_by_type(self):
+        """
+        Get balances grouped by account type for KuCoin exchange
+        """
+        balances_by_type = self.kucoin_api.get_account_balance_by_type()
+        return balances_by_type

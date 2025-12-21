@@ -275,48 +275,6 @@ class Assets(BinanceOrderController):
 
         return assets
 
-    def get_total_fiat(self):
-        """
-        Simplified version of balance_estimate
-
-        Returns:
-            float: total BTC estimated in the SPOT wallet
-            then converted into USDC
-        """
-        wallet_balance = self.get_wallet_balance()
-        get_usdc_btc_rate = self.get_ticker_price(symbol=f"BTC{self.fiat}")
-        total_balance: float = 0
-        rate = float(get_usdc_btc_rate)
-        for item in wallet_balance:
-            if item["activate"]:
-                total_balance += float(item["balance"])
-
-        total_fiat = total_balance * rate
-        return total_fiat
-
-    def get_available_fiat(self):
-        """
-        Simplified version of balance_estimate
-        to get free/avaliable USDC.
-
-        Getting the total USDC directly
-        from the balances because if it were e.g.
-        Margin trading, it would not be available for use.
-        The only available fiat is the unused USDC in the SPOT wallet.
-
-        Balance not used in Margin trading should be
-        transferred back to the SPOT wallet.
-
-        Returns:
-            str: total USDC available to
-        """
-        total_balance = self.get_raw_balance()
-        for item in total_balance:
-            if item["asset"] == self.fiat:
-                return float(item["free"])
-        else:
-            return 0
-
     def disable_isolated_accounts(self):
         """
         Check and disable isolated accounts
