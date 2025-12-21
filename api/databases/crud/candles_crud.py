@@ -44,7 +44,7 @@ class CandlesCrud:
             f"✅ Created timeseries collection: {self.collection_name} for {symbol}"
         )
         # Not found, fetch from Binance
-        klines = self.binance_api.get_raw_klines(symbol=symbol, interval=interval)
+        klines = self.binance_api.get_ui_klines(symbol=symbol, interval=interval)
         if klines:
             # Store in MongoDB
             docs = []
@@ -106,7 +106,7 @@ class CandlesCrud:
         """
         Get BTC correlation data for 1 day interval
         """
-        asset_data = self.binance_api.get_raw_klines(
+        asset_data = self.binance_api.get_ui_klines(
             symbol=asset_symbol, interval=BinanceKlineIntervals.one_day
         )
 

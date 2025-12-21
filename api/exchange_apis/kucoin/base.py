@@ -12,6 +12,7 @@ from kucoin_universal_sdk.generate.account.account.model_get_isolated_margin_acc
 )
 from tools.enum_definitions import KucoinKlineIntervals
 from exchange_apis.kucoin.orders import KucoinOrders
+from datetime import datetime
 
 
 class KucoinApi(KucoinOrders):
@@ -118,7 +119,7 @@ class KucoinApi(KucoinOrders):
         response = self.account_api.get_isolated_margin_account(request)
         return response
 
-    def get_raw_klines(
+    def get_ui_klines(
         self,
         symbol: str,
         interval: str,
@@ -140,17 +141,23 @@ class KucoinApi(KucoinOrders):
             List of klines in format compatible with Binance format:
             [timestamp, open, high, low, close, volume, close_time, ...]
         """
-        builder = GetKlinesReqBuilder().set_symbol(symbol).set_type(interval)
+        # Compute time window based on limit and interval
+        interval_ms = KucoinKlineIntervals.get_interval_ms(interval)
+        now_ms = int(datetime.now().timestamp() * 1000)
+        # Align end_time to interval boundary
+        end_time = now_ms - (now_ms % interval_ms)
+        start_time = end_time - (limit * interval_ms)
 
-        if start_time:
-            builder = builder.set_start_at(int(start_time / 1000))
-        if end_time:
-            builder = builder.set_end_at(int(end_time / 1000))
+        builder = (
+            GetKlinesReqBuilder()
+            .set_symbol(symbol)
+            .set_type(interval)
+            .set_start_at(start_time // 1000)
+            .set_end_at(end_time // 1000)
+        )
 
         request = builder.build()
         response = self.spot_api.get_klines(request)
-
-        interval_ms = KucoinKlineIntervals.get_interval_ms(interval)
 
         # Convert Kucoin format to Binance-compatible format
         # Kucoin returns: [time, open, close, high, low, volume, turnover]

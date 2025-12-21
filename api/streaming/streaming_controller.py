@@ -100,10 +100,9 @@ class StreamingController:
             self.api = self.base_streaming.binance_api
 
         # Get klines from the appropriate exchange
-        self.klines = self.api.get_raw_klines(
+        self.klines = self.api.get_ui_klines(
             symbol=self.symbol,
             interval=interval,
-            limit=200,
         )
         self.current_bot: BotModel | None = None
         self.current_test_bot: BotModel | None = None

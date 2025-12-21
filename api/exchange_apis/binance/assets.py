@@ -177,7 +177,7 @@ class Assets(BinanceOrderController):
             )
             * 1000
         )
-        klines = self.get_raw_klines(
+        klines = self.get_ui_klines(
             limit=len(balance_series),
             symbol="BTCUSDC",
             interval=BinanceKlineIntervals.one_day,
