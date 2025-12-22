@@ -6,6 +6,7 @@ from account.schemas import (
     BalanceResponse,
     GainersLosersResponse,
     BalanceSeriesResponse,
+    KucoinBalanceResponse,
 )
 from tools.exceptions import (
     BinanceErrors,
@@ -33,7 +34,7 @@ def get_balance(session: Session = Depends(get_session)):
 
 
 @account_blueprint.get(
-    "/kucoin-balance", response_model=BalanceResponse, tags=["account"]
+    "/kucoin-balance", response_model=KucoinBalanceResponse, tags=["account"]
 )
 def get_balance_by_type(session: Session = Depends(get_session)):
     accounts = ConsolidatedAccounts(session=session)
