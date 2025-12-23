@@ -1,6 +1,6 @@
 import random
 import uuid
-from time import time
+from time import sleep, time
 from exchange_apis.kucoin.rest import KucoinRest
 from kucoin_universal_sdk.generate.spot.order.model_add_order_sync_resp import (
     AddOrderSyncResp,
@@ -193,6 +193,15 @@ class KucoinOrders(KucoinRest):
         qty: float,
         order_type: AddOrderSyncReq.TypeEnum = AddOrderSyncReq.TypeEnum.LIMIT,
     ) -> GetOrderByOrderIdResp:
+        """
+        Wrapper for Kucoin add order for convenience and consistency with other exchanges.
+
+        Price is not provided so LIMIT orders can be filled immediately using matching engine.
+
+        Because add_order_sync doesn't return enough info for our orders,
+        we need to retrieve the order by order id after placing it.
+        And because retrieving it is not immediate, we need to sleep delay
+        """
         book_price = self.matching_engine(symbol, order_side=False, qty=qty)
         builder = (
             AddOrderSyncReqBuilder()
@@ -205,6 +214,8 @@ class KucoinOrders(KucoinRest):
 
         req = builder.build()
         order_response = self.order_api.add_order_sync(req)
+        # delay a tiny bit for order to be registered
+        sleep(0.1)
         # order_response returns incomplete info
         order = self.get_order_by_order_id(
             symbol=symbol, order_id=order_response.order_id
@@ -217,6 +228,15 @@ class KucoinOrders(KucoinRest):
         qty: float,
         order_type: AddOrderSyncReq.TypeEnum = AddOrderSyncReq.TypeEnum.LIMIT,
     ) -> GetOrderByOrderIdResp:
+        """
+        Wrapper for Kucoin add order for convenience and consistent interface with other exchanges.
+
+        Price is not provided so LIMIT orders can be filled immediately using matching engine.
+
+        Because add_order_sync doesn't return enough info for our orders,
+        we need to retrieve the order by order id after placing it.
+        And because retrieving it is not immediate, we need to sleep delay
+        """
         book_price = self.matching_engine(symbol, order_side=True, qty=qty)
         builder = (
             AddOrderSyncReqBuilder()
@@ -229,6 +249,8 @@ class KucoinOrders(KucoinRest):
 
         req = builder.build()
         order_response = self.order_api.add_order_sync(req)
+        # delay a tiny bit for order to be registered
+        sleep(0.1)
         order = self.get_order_by_order_id(
             symbol=symbol, order_id=order_response.order_id
         )
@@ -238,6 +260,8 @@ class KucoinOrders(KucoinRest):
         """
         Batch place up to 5 limit orders for the same symbol.
         Each dict in `orders` should contain: symbol, side, type, size, price (for limit), optional fields as per SDK.
+
+        Not usable at the time of writing due to inconsistency with other exchange's interfaces (other exchanges might not support batch orders).
         """
         order_list: list[BatchAddOrdersSyncOrderList] = []
         for o in orders:

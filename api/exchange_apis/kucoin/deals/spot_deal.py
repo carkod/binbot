@@ -58,7 +58,7 @@ class KucoinSpotDeal(KucoinBaseBalance):
         Returns:
             bool: True if there is available balance, False otherwise.
         """
-        result_balances, _, fiat_available = self.compute_balance()
+        result_balances, _, _ = self.compute_balance()
         quote_asset = self.active_bot.quote_asset.value
 
         # in theory main account should never be empty
@@ -74,10 +74,10 @@ class KucoinSpotDeal(KucoinBaseBalance):
             # Calculate amount needed to transfer
             amount_needed = self.active_bot.fiat_order_size - float(
                 result_balances["trade"][quote_asset]
-                
             )
             response = self.kucoin_api.transfer_main_to_trade(
-                asset=quote_asset, amount=round_numbers_ceiling(amount_needed, self.price_precision)
+                asset=quote_asset,
+                amount=round_numbers_ceiling(amount_needed, self.price_precision),
             )
             if response.order_id:
                 self.controller.update_logs(
@@ -102,7 +102,7 @@ class KucoinSpotDeal(KucoinBaseBalance):
         Returns:
             The response from the KuCoin API after placing the buy order.
         """
-        result_balances, estimated_total_fiat, fiat_available = self.compute_balance()
+        result_balances, _, _ = self.compute_balance()
         quote_asset = self.active_bot.quote_asset.value
         last_ticker_price = self.kucoin_api.get_ticker_price(self.symbol)
 
@@ -315,7 +315,7 @@ class KucoinSpotDeal(KucoinBaseBalance):
         )
 
         self.active_bot.orders.append(order_data)
-        self.active_bot.deal.total_commissions = system_order.fee
+        self.active_bot.deal.total_commissions += float(system_order.fee)
 
         self.active_bot.deal.opening_timestamp = system_order.created_at
         self.active_bot.deal.opening_price = res_price
