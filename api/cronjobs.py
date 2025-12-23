@@ -47,7 +47,7 @@ def main():
         id="disable_isolated_accounts",
     )
     scheduler.add_job(
-        func=assets.clean_balance_assets,
+        func=consolidated_accounts.clean_balance_assets,
         trigger="cron",
         timezone=timezone,
         hour=3,

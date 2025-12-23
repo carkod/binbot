@@ -198,9 +198,7 @@ class BotTableCrud:
         initial_bot = self.get_one(bot_id=str(data.id))
 
         # new quote_asset field sync
-        composed_pair = (
-            data.pair.replace(data.quote_asset.value, "") + data.quote_asset.value
-        )
+        composed_pair = data.pair.replace(data.quote_asset, "") + data.quote_asset
         if data.pair != composed_pair:
             # need a new session so we don't interfere in current
             symbol_crud = SymbolsCrud()

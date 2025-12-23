@@ -250,7 +250,7 @@ class BinanceApi:
         data = self.request(url=f"{self.ticker_price_url}", params={"symbol": symbol})
         return float(data["price"])
 
-    def get_raw_klines(
+    def get_ui_klines(
         self, symbol, interval, limit=500, start_time=None, end_time=None
     ):
         """

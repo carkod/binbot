@@ -3,15 +3,11 @@ from tools.handle_error import StandardResponse
 from typing import Dict
 
 
-class BalanceSchema(BaseModel):
+class BaseBalance(BaseModel):
     """
-    Blueprint of the bots collection on MongoDB
-    All validation and database fields new or old handled here
+    Common balance fields shared across balance models.
     """
 
-    balances: Dict[str, float] = Field(
-        default={}, description="Dictionary of asset balances 'BTC': 0.5, 'ETH': 0.01"
-    )
     estimated_total_fiat: float = Field(
         default=0,
         description="Estimated total in fiat currency e.g. USD or tether token",
@@ -23,6 +19,30 @@ class BalanceSchema(BaseModel):
         default="USDT",
         description="Fiat currency use for trading, this should match autotrade.settings.fiat",
     )
+
+
+class KucoinBalance(BaseBalance):
+    """
+    Same as BalanceSchema but with nested account type
+    specific to Kucoin exchange
+    """
+
+    balances: Dict[str, Dict[str, float]]
+
+
+class BalanceSchema(BaseBalance):
+    """
+    Blueprint of the bots collection on MongoDB
+    All validation and database fields new or old handled here
+    """
+
+    balances: Dict[str, float] = Field(
+        default={}, description="Dictionary of asset balances 'BTC': 0.5, 'ETH': 0.01"
+    )
+
+
+class KucoinBalanceResponse(StandardResponse):
+    data: KucoinBalance
 
 
 class BalanceResponse(StandardResponse):

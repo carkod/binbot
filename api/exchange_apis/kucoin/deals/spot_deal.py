@@ -1,6 +1,6 @@
 import logging
 from typing import Type, Union
-from tools.maths import round_numbers_floor, round_numbers
+from tools.maths import round_numbers_floor, round_numbers, round_numbers_ceiling
 from tools.enum_definitions import (
     DealType,
     OrderStatus,
@@ -64,11 +64,20 @@ class KucoinSpotDeal(KucoinBaseBalance):
         # in theory main account should never be empty
         if quote_asset in result_balances["main"]:
             if "trade" in result_balances and quote_asset in result_balances["trade"]:
-                if float(result_balances["trade"][quote_asset]) > 0:
+                if (
+                    float(result_balances["trade"][quote_asset])
+                    > self.active_bot.fiat_order_size
+                ):
+                    # There is enough money to trade
                     return True
 
+            # Calculate amount needed to transfer
+            amount_needed = self.active_bot.fiat_order_size - float(
+                result_balances["trade"][quote_asset]
+                
+            )
             response = self.kucoin_api.transfer_main_to_trade(
-                asset=quote_asset, amount=self.active_bot.fiat_order_size
+                asset=quote_asset, amount=round_numbers_ceiling(amount_needed, self.price_precision)
             )
             if response.order_id:
                 self.controller.update_logs(
@@ -270,6 +279,7 @@ class KucoinSpotDeal(KucoinBaseBalance):
                 side=AddOrderReq.SideEnum.BUY,
             )
         else:
+            # repurchase multiplier nullified with Kucoin API
             system_order = self.kucoin_api.buy_order(
                 symbol=self.symbol,
                 qty=(qty * repurchase_multiplier),
