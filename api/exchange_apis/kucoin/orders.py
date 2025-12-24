@@ -60,6 +60,14 @@ from kucoin_universal_sdk.generate.spot.market import (
 
 
 class KucoinOrders(KucoinRest):
+    """
+    Convienience wrapper for Kucoin order operations.
+
+    - Kucoin transactions don't immediately return all order details so we need cooldown slee
+    """
+
+    TRANSACTION_COOLDOWN_SECONDS = 1
+
     def __init__(self):
         super().__init__()
         self.client = self.setup_client()
@@ -71,6 +79,41 @@ class KucoinOrders(KucoinRest):
         self.debit_api = self.client.rest_service().get_margin_service().get_debit_api()
         self.transfer_api = (
             self.client.rest_service().get_account_service().get_transfer_api()
+        )
+
+    def _get_order_with_retry(
+        self, symbol: str, order_id: str, max_retries: int = 10
+    ) -> GetOrderByOrderIdResp:
+        """
+        Get order by ID with exponential backoff retry.
+        KuCoin's order data is not immediately available after placement.
+
+        Exponential backoff: 2 ** attempt number 1 = 100ms...
+        """
+        for attempt in range(max_retries):
+            order = self.get_order_by_order_id(symbol=symbol, order_id=order_id)
+            if order:
+                return order
+            sleep((2**attempt) / 10)
+
+        raise TimeoutError(f"Order {order_id} not ready after {max_retries} attempts")
+
+    def _get_margin_order_with_retry(
+        self, symbol: str, order_id: str, max_retries: int = 10
+    ) -> GetOrderByOrderIdResp:
+        """
+        Get margin order by ID with exponential backoff retry.
+        KuCoin's order data is not immediately available after placement.
+        """
+        for attempt in range(max_retries):
+            order = self.get_margin_order_by_order_id(symbol=symbol, order_id=order_id)
+            if order and order.order_id:
+                return order
+            # Exponential backoff: 100ms, 200ms, 400ms, 800ms...
+            sleep((2**attempt) / 10)
+
+        raise TimeoutError(
+            f"Margin order {order_id} not ready after {max_retries} attempts"
         )
 
     def get_part_order_book(self, symbol: str, size: int):
@@ -214,10 +257,8 @@ class KucoinOrders(KucoinRest):
 
         req = builder.build()
         order_response = self.order_api.add_order_sync(req)
-        # delay a tiny bit for order to be registered
-        sleep(1)
-        # order_response returns incomplete info
-        order = self.get_order_by_order_id(
+        # order_response returns incomplete info, retry with backoff
+        order = self._get_order_with_retry(
             symbol=symbol, order_id=order_response.order_id
         )
         return order
@@ -249,9 +290,8 @@ class KucoinOrders(KucoinRest):
 
         req = builder.build()
         order_response = self.order_api.add_order_sync(req)
-        # delay a tiny bit for order to be registered
-        sleep(1)
-        order = self.get_order_by_order_id(
+        # order_response returns incomplete info, retry with backoff
+        order = self._get_order_with_retry(
             symbol=symbol, order_id=order_response.order_id
         )
         return order
@@ -339,7 +379,8 @@ class KucoinOrders(KucoinRest):
 
         req = builder.build()
         order_response = self.margin_order_api.add_order(req)
-        order = self.get_margin_order_by_order_id(
+        # order_response returns incomplete info, retry with backoff
+        order = self._get_margin_order_with_retry(
             symbol=symbol, order_id=order_response.order_id
         )
         return order
@@ -375,7 +416,8 @@ class KucoinOrders(KucoinRest):
 
         req = builder.build()
         order_response = self.margin_order_api.add_order(req)
-        order = self.get_margin_order_by_order_id(
+        # order_response returns incomplete info, retry with backoff
+        order = self._get_margin_order_with_retry(
             symbol=symbol, order_id=order_response.order_id
         )
         return order

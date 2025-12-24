@@ -1,5 +1,5 @@
 import logging
-from typing import Type, Union, Any, Tuple
+from typing import Type, Union, Tuple
 from tools.maths import (
     round_numbers_floor,
     round_timestamp,
@@ -42,7 +42,11 @@ class KucoinMarginDeal(KucoinBaseBalance):
         self.db_table = db_table
         self.symbols_crud = SymbolsCrud()
         # Provide controller attribute for parity with Binance implementations
-        self.controller: Union[PaperTradingTableCrud, BotTableCrud, Any]
+        self.controller: Union[PaperTradingTableCrud, BotTableCrud]
+        if db_table == PaperTradingTable:
+            self.controller = PaperTradingTableCrud()
+        else:
+            self.controller = BotTableCrud()
         self.symbol_info = SymbolsCrud().get_symbol(bot.pair)
         self.price_precision = self.symbol_info.price_precision
         self.qty_precision = self.symbol_info.qty_precision
@@ -270,7 +274,7 @@ class KucoinMarginDeal(KucoinBaseBalance):
             status=OrderStatus.FILLED if system_order.active else OrderStatus.EXPIRED,
         )
 
-        self.active_bot.deal.total_commissions += system_order.fee
+        self.active_bot.deal.total_commissions += float(system_order.fee)
         self.active_bot.orders.append(order_data)
 
         self.active_bot.deal.opening_timestamp = round_timestamp(

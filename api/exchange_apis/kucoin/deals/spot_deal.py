@@ -21,6 +21,7 @@ from kucoin_universal_sdk.generate.margin.order.model_add_order_req import (
 from kucoin_universal_sdk.generate.margin.order.model_get_order_by_order_id_resp import (
     GetOrderByOrderIdResp,
 )
+from kucoin_universal_sdk.model.common import RestError
 
 
 class KucoinSpotDeal(KucoinBaseBalance):
@@ -59,22 +60,36 @@ class KucoinSpotDeal(KucoinBaseBalance):
             bool: True if there is available balance, False otherwise.
         """
         result_balances, _, _ = self.compute_balance()
+        if not result_balances:
+            return False
+
         quote_asset = self.active_bot.quote_asset.value
 
         # in theory main account should never be empty
         if quote_asset in result_balances["main"]:
-            if "trade" in result_balances and quote_asset in result_balances["trade"]:
+            if (
+                "trade" in result_balances
+                and quote_asset in result_balances["trade"].keys()
+            ):
                 if (
                     float(result_balances["trade"][quote_asset])
-                    > self.active_bot.fiat_order_size
+                    >= self.active_bot.fiat_order_size
                 ):
                     # There is enough money to trade
                     return True
 
-            # Calculate amount needed to transfer
-            amount_needed = self.active_bot.fiat_order_size - float(
-                result_balances["trade"][quote_asset]
-            )
+                # Calculate amount needed to transfer
+                amount_needed = self.active_bot.fiat_order_size - float(
+                    result_balances["trade"][quote_asset]
+                )
+
+                # Absolutely no balance to trade
+                if result_balances["main"][quote_asset] < amount_needed:
+                    return False
+
+            else:
+                amount_needed = self.active_bot.fiat_order_size
+
             response = self.kucoin_api.transfer_main_to_trade(
                 asset=quote_asset,
                 amount=round_numbers_ceiling(amount_needed, self.price_precision),
@@ -268,10 +283,12 @@ class KucoinSpotDeal(KucoinBaseBalance):
             self.active_bot.deal.base_order_size = self.active_bot.fiat_order_size
             last_ticker_price = self.kucoin_api.get_ticker_price(self.symbol)
 
-            qty = round_numbers(
+            qty = round_numbers_ceiling(
                 (self.active_bot.fiat_order_size / last_ticker_price),
                 self.qty_precision,
             )
+
+        system_order = None
 
         if isinstance(self.controller, PaperTradingTableCrud):
             system_order = self.kucoin_api.simulate_order(
@@ -280,10 +297,22 @@ class KucoinSpotDeal(KucoinBaseBalance):
             )
         else:
             # repurchase multiplier nullified with Kucoin API
-            system_order = self.kucoin_api.buy_order(
-                symbol=self.symbol,
-                qty=(qty * repurchase_multiplier),
-            )
+            try:
+                system_order = self.kucoin_api.buy_order(
+                    symbol=self.symbol,
+                    qty=(qty * repurchase_multiplier),
+                )
+            except RestError as e:
+                code = float(e.response.code)
+                if code == 20004:
+                    if repurchase_multiplier - 0.2 <= 0:
+                        self.controller.update_logs(
+                            bot=self.active_bot,
+                            log_message="Base order failed due to insufficient balance after retries.",
+                        )
+                        return self.active_bot
+                    self.base_order(repurchase_multiplier=repurchase_multiplier - 0.2)
+
         # mostly for mypy to be happy
         if not system_order:
             self.controller.update_logs(
