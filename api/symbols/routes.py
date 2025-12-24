@@ -69,6 +69,26 @@ def store_symbols(
         return StandardResponse(message=str(e), error=1)
 
 
+@symbols_blueprint.get("/symbol/reingest", tags=["Symbols"])
+def reingest_symbols(
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_session),
+):
+    """
+    Reingest all symbols from Binance and Kucoin (runs in background)
+    """
+    try:
+        background_tasks.add_task(SymbolsCrud(session=session).etl_symbols_updates)
+        return GetOneSymbolResponse(
+            message="Symbols reingestion started in background!"
+        )
+    except (IntegrityError, DataError, SQLAlchemyError) as e:
+        session.rollback()
+        return StandardResponse(message=format_db_error(e), error=1)
+    except BinbotErrors as e:
+        return StandardResponse(message=str(e), error=1)
+
+
 @symbols_blueprint.put("/symbol/asset-index", tags=["Symbols"])
 def update_indexes(
     data: SymbolRequestPayload,

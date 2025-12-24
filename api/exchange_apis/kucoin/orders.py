@@ -215,7 +215,7 @@ class KucoinOrders(KucoinRest):
         req = builder.build()
         order_response = self.order_api.add_order_sync(req)
         # delay a tiny bit for order to be registered
-        sleep(0.1)
+        sleep(1)
         # order_response returns incomplete info
         order = self.get_order_by_order_id(
             symbol=symbol, order_id=order_response.order_id
@@ -250,7 +250,7 @@ class KucoinOrders(KucoinRest):
         req = builder.build()
         order_response = self.order_api.add_order_sync(req)
         # delay a tiny bit for order to be registered
-        sleep(0.1)
+        sleep(1)
         order = self.get_order_by_order_id(
             symbol=symbol, order_id=order_response.order_id
         )

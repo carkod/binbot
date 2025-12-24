@@ -101,7 +101,7 @@ def test_etl_exchange_info_update_excludes_try(
         MockBinanceApi.return_value = mock_instance
 
         crud = SymbolsCrud()
-        crud.etl_exchange_info_update()
+        crud.kucoin_symbols_reingestion()
 
         # Verify symbols were added correctly
         all_symbols = crud.get_all()
