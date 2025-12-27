@@ -1,3 +1,4 @@
+import logging
 from contextlib import contextmanager
 from decimal import Decimal
 from time import time
@@ -388,7 +389,7 @@ class SymbolsCrud:
     # -------------------------
     # Exchange ingestion / ETL
     # -------------------------
-    def etl_exchange_info_update(self):
+    def binance_symbols_reingestion(self):
         exchange_info_data = self.binance_api.exchange_info()
         for item in exchange_info_data["symbols"]:
             if item["status"] != "TRADING":
@@ -414,26 +415,50 @@ class SymbolsCrud:
                     is_margin_trading_allowed=item.get("isMarginTradingAllowed", False),
                 )
 
-    def kucoin_symbols_updates(self):
+    def kucoin_symbols_reingestion(self):
         exchange_info_data = self.kucoin_api.get_all_symbols()
         for item in exchange_info_data.data:
+            symbol = item.symbol.replace("-", "")
             if not item.enable_trading or item.symbol.startswith(
                 ("DOWN", "UP", "AUD", "EUR", "GBP")
             ):
                 continue
 
+            if item.st:
+                # assets to be delisted
+                payload = SymbolRequestPayload(
+                    symbol=symbol,
+                    active=False,
+                    blacklist_reason="At risk to be delisted soon",
+                    exchange_id=ExchangeId.KUCOIN,
+                    min_notional=float(item.base_min_size),
+                    price_precision=item.price_increment.find("1") - 2,
+                    qty_precision=item.base_increment.find("1") - 2,
+                    is_margin_trading_allowed=item.is_margin_enabled,
+                    quote_asset=item.quote_currency,
+                    base_asset=item.base_currency,
+                )
+                try:
+                    self.edit_symbol_item(payload)
+                    continue
+
+                except Exception as e:
+                    self.session.rollback()
+                    logging.error(f"Error updating delisted symbol {symbol}: {e}")
+                    continue
+
             active = True
-            if item.symbol in ("BTCUSDC", "ETHUSDC", "BNBUSDC"):
+            if symbol in ("BTCUSDC", "ETHUSDC", "BNBUSDC"):
                 active = False
 
             if item.quote_currency in list(QuoteAssets):
-                symbol = item.symbol.replace("-", "")
                 price_precision = item.price_increment.find("1") - 2
                 qty_precision = item.base_increment.find("1") - 2
                 min_notional = float(item.base_min_size)
 
-                try:
-                    self.get_symbol(symbol=symbol)
+                statement = select(SymbolTable).where(SymbolTable.id == symbol)
+                result = self.session.exec(statement).first()
+                if result:
                     with get_session() as s:
                         self._add_exchange_link_if_not_exists(
                             s,
@@ -446,35 +471,29 @@ class SymbolsCrud:
                             base_asset=item.base_currency,
                             is_margin_trading_allowed=item.is_margin_enabled,
                         )
-
-                except BinbotErrors as error:
-                    if "Symbol not found" in str(error):
-                        self.add_symbol(
+                else:
+                    self.add_symbol(
+                        symbol=symbol,
+                        quote_asset=item.quote_currency,
+                        base_asset=item.base_currency,
+                        exchange_id=ExchangeId.KUCOIN,
+                        active=active,
+                        price_precision=price_precision,
+                        qty_precision=qty_precision,
+                        min_notional=min_notional,
+                    )
+                    with get_session() as s:
+                        self._add_exchange_link_if_not_exists(
+                            s,
                             symbol=symbol,
-                            quote_asset=item.quote_currency,
-                            base_asset=item.base_currency,
                             exchange_id=ExchangeId.KUCOIN,
-                            active=active,
+                            min_notional=min_notional,
                             price_precision=price_precision,
                             qty_precision=qty_precision,
-                            min_notional=min_notional,
+                            quote_asset=item.quote_currency,
+                            base_asset=item.base_currency,
+                            is_margin_trading_allowed=item.is_margin_enabled,
                         )
-                        with get_session() as self.session:
-                            self._add_exchange_link_if_not_exists(
-                                s,
-                                symbol=symbol,
-                                exchange_id=ExchangeId.KUCOIN,
-                                min_notional=min_notional,
-                                price_precision=price_precision,
-                                qty_precision=qty_precision,
-                                quote_asset=item.quote_currency,
-                                base_asset=item.base_currency,
-                                is_margin_trading_allowed=item.is_margin_enabled,
-                            )
-                    else:
-                        # keep previous behaviour: log and continue
-                        print(f"Error adding symbol {symbol}: {error}")
-                        pass
 
     def binance_symbols_ingestion(self):
         exchange_info_data = self.binance_api.exchange_info()
@@ -571,3 +590,6 @@ class SymbolsCrud:
         # Run ingestions
         self.binance_symbols_ingestion()
         self.kucoin_symbols_ingestion()
+
+    def etl_symbols_updates(self):
+        self.kucoin_symbols_reingestion()

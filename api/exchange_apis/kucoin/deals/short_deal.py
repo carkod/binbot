@@ -59,7 +59,7 @@ class KucoinShortDeal(KucoinMarginDeal):
             status=OrderStatus.FILLED if system_order.active else OrderStatus.EXPIRED,
         )
 
-        self.active_bot.deal.total_commissions += system_order.fee
+        self.active_bot.deal.total_commissions += float(system_order.fee)
 
         self.active_bot.orders.append(stop_loss_order)
 
@@ -115,7 +115,7 @@ class KucoinShortDeal(KucoinMarginDeal):
             status=OrderStatus.FILLED if system_order.active else OrderStatus.EXPIRED,
         )
 
-        self.active_bot.deal.total_commissions += system_order.fee
+        self.active_bot.deal.total_commissions += float(system_order.fee)
 
         self.active_bot.orders.append(take_profit_order)
         self.active_bot.deal.closing_price = price
@@ -359,8 +359,7 @@ class KucoinShortDeal(KucoinMarginDeal):
                     else OrderStatus.EXPIRED,
                 )
 
-                self.active_bot.deal.total_commissions += system_order.fee
-
+                self.active_bot.deal.total_commissions += float(system_order.fee)
                 self.active_bot.orders.append(order)
 
                 self.active_bot.deal.closing_price = price

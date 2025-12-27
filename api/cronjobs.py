@@ -22,7 +22,7 @@ def main():
     # to avoid overloading RAM and also avoid hitting rate limits due to high weight
     # that's why they are placed at midnight
     scheduler.add_job(
-        func=symbols_crud.etl_exchange_info_update,
+        func=symbols_crud.etl_symbols_updates,
         trigger="cron",
         timezone=timezone,
         day_of_week="sat",

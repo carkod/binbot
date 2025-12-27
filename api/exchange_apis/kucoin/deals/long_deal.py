@@ -39,9 +39,10 @@ class KucoinLongDeal(KucoinSpotDeal):
             "Transferring remaining fiat currency to main account...", self.active_bot
         )
         amount = self.get_single_balance(self.symbol_info.base_asset)
-        self.kucoin_api.transfer_trade_to_main(
-            asset=self.symbol_info.base_asset, amount=amount
-        )
+        if amount > 0:
+            self.kucoin_api.transfer_trade_to_main(
+                asset=self.symbol_info.base_asset, amount=amount
+            )
         return self.active_bot
 
     def take_profit_order(self) -> BotModel:
@@ -158,6 +159,7 @@ class KucoinLongDeal(KucoinSpotDeal):
         else:
             qty = self.kucoin_api.get_single_spot_balance(self.symbol_info.base_asset)
 
+        system_order = None
         if qty > 0:
             # Dispatch fake order
             if isinstance(self.controller, PaperTradingTableCrud):
@@ -174,7 +176,6 @@ class KucoinLongDeal(KucoinSpotDeal):
                 system_order = self.kucoin_api.sell_order(symbol=self.symbol, qty=qty)
 
             price = float(system_order.price)
-
             stop_loss_order = OrderModel(
                 timestamp=system_order.created_at,
                 order_id=system_order.id,
@@ -190,7 +191,7 @@ class KucoinLongDeal(KucoinSpotDeal):
                 else OrderStatus.EXPIRED,
             )
 
-            self.active_bot.deal.total_commissions += system_order.fee
+            self.active_bot.deal.total_commissions += float(system_order.fee)
 
             self.active_bot.orders.append(stop_loss_order)
             self.active_bot.deal.closing_price = price
@@ -285,7 +286,6 @@ class KucoinLongDeal(KucoinSpotDeal):
             "Completed take profit after failing to break trailling"
         )
         self.controller.save(self.active_bot)
-        self.clean_fiat_currency()
 
         return self.active_bot
 

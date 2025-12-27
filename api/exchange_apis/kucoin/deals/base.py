@@ -1,6 +1,7 @@
 from typing import Dict, Tuple
 from enum import Enum
 from databases.crud.autotrade_crud import AutotradeCrud
+from databases.crud.bot_crud import BotTableCrud
 from exchange_apis.kucoin.base import KucoinApi
 from tools.enum_definitions import QuoteAssets
 
@@ -9,6 +10,7 @@ class KucoinBaseBalance:
     def __init__(self):
         self.kucoin_api = KucoinApi()
         self.autotrade_settings = AutotradeCrud().get_settings()
+        self.bot_crud = BotTableCrud()
         self.fiat = self.autotrade_settings.fiat
 
     def get_symbol(self, pair: str, quote: QuoteAssets | str) -> str:
@@ -129,15 +131,20 @@ class KucoinBaseBalance:
         Move any assets from trade or margin accounts to main account that are below a certain threshold
         """
         kucoin_balances = self.kucoin_api.get_account_balance_by_type()
+        active_symbols = self.bot_crud.get_active_pairs()
+
         for account_type, balances in kucoin_balances.items():
             account_type_str = (
                 account_type.value if isinstance(account_type, Enum) else account_type
             )
             if account_type_str != "main":
                 for key, value in balances.items():
-                    balance_amount = float(value["balance"])
-                    if balance_amount > 0:
-                        self.kucoin_api.transfer_trade_to_main(
-                            asset=key,
-                            amount=balance_amount,
-                        )
+                    # assume that we always use USDT (fiat) as trade asset
+                    # this wouldn't work if USDTEUR, i.e. asset would be cleaned
+                    if key not in active_symbols or key == self.fiat:
+                        balance_amount = float(balances[key]["balance"])
+                        if balance_amount > 0:
+                            self.kucoin_api.transfer_trade_to_main(
+                                asset=self.fiat,
+                                amount=balance_amount,
+                            )
