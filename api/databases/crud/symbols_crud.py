@@ -266,7 +266,13 @@ class SymbolsCrud:
                     raise BinbotErrors(
                         "No exchange values found for symbol and exchange"
                     )
-                ev = exchange_values[0]
+                for exchange_value in exchange_values:
+                    if exchange_value.exchange_id == self.exchange_id:
+                        ev = exchange_value
+                        break
+                else:
+                    ev = exchange_values[0]
+
                 data = SymbolModel(
                     active=result.active,
                     blacklist_reason=result.blacklist_reason,

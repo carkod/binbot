@@ -23,6 +23,19 @@ export default defineConfig({
   },
   server: {
     open: true,
+    proxy: {
+      "/kucoin": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+        // keep path as-is so /kucoin/api/... -> http://localhost:3001/kucoin/api/...
+        rewrite: (path) => path,
+      },
+      "/binance": {
+        target: "https://api.binance.com",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/binance/, ""),
+      },
+    },
   },
   test: {
     globals: true,

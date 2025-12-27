@@ -32,7 +32,7 @@ export const PaperTradingDetail: FC = () => {
       dispatch(
         setTestBot({
           bot: singleBot,
-        })
+        }),
       );
     }
   }, [data, matchNewRoute, dispatch]);

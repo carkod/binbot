@@ -7,12 +7,13 @@ import { useImmer } from "use-immer";
 import { updateOrderLines } from "../../utils/charting/index";
 import { type OrderLine } from "../../utils/charting/index.d";
 import { updateTimescaleMarks } from "../../utils/charting";
-import TVChartContainer from "binbot-charts";
+import TVChartContainer, { Exchange } from "binbot-charts";
 import { type ResolutionString } from "../../../charting_library/charting_library";
 import { type AppDispatch } from "../store";
 import { type Bot } from "../../features/bots/botInitialState";
 import { type PayloadActionCreator } from "@reduxjs/toolkit";
 import { BotStatus } from "../../utils/enums";
+import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 
 const ChartContainer: FC<{
   bot: Bot;
@@ -22,6 +23,11 @@ const ChartContainer: FC<{
   const [currentChartPrice, setCurrentChartPrice] = useImmer<number>(0);
   const [currentOrderLines, setCurrentOrderLines] = useImmer<OrderLine[]>([]);
   const [botProfit, setBotProfit] = useState<number>(Number(0));
+  const { data: autotradeSettings } = useGetSettingsQuery();
+  const exchangeState =
+    autotradeSettings?.exchange_id?.toLowerCase() === "kucoin"
+      ? Exchange.KUCOIN
+      : Exchange.BINANCE;
 
   const updatedPrice = (price) => {
     price = roundDecimals(price, 4);
@@ -102,6 +108,8 @@ const ChartContainer: FC<{
             orderLines={currentOrderLines}
             onTick={(tick) => updatedPrice(parseFloat(tick.close))}
             getLatestBar={(bar) => handleInitialPrice(parseFloat(bar[3]))}
+            exchange={exchangeState}
+            supportedExchanges={[Exchange.BINANCE, Exchange.KUCOIN]}
           />
         )}
       </Card.Body>
