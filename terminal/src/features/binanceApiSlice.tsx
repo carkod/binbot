@@ -26,9 +26,8 @@ export interface BinanceTicker24 {
 /**
  * Binance API slice
  *
- * The reason of having directly call Binance API
- * instead of using Binbot API proxy
- * is to reduce weight of requests to Binbot API
+ * Calling Binance API directly to reduce weight of requests to Binbot API
+ * backend already makes a lot of requests
  */
 export const binanceApiSlice = createApi({
   baseQuery: binanceBaseQuery,

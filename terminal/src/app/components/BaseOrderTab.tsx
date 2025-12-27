@@ -75,7 +75,9 @@ const BaseOrderTab: FC<{
       setErrorsState((draft) => {
         delete draft["pair"];
       });
-      updateQuoteBaseState(bot.pair);
+      if (bot.pair) {
+        updateQuoteBaseState(bot.pair);
+      }
     } else {
       setErrorsState((draft) => {
         draft["pair"] = "Please select a pair";
@@ -143,7 +145,7 @@ const BaseOrderTab: FC<{
       });
     }
 
-    if (bot.pair && !(Boolean(quoteAsset) || Boolean(baseAsset))) {
+    if (Boolean(bot.pair) && !(Boolean(quoteAsset) || Boolean(baseAsset))) {
       updateQuoteBaseState(bot.pair);
     }
 
