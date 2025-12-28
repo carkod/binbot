@@ -25,10 +25,9 @@ export default defineConfig({
     open: true,
     proxy: {
       "/kucoin": {
-        target: "http://localhost:3001",
+        target: "https://api.kucoin.com",
         changeOrigin: true,
-        // keep path as-is so /kucoin/api/... -> http://localhost:3001/kucoin/api/...
-        rewrite: (path) => path,
+        rewrite: (path) => path.replace(/^\/kucoin/, ""),
       },
       "/binance": {
         target: "https://api.binance.com",
