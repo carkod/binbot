@@ -168,9 +168,9 @@ export const AutotradePage: FC<{}> = () => {
                         </Form.Control.Feedback>
                       )}
                       <Form.Control.Feedback tooltip>
-                        <strong>Attention:</strong> Critical setting.
-                        If this is changed bots, balances, symbols/charts will be set to use
-                        this exchange&apos;s data
+                        <strong>Attention:</strong> Critical setting. If this is
+                        changed bots, balances, symbols/charts will be set to
+                        use this exchange&apos;s data
                       </Form.Control.Feedback>
                     </Form.Group>
                   </Col>
