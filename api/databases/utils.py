@@ -2,9 +2,6 @@ import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, pool
 from sqlmodel import Session
-from time import time
-from typing import Annotated, Any
-from pydantic import BeforeValidator
 from tools.maths import round_timestamp
 
 # Load env vars for Alembic
@@ -27,21 +24,3 @@ def independent_session() -> Session:
     """
     return Session(engine)
 
-
-def timestamp() -> int:
-    ts = time() * 1000
-    rounded_ts = round_timestamp(ts)
-    return rounded_ts
-
-
-def ensure_float(value: Any) -> float:
-    if isinstance(value, str) or isinstance(value, int):
-        return float(value)
-
-    return value
-
-
-Amount = Annotated[
-    float,
-    BeforeValidator(ensure_float),
-]

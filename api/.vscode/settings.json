@@ -1,0 +1,38 @@
+{
+  "python.languageServer": "Pylance",
+  "python.testing.pytestArgs": [
+    "api"
+  ],
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestEnabled": true,
+  "editor.wordWrap": "on",
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  },
+  "python.defaultInterpreterPath": "./.venv/bin/python",
+  "python.autoComplete.extraPaths": [
+    "${workspaceFolder}/api"
+  ],
+  "mypy-type-checker.args": [
+    "--ignore-missing-imports",
+    "--warn-redundant-casts",
+    "--check-untyped-defs",
+    "--allow-redefinition",
+    "--implicit-reexport",
+    "--explicit-package-bases",
+    "--implicit-optional",
+    "--show-error-codes",
+  ],
+  "[typescriptreact]": {
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true
+  },
+  "workbench.preferredHighContrastColorTheme": "Default Dark Modern",
+  "python-envs.pythonProjects": [
+    {
+      "path": "",
+      "envManager": "ms-python.python:pyenv",
+      "packageManager": "ms-python.python:pip"
+    }
+  ],
+}
