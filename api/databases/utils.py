@@ -2,7 +2,6 @@ import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, pool
 from sqlmodel import Session
-from tools.maths import round_timestamp
 
 # Load env vars for Alembic
 load_dotenv()
@@ -23,4 +22,3 @@ def independent_session() -> Session:
     Used outside of FastAPI context
     """
     return Session(engine)
-
