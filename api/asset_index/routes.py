@@ -1,15 +1,14 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
-from databases.utils import get_session
+
 from databases.crud.asset_index_crud import AssetIndexCrud
 from databases.tables.asset_index_table import AssetIndexTable
-from typing import List, Optional
-
+from databases.utils import get_session
 
 asset_index_blueprint = APIRouter(tags=["asset-index"])
 
 
-@asset_index_blueprint.get("/", response_model=List[AssetIndexTable])
+@asset_index_blueprint.get("/", response_model=list[AssetIndexTable])
 def get_all_asset_indices(session: Session = Depends(get_session)):
     try:
         return AssetIndexCrud(session=session).get_all()
@@ -38,7 +37,7 @@ def add_asset_index(id: str, name: str, session: Session = Depends(get_session))
 @asset_index_blueprint.put("/{index_id}", response_model=AssetIndexTable)
 def edit_asset_index(
     index_id: str,
-    name: Optional[str] = None,
+    name: str | None = None,
     session: Session = Depends(get_session),
 ):
     try:

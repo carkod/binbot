@@ -1,11 +1,11 @@
-from typing import Type, Union
-from databases.crud.autotrade_crud import AutotradeCrud
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from pybinbot import DealType, OrderSide, OrderStatus, Status, round_timestamp
+
 from bots.models import BotModel, OrderModel
-from tools.exceptions import BinanceErrors
+from databases.crud.autotrade_crud import AutotradeCrud
+from databases.crud.paper_trading_crud import PaperTradingTableCrud
+from databases.tables.bot_table import BotTable, PaperTradingTable
 from exchange_apis.binance.deals.margin_deal import BinanceMarginDeal
+from tools.exceptions import BinanceErrors
 
 
 class ShortDeal(BinanceMarginDeal):
@@ -22,7 +22,7 @@ class ShortDeal(BinanceMarginDeal):
     def __init__(
         self,
         bot: BotModel,
-        db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable,
+        db_table: type[PaperTradingTable | BotTable] = BotTable,
     ):
         super().__init__(bot, db_table=db_table)
         self.active_bot = bot

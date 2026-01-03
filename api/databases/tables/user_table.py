@@ -1,8 +1,8 @@
-from typing import Optional
 from uuid import UUID, uuid4
+
+from pybinbot import UserRoles, timestamp
 from pydantic import EmailStr
 from sqlmodel import Field, SQLModel
-from pybinbot import timestamp, UserRoles
 
 
 class UserTable(SQLModel, table=True):
@@ -14,7 +14,7 @@ class UserTable(SQLModel, table=True):
 
     __tablename__ = "binbot_user"
 
-    id: Optional[UUID] = Field(
+    id: UUID | None = Field(
         default_factory=uuid4, primary_key=True, index=True, nullable=False, unique=True
     )
     email: EmailStr = Field(unique=True, index=True, max_length=255)
@@ -24,8 +24,8 @@ class UserTable(SQLModel, table=True):
         default="", description="For full name, use internal functions to compose"
     )
     password: str = Field(min_length=8, max_length=40)
-    username: Optional[str] = Field(default="")
-    description: Optional[str] = Field(default="")
+    username: str | None = Field(default="")
+    description: str | None = Field(default="")
     created_at: str = Field(default_factory=timestamp)
     updated_at: str = Field(default=timestamp())
     # Future: Only required if customer table exists

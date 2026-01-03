@@ -4,11 +4,12 @@ import os
 from decimal import Decimal
 from random import randrange
 from urllib.parse import urlencode
-from tools.exceptions import IsolateBalanceError
-from requests import Session, request
-from tools.handle_error import handle_binance_errors
+
+from requests import HTTPError, Session, request
+
 from tools.cache import cache
-from requests import HTTPError
+from tools.exceptions import IsolateBalanceError
+from tools.handle_error import handle_binance_errors
 
 
 class BinanceApi:
@@ -172,7 +173,7 @@ class BinanceApi:
         symbols = self.exchange_info(symbol)
         market = symbols["symbols"][0]
         price_filter = next(
-            (m for m in market["filters"] if m["filterType"] == "PRICE_FILTER")
+            m for m in market["filters"] if m["filterType"] == "PRICE_FILTER"
         )
         return price_filter[filter_limit].rstrip(".0")
 
@@ -186,7 +187,7 @@ class BinanceApi:
         symbols = self.exchange_info(symbol)
         market = symbols["symbols"][0]
         quantity_filter: list = next(
-            (m for m in market["filters"] if m["filterType"] == "LOT_SIZE")
+            m for m in market["filters"] if m["filterType"] == "LOT_SIZE"
         )
         return quantity_filter[lot_size_limit].rstrip(".0")
 

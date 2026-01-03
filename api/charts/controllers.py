@@ -1,13 +1,15 @@
 import re
-from datetime import datetime, timezone
-from databases.crud.autotrade_crud import AutotradeCrud
-from charts.models import AdrSeriesDb
-from apis import BinanceApi
-from databases.db import Database
-from databases.crud.symbols_crud import SymbolsCrud
+from datetime import UTC, datetime
+
 from pybinbot import round_numbers
-from databases.crud.paper_trading_crud import PaperTradingTableCrud
+
+from apis import BinanceApi
+from charts.models import AdrSeriesDb
+from databases.crud.autotrade_crud import AutotradeCrud
 from databases.crud.bot_crud import BotTableCrud
+from databases.crud.paper_trading_crud import PaperTradingTableCrud
+from databases.crud.symbols_crud import SymbolsCrud
+from databases.db import Database
 
 
 class MarketDominationController(Database):
@@ -53,7 +55,7 @@ class MarketDominationController(Database):
 
                 total_volume += float(item["volume"])
                 timestamp = datetime.fromtimestamp(
-                    float(item["closeTime"]) / 1000, tz=timezone.utc
+                    float(item["closeTime"]) / 1000, tz=UTC
                 ).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 
         avg_gain = sum(gains) / len(gains) if gains else 0.0

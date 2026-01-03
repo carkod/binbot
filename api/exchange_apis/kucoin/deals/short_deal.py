@@ -1,13 +1,13 @@
-from typing import Type, Union
-from pybinbot import round_timestamp, DealType, OrderStatus, Strategy, Status, BotBase
-from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from bots.models import BotModel, OrderModel
-from exchange_apis.kucoin.deals.margin_deal import KucoinMarginDeal
 from kucoin_universal_sdk.generate.margin.order.model_add_order_req import (
     AddOrderReq,
 )
-from exchange_apis.kucoin.deals.spot_deal import KucoinSpotDeal
+from pybinbot import BotBase, DealType, OrderStatus, Status, Strategy, round_timestamp
+
+from bots.models import BotModel, OrderModel
+from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
+from exchange_apis.kucoin.deals.margin_deal import KucoinMarginDeal
+from exchange_apis.kucoin.deals.spot_deal import KucoinSpotDeal
 
 
 class KucoinShortDeal(KucoinMarginDeal):
@@ -20,7 +20,7 @@ class KucoinShortDeal(KucoinMarginDeal):
     """
 
     def __init__(
-        self, bot: BotModel, db_table: Type[Union[BotTable, PaperTradingTable]]
+        self, bot: BotModel, db_table: type[BotTable | PaperTradingTable]
     ) -> None:
         super().__init__(bot=bot, db_table=db_table)
         self.active_bot: BotModel = bot

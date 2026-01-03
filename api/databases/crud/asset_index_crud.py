@@ -1,9 +1,10 @@
-from databases.utils import independent_session
-from sqlmodel import Session, select
-from databases.tables.asset_index_table import AssetIndexTable
-from typing import Optional, Sequence
+from collections.abc import Sequence
+
 from sqlalchemy.sql import delete
-from databases.utils import engine
+from sqlmodel import Session, select
+
+from databases.tables.asset_index_table import AssetIndexTable
+from databases.utils import engine, independent_session
 
 
 class AssetIndexCrud:
@@ -42,7 +43,7 @@ class AssetIndexCrud:
         self.session.close()
         return index
 
-    def edit_index(self, index_id: str, name: Optional[str] = None):
+    def edit_index(self, index_id: str, name: str | None = None):
         index = self.get_index(index_id)
         if name is not None:
             index.name = name

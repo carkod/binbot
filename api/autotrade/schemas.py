@@ -1,11 +1,13 @@
 from time import time
-from pydantic import BaseModel, Field
+
 from pybinbot import (
     AutotradeSettingsDocument,
     BinanceKlineIntervals,
     CloseConditions,
     ExchangeId,
 )
+from pydantic import BaseModel, Field
+
 from tools.handle_error import StandardResponse
 
 

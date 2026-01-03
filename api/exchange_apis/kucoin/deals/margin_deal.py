@@ -1,32 +1,33 @@
 import logging
-from typing import Type, Union, Tuple
-from pybinbot import (
-    round_numbers_floor,
-    round_timestamp,
-    round_numbers,
-    round_numbers_ceiling,
-    DealType,
-    OrderStatus,
-    Strategy,
-    QuoteAssets,
-    Status,
-)
-from databases.crud.symbols_crud import SymbolsCrud
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from bots.models import BotModel, OrderModel
-from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from databases.crud.bot_crud import BotTableCrud
-from exchange_apis.kucoin.deals.base import KucoinBaseBalance
-from kucoin_universal_sdk.generate.spot.order.model_get_order_by_order_id_resp import (
-    GetOrderByOrderIdResp,
-)
 from time import sleep
-from kucoin_universal_sdk.generate.margin.order.model_add_order_req import (
-    AddOrderReq,
-)
+
 from kucoin_universal_sdk.generate.account.account.model_get_isolated_margin_account_resp import (
     GetIsolatedMarginAccountAssets,
 )
+from kucoin_universal_sdk.generate.margin.order.model_add_order_req import (
+    AddOrderReq,
+)
+from kucoin_universal_sdk.generate.spot.order.model_get_order_by_order_id_resp import (
+    GetOrderByOrderIdResp,
+)
+from pybinbot import (
+    DealType,
+    OrderStatus,
+    QuoteAssets,
+    Status,
+    Strategy,
+    round_numbers,
+    round_numbers_ceiling,
+    round_numbers_floor,
+    round_timestamp,
+)
+
+from bots.models import BotModel, OrderModel
+from databases.crud.bot_crud import BotTableCrud
+from databases.crud.paper_trading_crud import PaperTradingTableCrud
+from databases.crud.symbols_crud import SymbolsCrud
+from databases.tables.bot_table import BotTable, PaperTradingTable
+from exchange_apis.kucoin.deals.base import KucoinBaseBalance
 from tools.exceptions import MarginLoanNotFound
 
 
@@ -39,14 +40,14 @@ class KucoinMarginDeal(KucoinBaseBalance):
     def __init__(
         self,
         bot: BotModel,
-        db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable,
+        db_table: type[PaperTradingTable | BotTable] = BotTable,
     ) -> None:
         super().__init__()
         self.active_bot = bot
         self.db_table = db_table
         self.symbols_crud = SymbolsCrud()
         # Provide controller attribute for parity with Binance implementations
-        self.controller: Union[PaperTradingTableCrud, BotTableCrud]
+        self.controller: PaperTradingTableCrud | BotTableCrud
         if db_table == PaperTradingTable:
             self.controller = PaperTradingTableCrud()
         else:
@@ -86,7 +87,7 @@ class KucoinMarginDeal(KucoinBaseBalance):
             return order
         return None
 
-    def compute_margin_buy_back(self) -> Tuple[float | int, float | int]:
+    def compute_margin_buy_back(self) -> tuple[float | int, float | int]:
         """
         Same as compute_qty but with isolated margin balance
 

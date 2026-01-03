@@ -1,18 +1,18 @@
-from typing import Tuple, Type, Union
+from pybinbot import OrderStatus, Status, Strategy, round_numbers, round_numbers_ceiling
+
 from bots.models import BotModel
-from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.bot_crud import BotTableCrud
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
-from pybinbot import round_numbers, round_numbers_ceiling, Status, Strategy, OrderStatus
+from databases.tables.bot_table import BotTable, PaperTradingTable
+from exchange_apis.binance.orders import BinanceOrderController
 from tools.exceptions import (
     BinanceErrors,
+    BinbotErrors,
     DealCreationError,
     InsufficientBalance,
     MarginLoanNotFound,
-    BinbotErrors,
 )
-from exchange_apis.binance.orders import BinanceOrderController
 
 # To be removed one day en commission endpoint found that provides this value
 ESTIMATED_COMMISSIONS_RATE = 0.0075
@@ -32,10 +32,10 @@ class BaseDeal(BinanceOrderController):
     def __init__(
         self,
         bot: BotModel,
-        db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable,
+        db_table: type[PaperTradingTable | BotTable] = BotTable,
     ):
         super().__init__()
-        self.controller: Union[PaperTradingTableCrud, BotTableCrud]
+        self.controller: PaperTradingTableCrud | BotTableCrud
         if db_table == PaperTradingTable:
             self.controller = PaperTradingTableCrud()
         else:
@@ -82,7 +82,7 @@ class BaseDeal(BinanceOrderController):
         qty = round_numbers(balance, self.qty_precision)
         return qty
 
-    def compute_margin_buy_back(self) -> Tuple[float | int, float | int]:
+    def compute_margin_buy_back(self) -> tuple[float | int, float | int]:
         """
         Same as compute_qty but with isolated margin balance
 

@@ -1,9 +1,10 @@
-from fastapi.testclient import TestClient
 from unittest.mock import MagicMock
 
+from fastapi.testclient import TestClient
 from pytest import fixture
-from databases.utils import get_session
+
 from databases.tables.autotrade_table import AutotradeTable
+from databases.utils import get_session
 from main import app
 
 mocked_db_data = AutotradeTable(

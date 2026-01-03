@@ -1,13 +1,19 @@
-from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime, timedelta
+from typing import Literal
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session
+
 from account.controller import ConsolidatedAccounts
-from exchange_apis.binance.assets import Assets
 from account.schemas import (
     BalanceResponse,
-    GainersLosersResponse,
     BalanceSeriesResponse,
+    GainersLosersResponse,
     KucoinBalanceResponse,
 )
+from databases.crud.balances_crud import BalancesCrud
+from databases.utils import get_session
+from exchange_apis.binance.assets import Assets
 from tools.exceptions import (
     BinanceErrors,
     BinbotErrors,
@@ -15,10 +21,6 @@ from tools.exceptions import (
     MarginLoanNotFound,
 )
 from tools.handle_error import json_response_error, json_response_message
-from sqlmodel import Session
-from databases.utils import get_session
-from databases.crud.balances_crud import BalancesCrud
-from typing import Literal
 
 account_blueprint = APIRouter()
 

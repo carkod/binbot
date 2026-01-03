@@ -2,25 +2,25 @@ import logging
 from contextlib import contextmanager
 from decimal import Decimal
 from time import time
-from typing import Optional, cast
+from typing import cast
 
-from sqlalchemy import text, exists
-from sqlalchemy.orm import selectinload, QueryableAttribute
+from pybinbot import ExchangeId, QuoteAssets
+from sqlalchemy import exists, text
+from sqlalchemy.orm import QueryableAttribute, selectinload
+from sqlalchemy.sql import delete
 from sqlalchemy.sql.expression import ColumnElement
-from sqlmodel import select, Session
+from sqlmodel import Session, select
 
-from exchange_apis.binance.base import BinanceApi
-from exchange_apis.kucoin.base import KucoinApi
-from databases.crud.autotrade_crud import AutotradeCrud
 from databases.crud.asset_index_crud import AssetIndexCrud
+from databases.crud.autotrade_crud import AutotradeCrud
 from databases.tables.asset_index_table import AssetIndexTable, SymbolIndexLink
 from databases.tables.symbol_exchange_table import SymbolExchangeTable
 from databases.tables.symbol_table import SymbolTable
-from databases.utils import independent_session, engine
+from databases.utils import engine, independent_session
+from exchange_apis.binance.base import BinanceApi
+from exchange_apis.kucoin.base import KucoinApi
 from symbols.models import SymbolModel, SymbolRequestPayload
-from pybinbot import QuoteAssets, ExchangeId
 from tools.exceptions import BinbotErrors
-from sqlalchemy.sql import delete
 
 
 # -------------------------
@@ -48,7 +48,7 @@ class SymbolsCrud:
     Database operations for SymbolTable using short-lived sessions.
     """
 
-    def __init__(self, session: Optional[Session] = None):
+    def __init__(self, session: Session | None = None):
         if not session:
             self.session = independent_session()
         else:
@@ -132,7 +132,7 @@ class SymbolsCrud:
         base_asset: str,
         exchange_id: ExchangeId,
         active: bool = True,
-        reason: Optional[str] = "",
+        reason: str | None = "",
         price_precision: int = 0,
         qty_precision: int = 0,
         min_notional: float = 0,
@@ -208,7 +208,7 @@ class SymbolsCrud:
     # Read helpers (session-per-op)
     # -------------------------
     def get_all(
-        self, active: Optional[bool] = None, index_id: Optional[str] = None
+        self, active: bool | None = None, index_id: str | None = None
     ) -> list[SymbolModel]:
         statement = self._exchange_combined_statement(self.exchange_id)
 
@@ -386,7 +386,7 @@ class SymbolsCrud:
             session.execute(delete(SymbolTable))
             session.commit()
 
-    def base_asset(self, symbol: str) -> Optional[str]:
+    def base_asset(self, symbol: str) -> str | None:
         query = select(SymbolTable.base_asset).where(SymbolTable.id == symbol)
         with get_session() as s:
             base_asset = s.exec(query).first()

@@ -1,22 +1,19 @@
-import pytest
 from unittest.mock import MagicMock, patch
 
-
-from sqlmodel import SQLModel, create_engine, Session
+import pytest
 from sqlalchemy.pool import StaticPool
-from databases.utils import get_session
-from databases.tables.autotrade_table import AutotradeTable
-from main import app
+from sqlmodel import Session, SQLModel, create_engine
 
 # The import below is required to register all models for SQLModel metadata. Do not remove!
 import databases.tables  # noqa: F401
-
+from databases.tables.autotrade_table import AutotradeTable
+from databases.utils import get_session
+from main import app
 from tests.fixtures.symbol_fixtures import (
-    get_test_symbols,
     get_test_asset_indices,
     get_test_symbol_index_links,
+    get_test_symbols,
 )
-
 
 # Global variable to store test engine for use in patches
 _test_engine = None

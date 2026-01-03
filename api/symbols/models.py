@@ -1,9 +1,11 @@
-from typing import Optional, Sequence
-from pybinbot import ExchangeId
-from tools.handle_error import StandardResponse
-from databases.tables.symbol_table import SymbolTable
-from pydantic import Field, BaseModel
+from collections.abc import Sequence
 from time import time
+
+from pybinbot import ExchangeId
+from pydantic import BaseModel, Field
+
+from databases.tables.symbol_table import SymbolTable
+from tools.handle_error import StandardResponse
 
 
 class AssetIndexModel(BaseModel):
@@ -91,8 +93,8 @@ class SymbolRequestPayload(BaseModel):
     symbol: str
     blacklist_reason: str = ""
     active: bool = True
-    cooldown: Optional[int] = 0
-    cooldown_start_ts: Optional[int] = Field(
+    cooldown: int | None = 0
+    cooldown_start_ts: int | None = Field(
         default=0,
         description="Timestamp to indicate when cooldown should start in milliseconds. Combined with cooldown this will put the symbol in inactive for that period of time.",
     )
@@ -111,4 +113,4 @@ class SymbolRequestPayload(BaseModel):
 
 
 class GetOneSymbolResponse(StandardResponse):
-    data: Optional[SymbolModel] = Field(default=None)
+    data: SymbolModel | None = Field(default=None)

@@ -1,6 +1,7 @@
-from sqlmodel import SQLModel, Field, Relationship
-from sqlalchemy import Column, Enum, Float, ForeignKey
 from pybinbot import ExchangeId
+from sqlalchemy import Column, Enum, Float, ForeignKey
+from sqlmodel import Field, Relationship, SQLModel
+
 from databases.tables.symbol_table import SymbolTable
 
 

@@ -1,22 +1,6 @@
 import logging
-from typing import Type, Union
-from pybinbot import (
-    round_numbers_floor,
-    round_numbers,
-    round_numbers_ceiling,
-    DealType,
-    OrderStatus,
-    Strategy,
-    QuoteAssets,
-    Status,
-)
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from databases.crud.bot_crud import BotTableCrud
-from databases.crud.symbols_crud import SymbolsCrud
-from bots.models import BotModel, OrderModel
-from exchange_apis.kucoin.deals.base import KucoinBaseBalance
 from time import sleep
+
 from kucoin_universal_sdk.generate.margin.order.model_add_order_req import (
     AddOrderReq,
 )
@@ -24,6 +8,23 @@ from kucoin_universal_sdk.generate.margin.order.model_get_order_by_order_id_resp
     GetOrderByOrderIdResp,
 )
 from kucoin_universal_sdk.model.common import RestError
+from pybinbot import (
+    DealType,
+    OrderStatus,
+    QuoteAssets,
+    Status,
+    Strategy,
+    round_numbers,
+    round_numbers_ceiling,
+    round_numbers_floor,
+)
+
+from bots.models import BotModel, OrderModel
+from databases.crud.bot_crud import BotTableCrud
+from databases.crud.paper_trading_crud import PaperTradingTableCrud
+from databases.crud.symbols_crud import SymbolsCrud
+from databases.tables.bot_table import BotTable, PaperTradingTable
+from exchange_apis.kucoin.deals.base import KucoinBaseBalance
 
 
 class KucoinSpotDeal(KucoinBaseBalance):
@@ -37,12 +38,12 @@ class KucoinSpotDeal(KucoinBaseBalance):
     def __init__(
         self,
         bot: BotModel,
-        db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable,
+        db_table: type[PaperTradingTable | BotTable] = BotTable,
     ) -> None:
         super().__init__()
         self.active_bot = bot
         self.db_table = db_table
-        self.controller: Union[PaperTradingTableCrud, BotTableCrud]
+        self.controller: PaperTradingTableCrud | BotTableCrud
         if db_table == PaperTradingTable:
             self.controller = PaperTradingTableCrud()
         else:

@@ -1,7 +1,10 @@
 from __future__ import annotations
-from typing import Callable, Optional, Sequence
-from streaming.socket_manager import AsyncBinanceWebsocketClient
+
+from collections.abc import Callable, Sequence
+
 import requests
+
+from streaming.socket_manager import AsyncBinanceWebsocketClient
 
 
 class AsyncKucoinWebsocketStreamClient(AsyncBinanceWebsocketClient):
@@ -17,12 +20,12 @@ class AsyncKucoinWebsocketStreamClient(AsyncBinanceWebsocketClient):
     def __init__(
         self,
         stream_url: str = None,  # Will be obtained from API
-        on_message: Optional[Callable] = None,
-        on_open: Optional[Callable] = None,
-        on_close: Optional[Callable] = None,
-        on_error: Optional[Callable] = None,
-        on_ping: Optional[Callable] = None,
-        on_pong: Optional[Callable] = None,
+        on_message: Callable | None = None,
+        on_open: Callable | None = None,
+        on_close: Callable | None = None,
+        on_error: Callable | None = None,
+        on_ping: Callable | None = None,
+        on_pong: Callable | None = None,
         **kwargs,
     ) -> None:
         # Get Kucoin websocket connection details
@@ -39,7 +42,7 @@ class AsyncKucoinWebsocketStreamClient(AsyncBinanceWebsocketClient):
             on_pong=on_pong,
             **kwargs,
         )
-        self._connection_id: Optional[str] = None
+        self._connection_id: str | None = None
 
     def _get_kucoin_ws_url(self) -> str:
         """
@@ -70,8 +73,8 @@ class AsyncKucoinWebsocketStreamClient(AsyncBinanceWebsocketClient):
         self,
         markets: Sequence[str],
         interval: str,
-        id: Optional[int] = None,
-        action: Optional[str] = None,
+        id: int | None = None,
+        action: str | None = None,
     ) -> None:
         """
         Subscribe/unsubscribe to Kucoin kline (candle) streams.
@@ -120,8 +123,8 @@ class AsyncKucoinWebsocketStreamClient(AsyncBinanceWebsocketClient):
     async def user_data(
         self,
         listen_key: str,
-        id: Optional[int] = None,
-        action: Optional[str] = None,
+        id: int | None = None,
+        action: str | None = None,
     ) -> None:
         """
         Stream user data using provided listen key.

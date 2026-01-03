@@ -1,13 +1,14 @@
 import types
 
 from pybinbot import Strategy
-from tools.exceptions import BinanceErrors
+
+from databases.tables.bot_table import BotTable
 from streaming.streaming_controller import (
     BaseStreaming,
-    StreamingController,
     HABollinguerSpread,
+    StreamingController,
 )
-from databases.tables.bot_table import BotTable
+from tools.exceptions import BinanceErrors
 
 
 class TestStreamingController:

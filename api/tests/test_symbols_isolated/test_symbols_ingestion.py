@@ -2,8 +2,10 @@
 Tests for symbol ingestion functions to verify TRY symbols are excluded from Binance
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
+
 from databases.crud.symbols_crud import SymbolsCrud
 
 

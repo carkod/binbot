@@ -1,12 +1,14 @@
-import logging
-import json
 import asyncio
+import json
+import logging
+
+from pybinbot import configure_logging
+
+from databases.crud.bot_crud import BotTableCrud
+from databases.db import Database
+from databases.utils import independent_session
 from exchange_apis.binance.base import BinanceApi
 from streaming.socket_client import AsyncSpotWebsocketStreamClient
-from databases.db import Database
-from databases.crud.bot_crud import BotTableCrud
-from databases.utils import independent_session
-from pybinbot import configure_logging
 
 configure_logging(force=True)
 

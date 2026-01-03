@@ -1,9 +1,10 @@
 from typing import TYPE_CHECKING, Optional
-from pydantic import ValidationInfo, field_validator
-from pybinbot import DealType, OrderStatus
-from sqlmodel import Field, Relationship, SQLModel
 from uuid import UUID, uuid4
-from sqlalchemy import Column, BigInteger
+
+from pybinbot import DealType, OrderStatus
+from pydantic import ValidationInfo, field_validator
+from sqlalchemy import BigInteger, Column
+from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from databases.tables.bot_table import BotTable, PaperTradingTable
@@ -67,7 +68,7 @@ class ExchangeOrderTable(OrderTableBase, table=True):
     timestamp: int = Field(sa_column=Column(BigInteger()))
 
     # Relationships
-    bot_id: Optional[UUID] = Field(
+    bot_id: UUID | None = Field(
         default=None, foreign_key="bot.id", ondelete="CASCADE", index=True
     )
     bot: Optional["BotTable"] = Relationship(back_populates="orders")
@@ -109,7 +110,7 @@ class FakeOrderTable(OrderTableBase, table=True):
     timestamp: int = Field(sa_column=Column(BigInteger()))
 
     # Relationships
-    paper_trading_id: Optional[UUID] = Field(
+    paper_trading_id: UUID | None = Field(
         default=None, foreign_key="paper_trading.id", ondelete="CASCADE", index=True
     )
     paper_trading: Optional["PaperTradingTable"] = Relationship(back_populates="orders")

@@ -1,5 +1,6 @@
-from apis import BinbotApi
 from pybinbot import round_numbers
+
+from apis import BinbotApi
 
 
 class BinanceAccount(BinbotApi):

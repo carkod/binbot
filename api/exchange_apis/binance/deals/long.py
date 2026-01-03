@@ -1,17 +1,17 @@
-from typing import Type, Union
-from databases.crud.autotrade_crud import AutotradeCrud
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from bots.models import BotModel, OrderModel
 from pybinbot import (
     DealType,
-    Status,
     OrderSide,
     OrderStatus,
+    Status,
     round_numbers,
     round_timestamp,
 )
-from exchange_apis.binance.deals.spot_deal import BinanceSpotDeal
+
+from bots.models import BotModel, OrderModel
+from databases.crud.autotrade_crud import AutotradeCrud
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
+from databases.tables.bot_table import BotTable, PaperTradingTable
+from exchange_apis.binance.deals.spot_deal import BinanceSpotDeal
 from tools.exceptions import BinanceErrors
 
 
@@ -23,7 +23,7 @@ class BinanceLongDeal(BinanceSpotDeal):
     """
 
     def __init__(
-        self, bot, db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable
+        self, bot, db_table: type[PaperTradingTable | BotTable] = BotTable
     ) -> None:
         super().__init__(bot, db_table=db_table)
         self.autotrade_settings = AutotradeCrud().get_settings()

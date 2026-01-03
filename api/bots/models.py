@@ -1,11 +1,13 @@
-from typing import List, Optional
-from uuid import uuid4, UUID
-from pybinbot import DealBase as DealModel, BotBase, OrderBase
+from uuid import UUID, uuid4
+
+from pybinbot import BotBase, OrderBase
+from pybinbot import DealBase as DealModel
 from pydantic import BaseModel, Field, field_validator
-from tools.handle_error import IResponseBase
+
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.tables.deal_table import DealTable
 from databases.tables.order_table import ExchangeOrderTable
+from tools.handle_error import IResponseBase
 
 
 class OrderModel(OrderBase):
@@ -35,9 +37,9 @@ class BotModel(BotBase):
     and SQLModels. they are not compatible. Thus the duplication
     """
 
-    id: Optional[UUID] = Field(default_factory=uuid4)
+    id: UUID | None = Field(default_factory=uuid4)
     deal: DealModel = Field(default_factory=DealModel)
-    orders: List[OrderModel] = Field(default=[])
+    orders: list[OrderModel] = Field(default=[])
 
     model_config = {
         "from_attributes": True,
@@ -125,7 +127,7 @@ class BotModel(BotBase):
 class BotModelResponse(BotBase):
     id: str = Field(default="")
     deal: DealModel = Field(...)
-    orders: List[OrderModel] = Field(default=[])
+    orders: list[OrderModel] = Field(default=[])
 
     model_config = {
         "from_attributes": True,
@@ -196,7 +198,7 @@ class BotDataErrorResponse(BotBase):
 
 
 class BotResponse(IResponseBase):
-    data: Optional[BotModelResponse] = Field(default=None)
+    data: BotModelResponse | None = Field(default=None)
 
 
 class BotPairsList(IResponseBase):

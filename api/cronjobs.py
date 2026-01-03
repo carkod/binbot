@@ -1,11 +1,13 @@
 import os
+
 from apscheduler.schedulers.blocking import BlockingScheduler
-from account.controller import ConsolidatedAccounts
-from exchange_apis.binance.assets import Assets
-from databases.crud.symbols_crud import SymbolsCrud
-from charts.controllers import MarketDominationController
-from databases.utils import independent_session
 from pybinbot import configure_logging
+
+from account.controller import ConsolidatedAccounts
+from charts.controllers import MarketDominationController
+from databases.crud.symbols_crud import SymbolsCrud
+from databases.utils import independent_session
+from exchange_apis.binance.assets import Assets
 
 
 def main():

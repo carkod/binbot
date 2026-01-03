@@ -1,25 +1,26 @@
-from typing import List, Optional
+from collections.abc import Sequence
 from uuid import UUID
+
 from fastapi import Query
-from sqlmodel import Session, asc, desc, select, case
-from bots.models import BotModel
-from databases.tables.bot_table import BotTable
-from databases.tables.deal_table import DealTable
-from databases.tables.order_table import ExchangeOrderTable
-from databases.utils import independent_session
 from pybinbot import (
+    BotBase,
     QuoteAssets,
     Status,
     Strategy,
     round_numbers,
-    ts_to_humandate,
-    BotBase,
     timestamp,
+    ts_to_humandate,
 )
-from collections.abc import Sequence
 from sqlalchemy.orm.attributes import flag_modified
-from tools.exceptions import SaveBotError, BinbotErrors
+from sqlmodel import Session, asc, case, desc, select
+
+from bots.models import BotModel
 from databases.crud.symbols_crud import SymbolsCrud
+from databases.tables.bot_table import BotTable
+from databases.tables.deal_table import DealTable
+from databases.tables.order_table import ExchangeOrderTable
+from databases.utils import independent_session
+from tools.exceptions import BinbotErrors, SaveBotError
 
 
 class BotTableCrud:
@@ -133,10 +134,10 @@ class BotTableCrud:
 
     def get_one(
         self,
-        bot_id: Optional[str] = None,
-        symbol: Optional[str] = None,
+        bot_id: str | None = None,
+        symbol: str | None = None,
         status: Status | None = None,
-        strategy: Optional[Strategy] = None,
+        strategy: Strategy | None = None,
     ) -> BotTable:
         """
         Get one bot by id or symbol
@@ -257,7 +258,7 @@ class BotTableCrud:
         resulted_bot = initial_bot
         return resulted_bot
 
-    def delete(self, bot_ids: List[str] = Query(...)) -> List[str]:
+    def delete(self, bot_ids: list[str] = Query(...)) -> list[str]:
         """
         Delete by multiple ids.
         For a single id, pass one id in a list

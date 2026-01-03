@@ -1,9 +1,18 @@
 # mypy: ignore-errors
 import os
-from sqlalchemy import create_engine
+
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    create_engine,
+)
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Float, DateTime
+from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.sql import func
 
 engine = create_engine(

@@ -1,24 +1,24 @@
 from fastapi import APIRouter, Depends
-from pydantic import ValidationError, TypeAdapter
-from sqlmodel import Session
+from kucoin_universal_sdk.model.common import RestError
 from pybinbot import Status
-from databases.crud.bot_crud import BotTableCrud
-from databases.utils import get_session
+from pydantic import TypeAdapter, ValidationError
+from sqlmodel import Session
+
 from bots.models import (
-    BotModel,
-    BotResponse,
-    ErrorsRequestBody,
     BotBase,
     BotListResponse,
+    BotModel,
+    BotModelResponse,
+    BotResponse,
+    ErrorsRequestBody,
     IResponseBase,
 )
-from typing import List, Optional
-from tools.exceptions import BinanceErrors, BinbotErrors
-from bots.models import BotModelResponse
-from tools.handle_error import StandardResponse
-from deals.gateway import DealGateway
+from databases.crud.bot_crud import BotTableCrud
 from databases.tables.bot_table import BotTable
-from kucoin_universal_sdk.model.common import RestError
+from databases.utils import get_session
+from deals.gateway import DealGateway
+from tools.exceptions import BinanceErrors, BinbotErrors
+from tools.handle_error import StandardResponse
 
 bot_blueprint = APIRouter()
 bot_ta = TypeAdapter(BotModelResponse)
@@ -27,8 +27,8 @@ bot_ta = TypeAdapter(BotModelResponse)
 @bot_blueprint.get("/bot", response_model=BotListResponse, tags=["bots"])
 def get(
     status: Status = Status.all,
-    start_date: Optional[int] = None,
-    end_date: Optional[int] = None,
+    start_date: int | None = None,
+    end_date: int | None = None,
     limit: int = 200,
     offset: int = 0,
     session: Session = Depends(get_session),
@@ -79,7 +79,7 @@ def get_one_by_id(id: str, session: Session = Depends(get_session)):
 def get_one_by_symbol(symbol: str, session: Session = Depends(get_session)):
     try:
         bot = BotTableCrud(session=session).get_one(bot_id=None, symbol=symbol)
-        data = bot_ta.dump_python(bot)  # type: ignore
+        data = bot_ta.dump_python(bot)
         return BotResponse(message="Successfully found one bot.", data=data)
     except ValidationError as error:
         return StandardResponse(message="Bot not found.", error=1, data=error.json())
@@ -129,7 +129,7 @@ def edit(
 
 @bot_blueprint.delete("/bot", response_model=IResponseBase, tags=["bots"])
 def delete(
-    id: List[str],
+    id: list[str],
     session: Session = Depends(get_session),
 ):
     """

@@ -1,28 +1,28 @@
 import logging
+from copy import deepcopy
 from datetime import datetime
-from typing import Type, Union
 
 import pandas as pd
-from deals.gateway import DealGateway
+from pybinbot import (
+    BinanceKlineIntervals,
+    ExchangeId,
+    Status,
+    Strategy,
+    round_numbers,
+)
+
 from bots.models import BotModel
 from databases.crud.autotrade_crud import AutotradeCrud
 from databases.crud.bot_crud import BotTableCrud
 from databases.crud.candles_crud import CandlesCrud
-from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
+from databases.tables.bot_table import BotTable, PaperTradingTable
+from deals.gateway import DealGateway
 from exchange_apis.binance.base import BinanceApi
 from exchange_apis.kucoin.base import KucoinApi
 from streaming.models import HABollinguerSpread
-from pybinbot import (
-    Status,
-    Strategy,
-    ExchangeId,
-    round_numbers,
-    BinanceKlineIntervals,
-)
 from tools.exceptions import BinanceErrors, BinbotErrors
-from copy import deepcopy
 
 
 class BaseStreaming:
@@ -89,7 +89,7 @@ class StreamingController:
         self.symbol_data = base.symbols_crud.get_symbol(symbol)
         self.base_streaming = base
         self.symbol = symbol
-        self.api: Union[BinanceApi, KucoinApi]
+        self.api: BinanceApi | KucoinApi
 
         binance_interval = BinanceKlineIntervals.fifteen_minutes
         # Prepare interval based on exchange
@@ -306,11 +306,11 @@ class StreamingController:
     def update_bots_parameters(
         self,
         bot: BotModel,
-        db_table: Type[Union[PaperTradingTable, BotTable]],
+        db_table: type[PaperTradingTable | BotTable],
         current_price: float,
         bb_spreads: HABollinguerSpread,
     ) -> None:
-        controller: Union[PaperTradingTableCrud | BotTableCrud] = (
+        controller: PaperTradingTableCrud | BotTableCrud = (
             self.base_streaming.bot_controller
         )
 

@@ -1,18 +1,20 @@
-from uuid import uuid4, UUID
-from typing import Optional
-from pydantic import field_validator
-from sqlalchemy import JSON, Column, Enum
+from uuid import UUID, uuid4
+
 from pybinbot import (
-    QuoteAssets,
     BinanceKlineIntervals,
     CloseConditions,
+    QuoteAssets,
     Status,
     Strategy,
     timestamp,
 )
-from sqlmodel import Relationship, SQLModel, Field
-from databases.tables.order_table import ExchangeOrderTable, FakeOrderTable
+from pydantic import field_validator
+from sqlalchemy import JSON, Column, Enum
+from sqlmodel import Field, Relationship, SQLModel
+
 from databases.tables.deal_table import DealTable
+from databases.tables.order_table import ExchangeOrderTable, FakeOrderTable
+
 # avoids circular imports
 # https://sqlmodel.tiangolo.com/tutorial/code-structure/#hero-model-file
 
@@ -20,7 +22,7 @@ from databases.tables.deal_table import DealTable
 class BotTable(SQLModel, table=True):
     __tablename__ = "bot"
 
-    id: Optional[UUID] = Field(
+    id: UUID | None = Field(
         default_factory=uuid4, primary_key=True, index=True, nullable=False, unique=True
     )
     pair: str = Field(index=True)
@@ -73,7 +75,7 @@ class BotTable(SQLModel, table=True):
         back_populates="bot",
         sa_relationship_kwargs={"lazy": "joined", "single_parent": True},
     )
-    deal_id: Optional[UUID] = Field(
+    deal_id: UUID | None = Field(
         default=None, foreign_key="deal.id", ondelete="CASCADE", index=True
     )
     # lazy option will allow objects to be nested when transformed for json return
@@ -116,7 +118,7 @@ class PaperTradingTable(SQLModel, table=True):
 
     __tablename__ = "paper_trading"
 
-    id: Optional[UUID] = Field(
+    id: UUID | None = Field(
         default_factory=uuid4, primary_key=True, index=True, nullable=False, unique=True
     )
     pair: str = Field(index=True)
@@ -169,7 +171,7 @@ class PaperTradingTable(SQLModel, table=True):
         back_populates="paper_trading",
         sa_relationship_kwargs={"lazy": "joined", "single_parent": True},
     )
-    deal_id: Optional[UUID] = Field(
+    deal_id: UUID | None = Field(
         default=None, foreign_key="deal.id", ondelete="CASCADE", index=True
     )
 

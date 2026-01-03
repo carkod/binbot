@@ -1,10 +1,11 @@
 import typing
 
+from pybinbot import AutotradeSettingsDocument
+from sqlmodel import Session, select
+
+from autotrade.schemas import AutotradeSettingsSchema
 from databases.tables.autotrade_table import AutotradeTable, TestAutotradeTable
 from databases.utils import independent_session
-from sqlmodel import Session, select
-from pybinbot import AutotradeSettingsDocument
-from autotrade.schemas import AutotradeSettingsSchema
 
 
 class AutotradeCrud:

@@ -1,21 +1,19 @@
-from fastapi import APIRouter, Depends, BackgroundTasks
-from databases.crud.symbols_crud import SymbolsCrud
-from symbols.models import GetOneSymbolResponse
-from databases.utils import get_session
+from fastapi import APIRouter, BackgroundTasks, Depends
+from sqlalchemy.exc import DataError, IntegrityError, SQLAlchemyError
 from sqlmodel import Session
-from tools.handle_error import StandardResponse, BinbotErrors
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError, DataError
-from symbols.models import SymbolRequestPayload
-from typing import Optional
-from tools.handle_error import format_db_error
+
+from databases.crud.symbols_crud import SymbolsCrud
+from databases.utils import get_session
+from symbols.models import GetOneSymbolResponse, SymbolRequestPayload
+from tools.handle_error import BinbotErrors, StandardResponse, format_db_error
 
 symbols_blueprint = APIRouter()
 
 
 @symbols_blueprint.get("/symbols", tags=["Symbols"])
 def get_all_symbols(
-    active: Optional[bool] = None,
-    index: Optional[str] = None,
+    active: bool | None = None,
+    index: str | None = None,
     session: Session = Depends(get_session),
 ):
     """

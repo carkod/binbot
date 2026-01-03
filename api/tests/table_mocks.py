@@ -1,8 +1,10 @@
+from uuid import UUID
+
+from pybinbot import DealType, OrderType
+
 from databases.tables.bot_table import BotTable
 from databases.tables.deal_table import DealTable
 from databases.tables.order_table import ExchangeOrderTable
-from pybinbot import DealType, OrderType
-from uuid import UUID
 
 ts = 1733973560249.0
 id = "02031768-fbb9-4cc7-b549-642f15ab787b"

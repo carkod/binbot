@@ -1,5 +1,7 @@
 from __future__ import annotations
-from typing import Callable, Optional, Sequence
+
+from collections.abc import Callable, Sequence
+
 from streaming.socket_manager import AsyncBinanceWebsocketClient
 
 
@@ -7,12 +9,12 @@ class AsyncSpotWebsocketStreamClient(AsyncBinanceWebsocketClient):
     def __init__(
         self,
         stream_url: str = "wss://stream.binance.com:443",
-        on_message: Optional[Callable] = None,
-        on_open: Optional[Callable] = None,
-        on_close: Optional[Callable] = None,
-        on_error: Optional[Callable] = None,
-        on_ping: Optional[Callable] = None,
-        on_pong: Optional[Callable] = None,
+        on_message: Callable | None = None,
+        on_open: Callable | None = None,
+        on_close: Callable | None = None,
+        on_error: Callable | None = None,
+        on_ping: Callable | None = None,
+        on_pong: Callable | None = None,
         is_combined: bool = False,
         **kwargs,
     ) -> None:
@@ -33,8 +35,8 @@ class AsyncSpotWebsocketStreamClient(AsyncBinanceWebsocketClient):
         self,
         markets: Sequence[str],
         interval: str,
-        id: Optional[int] = None,
-        action: Optional[str] = None,
+        id: int | None = None,
+        action: str | None = None,
     ) -> None:
         """Subscribe/unsubscribe to kline streams.
 
@@ -51,8 +53,8 @@ class AsyncSpotWebsocketStreamClient(AsyncBinanceWebsocketClient):
     async def user_data(
         self,
         listen_key: str,
-        id: Optional[int] = None,
-        action: Optional[str] = None,
+        id: int | None = None,
+        action: str | None = None,
     ) -> None:
         """Stream user data using provided listen key."""
         await self.send_message_to_server(listen_key, action=action, id=id)
