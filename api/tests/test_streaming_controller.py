@@ -1,6 +1,6 @@
 import types
 
-from pybinbot.enum import Strategy
+from pybinbot import Strategy
 from tools.exceptions import BinanceErrors
 from streaming.streaming_controller import (
     BaseStreaming,
@@ -281,7 +281,7 @@ class TestStreamingController:
         """Test that StreamingController uses KucoinApi when exchange_id is KUCOIN"""
         base = self._make_base_streaming(monkeypatch)
         # Force KUCOIN exchange path directly on BaseStreaming
-        from pybinbot.enum import ExchangeId
+        from pybinbot import ExchangeId
 
         base.exchange = ExchangeId.KUCOIN
 

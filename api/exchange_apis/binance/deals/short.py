@@ -1,12 +1,13 @@
 from typing import Type, Union
-from databases.crud.autotrade_crud import AutotradeCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from pybinbot.enum import DealType, OrderSide, OrderStatus
 from bots.models import BotModel, OrderModel
-from pybinbot.enum import Status
 from tools.exceptions import BinanceErrors
-from pybinbot.maths import (
+from pybinbot import (
+    DealType,
+    OrderSide,
+    OrderStatus,
+    Status,
     round_timestamp,
 )
 from exchange_apis.binance.deals.margin_deal import BinanceMarginDeal
@@ -31,13 +32,6 @@ class BinanceShortDeal(BinanceMarginDeal):
         super().__init__(bot, db_table=db_table)
         self.active_bot = bot
         self.db_table = db_table
-        self.autotrade_settings = AutotradeCrud().get_settings()
-
-    def check_failed_switch_long_bot(self) -> BotModel:
-        """
-        Check if switch to long bot failed
-        reactivate/reopen if failed
-        """
         if (
             self.active_bot.status == Status.active
             and self.active_bot.deal.opening_qty == 0
@@ -48,18 +42,12 @@ class BinanceShortDeal(BinanceMarginDeal):
             self.open_deal()
             self.controller.save(self.active_bot)
 
-        return self.active_bot
-
     def streaming_updates(self, close_price: float, open_price: float = 0) -> BotModel:
         """
         Margin_short streaming updates
 
         open_price is unused, but kept for interface consistency
         """
-
-        # Check for switch to long bot that failed
-        self.active_bot = self.check_failed_switch_long_bot()
-
         self.close_conditions(close_price)
 
         self.active_bot.deal.current_price = close_price

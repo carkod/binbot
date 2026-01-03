@@ -1,19 +1,13 @@
 from typing import Type, Union
-from pybinbot.maths import round_timestamp
-from pybinbot.enum import (
-    DealType,
-    Status,
-    Strategy,
-    OrderStatus,
-)
-from databases.tables.bot_table import BotTable, PaperTradingTable
+from pybinbot import round_timestamp, DealType, OrderStatus, Strategy, Status, BotBase
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from bots.models import BotModel, OrderModel, BotBase
+from bots.models import BotModel, OrderModel
 from exchange_apis.kucoin.deals.margin_deal import KucoinMarginDeal
 from kucoin_universal_sdk.generate.margin.order.model_add_order_req import (
     AddOrderReq,
 )
 from exchange_apis.kucoin.deals.spot_deal import KucoinSpotDeal
+from databases.tables.bot_table import BotTable, PaperTradingTable
 
 
 class KucoinShortDeal(KucoinMarginDeal):

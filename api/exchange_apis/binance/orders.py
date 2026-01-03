@@ -3,18 +3,16 @@ from uuid import uuid4
 from exchange_apis.binance.account import BinanceAccount
 from databases.crud.autotrade_crud import AutotradeCrud
 from tools.exceptions import DeleteOrderError
-from pybinbot.enum import (
+from pybinbot import (
     ExchangeId,
     OrderType,
     TimeInForce,
     OrderSide,
     OrderStatus,
-)
-from tools.handle_error import json_response, json_response_message
-from pybinbot.maths import (
     supress_notation,
     round_timestamp,
 )
+from tools.handle_error import json_response, json_response_message
 from databases.crud.symbols_crud import SymbolsCrud
 
 

@@ -1,6 +1,6 @@
 from exchange_apis.kucoin.deals.long_deal import KucoinLongDeal
 from databases.tables.bot_table import BotTable, PaperTradingTable
-from pybinbot.enum import ExchangeId, Strategy
+from pybinbot import ExchangeId, Strategy
 from bots.models import BotModel
 from typing import Type, Union
 from exchange_apis.kucoin.deals.short_deal import KucoinShortDeal

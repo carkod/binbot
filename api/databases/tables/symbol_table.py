@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, Field, Relationship
-from databases.utils import timestamp
+from pybinbot import timestamp
 from sqlalchemy import BigInteger, Column
 from pydantic import field_validator
 from databases.tables.asset_index_table import SymbolIndexLink

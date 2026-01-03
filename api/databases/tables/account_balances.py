@@ -1,7 +1,7 @@
 from typing import Optional
 from uuid import UUID, uuid4
 from sqlalchemy import BigInteger, Column
-from databases.utils import timestamp
+from pybinbot import timestamp
 from sqlmodel import Relationship, SQLModel, Field
 
 

@@ -1,63 +1,14 @@
 from typing import List, Optional
 from uuid import uuid4, UUID
-from pybinbot.enum import (
-    QuoteAssets,
-    BinanceKlineIntervals,
-    CloseConditions,
-    Status,
-    Strategy,
-)
-from deals.models import DealModel
+from pybinbot import DealBase as DealModel, BotBase, OrderBase
 from pydantic import BaseModel, Field, field_validator
-from databases.utils import timestamp
 from tools.handle_error import IResponseBase
-from pybinbot.enum import DealType, OrderStatus
-from pybinbot.maths import ts_to_humandate
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.tables.deal_table import DealTable
 from databases.tables.order_table import ExchangeOrderTable
-from databases.utils import Amount
 
 
-class OrderModel(BaseModel):
-    order_type: str = Field(
-        description="Because every exchange has different naming, we should keep it as a str rather than OrderType enum"
-    )
-    time_in_force: str
-    timestamp: int = Field(default=0)
-    order_id: int | str = Field(
-        description="Because every exchange has id type, we should keep it as looose as possible. Int is for backwards compatibility"
-    )
-    order_side: str = Field(
-        description="Because every exchange has different naming, we should keep it as a str rather than OrderType enum"
-    )
-    pair: str
-    qty: float
-    status: OrderStatus
-    price: float
-    deal_type: DealType
-
-    model_config = {
-        "from_attributes": True,
-        "use_enum_values": True,
-        "json_schema_extra": {
-            "description": "Most fields are optional. Deal field is generated internally, orders are filled up by Exchange",
-            "examples": [
-                {
-                    "order_type": "LIMIT",
-                    "time_in_force": "GTC",
-                    "timestamp": 0,
-                    "order_id": 0,
-                    "order_side": "BUY",
-                    "pair": "",
-                    "qty": 0,
-                    "status": "",
-                    "price": 0,
-                }
-            ],
-        },
-    }
-
+class OrderModel(OrderBase):
     @classmethod
     def dump_from_table(cls, bot):
         """
@@ -75,104 +26,6 @@ class OrderModel(BaseModel):
             return model
         else:
             return bot
-
-
-class BotBase(BaseModel):
-    pair: str
-    fiat: str = Field(default="USDC")
-    quote_asset: QuoteAssets = Field(default=QuoteAssets.USDC)
-    fiat_order_size: Amount = Field(
-        default=0, ge=0, description="Min Binance 0.0001 BNB approx 15USD"
-    )
-    candlestick_interval: BinanceKlineIntervals = Field(
-        default=BinanceKlineIntervals.fifteen_minutes,
-    )
-    close_condition: CloseConditions = Field(
-        default=CloseConditions.dynamic_trailling,
-    )
-    cooldown: int = Field(
-        default=0,
-        ge=0,
-        description="cooldown period in minutes before opening next bot with same pair",
-    )
-    created_at: float = Field(default_factory=timestamp)
-    updated_at: float = Field(default_factory=timestamp)
-    dynamic_trailling: bool = Field(default=False)
-    logs: list = Field(default=[])
-    mode: str = Field(default="manual")
-    name: str = Field(
-        default="terminal",
-        description="Algorithm name or 'terminal' if executed from React app",
-    )
-    status: Status = Field(default=Status.inactive)
-    stop_loss: Amount = Field(
-        default=0,
-        ge=-1,
-        le=101,
-        description="If stop_loss > 0, allow for reversal",
-    )
-    margin_short_reversal: bool = Field(
-        default=False,
-        description="Autoswitch from long to short or short to long strategy",
-    )
-    take_profit: Amount = Field(default=0, ge=-1, le=101)
-    trailling: bool = Field(default=False)
-    trailling_deviation: Amount = Field(
-        default=0,
-        ge=-1,
-        le=101,
-        description="Trailling activation (first take profit hit)",
-    )
-    trailling_profit: Amount = Field(default=0, ge=-1, le=101)
-    strategy: Strategy = Field(default=Strategy.long)
-
-    model_config = {
-        "from_attributes": True,
-        "use_enum_values": True,
-        "json_schema_extra": {
-            "description": "Most fields are optional. Deal and orders fields are generated internally and filled by Exchange",
-            "examples": [
-                {
-                    "pair": "BNBUSDT",
-                    "fiat": "USDC",
-                    "quote_asset": "USDC",
-                    "fiat_order_size": 15,
-                    "candlestick_interval": "15m",
-                    "close_condition": "dynamic_trailling",
-                    "cooldown": 0,
-                    "created_at": 1702999999.0,
-                    "updated_at": 1702999999.0,
-                    "dynamic_trailling": False,
-                    "logs": [],
-                    "mode": "manual",
-                    "name": "Default bot",
-                    "status": "inactive",
-                    "stop_loss": 0,
-                    "take_profit": 2.3,
-                    "trailling": True,
-                    "trailling_deviation": 0.63,
-                    "trailling_profit": 2.3,
-                    "margin_short_reversal": False,
-                    "strategy": "long",
-                }
-            ],
-        },
-    }
-
-    @field_validator("pair")
-    @classmethod
-    def check_pair_not_empty(cls, v):
-        assert v != "", "Pair field must be filled."
-        return v
-
-    def add_log(self, message: str) -> str:
-        """Convenience helper for adding a single log entry.
-
-        Returns the formatted log string (with timestamp) for immediate reuse/testing.
-        """
-        timestamped_message = f"[{ts_to_humandate(timestamp())}] {message}"
-        self.logs.append(timestamped_message)
-        return self.logs[-1]
 
 
 class BotModel(BotBase):

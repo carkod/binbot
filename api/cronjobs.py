@@ -5,7 +5,7 @@ from exchange_apis.binance.assets import Assets
 from databases.crud.symbols_crud import SymbolsCrud
 from charts.controllers import MarketDominationController
 from databases.utils import independent_session
-from pybinbot.shared import configure_logging
+from pybinbot import configure_logging
 
 
 def main():

@@ -3,14 +3,18 @@ from typing import Type, Union
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.symbols_crud import SymbolsCrud
 from bots.models import BotModel, OrderModel
-from pybinbot.enum import DealType, OrderSide, Status, QuoteAssets, Strategy
-from tools.exceptions import BinanceErrors, TakeProfitError
-from pybinbot.maths import (
+from pybinbot import (
+    DealType,
+    OrderSide,
+    Status,
+    QuoteAssets,
+    Strategy,
     round_numbers,
     round_timestamp,
     round_numbers_floor,
     round_numbers_ceiling,
 )
+from tools.exceptions import BinanceErrors, TakeProfitError
 from exchange_apis.binance.deals.base_deal import BaseDeal
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 

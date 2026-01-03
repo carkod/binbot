@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from pydantic import ValidationError, TypeAdapter
 from sqlmodel import Session
-from pybinbot.enum import Status
+from pybinbot import Status
 from databases.crud.bot_crud import BotTableCrud
 from databases.utils import get_session
 from bots.models import (

@@ -2,13 +2,13 @@ from uuid import uuid4, UUID
 from typing import Optional
 from pydantic import field_validator
 from sqlalchemy import JSON, Column, Enum
-from databases.utils import timestamp
-from pybinbot.enum import (
+from pybinbot import (
     QuoteAssets,
     BinanceKlineIntervals,
     CloseConditions,
     Status,
     Strategy,
+    timestamp,
 )
 from sqlmodel import Relationship, SQLModel, Field
 from databases.tables.order_table import ExchangeOrderTable, FakeOrderTable

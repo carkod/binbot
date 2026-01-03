@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from pydantic import BaseModel
-from pybinbot.maths import round_numbers
+from pybinbot import round_numbers
 
 
 class VolatilityMetrics(BaseModel):

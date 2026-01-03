@@ -6,7 +6,7 @@ from streaming.socket_client import AsyncSpotWebsocketStreamClient
 from databases.db import Database
 from databases.crud.bot_crud import BotTableCrud
 from databases.utils import independent_session
-from pybinbot.shared import configure_logging
+from pybinbot import configure_logging
 
 configure_logging(force=True)
 

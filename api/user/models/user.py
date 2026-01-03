@@ -1,10 +1,9 @@
 from typing import Optional
 from pydantic import BaseModel, EmailStr, field_validator
 from sqlmodel import Field
-from pybinbot.enum import UserRoles
+from pybinbot import UserRoles, timestamp
 from tools.handle_error import StandardResponse
 from uuid import UUID, uuid4
-from databases.utils import timestamp
 from typing import Sequence
 from databases.tables.user_table import UserTable
 

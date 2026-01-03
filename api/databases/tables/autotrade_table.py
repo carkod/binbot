@@ -2,7 +2,7 @@ from time import time
 from typing import Optional
 from sqlalchemy import Column, Enum
 from sqlmodel import Field, SQLModel
-from pybinbot.enum import (
+from pybinbot import (
     AutotradeSettingsDocument,
     BinanceKlineIntervals,
     CloseConditions,

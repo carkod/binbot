@@ -1,4 +1,4 @@
-.PHONY: up down test migrate format delete-revision
+.PHONY: up down test migrate format delete-revision upgrade-pybinbot
 
 ifneq (,$(wildcard ../.env))
     include ../.env
@@ -38,6 +38,11 @@ format:
 	ruff format .
 	ruff check .  --fix
 	mypy .
+
+upgrade-pybinbot:  ## Upgrade pybinbot to latest compatible version
+# --frozen force is to install because of scipy
+	uv lock --upgrade-package pybinbot --frozen
+	uv sync --extra dev
 
 delete-revision:  ## Delete a specific Alembic revision from the database
 	@if [ -z "$(revision)" ]; then \

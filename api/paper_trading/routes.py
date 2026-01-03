@@ -2,13 +2,13 @@ from fastapi import APIRouter, Depends
 from sqlmodel import Session
 from pydantic import TypeAdapter, ValidationError
 from deals.gateway import DealGateway
-from pybinbot.enum import Status
+from pybinbot import Status, BotBase
 from databases.tables.bot_table import PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.utils import get_session
 from tools.exceptions import BinanceErrors, BinbotErrors
 from tools.handle_error import api_response, StandardResponse
-from bots.models import BotModel, BotResponse, BotListResponse, BotBase, BotPairsList
+from bots.models import BotModel, BotResponse, BotListResponse, BotPairsList
 from typing import List, Optional
 from bots.models import BotModelResponse, ErrorsRequestBody
 

@@ -3,7 +3,7 @@ from streaming.streaming_controller import (
     StreamingController,
     BaseStreaming,
 )
-from pybinbot.shared import configure_logging
+from pybinbot import configure_logging
 
 # initialization data
 bs = BaseStreaming()

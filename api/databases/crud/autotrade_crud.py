@@ -3,7 +3,7 @@ import typing
 from databases.tables.autotrade_table import AutotradeTable, TestAutotradeTable
 from databases.utils import independent_session
 from sqlmodel import Session, select
-from pybinbot.enum import AutotradeSettingsDocument
+from pybinbot import AutotradeSettingsDocument
 from autotrade.schemas import AutotradeSettingsSchema
 
 
