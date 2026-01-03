@@ -2,8 +2,7 @@ from typing import Optional
 from uuid import UUID, uuid4
 from pydantic import EmailStr
 from sqlmodel import Field, SQLModel
-from databases.utils import timestamp
-from tools.enum_definitions import UserRoles
+from pybinbot import timestamp, UserRoles
 
 
 class UserTable(SQLModel, table=True):

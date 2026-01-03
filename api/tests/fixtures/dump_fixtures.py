@@ -138,7 +138,7 @@ To regenerate: make dump-fixtures
 from databases.tables.symbol_table import SymbolTable
 from databases.tables.symbol_exchange_table import SymbolExchangeTable
 from databases.tables.asset_index_table import AssetIndexTable, SymbolIndexLink
-from tools.enum_definitions import ExchangeId
+from pybinbot import ExchangeId
 
 
 '''

@@ -3,7 +3,7 @@ from enum import Enum
 from databases.crud.autotrade_crud import AutotradeCrud
 from databases.crud.bot_crud import BotTableCrud
 from exchange_apis.kucoin.base import KucoinApi
-from tools.enum_definitions import QuoteAssets
+from pybinbot import QuoteAssets
 
 
 class KucoinBaseBalance:

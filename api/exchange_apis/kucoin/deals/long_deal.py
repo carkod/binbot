@@ -1,15 +1,17 @@
 from typing import Type, Union
-from tools.maths import round_numbers, round_timestamp
-from tools.enum_definitions import (
+from pybinbot import (
+    round_numbers,
+    round_timestamp,
     DealType,
     Status,
     Strategy,
     OrderSide,
     OrderStatus,
+    BotBase,
 )
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from bots.models import BotModel, OrderModel, BotBase
+from bots.models import BotModel, OrderModel
 from exchange_apis.kucoin.deals.spot_deal import KucoinSpotDeal
 from exchange_apis.kucoin.deals.margin_deal import KucoinMarginDeal
 

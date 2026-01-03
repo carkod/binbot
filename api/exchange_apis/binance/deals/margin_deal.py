@@ -2,27 +2,25 @@ import logging
 
 from typing import Type, Union
 from urllib.error import HTTPError
-from bots.models import BotBase, BotModel, OrderModel
+from bots.models import BotModel, OrderModel
 from time import sleep
 from databases.crud.bot_crud import BotTableCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
-
-from tools.enum_definitions import (
+from pybinbot import (
     CloseConditions,
     DealType,
     OrderSide,
     QuoteAssets,
     Status,
     Strategy,
-)
-from tools.exceptions import BinanceErrors, MarginShortError
-from tools.maths import (
     round_numbers,
     round_numbers_ceiling,
     round_numbers_floor,
     round_timestamp,
+    BotBase,
 )
+from tools.exceptions import BinanceErrors, MarginShortError
 from databases.crud.symbols_crud import SymbolsCrud
 from exchange_apis.binance.deals.factory import BinanceDeal
 

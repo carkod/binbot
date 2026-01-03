@@ -4,7 +4,7 @@ from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.bot_crud import BotTableCrud
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
-from tools.maths import round_numbers, round_numbers_ceiling
+from pybinbot import round_numbers, round_numbers_ceiling, Status, Strategy, OrderStatus
 from tools.exceptions import (
     BinanceErrors,
     DealCreationError,
@@ -12,7 +12,6 @@ from tools.exceptions import (
     MarginLoanNotFound,
     BinbotErrors,
 )
-from tools.enum_definitions import Status, Strategy, OrderStatus
 from exchange_apis.binance.orders import BinanceOrderController
 
 # To be removed one day en commission endpoint found that provides this value

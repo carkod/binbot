@@ -1,5 +1,5 @@
 from typing import Optional
-from tools.enum_definitions import Strategy
+from pybinbot import Strategy
 from pydantic import BaseModel, field_validator, Field, ConfigDict
 from datetime import datetime
 

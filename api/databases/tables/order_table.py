@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Optional
 from pydantic import ValidationInfo, field_validator
-from tools.enum_definitions import DealType, OrderStatus
+from pybinbot import DealType, OrderStatus
 from sqlmodel import Field, Relationship, SQLModel
 from uuid import UUID, uuid4
 from sqlalchemy import Column, BigInteger
@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from databases.tables.bot_table import BotTable, PaperTradingTable
 
 
-class OrderBase(SQLModel):
+class OrderTableBase(SQLModel):
     order_type: str = Field(
         description="Because every exchange has different naming, we should keep it as a str rather than OrderType enum"
     )
@@ -46,7 +46,7 @@ class OrderBase(SQLModel):
     }
 
 
-class ExchangeOrderTable(OrderBase, table=True):
+class ExchangeOrderTable(OrderTableBase, table=True):
     """
     Data provided by Crypto Exchange,
     therefore they should be all be strings
@@ -95,7 +95,7 @@ class ExchangeOrderTable(OrderBase, table=True):
             raise ValueError(f"{info.field_name} must be str or int")
 
 
-class FakeOrderTable(OrderBase, table=True):
+class FakeOrderTable(OrderTableBase, table=True):
     """
     Fake orders for paper trading
     """

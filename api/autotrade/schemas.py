@@ -1,6 +1,6 @@
 from time import time
 from pydantic import BaseModel, Field
-from tools.enum_definitions import (
+from pybinbot import (
     AutotradeSettingsDocument,
     BinanceKlineIntervals,
     CloseConditions,

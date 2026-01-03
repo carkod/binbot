@@ -2,13 +2,9 @@ from typing import Type, Union
 from databases.crud.autotrade_crud import AutotradeCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from tools.enum_definitions import DealType, OrderSide, OrderStatus
+from pybinbot import DealType, OrderSide, OrderStatus, Status, round_timestamp
 from bots.models import BotModel, OrderModel
-from tools.enum_definitions import Status
 from tools.exceptions import BinanceErrors
-from tools.maths import (
-    round_timestamp,
-)
 from exchange_apis.binance.deals.margin_deal import BinanceMarginDeal
 
 

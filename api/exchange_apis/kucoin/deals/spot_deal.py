@@ -1,12 +1,14 @@
 import logging
 from typing import Type, Union
-from tools.maths import round_numbers_floor, round_numbers, round_numbers_ceiling
-from tools.enum_definitions import (
+from pybinbot import (
+    round_numbers_floor,
+    round_numbers,
+    round_numbers_ceiling,
     DealType,
     OrderStatus,
+    Strategy,
     QuoteAssets,
     Status,
-    Strategy,
 )
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud

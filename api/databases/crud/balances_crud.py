@@ -3,8 +3,9 @@ from databases.tables.account_balances import (
     BalancesTable,
     ConsolidatedBalancesTable,
 )
-from databases.utils import independent_session, timestamp
+from databases.utils import independent_session
 from sqlmodel import Session, select, desc
+from pybinbot import timestamp
 
 
 class BalancesCrud:
