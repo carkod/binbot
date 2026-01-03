@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Optional
 from pydantic import ValidationInfo, field_validator
-from tools.enum_definitions import DealType, OrderStatus
+from pybinbot.enum import DealType, OrderStatus
 from sqlmodel import Field, Relationship, SQLModel
 from uuid import UUID, uuid4
 from sqlalchemy import Column, BigInteger

@@ -18,7 +18,7 @@ from databases.tables.symbol_exchange_table import SymbolExchangeTable
 from databases.tables.symbol_table import SymbolTable
 from databases.utils import independent_session, engine
 from symbols.models import SymbolModel, SymbolRequestPayload
-from tools.enum_definitions import QuoteAssets, ExchangeId
+from pybinbot.enum import QuoteAssets, ExchangeId
 from tools.exceptions import BinbotErrors
 from sqlalchemy.sql import delete
 

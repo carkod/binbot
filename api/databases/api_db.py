@@ -6,7 +6,7 @@ from databases.tables.order_table import ExchangeOrderTable, FakeOrderTable
 from databases.tables.user_table import UserTable
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from sqlmodel import SQLModel, Session, select, text
-from tools.enum_definitions import (
+from pybinbot.enum import (
     AutotradeSettingsDocument,
     BinanceKlineIntervals,
     DealType,

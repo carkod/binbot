@@ -5,7 +5,7 @@ from charts.models import AdrSeriesDb
 from apis import BinanceApi
 from databases.db import Database
 from databases.crud.symbols_crud import SymbolsCrud
-from tools.maths import round_numbers
+from pybinbot.maths import round_numbers
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.bot_crud import BotTableCrud
 

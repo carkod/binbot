@@ -1,7 +1,7 @@
 from typing import Optional
 from pydantic import BaseModel, EmailStr, field_validator
 from sqlmodel import Field
-from tools.enum_definitions import UserRoles
+from pybinbot.enum import UserRoles
 from tools.handle_error import StandardResponse
 from uuid import UUID, uuid4
 from databases.utils import timestamp

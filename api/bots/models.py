@@ -1,6 +1,6 @@
 from typing import List, Optional
 from uuid import uuid4, UUID
-from tools.enum_definitions import (
+from pybinbot.enum import (
     QuoteAssets,
     BinanceKlineIntervals,
     CloseConditions,
@@ -11,8 +11,8 @@ from deals.models import DealModel
 from pydantic import BaseModel, Field, field_validator
 from databases.utils import timestamp
 from tools.handle_error import IResponseBase
-from tools.enum_definitions import DealType, OrderStatus
-from tools.maths import ts_to_humandate
+from pybinbot.enum import DealType, OrderStatus
+from pybinbot.maths import ts_to_humandate
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.tables.deal_table import DealTable
 from databases.tables.order_table import ExchangeOrderTable

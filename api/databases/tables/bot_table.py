@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import field_validator
 from sqlalchemy import JSON, Column, Enum
 from databases.utils import timestamp
-from tools.enum_definitions import (
+from pybinbot.enum import (
     QuoteAssets,
     BinanceKlineIntervals,
     CloseConditions,

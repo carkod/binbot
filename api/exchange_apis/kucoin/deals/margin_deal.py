@@ -1,6 +1,6 @@
 import logging
 from typing import Type, Union, Tuple
-from tools.maths import (
+from pybinbot.maths import (
     round_numbers_floor,
     round_timestamp,
     round_numbers,
@@ -12,7 +12,7 @@ from bots.models import BotModel, OrderModel
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.bot_crud import BotTableCrud
 from exchange_apis.kucoin.deals.base import KucoinBaseBalance
-from tools.enum_definitions import DealType, OrderStatus, Strategy, QuoteAssets, Status
+from pybinbot.enum import DealType, OrderStatus, Strategy, QuoteAssets, Status
 from kucoin_universal_sdk.generate.spot.order.model_get_order_by_order_id_resp import (
     GetOrderByOrderIdResp,
 )

@@ -2,7 +2,7 @@ from typing import Annotated
 
 from sqlmodel import Session
 from databases.crud.autotrade_crud import AutotradeCrud
-from tools.enum_definitions import AutotradeSettingsDocument
+from pybinbot.enum import AutotradeSettingsDocument
 from databases.utils import get_session
 from autotrade.schemas import (
     AutotradeSettingsResponse,

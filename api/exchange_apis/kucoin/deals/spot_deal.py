@@ -1,7 +1,7 @@
 import logging
 from typing import Type, Union
-from tools.maths import round_numbers_floor, round_numbers, round_numbers_ceiling
-from tools.enum_definitions import (
+from pybinbot.maths import round_numbers_floor, round_numbers, round_numbers_ceiling
+from pybinbot.enum import (
     DealType,
     OrderStatus,
     QuoteAssets,

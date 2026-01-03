@@ -1,6 +1,6 @@
 from typing import Type, Union
-from tools.maths import round_numbers, round_timestamp
-from tools.enum_definitions import (
+from pybinbot.maths import round_numbers, round_timestamp
+from pybinbot.enum import (
     DealType,
     Status,
     Strategy,

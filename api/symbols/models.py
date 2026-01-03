@@ -1,5 +1,5 @@
 from typing import Optional, Sequence
-from tools.enum_definitions import ExchangeId
+from pybinbot.enum import ExchangeId
 from tools.handle_error import StandardResponse
 from databases.tables.symbol_table import SymbolTable
 from pydantic import Field, BaseModel

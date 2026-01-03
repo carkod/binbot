@@ -14,11 +14,11 @@ from databases.crud.symbols_crud import SymbolsCrud
 from exchange_apis.binance.base import BinanceApi
 from exchange_apis.kucoin.base import KucoinApi
 from streaming.models import HABollinguerSpread
-from tools.enum_definitions import Status, Strategy, ExchangeId
+from pybinbot.enum import Status, Strategy, ExchangeId
 from tools.exceptions import BinanceErrors, BinbotErrors
-from tools.maths import round_numbers
+from pybinbot.maths import round_numbers
 from copy import deepcopy
-from tools.enum_definitions import BinanceKlineIntervals
+from pybinbot.enum import BinanceKlineIntervals
 
 
 class BaseStreaming:

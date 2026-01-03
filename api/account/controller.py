@@ -2,10 +2,10 @@ from account.schemas import BalanceSchema, KucoinBalance
 from databases.crud.balances_crud import BalancesCrud
 from exchange_apis.binance.assets import Assets
 from exchange_apis.kucoin.base import KucoinApi
-from tools.enum_definitions import ExchangeId
+from pybinbot.enum import ExchangeId
 from databases.utils import get_session
 from sqlmodel import Session
-from tools.maths import round_numbers
+from pybinbot.maths import round_numbers
 from exchange_apis.kucoin.deals.base import KucoinBaseBalance
 from typing import Dict
 from enum import Enum

@@ -7,12 +7,12 @@ from databases.tables.bot_table import BotTable
 from databases.tables.deal_table import DealTable
 from databases.tables.order_table import ExchangeOrderTable
 from databases.utils import independent_session, timestamp
-from tools.enum_definitions import QuoteAssets, Status, Strategy
+from pybinbot.enum import QuoteAssets, Status, Strategy
 from bots.models import BotBase
 from collections.abc import Sequence
 from sqlalchemy.orm.attributes import flag_modified
 from tools.exceptions import SaveBotError, BinbotErrors
-from tools.maths import round_numbers, ts_to_humandate
+from pybinbot.maths import round_numbers, ts_to_humandate
 from databases.crud.symbols_crud import SymbolsCrud
 
 

@@ -3,9 +3,9 @@ from typing import Type, Union
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.symbols_crud import SymbolsCrud
 from bots.models import BotModel, OrderModel
-from tools.enum_definitions import DealType, OrderSide, Status, QuoteAssets, Strategy
+from pybinbot.enum import DealType, OrderSide, Status, QuoteAssets, Strategy
 from tools.exceptions import BinanceErrors, TakeProfitError
-from tools.maths import (
+from pybinbot.maths import (
     round_numbers,
     round_timestamp,
     round_numbers_floor,

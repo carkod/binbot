@@ -8,7 +8,7 @@ from databases.crud.bot_crud import BotTableCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 
-from tools.enum_definitions import (
+from pybinbot.enum import (
     CloseConditions,
     DealType,
     OrderSide,
@@ -17,7 +17,7 @@ from tools.enum_definitions import (
     Strategy,
 )
 from tools.exceptions import BinanceErrors, MarginShortError
-from tools.maths import (
+from pybinbot.maths import (
     round_numbers,
     round_numbers_ceiling,
     round_numbers_floor,

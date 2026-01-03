@@ -10,7 +10,7 @@ from kucoin_universal_sdk.generate.account.account import (
 from kucoin_universal_sdk.generate.account.account.model_get_isolated_margin_account_resp import (
     GetIsolatedMarginAccountResp,
 )
-from tools.enum_definitions import KucoinKlineIntervals
+from pybinbot.enum import KucoinKlineIntervals
 from exchange_apis.kucoin.orders import KucoinOrders
 from datetime import datetime
 
