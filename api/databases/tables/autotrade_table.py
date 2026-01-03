@@ -1,13 +1,13 @@
 from time import time
-from typing import Optional
-from sqlalchemy import Column, Enum
-from sqlmodel import Field, SQLModel
+
 from pybinbot import (
     AutotradeSettingsDocument,
     BinanceKlineIntervals,
     CloseConditions,
     ExchangeId,
 )
+from sqlalchemy import Column, Enum
+from sqlmodel import Field, SQLModel
 
 
 class SettingsDocument(SQLModel):
@@ -48,7 +48,7 @@ class AutotradeTable(SettingsDocument, table=True):
 
     __tablename__ = "autotrade"
 
-    id: Optional[str] = Field(
+    id: str | None = Field(
         default=AutotradeSettingsDocument.settings,
         primary_key=True,
         nullable=False,
@@ -97,7 +97,7 @@ class TestAutotradeTable(SettingsDocument, table=True):
 
     __tablename__ = "test_autotrade"
 
-    id: Optional[str] = Field(
+    id: str | None = Field(
         default=AutotradeSettingsDocument.test_autotrade_settings,
         primary_key=True,
         nullable=False,

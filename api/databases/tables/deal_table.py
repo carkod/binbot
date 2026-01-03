@@ -1,8 +1,9 @@
-from uuid import uuid4, UUID
-from sqlmodel import SQLModel, Field, Relationship
-from typing import Optional, TYPE_CHECKING
-from sqlalchemy import Column, BigInteger, Float
+from typing import TYPE_CHECKING, Optional
+from uuid import UUID, uuid4
+
 from pydantic import field_validator
+from sqlalchemy import BigInteger, Column, Float
+from sqlmodel import Field, Relationship, SQLModel
 
 # avoids circular imports
 if TYPE_CHECKING:

@@ -1,9 +1,10 @@
 from os import getenv
+
 from kucoin_universal_sdk.api import DefaultClient
-from kucoin_universal_sdk.model import TransportOptionBuilder
-from kucoin_universal_sdk.model import ClientOptionBuilder
 from kucoin_universal_sdk.model import (
     GLOBAL_API_ENDPOINT,
+    ClientOptionBuilder,
+    TransportOptionBuilder,
 )
 
 

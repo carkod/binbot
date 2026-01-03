@@ -1,13 +1,13 @@
 from fastapi import APIRouter, HTTPException
 
+from charts.controllers import MarketDominationController
+from charts.models import AdrSeriesResponse
+from databases.crud.candles_crud import CandlesCrud
 from tools.handle_error import (
+    StandardResponse,
     json_response,
     json_response_error,
 )
-from charts.controllers import MarketDominationController
-from charts.models import AdrSeriesResponse
-from tools.handle_error import StandardResponse
-from databases.crud.candles_crud import CandlesCrud
 
 charts_blueprint = APIRouter()
 

@@ -1,15 +1,18 @@
 import json
-import os
 import logging
+import os
+from copy import deepcopy
 from time import sleep
-from typing import Any, Union, TypeVar, Optional
+from typing import Any, TypeVar
+
 from bson import json_util
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from requests import Response, put
 from requests.exceptions import HTTPError
-from fastapi.encoders import jsonable_encoder
-from copy import deepcopy
+from sqlalchemy.exc import DataError, IntegrityError, SQLAlchemyError
+
 from tools.exceptions import (
     BinanceErrors,
     BinbotErrors,
@@ -17,7 +20,6 @@ from tools.exceptions import (
     NotEnoughFunds,
     QuantityTooLow,
 )
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError, DataError
 
 
 def post_error(msg):
@@ -27,7 +29,7 @@ def post_error(msg):
     return
 
 
-def api_response(detail: str, data: Any = None, error: Union[str, int] = 0, status=200):
+def api_response(detail: str, data: Any = None, error: str | int = 0, status=200):
     """
     Custom Fast API response
 
@@ -169,7 +171,7 @@ DataType = TypeVar("DataType")
 
 class IResponseBase(BaseModel):
     message: str
-    error: Optional[int] = Field(default=0)
+    error: int | None = Field(default=0)
 
 
 def format_db_error(e: SQLAlchemyError) -> str:

@@ -1,28 +1,25 @@
 import random
 import uuid
 from time import sleep, time
-from exchange_apis.kucoin.rest import KucoinRest
-from kucoin_universal_sdk.generate.spot.order.model_add_order_sync_resp import (
-    AddOrderSyncResp,
+
+from kucoin_universal_sdk.generate.account.transfer.model_flex_transfer_req import (
+    FlexTransferReq,
+    FlexTransferReqBuilder,
 )
-from kucoin_universal_sdk.generate.spot.order.model_add_order_sync_req import (
-    AddOrderSyncReq,
-    AddOrderSyncReqBuilder,
+from kucoin_universal_sdk.generate.account.transfer.model_flex_transfer_resp import (
+    FlexTransferResp,
 )
-from kucoin_universal_sdk.generate.spot.order.model_batch_add_orders_sync_req import (
-    BatchAddOrdersSyncReqBuilder,
+from kucoin_universal_sdk.generate.margin.debit.model_borrow_req import (
+    BorrowReqBuilder,
 )
-from kucoin_universal_sdk.generate.spot.order.model_batch_add_orders_sync_order_list import (
-    BatchAddOrdersSyncOrderList,
+from kucoin_universal_sdk.generate.margin.debit.model_borrow_resp import (
+    BorrowResp,
 )
-from kucoin_universal_sdk.generate.spot.order.model_cancel_order_by_order_id_sync_req import (
-    CancelOrderByOrderIdSyncReqBuilder,
+from kucoin_universal_sdk.generate.margin.debit.model_repay_req import (
+    RepayReqBuilder,
 )
-from kucoin_universal_sdk.generate.spot.order.model_get_order_by_order_id_req import (
-    GetOrderByOrderIdReqBuilder,
-)
-from kucoin_universal_sdk.generate.spot.order.model_get_open_orders_req import (
-    GetOpenOrdersReqBuilder,
+from kucoin_universal_sdk.generate.margin.debit.model_repay_resp import (
+    RepayResp,
 )
 from kucoin_universal_sdk.generate.margin.order.model_add_order_req import (
     AddOrderReq,
@@ -34,29 +31,34 @@ from kucoin_universal_sdk.generate.margin.order.model_cancel_order_by_order_id_r
 from kucoin_universal_sdk.generate.margin.order.model_get_order_by_order_id_resp import (
     GetOrderByOrderIdResp,
 )
-from kucoin_universal_sdk.generate.margin.debit.model_repay_req import (
-    RepayReqBuilder,
-)
-from kucoin_universal_sdk.generate.margin.debit.model_repay_resp import (
-    RepayResp,
-)
-from kucoin_universal_sdk.generate.margin.debit.model_borrow_req import (
-    BorrowReqBuilder,
-)
-from kucoin_universal_sdk.generate.margin.debit.model_borrow_resp import (
-    BorrowResp,
-)
-from kucoin_universal_sdk.generate.account.transfer.model_flex_transfer_req import (
-    FlexTransferReqBuilder,
-    FlexTransferReq,
-)
-from kucoin_universal_sdk.generate.account.transfer.model_flex_transfer_resp import (
-    FlexTransferResp,
-)
 from kucoin_universal_sdk.generate.spot.market import (
-    GetPartOrderBookReqBuilder,
     GetFullOrderBookReqBuilder,
+    GetPartOrderBookReqBuilder,
 )
+from kucoin_universal_sdk.generate.spot.order.model_add_order_sync_req import (
+    AddOrderSyncReq,
+    AddOrderSyncReqBuilder,
+)
+from kucoin_universal_sdk.generate.spot.order.model_add_order_sync_resp import (
+    AddOrderSyncResp,
+)
+from kucoin_universal_sdk.generate.spot.order.model_batch_add_orders_sync_order_list import (
+    BatchAddOrdersSyncOrderList,
+)
+from kucoin_universal_sdk.generate.spot.order.model_batch_add_orders_sync_req import (
+    BatchAddOrdersSyncReqBuilder,
+)
+from kucoin_universal_sdk.generate.spot.order.model_cancel_order_by_order_id_sync_req import (
+    CancelOrderByOrderIdSyncReqBuilder,
+)
+from kucoin_universal_sdk.generate.spot.order.model_get_open_orders_req import (
+    GetOpenOrdersReqBuilder,
+)
+from kucoin_universal_sdk.generate.spot.order.model_get_order_by_order_id_req import (
+    GetOrderByOrderIdReqBuilder,
+)
+
+from exchange_apis.kucoin.rest import KucoinRest
 
 
 class KucoinOrders(KucoinRest):

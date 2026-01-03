@@ -1,22 +1,23 @@
 from time import sleep
-from typing import Type, Union
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from databases.crud.symbols_crud import SymbolsCrud
-from bots.models import BotModel, OrderModel
+
 from pybinbot import (
     DealType,
     OrderSide,
-    Status,
     QuoteAssets,
+    Status,
     Strategy,
     round_numbers,
-    round_timestamp,
-    round_numbers_floor,
     round_numbers_ceiling,
+    round_numbers_floor,
+    round_timestamp,
 )
-from tools.exceptions import BinanceErrors, TakeProfitError
-from exchange_apis.binance.deals.base_deal import BaseDeal
+
+from bots.models import BotModel, OrderModel
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
+from databases.crud.symbols_crud import SymbolsCrud
+from databases.tables.bot_table import BotTable, PaperTradingTable
+from exchange_apis.binance.deals.base_deal import BaseDeal
+from tools.exceptions import BinanceErrors, TakeProfitError
 
 
 class BinanceDeal(BaseDeal):
@@ -38,7 +39,7 @@ class BinanceDeal(BaseDeal):
     def __init__(
         self,
         bot: BotModel,
-        db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable,
+        db_table: type[PaperTradingTable | BotTable] = BotTable,
     ):
         super().__init__(bot, db_table)
         self.active_bot = bot

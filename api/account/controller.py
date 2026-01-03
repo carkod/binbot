@@ -1,13 +1,14 @@
+from enum import Enum
+
+from pybinbot import ExchangeId, round_numbers
+from sqlmodel import Session
+
 from account.schemas import BalanceSchema, KucoinBalance
 from databases.crud.balances_crud import BalancesCrud
+from databases.utils import get_session
 from exchange_apis.binance.assets import Assets
 from exchange_apis.kucoin.base import KucoinApi
-from pybinbot import ExchangeId, round_numbers
-from databases.utils import get_session
-from sqlmodel import Session
 from exchange_apis.kucoin.deals.base import KucoinBaseBalance
-from typing import Dict
-from enum import Enum
 
 
 class ConsolidatedAccounts:
@@ -36,7 +37,7 @@ class ConsolidatedAccounts:
         """
 
         result = BalanceSchema()
-        total_balances: Dict[str, float] = dict()
+        total_balances: dict[str, float] = dict()
         estimated_total_fiat = 0.0
         fiat_available = 0.0
         if self.autotrade_settings.exchange_id == ExchangeId.KUCOIN:

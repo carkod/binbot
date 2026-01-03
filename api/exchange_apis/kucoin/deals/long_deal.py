@@ -1,19 +1,19 @@
-from typing import Type, Union
 from pybinbot import (
-    round_numbers,
-    round_timestamp,
+    BotBase,
     DealType,
-    Status,
-    Strategy,
     OrderSide,
     OrderStatus,
-    BotBase,
+    Status,
+    Strategy,
+    round_numbers,
+    round_timestamp,
 )
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from databases.crud.paper_trading_crud import PaperTradingTableCrud
+
 from bots.models import BotModel, OrderModel
-from exchange_apis.kucoin.deals.spot_deal import KucoinSpotDeal
+from databases.crud.paper_trading_crud import PaperTradingTableCrud
+from databases.tables.bot_table import BotTable, PaperTradingTable
 from exchange_apis.kucoin.deals.margin_deal import KucoinMarginDeal
+from exchange_apis.kucoin.deals.spot_deal import KucoinSpotDeal
 
 
 class KucoinLongDeal(KucoinSpotDeal):
@@ -26,7 +26,7 @@ class KucoinLongDeal(KucoinSpotDeal):
     """
 
     def __init__(
-        self, bot: BotModel, db_table: Type[Union[BotTable, PaperTradingTable]]
+        self, bot: BotModel, db_table: type[BotTable | PaperTradingTable]
     ) -> None:
         super().__init__(bot=bot, db_table=db_table)
         self.active_bot: BotModel = bot

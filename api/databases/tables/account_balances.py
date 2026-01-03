@@ -1,8 +1,9 @@
 from typing import Optional
 from uuid import UUID, uuid4
-from sqlalchemy import BigInteger, Column
+
 from pybinbot import timestamp
-from sqlmodel import Relationship, SQLModel, Field
+from sqlalchemy import BigInteger, Column
+from sqlmodel import Field, Relationship, SQLModel
 
 
 class BalancesTable(SQLModel, table=True):
@@ -22,10 +23,10 @@ class BalancesTable(SQLModel, table=True):
         default_factory=timestamp, sa_column=Column(BigInteger(), index=True)
     )
     asset: str = Field(index=True, nullable=False)
-    quantity: Optional[float] = Field(default=0, description="local quantity (asset)")
+    quantity: float | None = Field(default=0, description="local quantity (asset)")
 
     # Relationships
-    consolidated_balances_id: Optional[int] = Field(
+    consolidated_balances_id: int | None = Field(
         default=None,
         foreign_key="consolidated_balances.id",
         ondelete="CASCADE",
@@ -95,10 +96,10 @@ class StagingBalancesTable(SQLModel, table=True):
         default_factory=timestamp, sa_column=Column(BigInteger(), index=True)
     )
     asset: str = Field(index=True, nullable=False)
-    quantity: Optional[float] = Field(default=0, description="local quantity (asset)")
+    quantity: float | None = Field(default=0, description="local quantity (asset)")
 
     # Relationships
-    consolidated_balances_id: Optional[int] = Field(
+    consolidated_balances_id: int | None = Field(
         default=None,
         foreign_key="staging_consolidated_balances.id",  # <-- fixed foreign key
         ondelete="CASCADE",

@@ -1,6 +1,7 @@
 import time
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable, Dict, Tuple
+from typing import Any
 
 
 def cache(
@@ -11,8 +12,8 @@ def cache(
     """
 
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
-        store: Dict[
-            Tuple[Tuple[Any, ...], Tuple[Tuple[str, Any], ...]], Tuple[float, Any]
+        store: dict[
+            tuple[tuple[Any, ...], tuple[tuple[str, Any], ...]], tuple[float, Any]
         ] = {}
 
         @wraps(func)

@@ -1,18 +1,20 @@
-from kucoin_universal_sdk.generate.spot.market import (
-    GetPartOrderBookReqBuilder,
-    GetAllSymbolsReqBuilder,
-    GetKlinesReqBuilder,
-)
+from datetime import datetime
+
 from kucoin_universal_sdk.generate.account.account import (
-    GetSpotAccountListReqBuilder,
     GetIsolatedMarginAccountReqBuilder,
+    GetSpotAccountListReqBuilder,
 )
 from kucoin_universal_sdk.generate.account.account.model_get_isolated_margin_account_resp import (
     GetIsolatedMarginAccountResp,
 )
+from kucoin_universal_sdk.generate.spot.market import (
+    GetAllSymbolsReqBuilder,
+    GetKlinesReqBuilder,
+    GetPartOrderBookReqBuilder,
+)
 from pybinbot import KucoinKlineIntervals
+
 from exchange_apis.kucoin.orders import KucoinOrders
-from datetime import datetime
 
 
 class KucoinApi(KucoinOrders):

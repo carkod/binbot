@@ -97,40 +97,6 @@ services:
       retries: 10
       start_period: 30s
 
-  # kafka_producer:
-  #   build: ./binquant
-  #   image: binquant_producer
-  #   container_name: binquant_producer
-  #   restart: on-failure
-  #   networks:
-  #     - kafka_network
-  #   depends_on:
-  #     - kafka
-  #     - api
-  #   env_file:
-  #     - .env
-  #   environment:
-  #     - KAFKA_BOOTSTRAP_SERVERS=http://binquant_kafka:9092
-  #     - FLASK_DOMAIN=http://binbot:8008
-  #     # - KAFKA_TOPIC=${KAFKA_TOPIC}
-  #   volumes:
-  #       - /var/run/docker.sock:/var/run/docker.sock
-  #   command: ["python3", "-m", "producer"]
-
-  # kafka_consumer:
-  #   build: ./binquant
-  #   image: binquant_consumer
-  #   container_name: binquant_consumer
-  #   restart: on-failure
-  #   networks:
-  #     - kafka_network
-  #   depends_on:
-  #     - kafka
-  #     - api
-  #   env_file:
-  #     - .env
-  #   command: ["python3", "-m", "consumer"]
-
   api:
     build:
       context: api/

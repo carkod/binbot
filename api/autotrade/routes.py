@@ -1,16 +1,17 @@
 from typing import Annotated
 
-from sqlmodel import Session
-from databases.crud.autotrade_crud import AutotradeCrud
+from fastapi import APIRouter, Depends, HTTPException
 from pybinbot import AutotradeSettingsDocument
-from databases.utils import get_session
+from pydantic import ValidationError
+from sqlmodel import Session
+
 from autotrade.schemas import (
     AutotradeSettingsResponse,
     AutotradeSettingsSchema,
     TestAutotradeSettingsSchema,
 )
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import ValidationError
+from databases.crud.autotrade_crud import AutotradeCrud
+from databases.utils import get_session
 from tools.handle_error import json_response, json_response_error
 
 autotrade_settings_blueprint = APIRouter()

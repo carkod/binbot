@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
-from main import app
 from pytest import fixture, mark
+
+from main import app
 
 
 @fixture()

@@ -1,8 +1,10 @@
 from __future__ import annotations
+
 import json
 import logging
 import os
-from typing import Any, Optional
+from typing import Any
+
 from aiokafka import AIOKafkaProducer
 
 logger = logging.getLogger(__name__)
@@ -45,7 +47,7 @@ class AsyncProducer:
         topic: str,
         value: Any,
         key: Any | None = None,
-        partition: Optional[int] = None,
+        partition: int | None = None,
     ) -> None:
         await self.producer.send_and_wait(
             topic=topic,

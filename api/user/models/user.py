@@ -1,28 +1,29 @@
-from typing import Optional
+from collections.abc import Sequence
+from uuid import UUID, uuid4
+
+from pybinbot import UserRoles, timestamp
 from pydantic import BaseModel, EmailStr, field_validator
 from sqlmodel import Field
-from pybinbot import UserRoles, timestamp
-from tools.handle_error import StandardResponse
-from uuid import UUID, uuid4
-from typing import Sequence
+
 from databases.tables.user_table import UserTable
+from tools.handle_error import StandardResponse
 
 
 class UserDetails(BaseModel):
     email: EmailStr = Field(unique=True, index=True, max_length=255)
-    is_active: Optional[bool] = True
-    role: Optional[UserRoles] = Field(default=UserRoles.admin)
-    full_name: Optional[str] = Field(default="")
-    password: Optional[str] = Field(
+    is_active: bool | None = True
+    role: UserRoles | None = Field(default=UserRoles.admin)
+    full_name: str | None = Field(default="")
+    password: str | None = Field(
         min_length=8,
         max_length=40,
         description="Not using SecretStr because not supported by SQLModel",
     )
     # Email is the main identifier
-    username: Optional[str] = Field(default="")
-    description: Optional[str] = Field(default="")
-    created_at: Optional[int] = Field(default_factory=timestamp)
-    updated_at: Optional[int] = Field(default=timestamp())
+    username: str | None = Field(default="")
+    description: str | None = Field(default="")
+    created_at: int | None = Field(default_factory=timestamp)
+    updated_at: int | None = Field(default=timestamp())
 
     @field_validator("role")
     @classmethod
@@ -39,7 +40,7 @@ class CreateUser(UserDetails):
     For full customer data create a separate table
     """
 
-    id: Optional[UUID] = Field(
+    id: UUID | None = Field(
         default_factory=uuid4, primary_key=True, index=True, nullable=False, unique=True
     )
     # Future: Only required if customer table exists
@@ -69,8 +70,8 @@ class TokenResponse(BaseModel):
 
 
 class LoginResponse(StandardResponse):
-    data: Optional[TokenResponse]
+    data: TokenResponse | None
 
 
 class GetOneUser(StandardResponse):
-    data: Optional[UserTable]
+    data: UserTable | None

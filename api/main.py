@@ -1,23 +1,23 @@
 import logging
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from databases.api_db import ApiDb
 from account.routes import account_blueprint
+from asset_index.routes import asset_index_blueprint
 from autotrade.routes import autotrade_settings_blueprint
 from bots.routes import bot_blueprint
 from charts.routes import charts_blueprint
+from databases.api_db import ApiDb
+from databases.tables import *  # noqa
 from orders.routes import order_blueprint
 from paper_trading.routes import paper_trading_blueprint
 from symbols.routes import symbols_blueprint
 from user.routes import user_blueprint
-from asset_index.routes import asset_index_blueprint
-
-from databases.tables import *  # noqa
 
 
 @asynccontextmanager

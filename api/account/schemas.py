@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
+
 from tools.handle_error import StandardResponse
-from typing import Dict
 
 
 class BaseBalance(BaseModel):
@@ -27,7 +27,7 @@ class KucoinBalance(BaseBalance):
     specific to Kucoin exchange
     """
 
-    balances: Dict[str, Dict[str, float]]
+    balances: dict[str, dict[str, float]]
 
 
 class BalanceSchema(BaseBalance):
@@ -36,7 +36,7 @@ class BalanceSchema(BaseBalance):
     All validation and database fields new or old handled here
     """
 
-    balances: Dict[str, float] = Field(
+    balances: dict[str, float] = Field(
         default={}, description="Dictionary of asset balances 'BTC': 0.5, 'ETH': 0.01"
     )
 

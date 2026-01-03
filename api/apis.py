@@ -1,7 +1,9 @@
 import os
+
 from requests import request
-from tools.handle_error import handle_binance_errors
+
 from exchange_apis.binance.base import BinanceApi
+from tools.handle_error import handle_binance_errors
 
 
 class BinbotApi(BinanceApi):

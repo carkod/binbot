@@ -1,17 +1,22 @@
 from fastapi import APIRouter, Depends
-from sqlmodel import Session
+from pybinbot import BotBase, Status
 from pydantic import TypeAdapter, ValidationError
-from deals.gateway import DealGateway
-from pybinbot import Status, BotBase
-from databases.tables.bot_table import PaperTradingTable
-from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from databases.utils import get_session
-from tools.exceptions import BinanceErrors, BinbotErrors
-from tools.handle_error import api_response, StandardResponse
-from bots.models import BotModel, BotResponse, BotListResponse, BotPairsList
-from typing import List, Optional
-from bots.models import BotModelResponse, ErrorsRequestBody
+from sqlmodel import Session
 
+from bots.models import (
+    BotListResponse,
+    BotModel,
+    BotModelResponse,
+    BotPairsList,
+    BotResponse,
+    ErrorsRequestBody,
+)
+from databases.crud.paper_trading_crud import PaperTradingTableCrud
+from databases.tables.bot_table import PaperTradingTable
+from databases.utils import get_session
+from deals.gateway import DealGateway
+from tools.exceptions import BinanceErrors, BinbotErrors
+from tools.handle_error import StandardResponse, api_response
 
 paper_trading_blueprint = APIRouter()
 ta = TypeAdapter(list[BotModelResponse])
@@ -22,8 +27,8 @@ ta = TypeAdapter(list[BotModelResponse])
 )
 def get(
     status: Status = Status.all,
-    start_date: Optional[int] = None,
-    end_date: Optional[int] = None,
+    start_date: int | None = None,
+    end_date: int | None = None,
     limit: int = 200,
     offset: int = 0,
     session: Session = Depends(get_session),
@@ -116,7 +121,7 @@ def edit(id: str, bot_item: BotModel, session: Session = Depends(get_session)):
 
 
 @paper_trading_blueprint.delete("/paper-trading", tags=["paper trading"])
-def delete(id: List[str], session: Session = Depends(get_session)):
+def delete(id: list[str], session: Session = Depends(get_session)):
     """
     Receives a list of `id=a1b2c3&id=b2c3d4`
     """

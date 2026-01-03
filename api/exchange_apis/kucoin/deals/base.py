@@ -1,9 +1,10 @@
-from typing import Dict, Tuple
 from enum import Enum
+
+from pybinbot import QuoteAssets
+
 from databases.crud.autotrade_crud import AutotradeCrud
 from databases.crud.bot_crud import BotTableCrud
 from exchange_apis.kucoin.base import KucoinApi
-from pybinbot import QuoteAssets
 
 
 class KucoinBaseBalance:
@@ -30,7 +31,7 @@ class KucoinBaseBalance:
         symbol = f"{base}-{quote}"
         return symbol
 
-    def compute_balance(self) -> Tuple[Dict[str, Dict[str, float]], float, float]:
+    def compute_balance(self) -> tuple[dict[str, dict[str, float]], float, float]:
         """
         Computes total balances, estimated total fiat, and fiat available
         using the KuCoin APIs available on the passed `accounts` instance.
@@ -41,7 +42,7 @@ class KucoinBaseBalance:
             (total_balances, estimated_total_fiat, fiat_available)
         """
 
-        result_balances: Dict[str, Dict[str, float]] = {}
+        result_balances: dict[str, dict[str, float]] = {}
         estimated_total_fiat = 0.0
         fiat_available = 0.0
 
@@ -74,7 +75,7 @@ class KucoinBaseBalance:
 
     def normalized_compute_balance(
         self,
-    ) -> Tuple[Dict[str, float], float, float]:
+    ) -> tuple[dict[str, float], float, float]:
         """
         compute_balance but backwards compatible with currently stored
         balances structure.
@@ -83,7 +84,7 @@ class KucoinBaseBalance:
             (total_balances, estimated_total_fiat, fiat_available)
         """
 
-        result_balances: Dict[str, float] = {}
+        result_balances: dict[str, float] = {}
         estimated_total_fiat = 0.0
         fiat_available = 0.0
 

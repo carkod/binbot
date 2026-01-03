@@ -1,7 +1,7 @@
-from typing import Optional
-from pybinbot import Strategy
-from pydantic import BaseModel, field_validator, Field, ConfigDict
 from datetime import datetime
+
+from pybinbot import Strategy
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class SingleCandle(BaseModel):
@@ -61,13 +61,13 @@ class SignalsConsumer(BaseModel):
 
     type: str = Field(default="signal")
     date: str = Field(default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    spread: Optional[float] = Field(default=0)
-    current_price: Optional[float] = Field(default=0)
+    spread: float | None = Field(default=0)
+    current_price: float | None = Field(default=0)
     msg: str
     symbol: str
     algo: str
     bot_strategy: Strategy = Field(default=Strategy.long)
-    bb_spreads: Optional[HABollinguerSpread]
+    bb_spreads: HABollinguerSpread | None
     autotrade: bool = Field(default=True, description="If it is in testing mode, False")
 
     model_config = ConfigDict(

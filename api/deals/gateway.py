@@ -1,12 +1,12 @@
-from exchange_apis.kucoin.deals.long_deal import KucoinLongDeal
-from databases.tables.bot_table import BotTable, PaperTradingTable
 from pybinbot import ExchangeId, Strategy
+
 from bots.models import BotModel
-from typing import Type, Union
-from exchange_apis.kucoin.deals.short_deal import KucoinShortDeal
 from databases.crud.autotrade_crud import AutotradeCrud
-from exchange_apis.binance.deals.short import BinanceShortDeal
+from databases.tables.bot_table import BotTable, PaperTradingTable
 from exchange_apis.binance.deals.long import BinanceLongDeal
+from exchange_apis.binance.deals.short import BinanceShortDeal
+from exchange_apis.kucoin.deals.long_deal import KucoinLongDeal
+from exchange_apis.kucoin.deals.short_deal import KucoinShortDeal
 
 
 class DealGateway:
@@ -18,14 +18,12 @@ class DealGateway:
     """
 
     def __init__(
-        self, bot: BotModel, db_table: Type[Union[BotTable, PaperTradingTable]]
+        self, bot: BotModel, db_table: type[BotTable | PaperTradingTable]
     ) -> None:
         self.autotrade_settings = AutotradeCrud().get_settings()
         self.bot = bot
         self.db_table = db_table
-        self.deal: Union[
-            BinanceLongDeal, BinanceShortDeal, KucoinLongDeal, KucoinShortDeal
-        ]
+        self.deal: BinanceLongDeal | BinanceShortDeal | KucoinLongDeal | KucoinShortDeal
         if self.autotrade_settings.exchange_id == ExchangeId.KUCOIN:
             if bot.strategy == Strategy.margin_short:
                 self.deal = KucoinShortDeal(bot, db_table=db_table)
@@ -45,9 +43,7 @@ class DealGateway:
         """
         return self.deal.open_deal()
 
-    def update_logs(
-        self, message: str | list[str]
-    ) -> Union[BotTable, PaperTradingTable]:
+    def update_logs(self, message: str | list[str]) -> BotTable | PaperTradingTable:
         """
         Abstract method for updating logs during bot runtime
         """
@@ -67,7 +63,7 @@ class DealGateway:
             close_price=close_price, open_price=open_price
         )
 
-    def save(self, bot: BotModel) -> Union[BotTable, PaperTradingTable]:
+    def save(self, bot: BotModel) -> BotTable | PaperTradingTable:
         """
         Abstract method for saving bot state
         """

@@ -1,12 +1,14 @@
 import logging
-from exchange_apis.binance.base import BinanceApi
-from databases.db import setup_kafka_db
-from pandas import DataFrame
+from datetime import UTC, datetime
+
 import pandas as pd
+from pandas import DataFrame
 from pybinbot import BinanceKlineIntervals, round_numbers
-from databases.crud.symbols_crud import SymbolsCrud
-from datetime import datetime, timezone
 from pymongo.errors import OperationFailure
+
+from databases.crud.symbols_crud import SymbolsCrud
+from databases.db import setup_kafka_db
+from exchange_apis.binance.base import BinanceApi
 
 
 class CandlesCrud:
@@ -59,9 +61,7 @@ class CandlesCrud:
                         "close": k[4],
                         "volume": k[5],
                         "close_time": k[6],
-                        "timestamp": datetime.fromtimestamp(
-                            k[0] / 1000, tz=timezone.utc
-                        ),
+                        "timestamp": datetime.fromtimestamp(k[0] / 1000, tz=UTC),
                     }
                 )
             if docs:

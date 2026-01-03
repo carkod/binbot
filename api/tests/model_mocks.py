@@ -1,6 +1,6 @@
-from bots.models import BotModel, OrderModel
 from pybinbot import DealBase as DealModel
-from bots.models import BotModelResponse
+
+from bots.models import BotModel, BotModelResponse, OrderModel
 
 id = "02031768-fbb9-4cc7-b549-642f15ab787b"
 ts = 1733973560249.0

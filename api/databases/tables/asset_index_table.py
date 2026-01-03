@@ -1,7 +1,7 @@
-from sqlmodel import SQLModel, Field, Relationship
 from typing import TYPE_CHECKING
-from sqlalchemy import Column, String, ForeignKey
 
+from sqlalchemy import Column, ForeignKey, String
+from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from databases.tables.symbol_table import SymbolTable

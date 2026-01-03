@@ -1,16 +1,17 @@
-from typing import List
-from sqlmodel import Session, select, case, desc, asc
-from tools.exceptions import BinbotErrors, SaveBotError
-from databases.tables.bot_table import PaperTradingTable
-from bots.models import BotModel
-from databases.utils import independent_session
-from pybinbot import Status, BotBase
 from collections.abc import Sequence
 from uuid import UUID
+
+from pybinbot import BotBase, Status
+from sqlalchemy import text
+from sqlalchemy.orm.attributes import flag_modified
+from sqlmodel import Session, asc, case, desc, select
+
+from bots.models import BotModel
+from databases.tables.bot_table import PaperTradingTable
 from databases.tables.deal_table import DealTable
 from databases.tables.order_table import FakeOrderTable
-from sqlalchemy.orm.attributes import flag_modified
-from sqlalchemy import text
+from databases.utils import independent_session
+from tools.exceptions import BinbotErrors, SaveBotError
 
 
 class PaperTradingTableCrud:
@@ -205,7 +206,7 @@ class PaperTradingTableCrud:
         self.session.close()
         return resulted_bot
 
-    def delete(self, bot_ids: List[str]) -> bool:
+    def delete(self, bot_ids: list[str]) -> bool:
         """
         Delete a paper trading account by id
         """

@@ -1,13 +1,9 @@
 import logging
-
-from typing import Type, Union
-from urllib.error import HTTPError
-from bots.models import BotModel, OrderModel
 from time import sleep
-from databases.crud.bot_crud import BotTableCrud
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from databases.crud.paper_trading_crud import PaperTradingTableCrud
+from urllib.error import HTTPError
+
 from pybinbot import (
+    BotBase,
     CloseConditions,
     DealType,
     OrderSide,
@@ -18,11 +14,15 @@ from pybinbot import (
     round_numbers_ceiling,
     round_numbers_floor,
     round_timestamp,
-    BotBase,
 )
-from tools.exceptions import BinanceErrors, MarginShortError
+
+from bots.models import BotModel, OrderModel
+from databases.crud.bot_crud import BotTableCrud
+from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
+from databases.tables.bot_table import BotTable, PaperTradingTable
 from exchange_apis.binance.deals.factory import BinanceDeal
+from tools.exceptions import BinanceErrors, MarginShortError
 
 
 class BinanceMarginDeal(BinanceDeal):
@@ -41,7 +41,7 @@ class BinanceMarginDeal(BinanceDeal):
     def __init__(
         self,
         bot: BotModel,
-        db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable,
+        db_table: type[PaperTradingTable | BotTable] = BotTable,
     ):
         super().__init__(bot, db_table)
         self.active_bot = bot

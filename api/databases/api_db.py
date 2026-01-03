@@ -1,29 +1,31 @@
 import logging
 import os
-from databases.tables.autotrade_table import AutotradeTable, TestAutotradeTable
-from databases.tables.deal_table import DealTable
-from databases.tables.order_table import ExchangeOrderTable, FakeOrderTable
-from databases.tables.user_table import UserTable
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from sqlmodel import SQLModel, Session, select, text
+
 from pybinbot import (
     AutotradeSettingsDocument,
     BinanceKlineIntervals,
     DealType,
     ExchangeId,
+    OrderStatus,
     Status,
     Strategy,
     UserRoles,
-    OrderStatus,
 )
-from tools.exceptions import BinbotErrors
-from alembic.config import Config
+from sqlmodel import Session, SQLModel, select, text
+
 from alembic import command
+from alembic.config import Config
+from databases.crud.asset_index_crud import AssetIndexCrud
+from databases.crud.symbols_crud import SymbolsCrud
+from databases.db import setup_kafka_db
+from databases.tables.autotrade_table import AutotradeTable, TestAutotradeTable
+from databases.tables.bot_table import BotTable, PaperTradingTable
+from databases.tables.deal_table import DealTable
+from databases.tables.order_table import ExchangeOrderTable, FakeOrderTable
+from databases.tables.user_table import UserTable
 from databases.utils import engine
 from exchange_apis.binance.assets import Assets
-from databases.crud.symbols_crud import SymbolsCrud
-from databases.crud.asset_index_crud import AssetIndexCrud
-from databases.db import setup_kafka_db
+from tools.exceptions import BinbotErrors
 
 
 class ApiDb:

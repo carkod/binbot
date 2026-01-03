@@ -1,9 +1,11 @@
 import asyncio
-from streaming.streaming_controller import (
-    StreamingController,
-    BaseStreaming,
-)
+
 from pybinbot import configure_logging
+
+from streaming.streaming_controller import (
+    BaseStreaming,
+    StreamingController,
+)
 
 # initialization data
 bs = BaseStreaming()

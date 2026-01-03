@@ -1,9 +1,11 @@
-from sqlmodel import SQLModel, Field, Relationship
-from pybinbot import timestamp
-from sqlalchemy import BigInteger, Column
-from pydantic import field_validator
-from databases.tables.asset_index_table import SymbolIndexLink
 from typing import TYPE_CHECKING
+
+from pybinbot import timestamp
+from pydantic import field_validator
+from sqlalchemy import BigInteger, Column
+from sqlmodel import Field, Relationship, SQLModel
+
+from databases.tables.asset_index_table import SymbolIndexLink
 
 if TYPE_CHECKING:
     from databases.tables.asset_index_table import AssetIndexTable

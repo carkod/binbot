@@ -5,7 +5,7 @@ import json
 import logging
 import time
 from collections.abc import Awaitable, Callable, Sequence
-from typing import Any, Optional
+from typing import Any
 
 import websockets
 from websockets import client
@@ -29,17 +29,17 @@ class AsyncBinanceWebsocketClient:
     def __init__(
         self,
         stream_url: str,
-        on_message: Optional[Callback] = None,
-        on_open: Optional[Callback] = None,
-        on_close: Optional[Callback] = None,
-        on_error: Optional[Callback] = None,
-        on_ping: Optional[Callback] = None,
-        on_pong: Optional[Callback] = None,
-        logger: Optional[logging.Logger] = None,
+        on_message: Callback | None = None,
+        on_open: Callback | None = None,
+        on_close: Callback | None = None,
+        on_error: Callback | None = None,
+        on_ping: Callback | None = None,
+        on_pong: Callback | None = None,
+        logger: logging.Logger | None = None,
         auto_reconnect: bool = True,
         reconnect_delay: float = 3.0,
-        ping_interval: Optional[float] = None,
-        ping_timeout: Optional[float] = None,  # <-- new param
+        ping_interval: float | None = None,
+        ping_timeout: float | None = None,  # <-- new param
     ) -> None:
         self.stream_url = stream_url
         self.on_message = on_message
@@ -54,9 +54,9 @@ class AsyncBinanceWebsocketClient:
         self.ping_timeout = ping_timeout  # <-- store it
         self.logger = logger or logging.getLogger(__name__)
 
-        self._websocket: Optional[WebSocketClientProtocol] = None
-        self._listen_task: Optional[asyncio.Task] = None
-        self._ping_task: Optional[asyncio.Task] = None
+        self._websocket: WebSocketClientProtocol | None = None
+        self._listen_task: asyncio.Task | None = None
+        self._ping_task: asyncio.Task | None = None
         self._lock = asyncio.Lock()
         self._stopping = False
 

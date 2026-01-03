@@ -23,10 +23,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from sqlmodel import Session, select
-from databases.utils import engine
-from databases.tables.symbol_table import SymbolTable
-from databases.tables.symbol_exchange_table import SymbolExchangeTable
+
 from databases.tables.asset_index_table import AssetIndexTable, SymbolIndexLink
+from databases.tables.symbol_exchange_table import SymbolExchangeTable
+from databases.tables.symbol_table import SymbolTable
+from databases.utils import engine
 
 
 def dump_symbols(session: Session, limit: int = 10):
