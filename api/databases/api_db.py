@@ -55,14 +55,8 @@ class ApiDb:
         logging.info("Running alembic migrations")
         try:
             alembic_cfg = Config("alembic.ini")
-            # Only stamp on first run (when alembic_version table doesn't exist)
-            with engine.connect() as conn:
-                try:
-                    conn.execute(text("SELECT 1 FROM alembic_version LIMIT 1"))
-                except Exception:
-                    # Table doesn't exist, this is first run
-                    command.stamp(alembic_cfg, "5be29ddb30b9")
-            # Always run upgrade to apply any pending migrations
+            # Run upgrade to apply any pending migrations (Alembic will create
+            # alembic_version table automatically on first run).
             command.upgrade(alembic_cfg, "head")
             logging.info("Alembic migrations completed successfully")
         except Exception as exc:
