@@ -37,6 +37,9 @@ class KucoinLongDeal(KucoinSpotDeal):
         Once deal is completed, executes this function to clean up any remaining fiat currency
         from trade account back to main account.
         """
+        if self.db_table == PaperTradingTable:
+            return self.active_bot
+
         self.controller.update_logs(
             "Transferring remaining fiat currency to main account...", self.active_bot
         )
