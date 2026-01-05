@@ -1,5 +1,6 @@
 import random
 import uuid
+import logging
 from time import sleep, time
 from exchange_apis.kucoin.rest import KucoinRest
 from kucoin_universal_sdk.generate.spot.order.model_add_order_sync_resp import (
@@ -91,6 +92,7 @@ class KucoinOrders(KucoinRest):
         Exponential backoff: 2 ** attempt number 1 = 100ms...
         """
         for attempt in range(max_retries):
+            logging.info(f"Attempt {attempt + 1} to get order {order_id}")
             order = self.get_order_by_order_id(symbol=symbol, order_id=order_id)
             if order:
                 return order
