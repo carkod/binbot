@@ -274,46 +274,51 @@ class KucoinSpotDeal(KucoinBaseBalance):
             )
 
         else:
-            is_balance = self.check_trading_balance_and_update()
-            if not is_balance:
-                self.controller.update_logs(
-                    bot=self.active_bot,
-                    log_message="Base order failed due to insufficient balance.",
-                )
-                return self.active_bot
-
-            self.active_bot.deal.base_order_size = self.active_bot.fiat_order_size
-            last_ticker_price = self.kucoin_api.get_ticker_price(self.symbol)
-
-            qty = round_numbers_ceiling(
-                (self.active_bot.fiat_order_size / last_ticker_price),
-                self.qty_precision,
-            )
-
-        system_order = None
-
-        if isinstance(self.controller, PaperTradingTableCrud):
-            system_order = self.kucoin_api.simulate_order(
-                symbol=self.symbol,
-                side=AddOrderReq.SideEnum.BUY,
-            )
-        else:
-            # repurchase multiplier nullified with Kucoin API
-            try:
-                system_order = self.kucoin_api.buy_order(
+            # if paper_trading we don't need balance checks
+            if isinstance(self.controller, PaperTradingTableCrud):
+                system_order = self.kucoin_api.simulate_order(
                     symbol=self.symbol,
-                    qty=(qty * repurchase_multiplier),
+                    side=AddOrderReq.SideEnum.BUY,
                 )
-            except RestError as e:
-                code = float(e.response.code)
-                if code == 20004:
-                    if repurchase_multiplier - 0.2 <= 0:
-                        self.controller.update_logs(
-                            bot=self.active_bot,
-                            log_message="Base order failed due to insufficient balance after retries.",
+                qty = 1
+
+            else:
+                is_balance = self.check_trading_balance_and_update()
+                if not is_balance:
+                    self.controller.update_logs(
+                        bot=self.active_bot,
+                        log_message="Base order failed due to insufficient balance.",
+                    )
+                    return self.active_bot
+
+                self.active_bot.deal.base_order_size = self.active_bot.fiat_order_size
+                last_ticker_price = self.kucoin_api.get_ticker_price(self.symbol)
+
+                qty = round_numbers_ceiling(
+                    (self.active_bot.fiat_order_size / last_ticker_price),
+                    self.qty_precision,
+                )
+
+                system_order = None
+
+                # repurchase multiplier nullified with Kucoin API
+                try:
+                    system_order = self.kucoin_api.buy_order(
+                        symbol=self.symbol,
+                        qty=(qty * repurchase_multiplier),
+                    )
+                except RestError as e:
+                    code = float(e.response.code)
+                    if code == 20004:
+                        if repurchase_multiplier - 0.2 <= 0:
+                            self.controller.update_logs(
+                                bot=self.active_bot,
+                                log_message="Base order failed due to insufficient balance after retries.",
+                            )
+                            return self.active_bot
+                        self.base_order(
+                            repurchase_multiplier=repurchase_multiplier - 0.2
                         )
-                        return self.active_bot
-                    self.base_order(repurchase_multiplier=repurchase_multiplier - 0.2)
 
         # mostly for mypy to be happy
         if not system_order:

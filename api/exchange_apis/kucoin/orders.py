@@ -148,11 +148,11 @@ class KucoinOrders(KucoinRest):
 
         order = GetOrderByOrderIdResp.model_validate(
             {
-                "order_id": order_id,
+                "id": order_id,
                 "symbol": symbol,
                 "op_type": "DEAL",
-                "type": order_type,
-                "side": side,
+                "type": order_type.value,
+                "side": side.value.lower(),
                 "price": str(book_price),
                 "size": str(qty),
                 "funds": str(float(book_price) * qty),
@@ -163,7 +163,7 @@ class KucoinOrders(KucoinRest):
                 "stp": "CN",
                 "stop": "",
                 "stop_price": "0",
-                "time_in_force": AddOrderSyncReq.TimeInForceEnum.GTC,
+                "time_in_force": AddOrderSyncReq.TimeInForceEnum.GTC.value,
                 "post_only": False,
                 "hidden": False,
                 "iceberg": False,
@@ -464,11 +464,11 @@ class KucoinOrders(KucoinRest):
         order_id = str(random.randint(1000000000, 9999999999))
         order = GetOrderByOrderIdResp.model_validate(
             {
-                "order_id": order_id,
+                "id": order_id,
                 "symbol": symbol,
                 "op_type": "DEAL",
-                "type": order_type,
-                "side": side,
+                "type": order_type.value,
+                "side": side.value.lower(),
                 "price": str(book_price),
                 "size": str(qty),
                 "funds": str(float(book_price) * qty),
@@ -479,7 +479,7 @@ class KucoinOrders(KucoinRest):
                 "stp": "CN",
                 "stop": "",
                 "stop_price": "0",
-                "time_in_force": AddOrderSyncReq.TimeInForceEnum.GTC,
+                "time_in_force": AddOrderSyncReq.TimeInForceEnum.GTC.value,
                 "post_only": False,
                 "hidden": False,
                 "iceberg": False,

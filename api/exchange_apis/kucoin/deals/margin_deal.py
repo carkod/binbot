@@ -75,7 +75,7 @@ class KucoinMarginDeal(KucoinBaseBalance):
             available_balance = balance.quote_asset.available
             last_ticker_price = self.kucoin_api.get_ticker_price(self.symbol)
             qty = round_numbers_floor(
-                (available_balance / last_ticker_price),
+                (float(available_balance) / float(last_ticker_price)),
                 self.qty_precision,
             )
 
@@ -200,7 +200,11 @@ class KucoinMarginDeal(KucoinBaseBalance):
             )
             return self.active_bot
 
-        if self.active_bot.quote_asset != QuoteAssets.USDC:
+        if (
+            self.active_bot.quote_asset != QuoteAssets.USDC
+            and self.active_bot.quote_asset != QuoteAssets.USDT
+        ):
+            # multi-currency support
             system_order = self.buy_order_with_available_balance()
             if system_order:
                 order = OrderModel(
