@@ -383,7 +383,7 @@ class KucoinSpotDeal(KucoinBaseBalance):
                 )
 
             self.controller.update_logs(
-                f"Opening new spot deal for {self.active_bot.pair}...", self.active_bot
+                f"Opening new spot deal for {self.symbol}...", self.active_bot
             )
             self.controller.save(self.active_bot)
             self.base_order()

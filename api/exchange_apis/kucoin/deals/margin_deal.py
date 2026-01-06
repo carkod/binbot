@@ -57,8 +57,7 @@ class KucoinMarginDeal(KucoinBaseBalance):
         self.symbol = self.get_symbol(bot.pair, bot.quote_asset)
 
     def get_isolated_balance(self) -> GetIsolatedMarginAccountAssets | None:
-        symbol = self.get_symbol(self.active_bot.pair, self.active_bot.quote_asset)
-        result = self.kucoin_api.get_isolated_balance(symbol=symbol)
+        result = self.kucoin_api.get_isolated_balance(symbol=self.symbol)
         if result and len(result.assets) > 0:
             return result.assets[0]
         return None
@@ -460,12 +459,12 @@ class KucoinMarginDeal(KucoinBaseBalance):
             if not self.symbol_info.is_margin_trading_allowed:
                 self.active_bot.margin_short_reversal = False
                 self.controller.update_logs(
-                    f"Disabled auto long bot reversal. Exchange doesn't support margin trading for {self.active_bot.pair}.",
+                    f"Disabled auto long bot reversal. Exchange doesn't support margin trading for {self.symbol}.",
                     self.active_bot,
                 )
 
             self.controller.update_logs(
-                f"Opening new margin deal for {self.active_bot.pair}...",
+                f"Opening new margin deal for {self.symbol}...",
                 self.active_bot,
             )
             self.margin_short_base_order()

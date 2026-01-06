@@ -185,7 +185,7 @@ class KucoinShortDeal(KucoinMarginDeal):
                     stop_loss_trailling_price
                 )
                 self.active_bot.add_log(
-                    f"{self.active_bot.pair} below opening_price, setting trailling_stop_loss (margin_short)"
+                    f"{self.symbol} below opening_price, setting trailling_stop_loss (margin_short)"
                 )
                 self.controller.save(self.active_bot)
 
@@ -204,7 +204,7 @@ class KucoinShortDeal(KucoinMarginDeal):
             # Reset stop_loss_price to avoid confusion in front-end
             self.active_bot.deal.stop_loss_price = 0
             self.controller.update_logs(
-                f"{self.active_bot.pair} Updating after broken first trailling_profit (short)",
+                f"{self.symbol} Updating after broken first trailling_profit (short)",
                 self.active_bot,
             )
 
@@ -261,7 +261,7 @@ class KucoinShortDeal(KucoinMarginDeal):
             if self.active_bot.margin_short_reversal:
                 if not self.symbol_info.is_margin_trading_allowed:
                     self.active_bot.add_log(
-                        f"Margin trading not allowed for {self.active_bot.pair}. Cannot switch to long bot."
+                        f"Margin trading not allowed for {self.symbol}. Cannot switch to long bot."
                     )
                     self.controller.save(self.active_bot)
                     return self.active_bot
@@ -287,7 +287,7 @@ class KucoinShortDeal(KucoinMarginDeal):
             # Sell after hitting trailling stop_loss and if price already broken trailling
             if close_price > self.active_bot.deal.trailling_stop_loss_price:
                 self.controller.update_logs(
-                    f"Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.active_bot.pair}",
+                    f"Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.symbol}",
                     self.active_bot,
                 )
                 # since price is given by matching engine
