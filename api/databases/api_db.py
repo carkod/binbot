@@ -19,6 +19,7 @@ from pybinbot import (
 from tools.exceptions import BinbotErrors
 from alembic.config import Config
 from alembic import command
+from alembic.script import ScriptDirectory
 from databases.utils import engine
 from exchange_apis.binance.assets import Assets
 from databases.crud.symbols_crud import SymbolsCrud
@@ -55,6 +56,61 @@ class ApiDb:
         logging.info("Running alembic migrations")
         try:
             alembic_cfg = Config("alembic.ini")
+
+            # Auto-heal a duplicated/branched alembic_version table if it ever happens.
+            # This situation manifested in production where multiple rows existed
+            # (e.g. 7775eb0b8c12 and 5be29ddb30b9), causing Alembic to complain about
+            # overlapping requested revisions. Here we keep the real head revision
+            # and drop any older rows.
+            try:
+                script_dir = ScriptDirectory.from_config(alembic_cfg)
+                heads = set(script_dir.get_heads())
+
+                with engine.connect() as conn:
+                    result = conn.execute(
+                        text("SELECT version_num FROM alembic_version")
+                    )
+                    versions = [row[0] for row in result]
+
+                    if len(versions) > 1:
+                        # Prefer whichever entry matches a known head; otherwise
+                        # keep the first row and log a warning.
+                        keep_version = None
+                        for v in versions:
+                            if v in heads:
+                                keep_version = v
+                                break
+
+                        if keep_version is None:
+                            keep_version = versions[0]
+                            logging.warning(
+                                "Alembic version table has multiple entries %s but none match known heads %s; "
+                                "keeping %s and dropping the rest.",
+                                versions,
+                                list(heads),
+                                keep_version,
+                            )
+                        else:
+                            logging.warning(
+                                "Alembic version table has multiple entries %s; keeping head %s and dropping the rest.",
+                                versions,
+                                keep_version,
+                            )
+
+                        conn.execute(
+                            text(
+                                "DELETE FROM alembic_version WHERE version_num != :keep_version"
+                            ),
+                            {"keep_version": keep_version},
+                        )
+                        conn.commit()
+            except Exception as heal_exc:
+                # If anything goes wrong while healing, log and continue with normal upgrade.
+                logging.warning(
+                    "Failed to auto-heal alembic_version table before migrations: %s",
+                    heal_exc,
+                )
+
             # Run upgrade to apply any pending migrations (Alembic will create
             # alembic_version table automatically on first run).
             command.upgrade(alembic_cfg, "head")
