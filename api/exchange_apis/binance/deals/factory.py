@@ -348,7 +348,7 @@ class BinanceDeal(BaseDeal):
             if res:
                 quote_order = OrderModel(
                     timestamp=int(res["transactTime"]),
-                    order_id=int(res["orderId"]),
+                    order_id=str(res["orderId"]),
                     deal_type=DealType.conversion,
                     pair=res["symbol"],
                     order_side=res["side"],
@@ -400,7 +400,7 @@ class BinanceDeal(BaseDeal):
 
         order_data = OrderModel(
             timestamp=int(res["transactTime"]),
-            order_id=int(res["orderId"]),
+            order_id=str(res["orderId"]),
             deal_type=DealType.take_profit,
             pair=res["symbol"],
             order_side=res["side"],
@@ -445,7 +445,7 @@ class BinanceDeal(BaseDeal):
             if response:
                 order = OrderModel(
                     timestamp=int(response["transactTime"]),
-                    order_id=int(response["orderId"]),
+                    order_id=str(response["orderId"]),
                     deal_type=DealType.conversion,
                     pair=response["symbol"],
                     order_side=response["side"],
@@ -540,7 +540,7 @@ class BinanceDeal(BaseDeal):
 
         order_data = OrderModel(
             timestamp=int(res["transactTime"]),
-            order_id=res["orderId"],
+            order_id=str(res["orderId"]),
             deal_type=DealType.base_order,
             pair=res["symbol"],
             order_side=res["side"],

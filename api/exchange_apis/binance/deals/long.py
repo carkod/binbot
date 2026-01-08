@@ -209,7 +209,7 @@ class BinanceLongDeal(BinanceSpotDeal):
 
                 order_data = OrderModel(
                     timestamp=int(res["transactTime"]),
-                    order_id=res["orderId"],
+                    order_id=str(res["orderId"]),
                     deal_type=DealType.take_profit,
                     pair=res["symbol"],
                     order_side=res["side"],

@@ -280,7 +280,7 @@ class BotTableCrud:
         self.save(bot)
         return bot
 
-    def get_order(self, order_id: int) -> ExchangeOrderTable:
+    def get_order(self, order_id: str) -> ExchangeOrderTable:
         """
         Get one order by order_id
         """

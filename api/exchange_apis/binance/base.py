@@ -477,7 +477,7 @@ class BinanceApi:
         open_orders = self.signed_request(self.open_orders, payload={"symbol": symbol})
         return open_orders
 
-    def get_all_orders(self, symbol, order_id: int = 0, start_time=None):
+    def get_all_orders(self, symbol, order_id: str | None = None, start_time=None):
         """
         Get all orders given symbol and order_id
 
@@ -492,7 +492,7 @@ class BinanceApi:
 
         At least one of order_id or (start_time and end_time) must be sent
         """
-        if order_id > 0:
+        if order_id:
             return self.signed_request(
                 self.all_orders_url, payload={"symbol": symbol, "orderId": order_id}
             )

@@ -116,7 +116,7 @@ class BinanceMarginDeal(BinanceDeal):
             if response:
                 order = OrderModel(
                     timestamp=int(response["transactTime"]),
-                    order_id=int(response["orderId"]),
+                    order_id=str(response["orderId"]),
                     deal_type=DealType.conversion,
                     pair=response["symbol"],
                     order_side=response["side"],
@@ -195,7 +195,7 @@ class BinanceMarginDeal(BinanceDeal):
 
         order_data = OrderModel(
             timestamp=order_res["transactTime"],
-            order_id=int(order_res["orderId"]),
+            order_id=str(order_res["orderId"]),
             deal_type=DealType.base_order,
             pair=order_res["symbol"],
             order_side=order_res["side"],
@@ -429,7 +429,7 @@ class BinanceMarginDeal(BinanceDeal):
         stop_loss_order = OrderModel(
             timestamp=int(res["transactTime"]),
             deal_type=DealType.stop_loss,
-            order_id=int(res["orderId"]),
+            order_id=str(res["orderId"]),
             pair=res["symbol"],
             order_side=res["side"],
             order_type=res["type"],
@@ -500,7 +500,7 @@ class BinanceMarginDeal(BinanceDeal):
             take_profit_order = OrderModel(
                 timestamp=res["transactTime"],
                 deal_type=take_profit_type,
-                order_id=int(res["orderId"]),
+                order_id=str(res["orderId"]),
                 pair=res["symbol"],
                 order_side=res["side"],
                 order_type=res["type"],

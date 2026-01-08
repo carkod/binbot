@@ -38,7 +38,7 @@ class UserDataStreaming(Database, BinanceApi):
 
         """
 
-        initial_order = self.bot_controller.get_order(order_id=int(result["i"]))
+        initial_order = self.bot_controller.get_order(order_id=str(result["i"]))
 
         if float(result["p"]) > 0:
             price = float(result["p"])
