@@ -299,26 +299,30 @@ class KucoinSpotDeal(KucoinBaseBalance):
                     self.qty_precision,
                 )
 
-                system_order = None
+        system_order = None
 
-                # repurchase multiplier nullified with Kucoin API
-                try:
-                    system_order = self.kucoin_api.buy_order(
-                        symbol=self.symbol,
-                        qty=(qty * repurchase_multiplier),
+        # repurchase multiplier nullified with Kucoin API
+        try:
+            system_order = self.kucoin_api.buy_order(
+                symbol=self.symbol,
+                qty=(qty * repurchase_multiplier),
+            )
+
+        except RestError as e:
+            code = float(e.response.code)
+            if code == 200004:
+                if repurchase_multiplier - 0.2 <= 0:
+                    self.controller.update_logs(
+                        bot=self.active_bot,
+                        log_message="Base order failed due to insufficient balance after retries.",
                     )
-                except RestError as e:
-                    code = float(e.response.code)
-                    if code == 20004:
-                        if repurchase_multiplier - 0.2 <= 0:
-                            self.controller.update_logs(
-                                bot=self.active_bot,
-                                log_message="Base order failed due to insufficient balance after retries.",
-                            )
-                            return self.active_bot
-                        self.base_order(
-                            repurchase_multiplier=repurchase_multiplier - 0.2
-                        )
+                    return self.active_bot
+                self.base_order(repurchase_multiplier=repurchase_multiplier - 0.2)
+        except TimeoutError as e:
+            self.controller.update_logs(
+                bot=self.active_bot,
+                log_message=f"Base order failed: {e}.",
+            )
 
         # mostly for mypy to be happy
         if not system_order:
@@ -376,14 +380,17 @@ class KucoinSpotDeal(KucoinBaseBalance):
         )
 
         if not base_order:
-            if not self.symbol_info.is_margin_trading_allowed:
+            if (
+                not self.symbol_info.is_margin_trading_allowed
+                and self.active_bot.margin_short_reversal
+            ):
                 self.active_bot.margin_short_reversal = False
                 self.active_bot.add_log(
                     "Auto short bot reversal disabled. Exchange doesn't support margin trading for this pair."
                 )
 
             self.controller.update_logs(
-                f"Opening new spot deal for {self.active_bot.pair}...", self.active_bot
+                f"Opening new spot deal for {self.symbol}...", self.active_bot
             )
             self.controller.save(self.active_bot)
             self.base_order()

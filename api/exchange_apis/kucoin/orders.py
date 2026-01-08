@@ -89,13 +89,51 @@ class KucoinOrders(KucoinRest):
         Get order by ID with exponential backoff retry.
         KuCoin's order data is not immediately available after placement.
 
-        Exponential backoff: 2 ** attempt number 1 = 100ms...
+        We only consider the order "ready" when:
+        - it is no longer active (order.active is False), and
+        - id, price and size are all populated.
+
+        Exponential backoff: 2 ** attempt number / 10 = 100ms, 200ms, ...
         """
         for attempt in range(max_retries):
             logging.info(f"Attempt {attempt + 1} to get order {order_id}")
             order = self.get_order_by_order_id(symbol=symbol, order_id=order_id)
+
             if order:
-                return order
+                # We require a minimum set of fields before downstream code can
+                # safely update deals:
+                # - id (order_id)
+                # - price
+                # - size (quantity)
+                # and the order must no longer be active.
+
+                is_active = getattr(order, "active", None)
+
+                if is_active:
+                    logging.info(
+                        "KuCoin order %s is still active on attempt %d; waiting for completion",
+                        order_id,
+                        attempt + 1,
+                    )
+                else:
+                    missing: list[str] = []
+                    if not getattr(order, "id", None):
+                        missing.append("id")
+                    if getattr(order, "price", None) is None:
+                        missing.append("price")
+                    if getattr(order, "size", None) is None:
+                        missing.append("size")
+
+                    if not missing:
+                        return order
+
+                    logging.info(
+                        "KuCoin order %s inactive but missing required fields %s on attempt %d; retrying",
+                        order_id,
+                        ",".join(missing),
+                        attempt + 1,
+                    )
+
             sleep((2**attempt) / 10)
 
         raise TimeoutError(f"Order {order_id} not ready after {max_retries} attempts")

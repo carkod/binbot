@@ -37,6 +37,9 @@ class KucoinLongDeal(KucoinSpotDeal):
         Once deal is completed, executes this function to clean up any remaining fiat currency
         from trade account back to main account.
         """
+        if self.db_table == PaperTradingTable:
+            return self.active_bot
+
         self.controller.update_logs(
             "Transferring remaining fiat currency to main account...", self.active_bot
         )
@@ -217,7 +220,7 @@ class KucoinLongDeal(KucoinSpotDeal):
         """
 
         if isinstance(self.controller, PaperTradingTableCrud):
-            qty = self.active_bot.deal.opening_qty
+            qty = 1.0  # all qty simulated
         else:
             qty = self.kucoin_api.get_single_spot_balance(self.symbol_info.base_asset)
             # Already sold?
@@ -233,7 +236,7 @@ class KucoinLongDeal(KucoinSpotDeal):
         # Dispatch fake order
         if isinstance(self.controller, PaperTradingTableCrud):
             system_order = self.kucoin_api.simulate_order(
-                self.active_bot.pair,
+                self.symbol,
                 OrderSide.sell,
             )
 
@@ -264,7 +267,7 @@ class KucoinLongDeal(KucoinSpotDeal):
             status=OrderStatus.FILLED if system_order.active else OrderStatus.EXPIRED,
         )
 
-        self.active_bot.deal.total_commissions += system_order.fee
+        self.active_bot.deal.total_commissions += float(system_order.fee)
 
         self.active_bot.orders.append(order_data)
 
@@ -307,7 +310,7 @@ class KucoinLongDeal(KucoinSpotDeal):
                 if not self.symbol_info.is_margin_trading_allowed:
                     self.controller.update_logs(
                         bot=self.active_bot,
-                        log_message=f"Exchange doesn't support margin trading for {self.active_bot.pair}. Cannot switch to margin short bot.",
+                        log_message=f"Exchange doesn't support margin trading for {self.symbol}. Cannot switch to margin short bot.",
                     )
                     return self.active_bot
 
@@ -389,7 +392,7 @@ class KucoinLongDeal(KucoinSpotDeal):
                 and open_price > current_price
             ):
                 self.controller.update_logs(
-                    f"Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.active_bot.pair}",
+                    f"Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.symbol}",
                     self.active_bot,
                 )
                 self.trailling_profit()

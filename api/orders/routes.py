@@ -1,9 +1,9 @@
 from fastapi import APIRouter
+from exchange_apis.kucoin.orders import KucoinOrders
 from tools.exceptions import BinanceErrors
 from tools.handle_error import json_response, json_response_error
 from exchange_apis.binance.orders import BinanceOrderController
 from orders.schemas import OrderParams
-
 
 order_blueprint = APIRouter()
 
@@ -42,6 +42,20 @@ def get_all_orders(symbol, order_id=0, start_time=None):
             symbol, order_id=order_id, start_time=start_time
         )
         return json_response({"message": "Orders found!", "data": data})
+    except ValueError as error:
+        return json_response_error(error.args[0])
+    except BinanceErrors as error:
+        return json_response_error(error.message)
+
+
+@order_blueprint.get("/kucoin/{symbol}/{order_id}", tags=["orders"])
+def get_order_by_id(symbol, order_id):
+    try:
+        data = KucoinOrders().get_order_by_order_id(symbol=symbol, order_id=order_id)
+        return {
+            "message": "Order found!",
+            "data": data,
+        }
     except ValueError as error:
         return json_response_error(error.args[0])
     except BinanceErrors as error:
