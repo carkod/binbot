@@ -68,8 +68,10 @@ class KucoinSpotDeal(KucoinBaseBalance):
 
         quote_asset = self.active_bot.quote_asset.value
 
-        # in theory main account should never be empty
-        if quote_asset in result_balances["main"]:
+        if (
+            quote_asset in result_balances["main"]
+            or quote_asset in result_balances["trade"]
+        ):
             if (
                 "trade" in result_balances
                 and quote_asset in result_balances["trade"].keys()
