@@ -22,7 +22,7 @@
       "module": "uvicorn",
       "cwd": "${workspaceFolder}/api",
       "args": ["main:app", "--port", "8008"],
-      "justMyCode": true,
+      "justMyCode": false,
       "console": "internalConsole",
       "envFile": "${workspaceFolder}/.env",
       "env": {

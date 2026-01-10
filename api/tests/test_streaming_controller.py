@@ -1,6 +1,8 @@
 import types
 import time
 
+import pandas as pd
+from pandas import Index
 from pybinbot import Strategy
 from tools.exceptions import BinanceErrors
 from streaming.streaming_controller import (
@@ -9,9 +11,8 @@ from streaming.streaming_controller import (
     HABollinguerSpread,
 )
 from databases.tables.bot_table import BotTable
-from pybinbot.shared.indicators import Indicators
-from pandas import DataFrame, Index
-from pybinbot import ExchangeId
+from pandas import DataFrame
+from pybinbot import ExchangeId, HeikinAshi
 
 
 class TestStreamingController:
@@ -123,44 +124,49 @@ class TestStreamingController:
             "streaming.streaming_controller.BinanceApi", DummyBinanceApi
         )
         monkeypatch.setattr("streaming.streaming_controller.KucoinApi", DummyKucoinApi)
-        original_pre_process = Indicators.pre_process
 
         def patched_pre_process(self, exchange, candles):
-            # Convert to DataFrame and set column names before calling original
-            df = DataFrame(candles)
-            if exchange == ExchangeId.BINANCE:
-                df.columns = Index(
-                    [
-                        "open_time",
-                        "open",
-                        "high",
-                        "low",
-                        "close",
-                        "volume",
-                        "close_time",
-                        "quote_asset_volume",
-                        "number_of_trades",
-                        "taker_buy_base_asset_volume",
-                        "taker_buy_quote_asset_volume",
-                        "ignore",
-                    ]
-                )
-            else:
-                df.columns = Index(
-                    [
-                        "open_time",
-                        "open",
-                        "high",
-                        "low",
-                        "close",
-                        "volume",
-                        "close_time",
-                        "quote_asset_volume",
-                    ]
-                )
-            return original_pre_process(self, exchange, df)
+            from pandas import to_datetime
+            from typing import cast
 
-        monkeypatch.setattr(Indicators, "pre_process", patched_pre_process)
+            if exchange == ExchangeId.BINANCE:
+                # Binance API may return extra columns; only take the expected ones
+                df_raw = DataFrame(candles)
+                cols = HeikinAshi().binance_cols
+                df = df_raw.iloc[:, : len(cols)]
+                df.columns = Index(cols)
+            else:
+                df = DataFrame(candles, columns=HeikinAshi().kucoin_cols)
+
+            # Convert numeric columns
+            numeric_cols = ["open", "high", "low", "close", "volume"]
+            for col in numeric_cols:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors="coerce")
+
+            # Set timestamp index for resampling
+            df["timestamp"] = to_datetime(df["close_time"], unit="ms")
+            df.set_index("timestamp", inplace=True)
+            df = df.sort_index()
+
+            # Create aggregation dictionary
+            resample_aggregation = {
+                "open": "first",
+                "close": "last",
+                "high": "max",
+                "low": "min",
+                "volume": "sum",
+                "close_time": "first",
+                "open_time": "first",
+            }
+
+            # Resample to 4h and 1h
+            df_4h = df.resample("4h").agg(cast(dict, resample_aggregation))
+            df_1h = df.resample("1h").agg(cast(dict, resample_aggregation))
+
+            return df, df_1h, df_4h
+
+        monkeypatch.setattr(HeikinAshi, "pre_process", patched_pre_process)
 
         base = BaseStreaming()
 

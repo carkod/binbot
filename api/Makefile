@@ -35,14 +35,15 @@ migrate-reset:  ## downgrade and upgrade
 	uv run alembic upgrade head
 
 format: 
-	ruff format .
-	ruff check .  --fix
-	mypy .
+	@uv run ruff format .
+	@uv run ruff check .  --fix
+	@uv run mypy .
 
-upgrade-pybinbot:  ## Upgrade pybinbot to latest compatible version
-# --frozen force is to install because of scipy
-	uv lock --upgrade-package pybinbot --frozen
-	uv sync --extra dev
+upgrade-pybinbot:
+	source .venv/bin/activate;
+	@uv remove pybinbot
+	@uv add pybinbot
+	@uv sync --extra dev
 
 delete-revision:  ## Delete a specific Alembic revision from the database
 	@if [ -z "$(revision)" ]; then \
