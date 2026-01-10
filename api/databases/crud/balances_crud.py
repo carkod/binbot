@@ -5,7 +5,7 @@ from databases.tables.account_balances import (
 )
 from databases.utils import independent_session
 from sqlmodel import Session, select, desc
-from pybinbot import timestamp
+from pybinbot import ExchangeId, timestamp
 
 
 class BalancesCrud:
@@ -21,19 +21,46 @@ class BalancesCrud:
             session = independent_session()
         self.session = session
 
-    def create_balance_series(self, total_balance, total_estimated_fiat: float):
+    def _map_kucoin_balance(self, total_balance, ts) -> list:
         """
-        Abstraction to reduce complexity
-        updates balances DB collection
+        Shape of the data returned is different per exchange
+        thus the need to map separately
         """
-
-        ts = timestamp()
         balances = []
+        for item in total_balance:
+            balance = BalancesTable(
+                asset=item, quantity=total_balance[item], timestamp=ts
+            )
+            balances.append(balance)
+
+        return balances
+
+    def _map_binance_balance(self, total_balance) -> list:
+        balances = []
+        ts = timestamp()
         for item in total_balance:
             balance = BalancesTable(
                 asset=item["asset"], quantity=item["free"], timestamp=ts
             )
             balances.append(balance)
+
+        return balances
+
+    def create_balance_series(
+        self,
+        total_balance,
+        total_estimated_fiat: float,
+        exchange_id: ExchangeId = ExchangeId.BINANCE,
+    ):
+        """
+        Abstraction to reduce complexity
+        updates balances DB collection
+        """
+        ts = timestamp()
+        if exchange_id == ExchangeId.KUCOIN:
+            balances = self._map_kucoin_balance(total_balance, ts)
+        else:
+            balances = self._map_binance_balance(total_balance)
 
         consolidated_balance_series = ConsolidatedBalancesTable(
             id=ts,
