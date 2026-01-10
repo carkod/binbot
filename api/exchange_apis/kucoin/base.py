@@ -175,8 +175,9 @@ class KucoinApi(KucoinOrders):
                         k[3],  # high
                         k[4],  # low
                         k[2],  # close
-                        k[5],  # volume
+                        k[5],  # volume base asset
                         close_time,  # close_time properly calculated
+                        k[6],  # volume quote asset
                     ]
                 )
 

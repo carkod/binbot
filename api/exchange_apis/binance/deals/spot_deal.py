@@ -71,7 +71,7 @@ class BinanceSpotDeal(BinanceDeal):
                 order.price = float(res["price"])
                 order.qty = float(res["origQty"])
                 order.timestamp = int(res["transactTime"])
-                order.order_id = int(res["orderId"])
+                order.order_id = str(res["orderId"])
                 order.deal_type = order.deal_type
                 order.order_type = res["type"]
                 order.time_in_force = res["timeInForce"]
@@ -157,7 +157,7 @@ class BinanceSpotDeal(BinanceDeal):
         stop_loss_order = OrderModel(
             timestamp=int(res["transactTime"]),
             deal_type=DealType.stop_loss,
-            order_id=int(res["orderId"]),
+            order_id=str(res["orderId"]),
             pair=res["symbol"],
             order_side=res["side"],
             order_type=res["type"],
@@ -240,7 +240,7 @@ class BinanceSpotDeal(BinanceDeal):
 
         order_data = OrderModel(
             timestamp=res["transactTime"],
-            order_id=int(res["orderId"]),
+            order_id=str(res["orderId"]),
             deal_type=DealType.trailling_profit,
             pair=res["symbol"],
             order_side=res["side"],

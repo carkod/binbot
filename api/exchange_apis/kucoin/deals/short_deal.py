@@ -43,7 +43,7 @@ class KucoinShortDeal(KucoinMarginDeal):
         stop_loss_order = OrderModel(
             timestamp=int(system_order.created_at),
             deal_type=DealType.stop_loss,
-            order_id=int(system_order.id),
+            order_id=str(system_order.id),
             pair=system_order.symbol,
             order_side=system_order.side,
             order_type=system_order.type,
@@ -99,7 +99,7 @@ class KucoinShortDeal(KucoinMarginDeal):
         take_profit_order = OrderModel(
             timestamp=system_order.created_at,
             deal_type=take_profit_type,
-            order_id=int(system_order.id),
+            order_id=str(system_order.id),
             pair=system_order.symbol,
             order_side=system_order.side,
             order_type=system_order.type,
@@ -341,7 +341,7 @@ class KucoinShortDeal(KucoinMarginDeal):
                 order = OrderModel(
                     timestamp=int(system_order.created_at),
                     deal_type=DealType.panic_close,
-                    order_id=int(system_order.id),
+                    order_id=str(system_order.id),
                     pair=system_order.symbol,
                     order_side=system_order.side,
                     order_type=system_order.type,

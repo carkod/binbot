@@ -24,6 +24,7 @@ from kucoin_universal_sdk.generate.margin.order.model_get_order_by_order_id_resp
     GetOrderByOrderIdResp,
 )
 from kucoin_universal_sdk.model.common import RestError
+from tools.exceptions import BinbotErrors
 
 
 class KucoinSpotDeal(KucoinBaseBalance):
@@ -67,8 +68,10 @@ class KucoinSpotDeal(KucoinBaseBalance):
 
         quote_asset = self.active_bot.quote_asset.value
 
-        # in theory main account should never be empty
-        if quote_asset in result_balances["main"]:
+        if (
+            quote_asset in result_balances["main"]
+            or quote_asset in result_balances["trade"]
+        ):
             if (
                 "trade" in result_balances
                 and quote_asset in result_balances["trade"].keys()
@@ -285,11 +288,13 @@ class KucoinSpotDeal(KucoinBaseBalance):
             else:
                 is_balance = self.check_trading_balance_and_update()
                 if not is_balance:
+                    # This should raise an error because we don't want to activate bot if there are no funds
+                    msg = "Base order failed due to insufficient balance."
                     self.controller.update_logs(
                         bot=self.active_bot,
-                        log_message="Base order failed due to insufficient balance.",
+                        log_message=msg,
                     )
-                    return self.active_bot
+                    raise BinbotErrors(msg)
 
                 self.active_bot.deal.base_order_size = self.active_bot.fiat_order_size
                 last_ticker_price = self.kucoin_api.get_ticker_price(self.symbol)
@@ -389,9 +394,7 @@ class KucoinSpotDeal(KucoinBaseBalance):
                     "Auto short bot reversal disabled. Exchange doesn't support margin trading for this pair."
                 )
 
-            self.controller.update_logs(
-                f"Opening new spot deal for {self.symbol}...", self.active_bot
-            )
+            self.active_bot.add_log(f"Opening new spot deal for {self.symbol}...")
             self.controller.save(self.active_bot)
             self.base_order()
 

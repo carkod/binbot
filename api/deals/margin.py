@@ -168,7 +168,7 @@ class ShortDeal(BinanceMarginDeal):
                 order = OrderModel(
                     timestamp=int(res["transactTime"]),
                     deal_type=DealType.panic_close,
-                    order_id=int(res["orderId"]),
+                    order_id=str(res["orderId"]),
                     pair=res["symbol"],
                     order_side=res["side"],
                     order_type=res["type"],

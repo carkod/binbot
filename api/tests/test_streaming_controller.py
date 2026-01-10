@@ -1,4 +1,5 @@
 import types
+import time
 
 from pybinbot import Strategy
 from tools.exceptions import BinanceErrors
@@ -8,6 +9,9 @@ from streaming.streaming_controller import (
     HABollinguerSpread,
 )
 from databases.tables.bot_table import BotTable
+from pybinbot.shared.indicators import Indicators
+from pandas import DataFrame, Index
+from pybinbot import ExchangeId
 
 
 class TestStreamingController:
@@ -46,14 +50,64 @@ class TestStreamingController:
 
         class DummyBinanceApi:
             def get_ui_klines(self, symbol, interval, limit=200):
-                return [[0, 100, 101, 99, 100, 0, 0]] * 200
+                # Return list of lists (raw klines format)
+                current_time = int(time.time() * 1000)
+                klines = []
+                for i in range(200):
+                    timestamp = current_time - (200 - i) * 60000
+                    base_price = 100
+                    variation = (i % 10) - 5
+                    open_price = base_price + variation
+                    high_price = base_price + variation + 2
+                    low_price = base_price + variation - 1
+                    close_price = base_price + variation + 1
+                    klines.append(
+                        [
+                            timestamp,
+                            open_price,
+                            high_price,
+                            low_price,
+                            close_price,
+                            1000,
+                            timestamp + 60000,
+                            500,
+                            50,
+                            600,
+                            300,
+                            0,
+                        ]
+                    )
+                return klines
 
             def get_interest_history(self, asset, symbol):
                 return {"rows": [{"interests": "0.0"}]}
 
         class DummyKucoinApi:
             def get_ui_klines(self, symbol, interval, limit=200):
-                return [[0, 100, 101, 99, 100, 0, 0]] * 200
+                # Return list of lists (raw klines format)
+                current_time = int(time.time() * 1000)
+                klines = []
+                for i in range(200):
+                    timestamp = current_time - (200 - i) * 60000
+                    base_price = 100
+                    variation = (i % 10) - 5
+                    open_price = base_price + variation
+                    high_price = base_price + variation + 2
+                    low_price = base_price + variation - 1
+                    close_price = base_price + variation + 1
+                    klines.append(
+                        [
+                            timestamp,
+                            open_price,
+                            high_price,
+                            low_price,
+                            close_price,
+                            1000,
+                            timestamp + 60000,
+                            500,
+                        ]
+                    )
+                return klines
 
         monkeypatch.setattr("streaming.streaming_controller.BotTableCrud", DummyBotCrud)
         monkeypatch.setattr(
@@ -69,6 +123,44 @@ class TestStreamingController:
             "streaming.streaming_controller.BinanceApi", DummyBinanceApi
         )
         monkeypatch.setattr("streaming.streaming_controller.KucoinApi", DummyKucoinApi)
+        original_pre_process = Indicators.pre_process
+
+        def patched_pre_process(self, exchange, candles):
+            # Convert to DataFrame and set column names before calling original
+            df = DataFrame(candles)
+            if exchange == ExchangeId.BINANCE:
+                df.columns = Index(
+                    [
+                        "open_time",
+                        "open",
+                        "high",
+                        "low",
+                        "close",
+                        "volume",
+                        "close_time",
+                        "quote_asset_volume",
+                        "number_of_trades",
+                        "taker_buy_base_asset_volume",
+                        "taker_buy_quote_asset_volume",
+                        "ignore",
+                    ]
+                )
+            else:
+                df.columns = Index(
+                    [
+                        "open_time",
+                        "open",
+                        "high",
+                        "low",
+                        "close",
+                        "volume",
+                        "close_time",
+                        "quote_asset_volume",
+                    ]
+                )
+            return original_pre_process(self, exchange, df)
+
+        monkeypatch.setattr(Indicators, "pre_process", patched_pre_process)
 
         base = BaseStreaming()
 
@@ -119,7 +211,34 @@ class TestStreamingController:
         # Provide fewer than 200 klines to hit the early return
         class ShortBinanceApi:
             def get_ui_klines(self, symbol, interval, limit=200):
-                return [[0, 100, 101, 99, 100, 0, 0]] * 50
+                # Return list of lists with fewer rows
+                current_time = int(time.time() * 1000)
+                klines = []
+                for i in range(50):
+                    timestamp = current_time - (50 - i) * 60000
+                    base_price = 100
+                    variation = (i % 10) - 5
+                    open_price = base_price + variation
+                    high_price = base_price + variation + 2
+                    low_price = base_price + variation - 1
+                    close_price = base_price + variation + 1
+                    klines.append(
+                        [
+                            timestamp,
+                            open_price,
+                            high_price,
+                            low_price,
+                            close_price,
+                            1000,
+                            timestamp + 60000,
+                            500,
+                            50,
+                            600,
+                            300,
+                            0,
+                        ]
+                    )
+                return klines
 
         base.binance_api = ShortBinanceApi()
         sc = StreamingController(base, symbol="BTCUSDC")
@@ -291,11 +410,62 @@ class TestStreamingController:
 
         def track_kucoin_klines(*args, **kwargs):
             kucoin_called.append(True)
-            return [[0, 100, 101, 99, 100, 0, 0]] * 200
+            # Return list of lists (raw klines format)
+            current_time = int(time.time() * 1000)
+            klines = []
+            for i in range(200):
+                timestamp = current_time - (200 - i) * 60000
+                base_price = 100
+                variation = (i % 10) - 5
+                open_price = base_price + variation
+                high_price = base_price + variation + 2
+                low_price = base_price + variation - 1
+                close_price = base_price + variation + 1
+                klines.append(
+                    [
+                        timestamp,
+                        open_price,
+                        high_price,
+                        low_price,
+                        close_price,
+                        1000,
+                        timestamp + 60000,
+                        500,
+                    ]
+                )
+            return klines
 
         def track_binance_klines(*args, **kwargs):
             binance_called.append(True)
-            return [[0, 100, 101, 99, 100, 0, 0]] * 200
+            # Return list of lists (raw klines format)
+            current_time = int(time.time() * 1000)
+            klines = []
+            for i in range(200):
+                timestamp = current_time - (200 - i) * 60000
+                base_price = 100
+                variation = (i % 10) - 5
+                open_price = base_price + variation
+                high_price = base_price + variation + 2
+                low_price = base_price + variation - 1
+                close_price = base_price + variation + 1
+                klines.append(
+                    [
+                        timestamp,
+                        open_price,
+                        high_price,
+                        low_price,
+                        close_price,
+                        1000,
+                        timestamp + 60000,
+                        500,
+                        50,
+                        600,
+                        300,
+                        0,
+                    ]
+                )
+
+            return klines
 
         base.kucoin_api.get_ui_klines = track_kucoin_klines
         base.binance_api.get_ui_klines = track_binance_klines

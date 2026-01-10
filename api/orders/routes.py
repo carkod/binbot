@@ -36,7 +36,7 @@ def margin_sell(symbol, qty):
 
 
 @order_blueprint.get("/all-orders", tags=["orders"])
-def get_all_orders(symbol, order_id=0, start_time=None):
+def get_all_orders(symbol, order_id: str | None = None, start_time=None):
     try:
         data = BinanceOrderController().get_all_orders(
             symbol, order_id=order_id, start_time=start_time
@@ -49,7 +49,7 @@ def get_all_orders(symbol, order_id=0, start_time=None):
 
 
 @order_blueprint.get("/kucoin/{symbol}/{order_id}", tags=["orders"])
-def get_order_by_id(symbol, order_id):
+def get_order_by_id(symbol: str, order_id: str):
     try:
         data = KucoinOrders().get_order_by_order_id(symbol=symbol, order_id=order_id)
         return {

@@ -208,7 +208,7 @@ class KucoinMarginDeal(KucoinBaseBalance):
             if system_order:
                 order = OrderModel(
                     timestamp=system_order.created_at,
-                    order_id=int(system_order.id),
+                    order_id=str(system_order.id),
                     deal_type=DealType.conversion,
                     pair=system_order.symbol,
                     order_side=system_order.side,
@@ -270,7 +270,7 @@ class KucoinMarginDeal(KucoinBaseBalance):
 
         order_data = OrderModel(
             timestamp=system_order.created_at,
-            order_id=int(system_order.id),
+            order_id=str(system_order.id),
             deal_type=DealType.base_order,
             pair=system_order.symbol,
             order_side=system_order.side,

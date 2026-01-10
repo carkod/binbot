@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Type, Union
 
 import pandas as pd
+from streaming.apex_flow_closing import ApexFlowClose
 from deals.gateway import DealGateway
 from bots.models import BotModel
 from databases.crud.autotrade_crud import AutotradeCrud
@@ -20,6 +21,7 @@ from pybinbot import (
     ExchangeId,
     round_numbers,
     BinanceKlineIntervals,
+    Indicators,
 )
 from tools.exceptions import BinanceErrors, BinbotErrors
 from copy import deepcopy
@@ -89,27 +91,56 @@ class StreamingController:
         self.symbol_data = base.symbols_crud.get_symbol(symbol)
         self.base_streaming = base
         self.symbol = symbol
+        self.benchmark_symbol = "BTCUSDT"
+        self.kucoin_benchmark_symbol = "BTC-USDT"
         self.api: Union[BinanceApi, KucoinApi]
 
         binance_interval = BinanceKlineIntervals.fifteen_minutes
         # Prepare interval based on exchange
         if self.base_streaming.exchange == ExchangeId.KUCOIN:
-            interval = binance_interval.to_kucoin_interval()
+            self.interval = binance_interval.to_kucoin_interval()
             self.symbol = (
                 self.symbol_data.base_asset + "-" + self.symbol_data.quote_asset
             )
             self.api = self.base_streaming.kucoin_api
         else:
-            interval = binance_interval.value
+            self.interval = binance_interval.value
             self.api = self.base_streaming.binance_api
+
+        self.current_bot: BotModel | None = None
+        self.current_test_bot: BotModel | None = None
+        self.dataframe_ops(self.interval)
+        self.apex_flow_closing = ApexFlowClose(self.df, self.btc_df)
+
+    def dataframe_ops(self, interval: str) -> None:
+        """
+        Converts klines to DataFrame for indicator calculations
+        """
 
         # Get klines from the appropriate exchange
         self.klines = self.api.get_ui_klines(
             symbol=self.symbol,
             interval=interval,
         )
-        self.current_bot: BotModel | None = None
-        self.current_test_bot: BotModel | None = None
+        self.btc_klines = self.api.get_ui_klines(
+            symbol=self.kucoin_benchmark_symbol
+            if self.base_streaming.exchange == ExchangeId.KUCOIN
+            else self.benchmark_symbol,
+            interval=interval,
+        )
+        candles = self.klines.copy()
+        self.df, _, _ = Indicators().pre_process(
+            exchange=self.base_streaming.exchange, candles=candles
+        )
+        self.btc_df, _, _ = Indicators().pre_process(
+            exchange=self.base_streaming.exchange, candles=self.btc_klines.copy()
+        )
+
+        self.df = Indicators.bollinguer_spreads(self.df)
+        self.btc_df = Indicators.bollinguer_spreads(self.btc_df, window=20)
+
+        self.df = Indicators().post_process(self.df)
+        self.btc_df = Indicators().post_process(self.btc_df)
 
     def calc_quantile_volatility(
         self, window: int = 100, quantile: float = 0.9
@@ -212,31 +243,10 @@ class StreamingController:
         if len(data) < 200:
             return HABollinguerSpread(bb_high=0, bb_mid=0, bb_low=0)
 
-        df = pd.DataFrame(data)
-        df.columns = [
-            "open_time",
-            "open",
-            "high",
-            "low",
-            "close",
-            "volume",
-            "close_time",
-        ] + [f"col_{i}" for i in range(7, len(df.columns))]
-
-        close_prices = df["close"]
-        rolling_mean = close_prices.rolling(window=20).mean()
-        rolling_std = close_prices.rolling(window=20).std()
-
-        df["bb_high"] = rolling_mean + (rolling_std * 2)
-        df["bb_mid"] = rolling_mean
-        df["bb_low"] = rolling_mean - (rolling_std * 2)
-
-        df.reset_index(drop=True, inplace=True)
-
         bb_spreads = HABollinguerSpread(
-            bb_high=df["bb_high"].iloc[-1],
-            bb_mid=df["bb_mid"].iloc[-1],
-            bb_low=df["bb_low"].iloc[-1],
+            bb_high=self.df["bb_upper"].iloc[-1],
+            bb_mid=self.df["bb_mid"].iloc[-1],
+            bb_low=self.df["bb_lower"].iloc[-1],
         )
 
         return bb_spreads
@@ -310,110 +320,144 @@ class StreamingController:
         current_price: float,
         bb_spreads: HABollinguerSpread,
     ) -> None:
-        controller: Union[PaperTradingTableCrud | BotTableCrud] = (
+        """
+        ApexFlow-aware asymmetric trailing:
+        - Trailing deviation and stop loss adapt geometrically based on PnL
+        - Trailing profit expands if ApexFlow detects volatility/momentum expansion
+        - Detector signals prevent premature exit while keeping stop geometry safe
+        """
+        controller: Union[PaperTradingTableCrud, BotTableCrud] = (
             self.base_streaming.bot_controller
+            if db_table == BotTable
+            else self.base_streaming.paper_trading_controller
         )
 
-        if db_table == PaperTradingTable:
-            controller = self.base_streaming.paper_trading_controller
-
-        # Avoid duplicate updates
         original_bot = deepcopy(bot)
 
-        # --- Use quantile-based volatility for stop_loss only ---
+        # --- Compute quantile-based volatility for stop loss ---
         quantile_vol = self.calc_quantile_volatility(window=40, quantile=0.99)
-        # fallback if not enough data
         if quantile_vol == 0:
-            quantile_vol = 0.03  # 3% default
+            quantile_vol = 0.03  # fallback 3%
 
-        # --- BB logic for trailing profit/deviation ---
-        # not enough data
+        # --- Bollinger spreads ---
         if bb_spreads.bb_high == 0 or bb_spreads.bb_low == 0 or bb_spreads.bb_mid == 0:
             return
 
-        # multiplied by 1000 to get to the same scale stop_loss
         top_spread = round_numbers(
-            (abs((bb_spreads.bb_high - bb_spreads.bb_mid) / bb_spreads.bb_high) * 100),
-            2,
+            abs((bb_spreads.bb_high - bb_spreads.bb_mid) / bb_spreads.bb_high) * 100, 2
         )
         whole_spread = round_numbers(
-            (abs((bb_spreads.bb_high - bb_spreads.bb_low) / bb_spreads.bb_high) * 100),
-            2,
+            abs((bb_spreads.bb_high - bb_spreads.bb_low) / bb_spreads.bb_high) * 100, 2
         )
         bottom_spread = round_numbers(
-            abs((bb_spreads.bb_mid - bb_spreads.bb_low) / bb_spreads.bb_mid) * 100,
-            2,
+            abs((bb_spreads.bb_mid - bb_spreads.bb_low) / bb_spreads.bb_mid) * 100, 2
         )
 
-        # Otherwise it'll close too soon or incur too much loss
-        if whole_spread > 8:
-            whole_spread = 8
-            top_spread = 6
-            bottom_spread = 4
+        # Clamp spreads to sane ranges
+        whole_spread = min(max(whole_spread, 2), 8)
+        top_spread = min(max(top_spread, 1.5), 6)
+        bottom_spread = min(max(bottom_spread, 1), 4)
 
-        if whole_spread < 2:
-            whole_spread = 2
-            top_spread = 1.5
-            bottom_spread = 1
-
-        bot.trailling = True
-        # reset values to avoid too much risk when there's profit
+        # --- Compute current profit ---
         bot_profit = self.compute_single_bot_profit(bot, current_price)
-        # Use quantile-based volatility for stop_loss (as percent, more aggressive scaling)
-        # when prices go up only
+
+        # --- ApexFlow Detector Check ---
+        detectors = self.apex_flow_closing.get_detectors()
+        vce_signal = detectors.get("vce", False)
+        mcd_signal = detectors.get("mcd", False)
+        lcrs_signal = detectors.get("lcrs", False)
+
+        # --- Trend filter (EMA fast/slow) ---
+        ema_fast, ema_slow = self.apex_flow_closing.get_trend_ema()
+        trend_up = ema_fast > ema_slow if ema_fast and ema_slow else True
+
+        # Determine if Apex allows exit
         if bot.strategy == Strategy.long:
-            # Only when TD_2 > TD_1
-            bot.trailling_profit = top_spread if top_spread > 1 else 1
-            # too much risk, reduce stop loss
-            bot.trailling_deviation = bottom_spread if bottom_spread > 1 else 1
-            if bot_profit > 6:
-                bot.trailling_profit = 2.8
-                bot.trailling_deviation = 2.6
+            detector_exit_flag = (
+                not (vce_signal or mcd_signal or lcrs_signal) or not trend_up
+            )
+        else:
+            detector_exit_flag = (
+                not (vce_signal or mcd_signal or lcrs_signal) or trend_up
+            )
 
-            # Calculate stop_loss as a percent, clamp between 2% and 7%
-            stop_loss_percent = max(3.0, min(quantile_vol * 100, 7.0))
-            bot.stop_loss = stop_loss_percent
+        # --- Expansion-aware multiplier ---
+        expansion_multiplier = 1.0
+        if vce_signal:
+            expansion_multiplier += 0.2
+        if mcd_signal:
+            expansion_multiplier += 0.1
+        expansion_multiplier = min(expansion_multiplier, 1.5)
 
-            if (
-                bot.trailling_profit == original_bot.trailling_profit
-                and bot.stop_loss == original_bot.stop_loss
-                and bot.trailling_deviation == original_bot.trailling_deviation
-            ):
-                return
+        # --- Asymmetric geometry: tighten for profits, protect losses ---
+        # Compute geometric multiplier for trailing deviation based on PnL
+        trail_tighten_mult = 1.0
+        if bot_profit > 0:
+            trail_tighten_mult = max(0.6, 1.0 - (bot_profit / 100))  # tighten for gains
+        else:
+            trail_tighten_mult = 1.0  # leave room for losses
 
+        # --- Adjust trailing parameters ---
+        bot.trailling = True
+        if bot.strategy == Strategy.long:
+            bot.trailling_profit = round_numbers(
+                max(0.5, top_spread * trail_tighten_mult * expansion_multiplier), 2
+            )
+            bot.trailling_deviation = round_numbers(
+                max(0.6, bottom_spread * trail_tighten_mult), 2
+            )
+            bot.stop_loss = round_numbers(
+                max(3.0, min(quantile_vol * 100 * trail_tighten_mult, 7.0)), 2
+            )
+
+        elif bot.strategy == Strategy.margin_short:
+            bot.trailling_profit = round_numbers(
+                max(0.5, bottom_spread * trail_tighten_mult * expansion_multiplier), 2
+            )
+            bot.trailling_deviation = round_numbers(
+                max(0.6, top_spread * trail_tighten_mult), 2
+            )
+            bot.stop_loss = round_numbers(
+                max(3.0, min(quantile_vol * 100 * trail_tighten_mult, 7.0)), 2
+            )
+
+        # --- Force trailing & stop to be outside current price if Apex blocks exit ---
+        if not detector_exit_flag:
+            if bot.strategy == Strategy.long:
+                # move stop below current price and trailing deviation above price
+                bot.stop_loss = max(
+                    bot.stop_loss, abs(bot.stop_loss + (current_price - bot.stop_loss))
+                )
+                bot.trailling_deviation = max(
+                    bot.trailling_deviation,
+                    abs(
+                        bot.trailling_deviation
+                        + (current_price - bot.trailling_deviation)
+                    ),
+                )
+            else:
+                bot.stop_loss = max(
+                    bot.stop_loss, abs(bot.stop_loss - (current_price - bot.stop_loss))
+                )
+                bot.trailling_deviation = max(
+                    bot.trailling_deviation,
+                    abs(
+                        bot.trailling_deviation
+                        - (current_price - bot.trailling_deviation)
+                    ),
+                )
+
+        # --- Save only if changed ---
+        if (
+            bot.trailling_profit != original_bot.trailling_profit
+            or bot.trailling_deviation != original_bot.trailling_deviation
+            or bot.stop_loss != original_bot.stop_loss
+        ):
             controller.save(bot)
-            spot_deal = DealGateway(bot, db_table=db_table)
-            # reactivate includes saving
-            spot_deal.open_deal()
-
-            # No need to continue
-            # Bots can only be either long or short
-            return
-
-        if bot.strategy == Strategy.margin_short:
-            if bot_profit > 6:
-                bot.trailling_profit = 2.8
-                bot.trailling_deviation = 2.6
-
-            # Decrease risk for margin shorts
-            # as volatility is higher, we want to keep parameters tighter
-            # also over time we'll be paying more interest, so better to liquidate sooner
-            # that means smaller trailing deviation to close deal earlier
-            elif bot.trailling_deviation > bottom_spread:
-                bot.trailling_profit = bottom_spread if bottom_spread > 1 else 1
-                bot.trailling_deviation = top_spread if top_spread > 1 else 1
-
-            # check we are not duplicating the update
-            if (
-                bot.trailling_profit == original_bot.trailling_profit
-                and bot.stop_loss == original_bot.stop_loss
-                and bot.trailling_deviation == original_bot.trailling_deviation
-            ):
-                return
-
-            margin_deal = DealGateway(bot, db_table=db_table)
-            # reactivate includes saving
-            margin_deal.open_deal()
+            deal = DealGateway(bot, db_table=db_table)
+            # Only open/reopen deal if Apex allows exit
+            if detector_exit_flag:
+                deal.open_deal()
 
     def dynamic_trailling(self) -> None:
         """

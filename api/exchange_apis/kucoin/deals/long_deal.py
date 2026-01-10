@@ -256,7 +256,7 @@ class KucoinLongDeal(KucoinSpotDeal):
 
         order_data = OrderModel(
             timestamp=system_order.created_at,
-            order_id=int(system_order.id),
+            order_id=system_order.id,
             deal_type=DealType.trailling_profit,
             pair=system_order.symbol,
             order_side=system_order.side,
