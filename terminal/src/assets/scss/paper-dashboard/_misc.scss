@@ -1,3 +1,6 @@
+@use "variables" as *;
+@use "mixins" as *;
+
 body {
   color: $black-color;
   font-size: $font-size-base;

@@ -1,3 +1,5 @@
+@use "variables" as *;
+
 .u-notification--zindex {
   z-index: $zindex-notification;
 }

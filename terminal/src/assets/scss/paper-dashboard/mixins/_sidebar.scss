@@ -1,3 +1,6 @@
+@use "../variables" as *;
+@use "transitions" as *;
+
 @mixin sidebar-color($color) {
   &:after {
     background: $color;

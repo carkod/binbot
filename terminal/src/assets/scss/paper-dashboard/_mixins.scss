@@ -1,9 +1,9 @@
 //Components
-@import "mixins/transitions";
-@import "mixins/sidebar";
-@import "mixins/inputs";
-@import "mixins/page-header";
-@import "mixins/dropdown";
-@import "mixins/cards";
-@import "mixins/transparency";
-@import "mixins/buttons";
+@forward "mixins/transitions";
+@forward "mixins/sidebar";
+@forward "mixins/inputs";
+@forward "mixins/page-header";
+@forward "mixins/dropdown";
+@forward "mixins/cards";
+@forward "mixins/transparency";
+@forward "mixins/buttons";

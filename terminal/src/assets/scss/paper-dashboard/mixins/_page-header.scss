@@ -1,3 +1,5 @@
+@use "../variables" as *;
+
 @mixin linear-gradient($color1, $color2) {
   background: $color1; /* For browsers that do not support gradients */
   background: -webkit-linear-gradient(

@@ -1,3 +1,5 @@
+@use "../variables" as *;
+
 @mixin icon-color($color) {
   box-shadow: 0px 9px 30px -6px $color;
   color: $color;

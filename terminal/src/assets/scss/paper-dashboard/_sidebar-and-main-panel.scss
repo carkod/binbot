@@ -1,3 +1,6 @@
+@use "variables" as *;
+@use "mixins" as *;
+
 .wrapper {
   position: relative;
   top: 0;
@@ -45,7 +48,7 @@
     top: 2px;
     opacity: 1;
 
-    @extend .animation-transition-general;
+    @extend .animation-transition-general !optional;
   }
   .logo-tim {
     border-radius: 50%;
@@ -183,7 +186,7 @@
 
     a.logo-mini,
     a.logo-normal {
-      @extend .animation-transition-general;
+      @extend .animation-transition-general !optional;
     }
 
     a.logo-mini {

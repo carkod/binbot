@@ -1,3 +1,6 @@
+@use "../variables" as *;
+@use "transparency" as *;
+
 @mixin input-size($padding-vertical, $padding-horizontal) {
   padding: $padding-vertical $padding-horizontal;
 }
