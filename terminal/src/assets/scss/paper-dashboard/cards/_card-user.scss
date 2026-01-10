@@ -47,7 +47,7 @@
   }
 
   .inconspicious-text {
-    @extend .text-muted !optional;
+    color: #6c757d;
     font-size: $font-size-xs;
   }
 }

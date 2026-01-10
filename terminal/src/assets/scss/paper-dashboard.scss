@@ -1,7 +1,5 @@
 @use "sass:color";
 @use "bootstrap/scss/bootstrap";
-@use "paper-dashboard/variables";
-@use "paper-dashboard/mixins";
 @use "paper-dashboard/buttons";
 @use "paper-dashboard/inputs";
 @use "paper-dashboard/typography";
@@ -24,6 +22,3 @@
 @use "paper-dashboard/login";
 @use "paper-dashboard/gainers-losers-chart";
 @use "paper-dashboard/utilities";
-
-// Plugins CSS
-@import url("react-toastify/dist/ReactToastify.css");
