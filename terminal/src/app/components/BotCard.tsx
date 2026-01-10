@@ -44,7 +44,7 @@ const BotCard: FC<BotCardProps> = ({
           <Row>
             <Col md="7" xs="12">
               <Card.Title as="h5">{bot.pair}</Card.Title>
-              <small className="text-muted fw-lighter">{bot.name}</small>
+              <p className="text-muted fw-lighter">{bot.name}</p>
             </Col>
             <Col md="5" xs="12">
               <Badge bg={botProfit > 0 ? "success" : "danger"}>
@@ -52,7 +52,6 @@ const BotCard: FC<BotCardProps> = ({
               </Badge>
               <br />
               <Badge
-                className="small"
                 bg={
                   bot.status === "active"
                     ? "success"
@@ -63,35 +62,35 @@ const BotCard: FC<BotCardProps> = ({
                         : "secondary"
                 }
               >
-                <small>{bot.status && bot.status.toUpperCase()}</small>
+                <span>{bot.status && bot.status.toUpperCase()}</span>
               </Badge>
             </Col>
           </Row>
           <hr />
           <Row>
             <Col md="6" xs="7">
-              <p className="small">Mode</p>
+              <p>Mode</p>
             </Col>
             <Col md="6" xs="5">
-              <p className="small capitalize">
+              <p className="capitalize">
                 {bot.mode ? bot.mode : "Unknown"}
               </p>
             </Col>
           </Row>
           <Row>
             <Col md="6" xs="7">
-              <p className="small">Strategy</p>
+              <p>Strategy</p>
             </Col>
             <Col md="6" xs="5">
-              <p className="small capitalize">{bot.strategy}</p>
+              <p className="capitalize">{bot.strategy}</p>
             </Col>
           </Row>
           <Row>
             <Col md="6" xs="7">
-              <p className="small">Open @</p>
+              <p>Open @</p>
             </Col>
             <Col md="6" xs="5">
-              <p className="small">
+              <p>
                 {(bot.deal?.opening_price &&
                   roundDecimals(bot.deal.opening_price, 6)) ||
                   bot.deal?.opening_qty}
@@ -101,12 +100,10 @@ const BotCard: FC<BotCardProps> = ({
           {bot.deal?.opening_timestamp > 0 && (
             <Row>
               <Col md="6" xs="7">
-                <p className="small">Open time</p>
+                <p>Open time</p>
               </Col>
               <Col md="6" xs="5">
-                <p className="small">
-                  {formatTimestamp(bot.deal.opening_timestamp)}
-                </p>
+                <p>{formatTimestamp(bot.deal.opening_timestamp)}</p>
               </Col>
             </Row>
           )}
@@ -114,32 +111,28 @@ const BotCard: FC<BotCardProps> = ({
             <>
               <Row>
                 <Col md="6" xs="7">
-                  <p className="small">Trailling profit</p>
+                  <p>Trailling profit</p>
                 </Col>
                 <Col md="6" xs="5">
-                  <p className="small">
-                    {roundDecimals(bot.trailling_profit) + "%"}
-                  </p>
+                  <p>{roundDecimals(bot.trailling_profit) + "%"}</p>
                 </Col>
               </Row>
               <Row>
                 <Col md="6" xs="7">
-                  <p className="small">Trailling deviation</p>
+                  <p>Trailling deviation</p>
                 </Col>
                 <Col md="6" xs="5">
-                  <p className="small">
-                    {roundDecimals(bot.trailling_deviation) + "%"}
-                  </p>
+                  <p>{roundDecimals(bot.trailling_deviation) + "%"}</p>
                 </Col>
               </Row>
             </>
           ) : (
             <Row>
               <Col md="6" xs="7">
-                <p className="small">Take profit</p>
+                <p>Take profit</p>
               </Col>
               <Col md="6" xs="5">
-                <p className="small">{roundDecimals(bot.take_profit) + "%"}</p>
+                <p>{roundDecimals(bot.take_profit) + "%"}</p>
               </Col>
             </Row>
           )}
@@ -150,7 +143,7 @@ const BotCard: FC<BotCardProps> = ({
                 <p className="small small">Stop loss</p>
               </Col>
               <Col md="6" xs="5">
-                <p className="small">{roundDecimals(bot.stop_loss) + "%"}</p>
+                <p>{roundDecimals(bot.stop_loss) + "%"}</p>
               </Col>
             </Row>
           )}
@@ -158,20 +151,20 @@ const BotCard: FC<BotCardProps> = ({
           {bot.deal?.total_commissions > 0 && (
             <Row>
               <Col md="6" xs="7">
-                <p className="small">Commissions</p>
+                <p>Commissions</p>
               </Col>
               <Col md="6" xs="5">
-                <p className="small">{`${bot.deal.total_commissions} BNB`}</p>
+                <p>{`${bot.deal.total_commissions} BNB`}</p>
               </Col>
             </Row>
           )}
           {bot.deal?.total_interests > 0 && (
             <Row>
               <Col md="6" xs="7">
-                <p className="small">Interests</p>
+                <p>Interests</p>
               </Col>
               <Col md="6" xs="5">
-                <p className="small">{`${bot.deal.total_interests} ${bot.quote_asset}`}</p>
+                <p>{`${bot.deal.total_interests} ${bot.quote_asset}`}</p>
               </Col>
             </Row>
           )}
@@ -179,22 +172,20 @@ const BotCard: FC<BotCardProps> = ({
           {bot.deal?.closing_timestamp > 0 && (
             <Row>
               <Col md="6" xs="7">
-                <p className="small">Close time</p>
+                <p>Close time</p>
               </Col>
               <Col md="6" xs="5">
-                <p className="small">
-                  {formatTimestamp(bot.deal.closing_timestamp)}
-                </p>
+                <p>{formatTimestamp(bot.deal.closing_timestamp)}</p>
               </Col>
             </Row>
           )}
           {bot.deal?.closing_timestamp > 0 && (
             <Row>
               <Col md="6" xs="7">
-                <p className="small">Duration</p>
+                <p>Duration</p>
               </Col>
               <Col md="6" xs="5">
-                <p className="small">{renderDuration(bot)}</p>
+                <p>{renderDuration(bot)}</p>
               </Col>
             </Row>
           )}

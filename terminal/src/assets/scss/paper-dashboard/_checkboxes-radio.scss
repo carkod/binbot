@@ -1,3 +1,6 @@
+@use "variables" as *;
+@use "mixins" as *;
+
 .from-check,
 .form-check-radio {
   margin-bottom: 12px;

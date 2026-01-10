@@ -1,3 +1,5 @@
+@use "../variables" as *;
+
 .card-user {
   .image {
     height: 130px;
@@ -45,7 +47,7 @@
   }
 
   .inconspicious-text {
-    @extend .text-muted;
+    color: #6c757d;
     font-size: $font-size-xs;
   }
 }

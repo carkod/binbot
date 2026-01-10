@@ -1,3 +1,5 @@
+@use "../variables" as *;
+
 @mixin dropdown-colors(
   $brand-color,
   $dropdown-header-color,

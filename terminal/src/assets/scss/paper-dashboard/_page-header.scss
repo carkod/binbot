@@ -1,3 +1,6 @@
+@use "variables" as *;
+@use "mixins" as *;
+
 .page-header {
   min-height: 100vh;
   max-height: 1000px;
