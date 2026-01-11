@@ -278,7 +278,7 @@ class KucoinMarginDeal(KucoinBaseBalance):
             price=price,
             qty=float(system_order.size),
             time_in_force=system_order.time_in_force,
-            status=OrderStatus.FILLED if system_order.active else OrderStatus.EXPIRED,
+            status=OrderStatus.NEW if system_order.active else OrderStatus.FILLED,
         )
 
         self.active_bot.deal.total_commissions += float(system_order.fee)
