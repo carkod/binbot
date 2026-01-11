@@ -22,6 +22,7 @@ from pybinbot import (
     round_numbers,
     BinanceKlineIntervals,
     Indicators,
+    HeikinAshi,
 )
 from tools.exceptions import BinanceErrors, BinbotErrors
 from copy import deepcopy
@@ -129,18 +130,20 @@ class StreamingController:
             interval=interval,
         )
         candles = self.klines.copy()
-        self.df, _, _ = Indicators().pre_process(
+        df, _, _ = HeikinAshi().pre_process(
             exchange=self.base_streaming.exchange, candles=candles
         )
-        self.btc_df, _, _ = Indicators().pre_process(
+        self.df = df
+        btc_df, _, _ = HeikinAshi().pre_process(
             exchange=self.base_streaming.exchange, candles=self.btc_klines.copy()
         )
+        self.btc_df = btc_df
 
         self.df = Indicators.bollinguer_spreads(self.df)
         self.btc_df = Indicators.bollinguer_spreads(self.btc_df, window=20)
 
-        self.df = Indicators().post_process(self.df)
-        self.btc_df = Indicators().post_process(self.btc_df)
+        self.df = HeikinAshi().post_process(self.df)
+        self.btc_df = HeikinAshi().post_process(self.btc_df)
 
     def calc_quantile_volatility(
         self, window: int = 100, quantile: float = 0.9

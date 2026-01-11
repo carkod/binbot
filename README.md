@@ -7,12 +7,12 @@
 ## Requirements
 
 - Docker and docker-compose
-- Python 3
-- Pipenv. If not installed, run `pip install pipenv`
+- Python 3.11
+- UV. If not installed, run `pip install uv`
 
 ## Run services
 
-`docker compose -f compose-development.yml --pull always -d --build`
+`docker compose up -d`
 
 This should create and set up the Mongo and Postgres databases.
 
@@ -28,10 +28,10 @@ This should create and set up the Mongo and Postgres databases.
 
 ### Back-end api developer tooling
 
-- For tests: `uv run pytest api/` or use `.vscode` folder config
-- For linting, recommended vscode plugins, else `uv run ruff format api/` and `uv run mypy api/`.
+- For tests: `make test` or use `.vscode` folder config
 - Install new dependencies with: `uv add <package-name>`
-- Formatting with `uv run format` and linting with `uv run lint`
+- Formatting with `make format`
+- Upgrade pybinbot `make upgrade-pybinbot`
 
 ## Running front-end web app
 
@@ -50,7 +50,7 @@ This should create and set up the Mongo and Postgres databases.
 1. Merge changes to master
 2. Test on local:
 
-- `cd web && yarn build` This is to avoid docker javascript leap out of memory error
+- `cd terminal && npm start`
 - Build and test docker container `docker build --tag binbot . && docker run -ti -p 8000:80 binbot`
 - Publish to docker hub `docker build --tag binbot . && docker tag binbot carloswufei/binbot:latest && docker push carloswufei/binbot`
 
@@ -64,7 +64,7 @@ If docker-compose doesn't exist: 3. Copy `scp docker-compose.yml <USERNAME>@<SER
 or `docker build --tag binbot . && docker tag binbot carloswufei/binbot:latest && docker push carloswufei/binbot`
 
 In production: 
-5. `docker-compose pull && docker-compose up -d` 
+5. `docker compose up --pull always -d` 
 6. If `.env.prod` is modified, scp to remote server and replace `.env` in production with new `.env.prod`
 
 ## Test production
@@ -101,6 +101,8 @@ alembic stamp 113eb73ebba8
 ```
 
 where 113eb73ebba8 is the supposed last "good" migration that you want to revert to.
+
+## 
 
 ## Detailed documentation
 

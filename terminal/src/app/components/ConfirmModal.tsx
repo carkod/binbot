@@ -28,22 +28,20 @@ const ConfirmModal: FC<ConfirmModalProps> = ({
       onHide={() => setToggle(false)}
       onEscapeKeyDown={() => setToggle(false)}
     >
-      <Modal.Dialog className="border-0 my-0">
-        <Modal.Header closeButton closeLabel="Cancel">
-          Are you sure?
-        </Modal.Header>
-        <Modal.Body>{children}</Modal.Body>
-        <Modal.Footer className="d-flex flex-row justify-content-between border border-bottom-0">
-          <Button variant="danger" onClick={() => handleActions(1)}>
-            {primary}
+      <Modal.Header closeButton closeLabel="Cancel">
+        Are you sure?
+      </Modal.Header>
+      <Modal.Body>{children}</Modal.Body>
+      <Modal.Footer className="d-flex flex-row justify-content-between border border-bottom-0">
+        <Button variant="danger" onClick={() => handleActions(1)}>
+          {primary}
+        </Button>
+        {secondary && (
+          <Button variant="warning" onClick={() => handleActions(2)}>
+            {secondary}
           </Button>
-          {secondary && (
-            <Button variant="warning" onClick={() => handleActions(2)}>
-              {secondary}
-            </Button>
-          )}
-        </Modal.Footer>
-      </Modal.Dialog>
+        )}
+      </Modal.Footer>
     </Modal>
   );
 };

@@ -90,6 +90,7 @@ class ConsolidatedAccounts:
             response = self.balances_crud.create_balance_series(
                 kucoin_balances.balances,
                 round_numbers(kucoin_balances.estimated_total_fiat, 4),
+                exchange_id=ExchangeId.KUCOIN,
             )
             return response
         else:
