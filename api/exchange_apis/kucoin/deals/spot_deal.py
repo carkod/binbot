@@ -290,10 +290,9 @@ class KucoinSpotDeal(KucoinBaseBalance):
                 if not is_balance:
                     # This should raise an error because we don't want to activate bot if there are no funds
                     msg = "Base order failed due to insufficient balance."
-                    self.controller.update_logs(
-                        bot=self.active_bot,
-                        log_message=msg,
-                    )
+                    self.active_bot.add_log(msg)
+                    self.active_bot.status = Status.inactive
+                    self.controller.save(self.active_bot)
                     raise BinbotErrors(msg)
 
                 self.active_bot.deal.base_order_size = self.active_bot.fiat_order_size
@@ -356,7 +355,7 @@ class KucoinSpotDeal(KucoinBaseBalance):
             price=res_price,
             qty=float(system_order.size),
             time_in_force=system_order.time_in_force,
-            status=OrderStatus.FILLED if system_order.active else OrderStatus.EXPIRED,
+            status=OrderStatus.NEW if system_order.active else OrderStatus.FILLED,
         )
 
         self.active_bot.orders.append(order_data)
