@@ -84,7 +84,7 @@ class BaseStreaming:
             return bot
 
 
-class StreamingController:
+class PositionManager:
     def __init__(self, base: BaseStreaming, symbol: str) -> None:
         super().__init__()
         # Gets any signal to restart streaming

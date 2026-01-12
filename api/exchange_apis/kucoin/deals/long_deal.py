@@ -294,7 +294,7 @@ class KucoinLongDeal(KucoinSpotDeal):
 
         return self.active_bot
 
-    def streaming_updates(self, close_price: float, open_price: float):
+    def position_manager(self, close_price: float, open_price: float):
         current_price = round_numbers(close_price, self.price_precision)
         self.active_bot.deal.current_price = current_price
         self.controller.save(self.active_bot)

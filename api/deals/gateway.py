@@ -63,7 +63,7 @@ class DealGateway:
         """
         Abstract method for streaming deals during bot runtime
         """
-        return self.deal.streaming_updates(
+        return self.deal.position_manager(
             close_price=close_price, open_price=open_price
         )
 

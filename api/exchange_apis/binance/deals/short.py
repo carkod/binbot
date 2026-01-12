@@ -19,7 +19,7 @@ class BinanceShortDeal(BinanceMarginDeal):
 
     They use the Exchange's MARGIN ISOLATED market, so it would be using the margin adaptation of Binance APIs, thus inheriting from BinanceMarginDeal.
 
-    - streaming_updates: updates for market_updates bot streaming
+    - position_manager: updates for market_updates bot streaming
     - close_all: deactivation, panic close, quick liquidation
     - open_deal: main way to activate bots, used by dashaboard and binquant
     """
@@ -42,7 +42,7 @@ class BinanceShortDeal(BinanceMarginDeal):
             self.open_deal()
             self.controller.save(self.active_bot)
 
-    def streaming_updates(self, close_price: float, open_price: float = 0) -> BotModel:
+    def position_manager(self, close_price: float, open_price: float = 0) -> BotModel:
         """
         Margin_short streaming updates
 
