@@ -25,7 +25,7 @@ class AutotradeCrud:
         self.session = session
 
     @typing.no_type_check
-    def get_settings(self):
+    def get_settings(self) -> AutotradeTable | TestAutotradeTable:
         """
         Mypy check ignored: Incompatible types in assignment
         should not affect execution of statement.
@@ -47,7 +47,9 @@ class AutotradeCrud:
         return settings
 
     @typing.no_type_check
-    def edit_settings(self, data: AutotradeSettingsSchema):
+    def edit_settings(
+        self, data: AutotradeSettingsSchema
+    ) -> AutotradeTable | TestAutotradeTable:
         """
         Mypy check ignored: Incompatible types in assignment
         should not affect execution of statement.

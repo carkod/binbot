@@ -37,10 +37,7 @@ def get(
         bots = BotTableCrud(session=session).get(
             status, start_date, end_date, limit, offset
         )
-        # Has to be converted to BotModel to
-        # be able to serialize nested objects
-        ta = TypeAdapter(list[BotModelResponse])
-        data = ta.dump_python(bots)  # type: ignore
+        data = [BotModelResponse.dump_from_table(bot) for bot in bots]
         return BotListResponse(message="Successfully found bots!", data=data)
     except ValidationError as error:
         return BotResponse(message="Failed to find bots!", data=error.json(), error=1)
