@@ -68,9 +68,8 @@ class KucoinSpotDeal(KucoinBaseBalance):
 
         quote_asset = self.active_bot.quote_asset.value
 
-        if (
-            quote_asset in result_balances["main"]
-            or quote_asset in result_balances["trade"]
+        if ("main" in result_balances and quote_asset in result_balances["main"]) or (
+            "trade" in result_balances and quote_asset in result_balances["trade"]
         ):
             if (
                 "trade" in result_balances
