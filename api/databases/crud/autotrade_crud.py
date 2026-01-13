@@ -1,10 +1,13 @@
-import typing
-
-from databases.tables.autotrade_table import AutotradeTable, TestAutotradeTable
+from databases.tables.autotrade_table import (
+    AutotradeTable,
+    TestAutotradeTable,
+    SettingsDocument,
+)
 from databases.utils import independent_session
 from sqlmodel import Session, select
+from sqlmodel.sql._expression_select_cls import SelectOfScalar
 from pybinbot import AutotradeSettingsDocument
-from autotrade.schemas import AutotradeSettingsSchema
+from autotrade.schemas import AutotradeSettingsSchema, TestAutotradeSettingsSchema
 
 
 class AutotradeCrud:
@@ -24,47 +27,47 @@ class AutotradeCrud:
             session = independent_session()
         self.session = session
 
-    @typing.no_type_check
     def get_settings(self) -> AutotradeTable | TestAutotradeTable:
         """
         Mypy check ignored: Incompatible types in assignment
         should not affect execution of statement.
         This is to avoid dup code
         """
+        statement: (
+            SelectOfScalar[AutotradeTable] | SelectOfScalar[TestAutotradeTable]
+        ) = select(AutotradeTable).where(AutotradeTable.id == self.document_id)
+
         if self.document_id == AutotradeSettingsDocument.test_autotrade_settings:
             statement = select(TestAutotradeTable).where(
                 TestAutotradeTable.id == self.document_id
-            )
-        else:
-            statement = select(AutotradeTable).where(
-                AutotradeTable.id == self.document_id
             )
 
         results = self.session.exec(statement)
         # Should always return one result
         settings = results.first()
+        assert settings is not None, (
+            f"No autotrade settings found for id {self.document_id}"
+        )
         self.session.close()
         return settings
 
-    @typing.no_type_check
     def edit_settings(
-        self, data: AutotradeSettingsSchema
-    ) -> AutotradeTable | TestAutotradeTable:
+        self, data: AutotradeSettingsSchema | TestAutotradeSettingsSchema
+    ) -> SettingsDocument:
         """
-        Mypy check ignored: Incompatible types in assignment
-        should not affect execution of statement.
-        This is to avoid dup code
+        Edit autotrade settings based on document_id.
         """
         if self.document_id == AutotradeSettingsDocument.test_autotrade_settings:
-            settings_data = TestAutotradeTable.model_validate(data)
-            settings = self.session.get(TestAutotradeTable, settings_data.id)
+            table_class: type[TestAutotradeTable | AutotradeTable] = TestAutotradeTable
         else:
-            settings_data = AutotradeTable.model_validate(data)
-            settings = self.session.get(AutotradeTable, settings_data.id)
+            table_class = AutotradeTable
 
-        if not settings:
-            return settings
+        settings_data = table_class.model_validate(data)
+        settings = self.session.get(table_class, settings_data.id)
 
+        assert settings is not None, (
+            f"No autotrade settings found for id {self.document_id}"
+        )
         # start db operations
         settings.sqlmodel_update(data.model_dump())
         self.session.add(settings)
