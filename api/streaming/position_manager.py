@@ -458,9 +458,7 @@ class PositionManager:
         ):
             controller.save(bot)
             deal = DealGateway(bot, db_table=db_table)
-            # Only open/reopen deal if Apex allows exit
-            if detector_exit_flag:
-                deal.open_deal()
+            deal.open_deal()
 
     def dynamic_trailling(self) -> None:
         """

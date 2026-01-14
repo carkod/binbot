@@ -301,6 +301,7 @@ class KucoinOrders(KucoinRest):
         order = self._get_order_with_retry(
             symbol=symbol, order_id=order_response.order_id
         )
+        logging.error(f"Buy order status active? {order.active}")
         return order
 
     def sell_order(
