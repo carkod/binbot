@@ -363,12 +363,18 @@ class PositionManager:
 
         # --- Compute current profit ---
         bot_profit = self.compute_single_bot_profit(bot, current_price)
+        # recent trades
+        row = self.apex_flow_closing.df.iloc[-1]
 
         # --- ApexFlow Detector Check ---
         detectors = self.apex_flow_closing.get_detectors()
+        expansion_range = row["high"] - row["low"]
+
         vce_signal = detectors.get("vce", False)
         mcd_signal = detectors.get("mcd", False)
         lcrs_signal = detectors.get("lcrs", False)
+
+        is_aggressive_momo = bot.name.lower().find("aggressive_momo") != -1
 
         # --- Trend filter (EMA fast/slow) ---
         ema_fast, ema_slow = self.apex_flow_closing.get_trend_ema()
@@ -409,9 +415,13 @@ class PositionManager:
             bot.trailling_deviation = round_numbers(
                 max(0.6, bottom_spread * trail_tighten_mult), 2
             )
-            bot.stop_loss = round_numbers(
-                max(3.0, min(quantile_vol * 100 * trail_tighten_mult, 7.0)), 2
-            )
+            if is_aggressive_momo:
+                bot.stop_loss = bot.deal.opening_price - (expansion_range * 0.5)
+            else:
+                bot.stop_loss = round_numbers(
+                    bot.deal.opening_price * (1 - 0.03),
+                    self.symbol_data.price_precision,
+                )
 
         elif bot.strategy == Strategy.margin_short:
             bot.trailling_profit = round_numbers(
@@ -425,30 +435,23 @@ class PositionManager:
             )
 
         # --- Force trailing & stop to be outside current price if Apex blocks exit ---
-        if not detector_exit_flag:
-            if bot.strategy == Strategy.long:
-                # move stop below current price and trailing deviation above price
-                bot.stop_loss = max(
-                    bot.stop_loss, abs(bot.stop_loss + (current_price - bot.stop_loss))
-                )
-                bot.trailling_deviation = max(
-                    bot.trailling_deviation,
-                    abs(
-                        bot.trailling_deviation
-                        + (current_price - bot.trailling_deviation)
-                    ),
-                )
-            else:
-                bot.stop_loss = max(
-                    bot.stop_loss, abs(bot.stop_loss - (current_price - bot.stop_loss))
-                )
-                bot.trailling_deviation = max(
-                    bot.trailling_deviation,
-                    abs(
-                        bot.trailling_deviation
-                        - (current_price - bot.trailling_deviation)
-                    ),
-                )
+        if not detector_exit_flag and bot.strategy == Strategy.long:
+            # move stop below current price and trailing deviation above price
+            bot.stop_loss = min(bot.stop_loss, original_bot.stop_loss)
+            bot.trailling_deviation = max(
+                bot.trailling_deviation,
+                abs(
+                    bot.trailling_deviation + (current_price - bot.trailling_deviation)
+                ),
+            )
+        else:
+            bot.stop_loss = max(bot.stop_loss, original_bot.stop_loss)
+            bot.trailling_deviation = max(
+                bot.trailling_deviation,
+                abs(
+                    bot.trailling_deviation - (current_price - bot.trailling_deviation)
+                ),
+            )
 
         # --- Save only if changed ---
         if (
