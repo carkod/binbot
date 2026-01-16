@@ -8,9 +8,6 @@ from sqlalchemy import text, exists
 from sqlalchemy.orm import selectinload, QueryableAttribute
 from sqlalchemy.sql.expression import ColumnElement
 from sqlmodel import select, Session
-
-from exchange_apis.binance.base import BinanceApi
-from exchange_apis.kucoin.base import KucoinApi
 from databases.crud.autotrade_crud import AutotradeCrud
 from databases.crud.asset_index_crud import AssetIndexCrud
 from databases.tables.asset_index_table import AssetIndexTable, SymbolIndexLink
@@ -18,8 +15,7 @@ from databases.tables.symbol_exchange_table import SymbolExchangeTable
 from databases.tables.symbol_table import SymbolTable
 from databases.utils import independent_session, engine
 from symbols.models import SymbolModel, SymbolRequestPayload
-from pybinbot import QuoteAssets, ExchangeId
-from tools.exceptions import BinbotErrors
+from pybinbot import QuoteAssets, ExchangeId, BinanceApi, KucoinApi, BinbotErrors
 from sqlalchemy.sql import delete
 
 

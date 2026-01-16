@@ -1,6 +1,5 @@
 from fastapi import APIRouter
-from exchange_apis.kucoin.orders import KucoinOrders
-from tools.exceptions import BinanceErrors
+from pybinbot import KucoinApi, BinanceErrors
 from tools.handle_error import json_response, json_response_error
 from exchange_apis.binance.orders import BinanceOrderController
 from orders.schemas import OrderParams
@@ -51,7 +50,7 @@ def get_all_orders(symbol, order_id: str | None = None, start_time=None):
 @order_blueprint.get("/kucoin/{symbol}/{order_id}", tags=["orders"])
 def get_order_by_id(symbol: str, order_id: str):
     try:
-        data = KucoinOrders().get_order_by_order_id(symbol=symbol, order_id=order_id)
+        data = KucoinApi().get_order_by_order_id(symbol=symbol, order_id=order_id)
         return {
             "message": "Order found!",
             "data": data,

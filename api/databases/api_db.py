@@ -15,8 +15,8 @@ from pybinbot import (
     Strategy,
     UserRoles,
     OrderStatus,
+    BinbotErrors,
 )
-from tools.exceptions import BinbotErrors
 from alembic.config import Config
 from alembic import command
 from alembic.script import ScriptDirectory

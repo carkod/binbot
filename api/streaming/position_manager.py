@@ -11,8 +11,6 @@ from databases.crud.candles_crud import CandlesCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
-from exchange_apis.binance.base import BinanceApi
-from exchange_apis.kucoin.base import KucoinApi
 from streaming.models import HABollinguerSpread
 from pybinbot import (
     Status,
@@ -22,8 +20,11 @@ from pybinbot import (
     BinanceKlineIntervals,
     Indicators,
     HeikinAshi,
+    BinanceErrors,
+    BinbotErrors,
+    BinanceApi,
+    KucoinApi,
 )
-from tools.exceptions import BinanceErrors, BinbotErrors
 from copy import deepcopy
 
 
@@ -89,6 +90,7 @@ class PositionManager:
         # Gets any signal to restart streaming
         self.autotrade_controller = AutotradeCrud()
         self.symbol_data = base.symbols_crud.get_symbol(symbol)
+        self.price_precision = self.symbol_data.price_precision
         self.base_streaming = base
         self.symbol = symbol
         self.benchmark_symbol = "BTCUSDT"
@@ -294,7 +296,6 @@ class PositionManager:
         bottom_spread: float,
         bot_profit: float,
         bot: BotModel,
-        current_price: float,
         expansion_multiplier: float,
         is_aggressive_momo: bool,
         expansion_range: float,
@@ -442,7 +443,6 @@ class PositionManager:
                 bottom_spread=bottom_spread,
                 bot_profit=bot_profit,
                 bot=bot,
-                current_price=current_price,
                 expansion_multiplier=expansion_multiplier,
                 is_aggressive_momo=is_aggressive_momo,
                 expansion_range=expansion_range,

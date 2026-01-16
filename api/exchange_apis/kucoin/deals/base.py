@@ -2,8 +2,7 @@ from typing import Dict, Tuple
 from enum import Enum
 from databases.crud.autotrade_crud import AutotradeCrud
 from databases.crud.bot_crud import BotTableCrud
-from exchange_apis.kucoin.base import KucoinApi
-from pybinbot import QuoteAssets
+from pybinbot import QuoteAssets, KucoinApi
 
 
 class KucoinBaseBalance:

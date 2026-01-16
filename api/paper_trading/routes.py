@@ -6,8 +6,8 @@ from pybinbot import Status, BotBase
 from databases.tables.bot_table import PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.utils import get_session
-from tools.exceptions import BinanceErrors, BinbotErrors
-from tools.handle_error import api_response, StandardResponse
+from pybinbot import BinanceErrors, BinbotErrors, StandardResponse
+from tools.handle_error import api_response
 from bots.models import BotModel, BotResponse, BotListResponse, BotPairsList
 from typing import List, Optional
 from bots.models import BotModelResponse, ErrorsRequestBody
@@ -68,9 +68,9 @@ def get_one(
             message="Successfully found one paper trading bot.", data=bot_model
         )
     except ValidationError as error:
-        return StandardResponse(message="Bot not found.", error=1, data=error.json())
+        return BotResponse(message="Bot not found.", error=1, data=error.json())
     except BinbotErrors as error:
-        return StandardResponse(message=error.message, error=1)
+        return BotResponse(message=error.message, error=1)
 
 
 @paper_trading_blueprint.get(

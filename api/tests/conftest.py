@@ -1,11 +1,14 @@
 import pytest
-from unittest.mock import MagicMock, patch
-
+from unittest.mock import MagicMock, patch, Mock
+from uuid import UUID
 
 from sqlmodel import SQLModel, create_engine, Session
 from sqlalchemy.pool import StaticPool
 from databases.utils import get_session
 from databases.tables.autotrade_table import AutotradeTable
+from databases.tables.bot_table import BotTable
+from databases.tables.deal_table import DealTable
+from databases.tables.bot_table import PaperTradingTable
 from main import app
 
 # The import below is required to register all models for SQLModel metadata. Do not remove!
@@ -29,7 +32,7 @@ def vcr_config():
             ("X-MBX-APIKEY", "DUMMY"),
             ("authorization", "DUMMY"),
         ],
-        "record_mode": "new_episodes",
+        "record_mode": "once",
     }
 
 
@@ -97,6 +100,319 @@ def create_test_tables():
         )
         session.add(mock_autotrade)
 
+        # Create test deals for the bots
+        test_deals = [
+            DealTable(
+                id=UUID("550e8400-e29b-41d4-a716-446655440001"),
+                base_order_size=15.0,
+                current_price=0.0,
+                take_profit_price=0.0,
+                trailling_stop_loss_price=0.0,
+                trailling_profit_price=0.0,
+                stop_loss_price=0.0,
+                total_interests=0.0,
+                total_commissions=0.0,
+                margin_loan_id=0,
+                margin_repay_id=0,
+                opening_price=0.0,
+                opening_qty=0.0,
+                opening_timestamp=0,
+                closing_price=0.0,
+                closing_qty=0.0,
+                closing_timestamp=0,
+            ),
+            DealTable(
+                id=UUID("550e8400-e29b-41d4-a716-446655440002"),
+                base_order_size=20.0,
+                current_price=0.0,
+                take_profit_price=0.0,
+                trailling_stop_loss_price=0.0,
+                trailling_profit_price=0.0,
+                stop_loss_price=0.0,
+                total_interests=0.0,
+                total_commissions=0.0,
+                margin_loan_id=0,
+                margin_repay_id=0,
+                opening_price=0.0,
+                opening_qty=0.0,
+                opening_timestamp=0,
+                closing_price=0.0,
+                closing_qty=0.0,
+                closing_timestamp=0,
+            ),
+            DealTable(
+                id=UUID("550e8400-e29b-41d4-a716-446655440003"),
+                base_order_size=25.0,
+                current_price=0.0,
+                take_profit_price=0.0,
+                trailling_stop_loss_price=0.0,
+                trailling_profit_price=0.0,
+                stop_loss_price=0.0,
+                total_interests=0.0,
+                total_commissions=0.0,
+                margin_loan_id=0,
+                margin_repay_id=0,
+                opening_price=0.0,
+                opening_qty=0.0,
+                opening_timestamp=0,
+                closing_price=0.0,
+                closing_qty=0.0,
+                closing_timestamp=0,
+            ),
+            DealTable(
+                id=UUID("550e8400-e29b-41d4-a716-446655440004"),
+                base_order_size=15.0,
+                current_price=0.0,
+                take_profit_price=0.0,
+                trailling_stop_loss_price=0.0,
+                trailling_profit_price=0.0,
+                stop_loss_price=0.0,
+                total_interests=0.0,
+                total_commissions=0.0,
+                margin_loan_id=0,
+                margin_repay_id=0,
+                opening_price=0.0,
+                opening_qty=0.0,
+                opening_timestamp=0,
+                closing_price=0.0,
+                closing_qty=0.0,
+                closing_timestamp=0,
+            ),
+            DealTable(
+                id=UUID("550e8400-e29b-41d4-a716-446655440005"),
+                base_order_size=15.0,
+                current_price=0.0,
+                take_profit_price=0.0,
+                trailling_stop_loss_price=0.0,
+                trailling_profit_price=0.0,
+                stop_loss_price=0.0,
+                total_interests=0.0,
+                total_commissions=0.0,
+                margin_loan_id=0,
+                margin_repay_id=0,
+                opening_price=0.0,
+                opening_qty=0.0,
+                opening_timestamp=0,
+                closing_price=0.0,
+                closing_qty=0.0,
+                closing_timestamp=0,
+            ),
+        ]
+        for deal in test_deals:
+            session.add(deal)
+
+        # Add test bots
+        test_bots = [
+            BotTable(
+                id=UUID("cff9e468-87ee-46fa-8678-17af132b8434"),
+                pair="ADXUSDC",
+                fiat="USDC",
+                base_order_size=15,
+                candlestick_interval="15m",
+                close_condition="dynamic_trailling",
+                cooldown=360,
+                created_at=1733973560249.0,
+                updated_at=1733973560249.0,
+                dynamic_trailling=False,
+                mode="manual",
+                name="Test bot 1",
+                status="inactive",
+                stop_loss=3.0,
+                take_profit=2.3,
+                trailling=True,
+                trailling_deviation=3.0,
+                trailling_profit=0.0,
+                strategy="long",
+                deal=test_deals[0],
+            ),
+            BotTable(
+                id=UUID("44db75ee-15c2-4a48-a346-4ffdc3ac5506"),
+                pair="EPICUSDC",
+                fiat="USDC",
+                base_order_size=20,
+                candlestick_interval="15m",
+                close_condition="dynamic_trailling",
+                cooldown=360,
+                created_at=1733973560249.0,
+                updated_at=1733973560249.0,
+                dynamic_trailling=False,
+                mode="manual",
+                name="Test bot 2",
+                status="inactive",
+                stop_loss=3.0,
+                take_profit=2.3,
+                trailling=True,
+                trailling_deviation=3.0,
+                trailling_profit=0.0,
+                strategy="long",
+                deal=test_deals[1],
+            ),
+            BotTable(
+                id=UUID("ebda4958-837c-4544-bf97-9bf449698152"),
+                pair="ADAUSDC",
+                fiat="USDC",
+                base_order_size=25,
+                candlestick_interval="15m",
+                close_condition="dynamic_trailling",
+                cooldown=360,
+                created_at=1733973560249.0,
+                updated_at=1733973560249.0,
+                dynamic_trailling=False,
+                mode="manual",
+                name="Test bot 3",
+                status="active",
+                stop_loss=3.0,
+                take_profit=2.3,
+                trailling=True,
+                trailling_deviation=3.0,
+                trailling_profit=0.0,
+                strategy="long",
+                deal=test_deals[2],
+            ),
+            # Additional bots for deletion testing
+            BotTable(
+                id=UUID("00000000-0000-0000-0000-000000000001"),
+                pair="TESTUSDC1",
+                fiat="USDC",
+                base_order_size=15,
+                candlestick_interval="15m",
+                close_condition="dynamic_trailling",
+                cooldown=360,
+                created_at=1733973560249.0,
+                updated_at=1733973560249.0,
+                dynamic_trailling=False,
+                mode="manual",
+                name="Test bot for deletion 1",
+                status="inactive",
+                stop_loss=3.0,
+                take_profit=2.3,
+                trailling=True,
+                trailling_deviation=3.0,
+                trailling_profit=0.0,
+                strategy="long",
+                deal=test_deals[3],
+            ),
+            BotTable(
+                id=UUID("00000000-0000-0000-0000-000000000002"),
+                pair="TESTUSDC2",
+                fiat="USDC",
+                base_order_size=15,
+                candlestick_interval="15m",
+                close_condition="dynamic_trailling",
+                cooldown=360,
+                created_at=1733973560249.0,
+                updated_at=1733973560249.0,
+                dynamic_trailling=False,
+                mode="manual",
+                name="Test bot for deletion 2",
+                status="inactive",
+                stop_loss=3.0,
+                take_profit=2.3,
+                trailling=True,
+                trailling_deviation=3.0,
+                trailling_profit=0.0,
+                strategy="long",
+                deal=test_deals[4],
+            ),
+        ]
+        for bot in test_bots:
+            session.add(bot)
+
+        # Add paper trading bots
+        paper_trading_bots = [
+            PaperTradingTable(
+                id=UUID("87c18ab2-5575-4330-aa14-95d3fbbe99d7"),
+                pair="ADXUSDC",
+                fiat="USDC",
+                fiat_order_size=15,
+                candlestick_interval="15m",
+                close_condition="dynamic_trailling",
+                cooldown=360,
+                created_at=1733973560249.0,
+                updated_at=1733973560249.0,
+                dynamic_trailling=False,
+                mode="manual",
+                name="Default bot",
+                status="inactive",
+                stop_loss=3.0,
+                take_profit=2.3,
+                trailling=True,
+                trailling_deviation=3.0,
+                trailling_profit=0.0,
+                strategy="long",
+                deal=test_deals[0],
+            ),
+            PaperTradingTable(
+                id=UUID("86da4c65-2728-4625-be61-a1d5f44d706f"),
+                pair="ADXUSDC",
+                fiat="USDC",
+                fiat_order_size=15,
+                candlestick_interval="15m",
+                close_condition="dynamic_trailling",
+                cooldown=360,
+                created_at=1733973560249.0,
+                updated_at=1733973560249.0,
+                dynamic_trailling=False,
+                mode="manual",
+                name="Default bot",
+                status="inactive",
+                stop_loss=3.0,
+                take_profit=2.3,
+                trailling=True,
+                trailling_deviation=3.0,
+                trailling_profit=0.0,
+                strategy="long",
+                deal=test_deals[1],
+            ),
+            PaperTradingTable(
+                id=UUID("2d1966f6-0924-45ab-ae47-2b8c20408e22"),
+                pair="TRXUSDC",
+                fiat="USDC",
+                fiat_order_size=50,
+                candlestick_interval="15m",
+                close_condition="dynamic_trailling",
+                cooldown=0,
+                created_at=1743217942076,
+                updated_at=1743217942076,
+                dynamic_trailling=True,
+                mode="manual",
+                name="terminal_1743217337463",
+                status="inactive",
+                stop_loss=3,
+                take_profit=2.3,
+                trailling=True,
+                trailling_deviation=2.8,
+                trailling_profit=2.3,
+                margin_short_reversal=True,
+                strategy="long",
+                deal=test_deals[2],
+            ),
+            PaperTradingTable(
+                id=UUID("3c3dd13e-4233-4e91-b27b-97459ff33fe7"),
+                pair="EPICUSDC",
+                fiat="USDC",
+                fiat_order_size=15,
+                candlestick_interval="15m",
+                close_condition="dynamic_trailling",
+                cooldown=360,
+                created_at=1733973560249.0,
+                updated_at=1733973560249.0,
+                dynamic_trailling=False,
+                mode="manual",
+                name="Test bot",
+                status="inactive",
+                stop_loss=3.0,
+                take_profit=2.3,
+                trailling=True,
+                trailling_deviation=3.0,
+                trailling_profit=0.0,
+                strategy="long",
+                deal=test_deals[3],
+            ),
+        ]
+        for bot in paper_trading_bots:
+            session.add(bot)
+
         # Add asset indices
         for asset_index in get_test_asset_indices():
             session.add(asset_index)
@@ -126,9 +442,96 @@ def create_test_tables():
         "databases.crud.symbols_crud.independent_session",
         side_effect=mock_independent_session,
     )
+    patcher4 = patch(
+        "databases.crud.bot_crud.independent_session",
+        side_effect=mock_independent_session,
+    )
+    patcher5 = patch(
+        "databases.crud.asset_index_crud.independent_session",
+        side_effect=mock_independent_session,
+    )
+    patcher6 = patch(
+        "databases.crud.paper_trading_crud.independent_session",
+        side_effect=mock_independent_session,
+    )
+
+    # Mock exchange API methods that are called during bot activation/deactivation
+    mock_buy_order_response = {
+        "symbol": "EPICUSDC",
+        "orderId": 123456789,
+        "price": "1.0",
+        "origQty": "20.0",
+        "status": "FILLED",
+        "type": "MARKET",
+        "side": "BUY",
+        "timeInForce": "GTC",
+        "transactTime": 1733973560249,
+        "fills": [
+            {
+                "price": "1.0",
+                "qty": "20.0",
+                "commission": "0.015",
+                "commissionAsset": "USDC",
+            }
+        ],
+    }
+
+    patcher7 = patch(
+        "exchange_apis.binance.deals.spot_deal.BinanceSpotDeal.buy_order",
+        return_value=mock_buy_order_response,
+    )
+    patcher8 = patch(
+        "exchange_apis.binance.deals.spot_deal.BinanceSpotDeal.sell_order",
+        return_value=mock_buy_order_response,
+    )
+    patcher9 = patch(
+        "exchange_apis.binance.deals.spot_deal.BinanceSpotDeal.delete_order",
+        return_value={"msg": "success"},
+    )
+
+    # Mock get_server_time to return an object with proper response structure
+    mock_server_time_response = Mock()
+    mock_server_time_response.headers = {"x-mbx-used-weight-1m": "1"}
+    mock_server_time_response.json.return_value = {"serverTime": 1733973560249}
+
+    patcher10 = patch(
+        "pybinbot.apis.binance.base.BinanceApi.get_server_time",
+        return_value=1733973560249,
+    )
+
+    # Mock additional exchange API methods
+    patcher11 = patch(
+        "exchange_apis.binance.account.BinanceAccount.get_single_spot_balance",
+        return_value=100.0,
+    )
+    patcher12 = patch(
+        "exchange_apis.binance.orders.BinanceOrderController.get_ticker_price",
+        return_value=1.0,
+    )
+
+    # Mock ConsolidatedAccounts for account endpoints
+    mock_consolidated_accounts = MagicMock()
+    mock_consolidated_accounts.store_balance.return_value = {"USDC": 100.0}
+    mock_consolidated_accounts.autotrade_settings.exchange_id.name = "binance"
+
+    patcher13 = patch(
+        "account.routes.ConsolidatedAccounts",
+        return_value=mock_consolidated_accounts,
+    )
+
     patcher1.start()
     patcher2.start()
     patcher3.start()
+    patcher4.start()
+    patcher5.start()
+    patcher6.start()
+    patcher7.start()
+    patcher8.start()
+    patcher9.start()
+    patcher10.start()
+    patcher11.start()
+    patcher12.start()
+    patcher13.start()
 
     yield test_engine
 
@@ -136,6 +539,16 @@ def create_test_tables():
     patcher1.stop()
     patcher2.stop()
     patcher3.stop()
+    patcher4.stop()
+    patcher5.stop()
+    patcher6.stop()
+    patcher7.stop()
+    patcher8.stop()
+    patcher9.stop()
+    patcher10.stop()
+    patcher11.stop()
+    patcher12.stop()
+    patcher13.stop()
     app.dependency_overrides.clear()
     SQLModel.metadata.drop_all(test_engine)
 

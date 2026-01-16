@@ -2,10 +2,10 @@ from typing import Optional
 from pydantic import BaseModel, EmailStr, field_validator
 from sqlmodel import Field
 from pybinbot import UserRoles, timestamp
-from tools.handle_error import StandardResponse
 from uuid import UUID, uuid4
 from typing import Sequence
 from databases.tables.user_table import UserTable
+from pybinbot import StandardResponse
 
 
 class UserDetails(BaseModel):

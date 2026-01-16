@@ -6,7 +6,7 @@ from tools.handle_error import (
 )
 from charts.controllers import MarketDominationController
 from charts.models import AdrSeriesResponse
-from tools.handle_error import StandardResponse
+from pybinbot import StandardResponse
 from databases.crud.candles_crud import CandlesCrud
 
 charts_blueprint = APIRouter()

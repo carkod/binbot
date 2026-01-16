@@ -1,8 +1,8 @@
+from os import getenv
 from account.schemas import BalanceSchema, KucoinBalance
 from databases.crud.balances_crud import BalancesCrud
 from exchange_apis.binance.assets import Assets
-from exchange_apis.kucoin.base import KucoinApi
-from pybinbot import ExchangeId, round_numbers
+from pybinbot import ExchangeId, round_numbers, KucoinApi
 from databases.utils import get_session
 from sqlmodel import Session
 from exchange_apis.kucoin.deals.base import KucoinBaseBalance
@@ -17,7 +17,9 @@ class ConsolidatedAccounts:
         else:
             self.session = session
 
-        self.kucoin_api = KucoinApi()
+        self.kucoin_api = KucoinApi(
+            key=getenv("KUCOIN_API_KEY"), secret=getenv("KUCOIN_API_SECRET")
+        )
         self.binance_assets = Assets(session=self.session)
         self.autotrade_settings = self.binance_assets.autotrade_settings
         self.balances_crud = BalancesCrud(session=self.session)

@@ -24,7 +24,7 @@ from kucoin_universal_sdk.generate.margin.order.model_get_order_by_order_id_resp
     GetOrderByOrderIdResp,
 )
 from kucoin_universal_sdk.model.common import RestError
-from tools.exceptions import BinbotErrors
+from pybinbot import BinbotErrors
 
 
 class KucoinSpotDeal(KucoinBaseBalance):

@@ -4,7 +4,6 @@ import time
 import pandas as pd
 from pandas import Index
 from pybinbot import Strategy
-from tools.exceptions import BinanceErrors
 from streaming.position_manager import (
     BaseStreaming,
     PositionManager,
@@ -12,7 +11,7 @@ from streaming.position_manager import (
 )
 from databases.tables.bot_table import BotTable
 from pandas import DataFrame
-from pybinbot import ExchangeId, HeikinAshi
+from pybinbot import ExchangeId, HeikinAshi, BinanceErrors
 
 
 class TestPositionManager:
@@ -189,6 +188,7 @@ class TestPositionManager:
         bot.trailling_deviation = 0.0
         bot.stop_loss = 0.0
         bot.status = None
+        bot.name = "test_bot"
 
         # deal payload used by profit computation
         deal = types.SimpleNamespace()

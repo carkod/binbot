@@ -3,7 +3,7 @@ from databases.crud.symbols_crud import SymbolsCrud
 from symbols.models import GetOneSymbolResponse
 from databases.utils import get_session
 from sqlmodel import Session
-from tools.handle_error import StandardResponse, BinbotErrors
+from pybinbot import StandardResponse, BinbotErrors
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError, DataError
 from symbols.models import SymbolRequestPayload
 from typing import Optional

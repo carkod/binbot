@@ -15,10 +15,11 @@ from pybinbot import (
     ts_to_humandate,
     BotBase,
     timestamp,
+    SaveBotError,
+    BinbotErrors,
 )
 from collections.abc import Sequence
 from sqlalchemy.orm.attributes import flag_modified
-from tools.exceptions import SaveBotError, BinbotErrors
 from databases.crud.symbols_crud import SymbolsCrud
 
 
@@ -57,7 +58,13 @@ class BotTableCrud:
         for bot_id use endpoint function to get BotModel
         """
         if bot:
-            bot_id = str(bot.id)
+            try:
+                if isinstance(bot.id, UUID):
+                    bot_id = bot.id
+                else:
+                    bot_id = UUID(bot.id)
+            except (ValueError, TypeError, AttributeError) as e:
+                raise BinbotErrors(f"Invalid bot ID format: {bot.id}") from e
         else:
             raise BinbotErrors("Bot id or BotModel object is required")
 
@@ -263,7 +270,9 @@ class BotTableCrud:
         For a single id, pass one id in a list
         """
         for id in bot_ids:
-            statement = select(BotTable).where(BotTable.id == id)
+            # Convert string id to UUID if necessary
+            bot_uuid = id if isinstance(id, UUID) else UUID(id)
+            statement = select(BotTable).where(BotTable.id == bot_uuid)
             bot = self.session.exec(statement).first()
             self.session.delete(bot)
 

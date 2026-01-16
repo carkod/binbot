@@ -8,7 +8,7 @@ from account.schemas import (
     BalanceSeriesResponse,
     KucoinBalanceResponse,
 )
-from tools.exceptions import (
+from pybinbot import (
     BinanceErrors,
     BinbotErrors,
     LowBalanceCleanupError,
@@ -71,8 +71,10 @@ def store_balance(session: Session = Depends(get_session)):
             "message": f"Successfully stored {accounts.autotrade_settings.exchange_id.name} balance.",
         }
     except Exception as error:
-        response = json_response_error(f"Failed to store balance: {error}")
-    return response
+        return {
+            "error": 1,
+            "message": f"Failed to store balance: {error}",
+        }
 
 
 @account_blueprint.get(

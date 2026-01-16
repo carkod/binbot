@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import ValidationError, TypeAdapter
 from sqlmodel import Session
 from pybinbot import Status
@@ -13,11 +13,10 @@ from bots.models import (
     IResponseBase,
 )
 from typing import List, Optional
-from tools.exceptions import BinanceErrors, BinbotErrors
 from bots.models import BotModelResponse
-from tools.handle_error import StandardResponse
+from pybinbot import BinanceErrors, BinbotErrors
 from deals.gateway import DealGateway
-from databases.tables.bot_table import BotTable
+from databases.tables.bot_table import BotTable, PaperTradingTable
 from kucoin_universal_sdk.model.common import RestError
 
 bot_blueprint = APIRouter()
@@ -67,21 +66,21 @@ def get_one_by_id(id: str, session: Session = Depends(get_session)):
         data = BotModelResponse.dump_from_table(bot)
         return BotResponse(message="Successfully found one bot.", data=data)
     except ValidationError as error:
-        return StandardResponse(message="Bot not found.", error=1, data=error.json())
+        return BotResponse(message=f"Validation error: {error.json()}", error=1)
     except BinbotErrors as error:
-        return StandardResponse(message=error.message, error=1)
+        return BotResponse(message=error.message, error=1)
 
 
 @bot_blueprint.get("/bot/symbol/{symbol}", tags=["bots"])
 def get_one_by_symbol(symbol: str, session: Session = Depends(get_session)):
     try:
         bot = BotTableCrud(session=session).get_one(bot_id=None, symbol=symbol)
-        data = bot_ta.dump_python(bot)  # type: ignore
+        data = BotModelResponse.dump_from_table(bot)
         return BotResponse(message="Successfully found one bot.", data=data)
     except ValidationError as error:
-        return StandardResponse(message="Bot not found.", error=1, data=error.json())
+        return BotResponse(message=f"Validation error: {error.json()}", error=1)
     except BinbotErrors as error:
-        return StandardResponse(message=error.message, error=1)
+        return BotResponse(message=error.message, error=1)
 
 
 @bot_blueprint.post("/bot", tags=["bots"], response_model=BotResponse)
@@ -126,7 +125,7 @@ def edit(
 
 @bot_blueprint.delete("/bot", response_model=IResponseBase, tags=["bots"])
 def delete(
-    id: List[str],
+    id: List[str] = Query(...),
     session: Session = Depends(get_session),
 ):
     """
@@ -157,7 +156,7 @@ def activate_by_id(id: str, session: Session = Depends(get_session)):
 
     try:
         data = deal_instance.open_deal()
-        response_data = BotModelResponse.model_validate(data.model_dump())
+        response_data = BotModelResponse.model_construct(**data.model_dump())
         message = "Successfully activated bot."
         if bot.status == Status.active:
             message = "Successfully updated bot."
@@ -185,16 +184,21 @@ def deactivation(id: str, session: Session = Depends(get_session)):
     if not bot_table:
         return BotResponse(message="No active bot found.")
 
-    bot_model = BotModel.dump_from_table(bot_table)
+    # Ensure we have a BotModel
+    if isinstance(bot_table, BotTable) or isinstance(bot_table, PaperTradingTable):
+        bot_model = BotModel.dump_from_table(bot_table)
+    else:
+        return BotResponse(message="Invalid bot data.", error=1)
+
     deal_instance = DealGateway(bot_model, db_table=BotTable)
 
     try:
         data = deal_instance.deactivation()
         response_data = BotModelResponse.model_construct(**data.model_dump())
-        return {
-            "message": "Successfully triggered panic sell! Bot deactivated.",
-            "data": response_data,
-        }
+        return BotResponse(
+            message="Successfully triggered panic sell! Bot deactivated.",
+            data=response_data,
+        )
     except BinbotErrors as error:
         return BotResponse(data=response_data, message=error.message, error=1)
 
@@ -225,6 +229,6 @@ def bot_errors(
             message="Errors posted successfully.", data=response_data, error=0
         )
     except ValidationError as error:
-        return BotResponse(message="Failed to post errors", data=error.json(), error=1)
+        return BotResponse(message=f"Validation error: {error.json()}", error=1)
     except BinbotErrors as error:
-        return BotResponse(message="Bot not found.", error=1, data=str(error))
+        return BotResponse(message=error.message, error=1)

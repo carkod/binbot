@@ -1,10 +1,9 @@
 from typing import List
 from sqlmodel import Session, select, case, desc, asc
-from tools.exceptions import BinbotErrors, SaveBotError
 from databases.tables.bot_table import PaperTradingTable
 from bots.models import BotModel
 from databases.utils import independent_session
-from pybinbot import Status, BotBase
+from pybinbot import Status, BotBase, BinbotErrors, SaveBotError
 from collections.abc import Sequence
 from uuid import UUID
 from databases.tables.deal_table import DealTable
@@ -212,7 +211,8 @@ class PaperTradingTableCrud:
         for id in bot_ids:
             statement = select(PaperTradingTable).where(PaperTradingTable.id == id)
             bot = self.session.exec(statement).first()
-            self.session.delete(bot)
+            if bot:
+                self.session.delete(bot)
 
         self.session.commit()
         self.session.close()

@@ -2,10 +2,9 @@ import re
 from datetime import datetime, timezone
 from databases.crud.autotrade_crud import AutotradeCrud
 from charts.models import AdrSeriesDb
-from apis import BinanceApi
 from databases.db import Database
 from databases.crud.symbols_crud import SymbolsCrud
-from pybinbot import round_numbers
+from pybinbot import round_numbers, BinanceApi
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.bot_crud import BotTableCrud
 

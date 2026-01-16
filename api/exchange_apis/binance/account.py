@@ -1,8 +1,7 @@
-from apis import BinbotApi
-from pybinbot import round_numbers
+from pybinbot import round_numbers, BinanceApi
 
 
-class BinanceAccount(BinbotApi):
+class BinanceAccount(BinanceApi):
     def __init__(self):
         pass
 

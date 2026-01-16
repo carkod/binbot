@@ -90,17 +90,31 @@ class BotModel(BotBase):
         """
         if isinstance(bot, BotTable) or isinstance(bot, PaperTradingTable):
             model = BotModel.model_construct(**bot.model_dump())
-            if not bot.deal.base_order_size:
-                bot.deal.base_order_size = 0
-            deal_model = DealModel.model_validate(bot.deal.model_dump())
+            if bot.deal:
+                if not bot.deal.base_order_size:
+                    bot.deal.base_order_size = 0
+                deal_model = DealModel.model_validate(bot.deal.model_dump())
+                model.deal = deal_model
             order_models = [
                 OrderModel.model_construct(**order.model_dump()) for order in bot.orders
             ]
-            model.deal = deal_model
             model.orders = order_models
             return model
+        elif bot is None:
+            return None
         else:
-            return bot
+            # If bot is already a BotModel or compatible dict, convert it
+            if isinstance(bot, dict):
+                return cls.model_construct(**bot)
+            elif isinstance(bot, BotModel):
+                return bot
+            else:
+                # Attempt to construct from whatever object we have
+                try:
+                    return cls.model_construct(**bot.model_dump())
+                except Exception:
+                    # Last resort: return as-is (will likely fail in caller)
+                    return bot
 
     @classmethod
     def model_to_table(cls, bot):
@@ -179,8 +193,12 @@ class BotModelResponse(BotBase):
         Use model_validate to cast/pre-validate data to avoid unecessary validation errors
         """
         if isinstance(bot, BotTable) or isinstance(bot, PaperTradingTable):
-            model = BotModelResponse.model_construct(**bot.model_dump())
-            deal_model = DealModel.model_validate(bot.deal.model_dump())
+            model = cls.model_construct(**bot.model_dump())
+            deal_model = (
+                DealModel.model_validate(bot.deal.model_dump())
+                if bot.deal
+                else DealModel()
+            )
             order_models = [
                 OrderModel.model_validate(order.model_dump()) for order in bot.orders
             ]

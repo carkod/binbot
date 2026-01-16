@@ -10,6 +10,7 @@ from pybinbot import (
     Strategy,
     QuoteAssets,
     Status,
+    MarginLoanNotFound,
 )
 from databases.crud.symbols_crud import SymbolsCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
@@ -27,7 +28,6 @@ from kucoin_universal_sdk.generate.margin.order.model_add_order_req import (
 from kucoin_universal_sdk.generate.account.account.model_get_isolated_margin_account_resp import (
     GetIsolatedMarginAccountAssets,
 )
-from tools.exceptions import MarginLoanNotFound
 
 
 class KucoinMarginDeal(KucoinBaseBalance):

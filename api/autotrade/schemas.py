@@ -6,7 +6,7 @@ from pybinbot import (
     CloseConditions,
     ExchangeId,
 )
-from tools.handle_error import StandardResponse
+from pybinbot import StandardResponse
 
 
 class AutotradeSettingsSchema(BaseModel):
