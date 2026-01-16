@@ -1,6 +1,7 @@
 from pandas import DataFrame, Series
 import numpy as np
 from pybinbot import Indicators
+from bots.models import BotModel
 from databases.crud.autotrade_crud import AutotradeCrud
 
 
@@ -15,6 +16,24 @@ class ApexFlowClose:
         self.exchange = AutotradeCrud().get_settings().exchange_id
         self.df = df
         self.btc_df = btc_df
+
+    def compute_entry_expansion_range(self, bot: BotModel, lookahead: int = 3) -> float:
+        entry_ts = bot.deal.opening_timestamp
+        df = self.df
+
+        # find index of entry candle
+        entry_idx = df.index[df["timestamp"] >= entry_ts]
+
+        if len(entry_idx) == 0:
+            return 0.0
+
+        start = entry_idx[0]
+        window = df.loc[start : start + lookahead - 1]
+
+        if window.empty:
+            return 0.0
+
+        return float(window["high"].max() - window["low"].min())
 
     # ------------------ Detectors ------------------ #
     def run_detectors(self) -> DataFrame:

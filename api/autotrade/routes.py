@@ -89,7 +89,7 @@ def edit_test_autotrade_settings(
             raise HTTPException(status_code=404, detail="Autotrade settings not found")
         else:
             return json_response(
-                {"message": "Successfully updated settings", "data": data}
+                {"message": "Successfully updated settings", "data": data.model_dump()}
             )
     except ValidationError as error:
         msg = ""

@@ -5,9 +5,9 @@ import pandas as pd
 from pandas import Index
 from pybinbot import Strategy
 from tools.exceptions import BinanceErrors
-from streaming.streaming_controller import (
+from streaming.position_manager import (
     BaseStreaming,
-    StreamingController,
+    PositionManager,
     HABollinguerSpread,
 )
 from databases.tables.bot_table import BotTable
@@ -15,7 +15,7 @@ from pandas import DataFrame
 from pybinbot import ExchangeId, HeikinAshi
 
 
-class TestStreamingController:
+class TestPositionManager:
     def _make_base_streaming(self, monkeypatch, active_pairs=None):
         # Import inside to ensure workspace imports resolve during tests
         # Monkeypatch internal controller classes BEFORE instantiating BaseStreaming
@@ -40,7 +40,7 @@ class TestStreamingController:
             def __init__(self):
                 self.saved = []
 
-            # Minimal symbol resolver used by StreamingController.__init__
+            # Minimal symbol resolver used by PositionManager.__init__
             def get_symbol(self, symbol: str):
                 # Assume 4-letter quote (USDT/USDC). Good enough for tests.
                 base, quote = symbol[:-4], symbol[-4:]
@@ -110,20 +110,14 @@ class TestStreamingController:
                     )
                 return klines
 
-        monkeypatch.setattr("streaming.streaming_controller.BotTableCrud", DummyBotCrud)
+        monkeypatch.setattr("streaming.position_manager.BotTableCrud", DummyBotCrud)
         monkeypatch.setattr(
-            "streaming.streaming_controller.PaperTradingTableCrud", DummyPaperCrud
+            "streaming.position_manager.PaperTradingTableCrud", DummyPaperCrud
         )
-        monkeypatch.setattr(
-            "streaming.streaming_controller.SymbolsCrud", DummySymbolsCrud
-        )
-        monkeypatch.setattr(
-            "streaming.streaming_controller.CandlesCrud", DummyCandlesCrud
-        )
-        monkeypatch.setattr(
-            "streaming.streaming_controller.BinanceApi", DummyBinanceApi
-        )
-        monkeypatch.setattr("streaming.streaming_controller.KucoinApi", DummyKucoinApi)
+        monkeypatch.setattr("streaming.position_manager.SymbolsCrud", DummySymbolsCrud)
+        monkeypatch.setattr("streaming.position_manager.CandlesCrud", DummyCandlesCrud)
+        monkeypatch.setattr("streaming.position_manager.BinanceApi", DummyBinanceApi)
+        monkeypatch.setattr("streaming.position_manager.KucoinApi", DummyKucoinApi)
 
         def patched_pre_process(self, exchange, candles):
             from pandas import to_datetime
@@ -205,7 +199,7 @@ class TestStreamingController:
 
     def test_calc_quantile_volatility_reasonable(self, monkeypatch):
         base = self._make_base_streaming(monkeypatch)
-        sc = StreamingController(base, symbol="BTCUSDC")
+        sc = PositionManager(base, symbol="BTCUSDC")
 
         value = sc.calc_quantile_volatility(window=40, quantile=0.9)
         assert isinstance(value, float)
@@ -247,7 +241,7 @@ class TestStreamingController:
                 return klines
 
         base.binance_api = ShortBinanceApi()
-        sc = StreamingController(base, symbol="BTCUSDC")
+        sc = PositionManager(base, symbol="BTCUSDC")
 
         spreads = sc.build_bb_spreads()
         assert spreads.bb_high == 0
@@ -256,7 +250,7 @@ class TestStreamingController:
 
     def test_update_bots_parameters_triggers_open_deal_and_save(self, monkeypatch):
         base = self._make_base_streaming(monkeypatch)
-        sc = StreamingController(base, symbol="BTCUSDC")
+        sc = PositionManager(base, symbol="BTCUSDC")
 
         bot = self._make_bot(strategy=Strategy.long)
 
@@ -272,7 +266,7 @@ class TestStreamingController:
                 return self.bot
 
         monkeypatch.setattr(
-            "streaming.streaming_controller.DealGateway",
+            "streaming.position_manager.DealGateway",
             FakeDealGateway,
         )
 
@@ -297,7 +291,7 @@ class TestStreamingController:
         base = self._make_base_streaming(
             monkeypatch, active_pairs=["XUSDC"]
         )  # decouple from symbol
-        sc = StreamingController(base, symbol="BTCUSDC")
+        sc = PositionManager(base, symbol="BTCUSDC")
 
         # Inject current bots directly without DB calls
         sc.current_bot = self._make_bot(pair="BTCUSDC", strategy=Strategy.long)
@@ -313,7 +307,7 @@ class TestStreamingController:
                 return self.bot
 
         monkeypatch.setattr(
-            "streaming.streaming_controller.DealGateway",
+            "streaming.position_manager.DealGateway",
             FakeDealGateway,
         )
 
@@ -327,7 +321,7 @@ class TestStreamingController:
 
     def test_process_klines_calls_deal_updates_for_active_pair(self, monkeypatch):
         base = self._make_base_streaming(monkeypatch, active_pairs=["BTCUSDC"])
-        sc = StreamingController(base, symbol="BTCUSDC")
+        sc = PositionManager(base, symbol="BTCUSDC")
 
         # Provide a current bot via BaseStreaming.get_current_bot
         bot = self._make_bot(pair="BTCUSDC", strategy=Strategy.long)
@@ -354,7 +348,7 @@ class TestStreamingController:
                 self.called = True
 
         monkeypatch.setattr(
-            "streaming.streaming_controller.DealGateway",
+            "streaming.position_manager.DealGateway",
             FakeDealGateway,
         )
 
@@ -364,7 +358,7 @@ class TestStreamingController:
 
     def test_process_klines_binance_error_sets_status_and_saves(self, monkeypatch):
         base = self._make_base_streaming(monkeypatch, active_pairs=["BTCUSDC"])
-        sc = StreamingController(base, symbol="BTCUSDC")
+        sc = PositionManager(base, symbol="BTCUSDC")
 
         bot = self._make_bot(pair="BTCUSDC", strategy=Strategy.long)
 
@@ -390,11 +384,11 @@ class TestStreamingController:
                 raise BinanceErrors("Order error", -2010)
 
             def save(self, bot):
-                # Redirect to the fake controller's save to mimic StreamingController behavior
+                # Redirect to the fake controller's save to mimic PositionManager behavior
                 base.bot_controller.save(bot)
 
         monkeypatch.setattr(
-            "streaming.streaming_controller.DealGateway",
+            "streaming.position_manager.DealGateway",
             ErrorDealGateway,
         )
 
@@ -403,7 +397,7 @@ class TestStreamingController:
         assert base.bot_controller.saved or base.paper_trading_controller.saved
 
     def test_streaming_controller_uses_kucoin_api_for_kucoin_symbols(self, monkeypatch):
-        """Test that StreamingController uses KucoinApi when exchange_id is KUCOIN"""
+        """Test that PositionManager uses KucoinApi when exchange_id is KUCOIN"""
         base = self._make_base_streaming(monkeypatch)
         # Force KUCOIN exchange path directly on BaseStreaming
         from pybinbot import ExchangeId
@@ -477,7 +471,7 @@ class TestStreamingController:
         base.binance_api.get_ui_klines = track_binance_klines
 
         # Instantiate controller to trigger klines fetch
-        StreamingController(base, symbol="BTCUSDC")
+        PositionManager(base, symbol="BTCUSDC")
 
         # Assert that KucoinApi was used, not BinanceApi
         assert len(kucoin_called) > 0, "KucoinApi.get_ui_klines should have been called"

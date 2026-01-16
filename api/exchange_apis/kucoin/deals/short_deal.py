@@ -230,7 +230,7 @@ class KucoinShortDeal(KucoinMarginDeal):
 
         return self.active_bot
 
-    def streaming_updates(self, close_price: float, open_price: float = 0) -> BotModel:
+    def position_manager(self, close_price: float, open_price: float = 0) -> BotModel:
         """
         Margin_short streaming updates
 

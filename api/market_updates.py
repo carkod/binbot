@@ -1,6 +1,6 @@
 import asyncio
-from streaming.streaming_controller import (
-    StreamingController,
+from streaming.position_manager import (
+    PositionManager,
     BaseStreaming,
 )
 from pybinbot import configure_logging
@@ -23,7 +23,7 @@ async def process_klines():
             index = 0
 
         symbol = bs.active_bot_pairs[index]
-        sc = StreamingController(bs, symbol)
+        sc = PositionManager(bs, symbol)
         sc.process_klines()
         index += 1
         await asyncio.sleep(15)
@@ -39,7 +39,7 @@ async def dynamic_trailing():
             index = 0
 
         symbol = bs.active_bot_pairs[index]
-        sc = StreamingController(bs, symbol)
+        sc = PositionManager(bs, symbol)
         sc.dynamic_trailling()
         index += 1
         await asyncio.sleep(15)

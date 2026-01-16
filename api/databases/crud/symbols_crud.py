@@ -438,8 +438,8 @@ class SymbolsCrud:
                     blacklist_reason="At risk to be delisted soon",
                     exchange_id=ExchangeId.KUCOIN,
                     min_notional=float(item.base_min_size),
-                    price_precision=item.price_increment.find("1") - 2,
-                    qty_precision=item.base_increment.find("1") - 2,
+                    price_precision=self._convert_to_int(item.price_increment),
+                    qty_precision=self._convert_to_int(item.base_increment),
                     is_margin_trading_allowed=item.is_margin_enabled,
                     quote_asset=item.quote_currency,
                     base_asset=item.base_currency,
@@ -458,8 +458,8 @@ class SymbolsCrud:
                 active = False
 
             if item.quote_currency in list(QuoteAssets):
-                price_precision = item.price_increment.find("1") - 2
-                qty_precision = item.base_increment.find("1") - 2
+                price_precision = self._convert_to_int(item.price_increment)
+                qty_precision = self._convert_to_int(item.base_increment)
                 min_notional = float(item.base_min_size)
 
                 statement = select(SymbolTable).where(SymbolTable.id == symbol)
@@ -540,8 +540,8 @@ class SymbolsCrud:
                 active = False
 
             if item.quote_currency in list(QuoteAssets):
-                price_precision = item.price_increment.find("1") - 2
-                qty_precision = item.base_increment.find("1") - 2
+                price_precision = self._convert_to_int(item.price_increment)
+                qty_precision = self._convert_to_int(item.base_increment)
                 min_notional = float(item.base_min_size)
 
                 with get_session() as s:

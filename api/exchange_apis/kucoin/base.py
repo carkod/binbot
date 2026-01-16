@@ -164,7 +164,7 @@ class KucoinApi(KucoinOrders):
         # Binance format: [open_time, open, high, low, close, volume, close_time, ...]
         klines = []
         if response.data:
-            for k in response.data[:limit]:
+            for k in response.data:
                 # k format: [timestamp(seconds), open, close, high, low, volume, turnover]
                 open_time = int(k[0]) * 1000  # Convert to milliseconds
                 close_time = open_time + interval_ms  # Calculate proper close time
@@ -180,5 +180,6 @@ class KucoinApi(KucoinOrders):
                         k[6],  # volume quote asset
                     ]
                 )
+            klines.reverse()
 
         return klines
