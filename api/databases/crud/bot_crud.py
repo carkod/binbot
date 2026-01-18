@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 from uuid import UUID
 from fastapi import Query
 from sqlmodel import Session, asc, desc, select, case
@@ -15,10 +15,11 @@ from pybinbot import (
     ts_to_humandate,
     BotBase,
     timestamp,
+    SaveBotError,
+    BinbotErrors,
 )
 from collections.abc import Sequence
 from sqlalchemy.orm.attributes import flag_modified
-from tools.exceptions import SaveBotError, BinbotErrors
 from databases.crud.symbols_crud import SymbolsCrud
 
 
@@ -50,19 +51,15 @@ class BotTableCrud:
         """
         Update logs for a bot
 
+        Id does not require sanitization here as it comes from a BotModel object. So either this is internally provided or BotModel validation has already occurred.
+
         Args:
         - bot: BotModel
 
         bot has to be passed
         for bot_id use endpoint function to get BotModel
         """
-        if bot:
-            bot_id = str(bot.id)
-        else:
-            raise BinbotErrors("Bot id or BotModel object is required")
-
-        bot_result = self.session.get(BotTable, bot_id)
-
+        bot_result = self.session.get(BotTable, bot.id)
         if not bot_result:
             raise BinbotErrors("Bot not found")
 
@@ -133,10 +130,10 @@ class BotTableCrud:
 
     def get_one(
         self,
-        bot_id: Optional[str] = None,
-        symbol: Optional[str] = None,
+        bot_id: str | None = None,
+        symbol: str | None = None,
         status: Status | None = None,
-        strategy: Optional[Strategy] = None,
+        strategy: Strategy | None = None,
     ) -> BotTable:
         """
         Get one bot by id or symbol
@@ -145,8 +142,8 @@ class BotTableCrud:
         If only symbol is passed, it is possible to match more than one so more specificity is needed. Therefore, status is used too.
         """
         if bot_id:
-            santize_uuid = UUID(bot_id)
-            bot = self.session.get(BotTable, santize_uuid)
+            sanitized_uuid = UUID(bot_id)
+            bot = self.session.get(BotTable, sanitized_uuid)
             if not bot:
                 raise BinbotErrors("Bot not found")
             return bot
@@ -263,7 +260,9 @@ class BotTableCrud:
         For a single id, pass one id in a list
         """
         for id in bot_ids:
-            statement = select(BotTable).where(BotTable.id == id)
+            sanitized_id = UUID(id)
+
+            statement = select(BotTable).where(BotTable.id == sanitized_id)
             bot = self.session.exec(statement).first()
             self.session.delete(bot)
 

@@ -3,14 +3,11 @@ from contextlib import contextmanager
 from decimal import Decimal
 from time import time
 from typing import Optional, cast
-
 from sqlalchemy import text, exists
 from sqlalchemy.orm import selectinload, QueryableAttribute
 from sqlalchemy.sql.expression import ColumnElement
 from sqlmodel import select, Session
-
-from exchange_apis.binance.base import BinanceApi
-from exchange_apis.kucoin.base import KucoinApi
+from tools.config import Config
 from databases.crud.autotrade_crud import AutotradeCrud
 from databases.crud.asset_index_crud import AssetIndexCrud
 from databases.tables.asset_index_table import AssetIndexTable, SymbolIndexLink
@@ -18,8 +15,7 @@ from databases.tables.symbol_exchange_table import SymbolExchangeTable
 from databases.tables.symbol_table import SymbolTable
 from databases.utils import independent_session, engine
 from symbols.models import SymbolModel, SymbolRequestPayload
-from pybinbot import QuoteAssets, ExchangeId
-from tools.exceptions import BinbotErrors
+from pybinbot import QuoteAssets, ExchangeId, BinanceApi, KucoinApi, BinbotErrors
 from sqlalchemy.sql import delete
 
 
@@ -54,9 +50,15 @@ class SymbolsCrud:
         else:
             self.session = session
 
-        # keep API instances as before
-        self.binance_api = BinanceApi()
-        self.kucoin_api = KucoinApi()
+        self.config = Config()
+        self.binance_api = BinanceApi(
+            key=self.config.binance_key, secret=self.config.binance_secret
+        )
+        self.kucoin_api = KucoinApi(
+            key=self.config.kucoin_key,
+            secret=self.config.kucoin_secret,
+            passphrase=self.config.kucoin_passphrase,
+        )
         self.autotrade_crud = AutotradeCrud()
         self.autotrade_settings = self.autotrade_crud.get_settings()
         self.exchange_id = self.autotrade_settings.exchange_id

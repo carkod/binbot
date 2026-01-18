@@ -1,6 +1,6 @@
 import datetime
 from pydantic import BaseModel, field_validator
-from tools.handle_error import StandardResponse
+from pybinbot import StandardResponse
 from bson.objectid import ObjectId
 
 

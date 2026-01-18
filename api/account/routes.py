@@ -8,7 +8,7 @@ from account.schemas import (
     BalanceSeriesResponse,
     KucoinBalanceResponse,
 )
-from tools.exceptions import (
+from pybinbot import (
     BinanceErrors,
     BinbotErrors,
     LowBalanceCleanupError,
@@ -63,16 +63,12 @@ def get_pnl(days: int = 7, session: Session = Depends(get_session)):
 
 @account_blueprint.get("/store-balance", tags=["assets"])
 def store_balance(session: Session = Depends(get_session)):
-    try:
-        accounts = ConsolidatedAccounts(session=session)
-        data = accounts.store_balance()
-        return {
-            "data": data,
-            "message": f"Successfully stored {accounts.autotrade_settings.exchange_id.name} balance.",
-        }
-    except Exception as error:
-        response = json_response_error(f"Failed to store balance: {error}")
-    return response
+    accounts = ConsolidatedAccounts(session=session)
+    data = accounts.store_balance()
+    return {
+        "data": data,
+        "message": f"Successfully stored {accounts.autotrade_settings.exchange_id.name} balance.",
+    }
 
 
 @account_blueprint.get(

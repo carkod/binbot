@@ -9,10 +9,10 @@ from pybinbot import (
     OrderStatus,
     round_numbers,
     round_timestamp,
+    BinanceErrors,
 )
 from exchange_apis.binance.deals.spot_deal import BinanceSpotDeal
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from tools.exceptions import BinanceErrors
 
 
 class BinanceLongDeal(BinanceSpotDeal):

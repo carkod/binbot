@@ -2,12 +2,12 @@ import re
 from datetime import datetime, timezone
 from databases.crud.autotrade_crud import AutotradeCrud
 from charts.models import AdrSeriesDb
-from apis import BinanceApi
 from databases.db import Database
 from databases.crud.symbols_crud import SymbolsCrud
-from pybinbot import round_numbers
+from pybinbot import round_numbers, BinanceApi
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.bot_crud import BotTableCrud
+from tools.config import Config
 
 
 class MarketDominationController(Database):
@@ -17,10 +17,13 @@ class MarketDominationController(Database):
 
     def __init__(self) -> None:
         super().__init__()
+        self.config = Config()
         self.autotrade_db = AutotradeCrud()
         self.autotrade_settings = self.autotrade_db.get_settings()
         self.symbols_crud = SymbolsCrud()
-        self.binance_api = BinanceApi()
+        self.binance_api = BinanceApi(
+            key=self.config.binance_key, secret=self.config.binance_secret
+        )
 
     def ingest_adp_data(self):
         """

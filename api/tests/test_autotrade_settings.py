@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+from typing import Generator
 from unittest.mock import MagicMock
 
 from pytest import fixture
@@ -27,15 +28,23 @@ mocked_db_data = AutotradeTable(
 
 
 @fixture()
-def client() -> TestClient:
+def client() -> Generator[TestClient, None, None]:
     session_mock = MagicMock()
     session_mock.exec.return_value.first.return_value = mocked_db_data
     session_mock.get.return_value = mocked_db_data
     session_mock.add.return_value = MagicMock(return_value=None)
     session_mock.commit.return_value = MagicMock(return_value=None)
+    # Store the original override
+    original_override = app.dependency_overrides.get(get_session)
+    # Set the mock for this test
     app.dependency_overrides[get_session] = lambda: session_mock
     client = TestClient(app)
-    return client
+    yield client
+    # Restore the original override (the conftest one)
+    if original_override is not None:
+        app.dependency_overrides[get_session] = original_override
+    else:
+        app.dependency_overrides.pop(get_session, None)
 
 
 def test_get_autotrade_settings(client: TestClient) -> None:

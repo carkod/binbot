@@ -3,7 +3,7 @@ from sqlmodel import Session, desc, select
 from databases.tables.user_table import UserTable
 from databases.utils import independent_session
 from collections.abc import Sequence
-from tools.exceptions import BinbotErrors
+from pybinbot import BinbotErrors
 from user.models.user import UserDetails
 from user.services.auth import create_access_token, FormData
 from typing import Optional

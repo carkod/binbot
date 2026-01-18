@@ -139,7 +139,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
       query: (ids) => ({
         url: `${import.meta.env.VITE_GET_BOTS}` || "/bot",
         method: "DELETE",
-        body: ids,
+        body: { ids },
         invalidatesTags: ["bots"],
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {

@@ -19,8 +19,10 @@ from pybinbot import (
     round_numbers_floor,
     round_timestamp,
     BotBase,
+    BinanceErrors,
+    MarginShortError,
+    BinbotApi,
 )
-from tools.exceptions import BinanceErrors, MarginShortError
 from databases.crud.symbols_crud import SymbolsCrud
 from exchange_apis.binance.deals.factory import BinanceDeal
 
@@ -48,6 +50,7 @@ class BinanceMarginDeal(BinanceDeal):
         self.db_table = db_table
         self.symbols_crud = SymbolsCrud()
         self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
+        self.binbot_api = BinbotApi()
 
     """
     Reusable utility functions
@@ -559,9 +562,9 @@ class BinanceMarginDeal(BinanceDeal):
         # Create new bot
         created_bot = self.controller.create(new_bot)
 
-        url = self.bb_activate_bot_url
+        url = self.binbot_api.bb_activate_bot_url
         if isinstance(self.controller, PaperTradingTableCrud):
-            url = self.bb_paper_trading_activate_url
+            url = self.binbot_api.bb_paper_trading_activate_url
 
         # to avoid circular imports make network request
         # This class is already imported for switch_to_margin_short

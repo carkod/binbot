@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from tools.handle_error import StandardResponse
+from pybinbot import StandardResponse
 from typing import Dict
 
 

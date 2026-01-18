@@ -292,6 +292,102 @@ def get_test_symbols():
                 ),
             ],
         },
+        {
+            "symbol": SymbolTable(
+                id="ADXUSDC",
+                active=True,
+                blacklist_reason="",
+                quote_asset="USDC",
+                base_asset="ADX",
+                cooldown=0,
+                cooldown_start_ts=0,
+                description="ADX to USDC",
+                created_at=1733973560249,
+                updated_at=1733973560249,
+            ),
+            "exchange_values": [
+                SymbolExchangeTable(
+                    exchange_id=ExchangeId.BINANCE,
+                    symbol_id="ADXUSDC",
+                    min_notional=10.0,
+                    is_margin_trading_allowed=True,
+                    price_precision=4,
+                    qty_precision=2,
+                ),
+            ],
+        },
+        {
+            "symbol": SymbolTable(
+                id="EPICUSDC",
+                active=True,
+                blacklist_reason="",
+                quote_asset="USDC",
+                base_asset="EPIC",
+                cooldown=0,
+                cooldown_start_ts=0,
+                description="EPIC to USDC",
+                created_at=1733973560249,
+                updated_at=1733973560249,
+            ),
+            "exchange_values": [
+                SymbolExchangeTable(
+                    exchange_id=ExchangeId.BINANCE,
+                    symbol_id="EPICUSDC",
+                    min_notional=10.0,
+                    is_margin_trading_allowed=True,
+                    price_precision=4,
+                    qty_precision=2,
+                ),
+            ],
+        },
+        {
+            "symbol": SymbolTable(
+                id="ADAUSDC",
+                active=True,
+                blacklist_reason="",
+                quote_asset="USDC",
+                base_asset="ADA",
+                cooldown=0,
+                cooldown_start_ts=0,
+                description="ADA to USDC",
+                created_at=1733973560249,
+                updated_at=1733973560249,
+            ),
+            "exchange_values": [
+                SymbolExchangeTable(
+                    exchange_id=ExchangeId.BINANCE,
+                    symbol_id="ADAUSDC",
+                    min_notional=10.0,
+                    is_margin_trading_allowed=True,
+                    price_precision=4,
+                    qty_precision=2,
+                ),
+            ],
+        },
+        {
+            "symbol": SymbolTable(
+                id="TRXUSDC",
+                active=True,
+                blacklist_reason="",
+                quote_asset="USDC",
+                base_asset="TRX",
+                cooldown=0,
+                cooldown_start_ts=0,
+                description="TRX to USDC",
+                created_at=1733973560249,
+                updated_at=1733973560249,
+            ),
+            "exchange_values": [
+                SymbolExchangeTable(
+                    exchange_id=ExchangeId.BINANCE,
+                    symbol_id="TRXUSDC",
+                    min_notional=10.0,
+                    is_margin_trading_allowed=True,
+                    price_precision=5,
+                    qty_precision=0,
+                ),
+            ],
+        },
     ]
 
 

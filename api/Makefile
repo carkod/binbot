@@ -41,8 +41,9 @@ format:
 
 upgrade-pybinbot:
 	source .venv/bin/activate;
+	@uv cache clean
 	@uv remove pybinbot
-	@uv add pybinbot
+	@uv add pybinbot --upgrade
 	@uv sync --extra dev
 
 delete-revision:  ## Delete a specific Alembic revision from the database

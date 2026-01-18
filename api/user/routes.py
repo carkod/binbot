@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from fastapi.exceptions import ResponseValidationError
 from user.models.user import UserDetails
-from tools.handle_error import StandardResponse, BinbotErrors
+from pybinbot import StandardResponse, BinbotErrors
 from user.models.user import UserResponse, GetOneUser, LoginResponse
 from user.services.auth import decode_access_token, FormData
 from databases.crud.user_crud import UserTableCrud

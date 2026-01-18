@@ -1,12 +1,11 @@
 from typing import List
+from uuid import UUID
 from sqlmodel import Session, select, case, desc, asc
-from tools.exceptions import BinbotErrors, SaveBotError
 from databases.tables.bot_table import PaperTradingTable
 from bots.models import BotModel
 from databases.utils import independent_session
-from pybinbot import Status, BotBase
+from pybinbot import Status, BotBase, BinbotErrors, SaveBotError
 from collections.abc import Sequence
-from uuid import UUID
 from databases.tables.deal_table import DealTable
 from databases.tables.order_table import FakeOrderTable
 from sqlalchemy.orm.attributes import flag_modified
@@ -32,13 +31,10 @@ class PaperTradingTableCrud:
         bot has to be passed
         for bot_id use endpoint function to get BotModel
         """
-        if bot:
-            bot_id = str(bot.id)
-        else:
+        if not bot:
             raise BinbotErrors("Bot id or BotModel object is required")
 
-        bot_result = self.session.get(PaperTradingTable, bot_id)
-
+        bot_result = self.session.get(PaperTradingTable, bot.id)
         if not bot_result:
             raise BinbotErrors("Bot not found")
 
@@ -209,10 +205,15 @@ class PaperTradingTableCrud:
         """
         Delete a paper trading account by id
         """
-        for id in bot_ids:
-            statement = select(PaperTradingTable).where(PaperTradingTable.id == id)
+        for id_value in bot_ids:
+            sanitized_id = UUID(id_value)
+
+            statement = select(PaperTradingTable).where(
+                PaperTradingTable.id == sanitized_id
+            )
             bot = self.session.exec(statement).first()
-            self.session.delete(bot)
+            if bot:
+                self.session.delete(bot)
 
         self.session.commit()
         self.session.close()

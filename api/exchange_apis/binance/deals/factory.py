@@ -13,10 +13,11 @@ from pybinbot import (
     round_timestamp,
     round_numbers_floor,
     round_numbers_ceiling,
+    BinanceErrors,
 )
-from tools.exceptions import BinanceErrors, TakeProfitError
 from exchange_apis.binance.deals.base_deal import BaseDeal
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
+from tools.exceptions import TakeProfitError
 
 
 class BinanceDeal(BaseDeal):

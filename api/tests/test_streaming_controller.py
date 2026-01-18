@@ -4,7 +4,6 @@ import time
 import pandas as pd
 from pandas import Index
 from pybinbot import Strategy
-from tools.exceptions import BinanceErrors
 from streaming.position_manager import (
     BaseStreaming,
     PositionManager,
@@ -12,7 +11,7 @@ from streaming.position_manager import (
 )
 from databases.tables.bot_table import BotTable
 from pandas import DataFrame
-from pybinbot import ExchangeId, HeikinAshi
+from pybinbot import ExchangeId, HeikinAshi, BinanceErrors
 
 
 class TestPositionManager:
@@ -55,6 +54,9 @@ class TestPositionManager:
             pass
 
         class DummyBinanceApi:
+            def __init__(self, *args, **kwargs):
+                pass
+
             def get_ui_klines(self, symbol, interval, limit=200):
                 # Return list of lists (raw klines format)
                 current_time = int(time.time() * 1000)
@@ -89,6 +91,9 @@ class TestPositionManager:
                 return {"rows": [{"interests": "0.0"}]}
 
         class DummyKucoinApi:
+            def __init__(self, *args, **kwargs):
+                pass
+
             def get_ui_klines(self, symbol, interval, limit=200):
                 # Return list of lists (raw klines format)
                 current_time = int(time.time() * 1000)
@@ -189,6 +194,7 @@ class TestPositionManager:
         bot.trailling_deviation = 0.0
         bot.stop_loss = 0.0
         bot.status = None
+        bot.name = "test_bot"
 
         # deal payload used by profit computation
         deal = types.SimpleNamespace()

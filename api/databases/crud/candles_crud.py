@@ -1,12 +1,11 @@
 import logging
-from exchange_apis.binance.base import BinanceApi
 from databases.db import setup_kafka_db
-from pandas import DataFrame
-import pandas as pd
-from pybinbot import BinanceKlineIntervals, round_numbers
+from pandas import DataFrame, Index, to_numeric
+from pybinbot import BinanceKlineIntervals, round_numbers, BinanceApi
 from databases.crud.symbols_crud import SymbolsCrud
 from datetime import datetime, timezone
 from pymongo.errors import OperationFailure
+from tools.config import Config
 
 
 class CandlesCrud:
@@ -18,7 +17,10 @@ class CandlesCrud:
     def __init__(self) -> None:
         super().__init__()
         self.db = setup_kafka_db()
-        self.binance_api = BinanceApi()
+        self.config = Config()
+        self.binance_api = BinanceApi(
+            key=self.config.binance_key, secret=self.config.binance_secret
+        )
         self.collection_name = "cached_candles"
         self.symbols_crud = SymbolsCrud()
         # Get logger and ensure it uses the root logger's configuration
@@ -130,19 +132,23 @@ class CandlesCrud:
 
         # Binance API kline format: [open_time, open, high, low, close, volume, close_time, ...]
         if len(asset_df.columns) >= 7:
-            asset_df.columns = [
-                "open_time",
-                "open",
-                "high",
-                "low",
-                "close",
-                "volume",
-                "close_time",
-            ] + [f"col_{i}" for i in range(7, len(asset_df.columns))]
+            extra_cols = [f"col_{i}" for i in range(7, len(asset_df.columns))]
+            asset_df.columns = Index(
+                [
+                    "open_time",
+                    "open",
+                    "high",
+                    "low",
+                    "close",
+                    "volume",
+                    "close_time",
+                ]
+                + extra_cols
+            )
 
         # Ensure close columns are numeric
         if "close" in asset_df.columns:
-            asset_df["close"] = pd.to_numeric(asset_df["close"], errors="coerce")
+            asset_df["close"] = to_numeric(asset_df["close"], errors="coerce")
 
             p_correlation = asset_df["close"].corr(btc_df["close"], method="pearson")
 

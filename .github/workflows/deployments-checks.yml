@@ -55,7 +55,11 @@ jobs:
         run: |
           docker build -t carloswufei/binbot:${{ github.sha }} -t carloswufei/binbot:latest -f api/Dockerfile api
       - name: Run docker container
-        run: docker run --network host -e POSTGRES_PORT=${{ job.services.postgres.ports[5432] }} --name app -d carloswufei/binbot:${{ github.sha }}
+        run: |
+          docker run --network host \
+            -e ENV=${{ env.ENV }} \
+            -e POSTGRES_PORT=${{ job.services.postgres.ports[5432] }} \
+            --name app -d carloswufei/binbot:${{ github.sha }}
 
       - name: Test back-end
         run: curl --retry 3 --retry-connrefused --retry-delay 10 --retry-max-time 60 --url http://localhost:8000
@@ -114,7 +118,7 @@ jobs:
           -e MONGO_AUTH_USERNAME=${{ env.MONGO_AUTH_USERNAME }} \
           -e MONGO_AUTH_PASSWORD=${{ env.MONGO_AUTH_PASSWORD }} \
           -e PYTHONUNBUFFERED=TRUE \
-          -e ENV=ci -d carloswufei/binbot_streaming:${{ github.sha }}
+          -e ENV=${{ env.ENV }} -d carloswufei/binbot_streaming:${{ github.sha }}
 
       - name: Push to Docker Hub
         if: ${{ github.actor != 'dependabot[bot]' }}
@@ -141,7 +145,7 @@ jobs:
           -e MONGO_AUTH_USERNAME=${{ env.MONGO_AUTH_USERNAME }} \
           -e MONGO_AUTH_PASSWORD=${{ env.MONGO_AUTH_PASSWORD }} \
           -e PYTHONUNBUFFERED=TRUE \
-          -e ENV=ci -d carloswufei/binbot_cronjobs:${{ github.sha }}
+          -e ENV=${{ env.ENV }} -d carloswufei/binbot_cronjobs:${{ github.sha }}
 
       - name: Push to Docker Hub
         if: ${{ github.actor != 'dependabot[bot]' }}

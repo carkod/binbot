@@ -2,13 +2,18 @@ from typing import Dict, Tuple
 from enum import Enum
 from databases.crud.autotrade_crud import AutotradeCrud
 from databases.crud.bot_crud import BotTableCrud
-from exchange_apis.kucoin.base import KucoinApi
-from pybinbot import QuoteAssets
+from pybinbot import QuoteAssets, KucoinApi
+from tools.config import Config
 
 
 class KucoinBaseBalance:
     def __init__(self):
-        self.kucoin_api = KucoinApi()
+        self.config = Config()
+        self.kucoin_api = KucoinApi(
+            key=self.config.kucoin_key,
+            secret=self.config.kucoin_secret,
+            passphrase=self.config.kucoin_passphrase,
+        )
         self.autotrade_settings = AutotradeCrud().get_settings()
         self.bot_crud = BotTableCrud()
         self.fiat = self.autotrade_settings.fiat
