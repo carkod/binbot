@@ -90,13 +90,13 @@ export const papertradingApiSlice = userApiSlice.injectEndpoints({
       },
     }),
     deleteTestBot: build.mutation<DefaultBotsResponse, string[]>({
-      query: (id) => ({
+      query: (ids) => ({
         url: `${import.meta.env.VITE_TEST_BOT}`,
         method: "DELETE",
-        body: id,
+        body: { ids },
         invalidatesTags: (result) => {
-          if (id.length) {
-            return id.map((id) => ({ type: "paper-trading", id: id }));
+          if (ids.length) {
+            return ids.map((id) => ({ type: "paper-trading", id }));
           }
         },
       }),

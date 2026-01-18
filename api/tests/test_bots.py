@@ -96,8 +96,7 @@ def test_delete_bot(client: TestClient):
         "00000000-0000-0000-0000-000000000001",  # Test bot for deletion 1
         "00000000-0000-0000-0000-000000000002",  # Test bot for deletion 2
     ]
-    # Send as multiple query parameters - FastAPI will parse them as a list
-    response = client.delete(f"/bot?id={delete_ids[0]}&id={delete_ids[1]}")
+    response = client.request("DELETE", "/bot", json={"ids": delete_ids})
 
     assert response.status_code == 200
     content = response.json()

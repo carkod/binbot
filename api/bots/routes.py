@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from pydantic import ValidationError, TypeAdapter
 from sqlmodel import Session
 from pybinbot import Status
@@ -11,8 +11,9 @@ from bots.models import (
     BotBase,
     BotListResponse,
     IResponseBase,
+    BulkDeleteRequest,
 )
-from typing import List, Optional
+from typing import Optional
 from bots.models import BotModelResponse
 from pybinbot import BinanceErrors, BinbotErrors
 from deals.gateway import DealGateway
@@ -125,14 +126,14 @@ def edit(
 
 @bot_blueprint.delete("/bot", response_model=IResponseBase, tags=["bots"])
 def delete(
-    id: List[str] = Query(...),
+    payload: BulkDeleteRequest,
     session: Session = Depends(get_session),
 ):
     """
-    Delete bots, given a list of ids
+    Delete bots, given a JSON payload with a list of ids
     """
     try:
-        BotTableCrud(session=session).delete(bot_ids=id)
+        BotTableCrud(session=session).delete(bot_ids=payload.ids)
         return BotResponse(message="Sucessfully deleted bot.")
     except ValidationError as error:
         return BotResponse(message="Failed to delete bot", data=error.json(), error=1)
@@ -147,14 +148,10 @@ def activate_by_id(id: str, session: Session = Depends(get_session)):
     - If changes were made, it will override DB data
     - Because botId is received from endpoint, it will be a str not a PyObjectId
     """
-    bot = BotTableCrud(session=session).get_one(bot_id=id)
-    if not bot:
-        return BotResponse(message="Bot not found.")
-
-    bot_model = BotModel.dump_from_table(bot)
-    deal_instance = DealGateway(bot_model, db_table=BotTable)
-
     try:
+        bot = BotTableCrud(session=session).get_one(bot_id=id)
+        bot_model = BotModel.dump_from_table(bot)
+        deal_instance = DealGateway(bot_model, db_table=BotTable)
         data = deal_instance.open_deal()
         response_data = BotModelResponse.model_construct(**data.model_dump())
         message = "Successfully activated bot."

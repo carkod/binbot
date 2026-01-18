@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from sqlmodel import Session
 from pydantic import TypeAdapter, ValidationError
 from deals.gateway import DealGateway
@@ -7,9 +7,16 @@ from databases.tables.bot_table import PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.utils import get_session
 from pybinbot import BinanceErrors, BinbotErrors
-from bots.models import BotModel, BotResponse, BotListResponse, BotPairsList
-from typing import List, Optional
-from bots.models import BotModelResponse, ErrorsRequestBody
+from bots.models import (
+    BotModel,
+    BotResponse,
+    BotListResponse,
+    BotPairsList,
+    BotModelResponse,
+    ErrorsRequestBody,
+    BulkDeleteRequest,
+)
+from typing import Optional
 
 
 paper_trading_blueprint = APIRouter()
@@ -115,12 +122,12 @@ def edit(id: str, bot_item: BotModel, session: Session = Depends(get_session)):
 
 
 @paper_trading_blueprint.delete("/paper-trading", tags=["paper trading"])
-def delete(id: List[str] = Query(...), session: Session = Depends(get_session)):
+def delete(payload: BulkDeleteRequest, session: Session = Depends(get_session)):
     """
-    Receives a list of `id=a1b2c3&id=b2c3d4`
+    Delete paper trading bots using a JSON payload with ids
     """
     try:
-        PaperTradingTableCrud(session=session).delete(bot_ids=id)
+        PaperTradingTableCrud(session=session).delete(bot_ids=payload.ids)
         return BotResponse(message="Successfully deleted bot!")
     except BinbotErrors as error:
         return BotResponse(message=error.message, error=1)
@@ -130,20 +137,11 @@ def delete(id: List[str] = Query(...), session: Session = Depends(get_session)):
 def activate(id: str, session: Session = Depends(get_session)):
     try:
         bot = PaperTradingTableCrud(session=session).get_one(bot_id=id)
-    except BinbotErrors as error:
-        return BotResponse(message=error.message, error=1)
+        bot_model = BotModel.dump_from_table(bot)
+        deal_instance = DealGateway(bot=bot_model, db_table=PaperTradingTable)
 
-    if not bot:
-        return BotResponse(message="Bot not found", error=1)
-
-    bot_model = BotModel.dump_from_table(bot)
-
-    deal_instance = DealGateway(bot=bot_model, db_table=PaperTradingTable)
-
-    try:
         deal_instance.open_deal()
         return BotResponse(message="Successfully activated bot!", data=bot_model)
-
     except BinbotErrors as error:
         deal_instance.update_logs(message=error.message)
         return BotResponse(data=bot_model, message=error.message, error=1)

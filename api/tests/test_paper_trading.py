@@ -3,6 +3,8 @@ from main import app
 from pytest import fixture
 import pytest
 
+pytestmark = pytest.mark.usefixtures("paper_trading_table_fixture")
+
 
 @fixture()
 def client() -> TestClient:
@@ -136,11 +138,8 @@ def test_paper_trading_edit_bot(client: TestClient):
 
 
 def test_paper_trading_delete_bot(client: TestClient):
-    # Use query params like the production endpoint
-    response = client.delete(
-        "/paper-trading",
-        params=[("id", "86da4c65-2728-4625-be61-a1d5f44d706f")],
-    )
+    delete_ids = ["86da4c65-2728-4625-be61-a1d5f44d706f"]
+    response = client.request("DELETE", "/paper-trading", json={"ids": delete_ids})
 
     assert response.status_code == 200
     content = response.json()

@@ -9,7 +9,6 @@ from databases.utils import get_session
 from databases.tables.autotrade_table import AutotradeTable
 from databases.tables.bot_table import BotTable
 from databases.tables.deal_table import DealTable
-from databases.tables.bot_table import PaperTradingTable
 from main import app
 
 # The import below is required to register all models for SQLModel metadata. Do not remove!
@@ -20,6 +19,7 @@ from tests.fixtures.symbol_fixtures import (
     get_test_asset_indices,
     get_test_symbol_index_links,
 )
+from tests.fixtures.paper_trading import seed_paper_trading_defaults
 
 
 # Global variable to store test engine for use in patches
@@ -327,100 +327,8 @@ def create_test_tables():
         for bot in test_bots:
             session.add(bot)
 
-        # Add paper trading bots
-        paper_trading_bots = [
-            PaperTradingTable(
-                id=UUID("87c18ab2-5575-4330-aa14-95d3fbbe99d7"),
-                pair="ADXUSDC",
-                fiat="USDC",
-                fiat_order_size=15,
-                candlestick_interval="15m",
-                close_condition="dynamic_trailling",
-                cooldown=360,
-                created_at=1733973560249.0,
-                updated_at=1733973560249.0,
-                dynamic_trailling=False,
-                mode="manual",
-                name="Default bot",
-                status="inactive",
-                stop_loss=3.0,
-                take_profit=2.3,
-                trailling=True,
-                trailling_deviation=3.0,
-                trailling_profit=0.0,
-                strategy="long",
-                deal=test_deals[0],
-            ),
-            PaperTradingTable(
-                id=UUID("86da4c65-2728-4625-be61-a1d5f44d706f"),
-                pair="ADXUSDC",
-                fiat="USDC",
-                fiat_order_size=15,
-                candlestick_interval="15m",
-                close_condition="dynamic_trailling",
-                cooldown=360,
-                created_at=1733973560249.0,
-                updated_at=1733973560249.0,
-                dynamic_trailling=False,
-                mode="manual",
-                name="Default bot",
-                status="inactive",
-                stop_loss=3.0,
-                take_profit=2.3,
-                trailling=True,
-                trailling_deviation=3.0,
-                trailling_profit=0.0,
-                strategy="long",
-                deal=test_deals[1],
-            ),
-            PaperTradingTable(
-                id=UUID("2d1966f6-0924-45ab-ae47-2b8c20408e22"),
-                pair="TRXUSDC",
-                fiat="USDC",
-                fiat_order_size=50,
-                candlestick_interval="15m",
-                close_condition="dynamic_trailling",
-                cooldown=0,
-                created_at=1743217942076,
-                updated_at=1743217942076,
-                dynamic_trailling=True,
-                mode="manual",
-                name="terminal_1743217337463",
-                status="inactive",
-                stop_loss=3,
-                take_profit=2.3,
-                trailling=True,
-                trailling_deviation=2.8,
-                trailling_profit=2.3,
-                margin_short_reversal=True,
-                strategy="long",
-                deal=test_deals[2],
-            ),
-            PaperTradingTable(
-                id=UUID("3c3dd13e-4233-4e91-b27b-97459ff33fe7"),
-                pair="EPICUSDC",
-                fiat="USDC",
-                fiat_order_size=15,
-                candlestick_interval="15m",
-                close_condition="dynamic_trailling",
-                cooldown=360,
-                created_at=1733973560249.0,
-                updated_at=1733973560249.0,
-                dynamic_trailling=False,
-                mode="manual",
-                name="Test bot",
-                status="inactive",
-                stop_loss=3.0,
-                take_profit=2.3,
-                trailling=True,
-                trailling_deviation=3.0,
-                trailling_profit=0.0,
-                strategy="long",
-                deal=test_deals[3],
-            ),
-        ]
-        for bot in paper_trading_bots:
-            session.add(bot)
+        # Add paper trading bots via shared fixture helper
+        seed_paper_trading_defaults(session, commit=False)
 
         # Add asset indices
         for asset_index in get_test_asset_indices():
@@ -560,6 +468,19 @@ def create_test_tables():
     patcher13.stop()
     app.dependency_overrides.clear()
     SQLModel.metadata.drop_all(test_engine)
+
+
+@pytest.fixture()
+def paper_trading_table_fixture(create_test_tables):
+    if _test_engine is not None:
+        with Session(_test_engine) as session:
+            seed_paper_trading_defaults(session)
+    try:
+        yield
+    finally:
+        if _test_engine is not None:
+            with Session(_test_engine) as session:
+                seed_paper_trading_defaults(session)
 
 
 @pytest.fixture(scope="session")

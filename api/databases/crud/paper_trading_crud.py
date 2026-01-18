@@ -34,14 +34,7 @@ class PaperTradingTableCrud:
         if not bot:
             raise BinbotErrors("Bot id or BotModel object is required")
 
-        bot_id = bot.id
-        try:
-            sanitized_id = bot_id if isinstance(bot_id, UUID) else UUID(str(bot_id))
-        except (TypeError, ValueError) as exc:
-            raise BinbotErrors("Invalid bot id") from exc
-
-        bot_result = self.session.get(PaperTradingTable, sanitized_id)
-
+        bot_result = self.session.get(PaperTradingTable, bot.id)
         if not bot_result:
             raise BinbotErrors("Bot not found")
 
@@ -213,10 +206,7 @@ class PaperTradingTableCrud:
         Delete a paper trading account by id
         """
         for id_value in bot_ids:
-            try:
-                sanitized_id = UUID(str(id_value))
-            except (TypeError, ValueError):
-                continue
+            sanitized_id = UUID(id_value)
 
             statement = select(PaperTradingTable).where(
                 PaperTradingTable.id == sanitized_id

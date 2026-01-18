@@ -35,7 +35,7 @@ class BotModel(BotBase):
     and SQLModels. they are not compatible. Thus the duplication
     """
 
-    id: Optional[UUID] = Field(default_factory=uuid4)
+    id: UUID = Field(default_factory=uuid4)
     deal: DealModel = Field(default_factory=DealModel)
     orders: List[OrderModel] = Field(default=[])
 
@@ -225,6 +225,17 @@ class ErrorsRequestBody(BaseModel):
             assert len(v) != 0, "List of errors is empty."
         if isinstance(v, str):
             assert v != "", "Empty pair field."
+        return v
+
+
+class BulkDeleteRequest(BaseModel):
+    ids: List[str] = Field(..., min_length=1)
+
+    @field_validator("ids")
+    @classmethod
+    def ensure_ids_not_empty(cls, v):
+        if not v:
+            raise ValueError("List of ids is empty.")
         return v
 
 
