@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 from main import app
 from pytest import fixture
+import pytest
 
 
 @fixture()
@@ -146,6 +147,7 @@ def test_paper_trading_delete_bot(client: TestClient):
     assert content["message"] == "Successfully deleted bot!"
 
 
+@pytest.mark.vcr(cassette_path="paper_trading/test_paper_trading_activate.yaml")
 def test_paper_trading_activate_by_id(client: TestClient):
     # Test activate endpoint - note: full activation requires symbol data
     # Just verify the endpoint returns a response (may be error if symbol not found)
@@ -157,6 +159,7 @@ def test_paper_trading_activate_by_id(client: TestClient):
     assert "data" in content or "detail" in content or "message" in content
 
 
+@pytest.mark.vcr(cassette_path="paper_trading/test_paper_trading_deactivate.yaml")
 def test_paper_trading_deactivate(client: TestClient):
     deactivate_id = "3c3dd13e-4233-4e91-b27b-97459ff33fe7"
     response = client.delete(f"/paper-trading/deactivate/{deactivate_id}")

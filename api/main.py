@@ -16,8 +16,10 @@ from paper_trading.routes import paper_trading_blueprint
 from symbols.routes import symbols_blueprint
 from user.routes import user_blueprint
 from asset_index.routes import asset_index_blueprint
-
+from pybinbot import configure_logging
 from databases.tables import *  # noqa
+
+configure_logging()
 
 
 @asynccontextmanager

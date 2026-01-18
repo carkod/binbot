@@ -55,7 +55,9 @@ jobs:
         run: |
           docker build -t carloswufei/binbot:${{ github.sha }} -t carloswufei/binbot:latest -f api/Dockerfile api
       - name: Run docker container
-        run: docker run --network host -e POSTGRES_PORT=${{ job.services.postgres.ports[5432] }} --name app -d carloswufei/binbot:${{ github.sha }}
+        run: |
+          docker run --network host -e POSTGRES_PORT=${{ job.services.postgres.ports[5432] }} --name app -d carloswufei/binbot:${{ github.sha }}
+          docker ps
 
       - name: Test back-end
         run: curl --retry 3 --retry-connrefused --retry-delay 10 --retry-max-time 60 --url http://localhost:8000

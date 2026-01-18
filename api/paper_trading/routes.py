@@ -7,7 +7,6 @@ from databases.tables.bot_table import PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.utils import get_session
 from pybinbot import BinanceErrors, BinbotErrors
-from tools.handle_error import api_response
 from bots.models import BotModel, BotResponse, BotListResponse, BotPairsList
 from typing import List, Optional
 from bots.models import BotModelResponse, ErrorsRequestBody
@@ -116,9 +115,7 @@ def edit(id: str, bot_item: BotModel, session: Session = Depends(get_session)):
 
 
 @paper_trading_blueprint.delete("/paper-trading", tags=["paper trading"])
-def delete(
-    id: List[str] = Query(...), session: Session = Depends(get_session)
-):
+def delete(id: List[str] = Query(...), session: Session = Depends(get_session)):
     """
     Receives a list of `id=a1b2c3&id=b2c3d4`
     """
@@ -165,7 +162,10 @@ def deactivate(id: str, session: Session = Depends(get_session)):
     """
     bot_model = PaperTradingTableCrud(session=session).get_one(bot_id=id)
     if not bot_model:
-        return api_response("No active bot found. Can't deactivate")
+        return {
+            "message": "Activated bot not found.",
+            "error": 1,
+        }
 
     bot_model = BotModel.model_construct(**bot_model.model_dump())
     deal_instance = DealGateway(bot=bot_model, db_table=PaperTradingTable)

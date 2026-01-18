@@ -31,12 +31,16 @@ class PaperTradingTableCrud:
         bot has to be passed
         for bot_id use endpoint function to get BotModel
         """
-        if bot:
-            bot_id = str(bot.id)
-        else:
+        if not bot:
             raise BinbotErrors("Bot id or BotModel object is required")
 
-        bot_result = self.session.get(PaperTradingTable, bot_id)
+        bot_id = bot.id
+        try:
+            sanitized_id = bot_id if isinstance(bot_id, UUID) else UUID(str(bot_id))
+        except (TypeError, ValueError) as exc:
+            raise BinbotErrors("Invalid bot id") from exc
+
+        bot_result = self.session.get(PaperTradingTable, sanitized_id)
 
         if not bot_result:
             raise BinbotErrors("Bot not found")
@@ -214,7 +218,9 @@ class PaperTradingTableCrud:
             except (TypeError, ValueError):
                 continue
 
-            statement = select(PaperTradingTable).where(PaperTradingTable.id == sanitized_id)
+            statement = select(PaperTradingTable).where(
+                PaperTradingTable.id == sanitized_id
+            )
             bot = self.session.exec(statement).first()
             if bot:
                 self.session.delete(bot)

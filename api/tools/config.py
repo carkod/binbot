@@ -27,7 +27,7 @@ class Config:
 
     def __init__(self):
         self._env = os.getenv("ENV", "")
-        self._ci_mode = self._env.upper() == "CI"
+        self._ci_mode = self._env.lower() == "ci"
         self._validate_required_vars()
 
     def _get_required(self, key: str) -> str:
@@ -87,7 +87,7 @@ class Config:
         ]
 
         missing = [var for var in required_vars if not os.getenv(var)]
-        if missing:
+        if missing and not self._ci_mode:
             raise ConfigurationError(
                 f"Missing required environment variables: {', '.join(missing)}"
             )

@@ -364,6 +364,30 @@ def get_test_symbols():
                 ),
             ],
         },
+        {
+            "symbol": SymbolTable(
+                id="TRXUSDC",
+                active=True,
+                blacklist_reason="",
+                quote_asset="USDC",
+                base_asset="TRX",
+                cooldown=0,
+                cooldown_start_ts=0,
+                description="TRX to USDC",
+                created_at=1733973560249,
+                updated_at=1733973560249,
+            ),
+            "exchange_values": [
+                SymbolExchangeTable(
+                    exchange_id=ExchangeId.BINANCE,
+                    symbol_id="TRXUSDC",
+                    min_notional=10.0,
+                    is_margin_trading_allowed=True,
+                    price_precision=5,
+                    qty_precision=0,
+                ),
+            ],
+        },
     ]
 
 

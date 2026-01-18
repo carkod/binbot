@@ -1,4 +1,5 @@
 import pytest
+from pathlib import Path
 from unittest.mock import MagicMock, patch, Mock
 from uuid import UUID
 
@@ -27,12 +28,20 @@ _test_engine = None
 
 @pytest.fixture(scope="module")
 def vcr_config():
+    cassette_dir = Path(__file__).parent / "cassettes"
+    cassette_dir.mkdir(parents=True, exist_ok=True)
     return {
         "filter_headers": [
             ("X-MBX-APIKEY", "DUMMY"),
             ("authorization", "DUMMY"),
         ],
+        "filter_query_parameters": [
+            ("timestamp", "DUMMY"),
+            ("signature", "DUMMY"),
+        ],
+        "cassette_library_dir": str(cassette_dir),
         "record_mode": "once",
+        "match_on": ["method", "path", "query"],
     }
 
 
