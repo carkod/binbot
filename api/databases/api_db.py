@@ -56,16 +56,21 @@ class ApiDb:
         logging.info("Running alembic migrations")
         try:
             alembic_cfg = Config("alembic.ini")
+            script_dir = ScriptDirectory.from_config(alembic_cfg)
+            heads = script_dir.get_heads()
+
+            if not heads:
+                logging.warning(
+                    "No Alembic heads found; skipping migration step because there is nothing to apply."
+                )
+                return
+
+            head_revision = heads[0]
+            versions: list[str] = []
 
             # Auto-heal a duplicated/branched alembic_version table if it ever happens.
-            # This situation manifested in production where multiple rows existed
-            # (e.g. 7775eb0b8c12 and 5be29ddb30b9), causing Alembic to complain about
-            # overlapping requested revisions. Here we keep the real head revision
-            # and drop any older rows.
+            # Keep the real head revision and drop any older rows so Alembic can continue.
             try:
-                script_dir = ScriptDirectory.from_config(alembic_cfg)
-                heads = set(script_dir.get_heads())
-
                 with engine.connect() as conn:
                     result = conn.execute(
                         text("SELECT version_num FROM alembic_version")
@@ -73,8 +78,6 @@ class ApiDb:
                     versions = [row[0] for row in result]
 
                     if len(versions) > 1:
-                        # Prefer whichever entry matches a known head; otherwise
-                        # keep the first row and log a warning.
                         keep_version = None
                         for v in versions:
                             if v in heads:
@@ -87,7 +90,7 @@ class ApiDb:
                                 "Alembic version table has multiple entries %s but none match known heads %s; "
                                 "keeping %s and dropping the rest.",
                                 versions,
-                                list(heads),
+                                heads,
                                 keep_version,
                             )
                         else:
@@ -104,15 +107,37 @@ class ApiDb:
                             {"keep_version": keep_version},
                         )
                         conn.commit()
+                        versions = [keep_version]
             except Exception as heal_exc:
-                # If anything goes wrong while healing, log and continue with normal upgrade.
-                logging.warning(
-                    "Failed to auto-heal alembic_version table before migrations: %s",
+                # If anything goes wrong while reading/healing, log and continue. We'll stamp if needed.
+                logging.info(
+                    "Unable to inspect alembic_version table (maybe it does not exist yet): %s",
                     heal_exc,
                 )
+                versions = []
 
-            # Run upgrade to apply any pending migrations (Alembic will create
-            # alembic_version table automatically on first run).
+            current_revision = versions[0] if versions else None
+
+            if current_revision is None:
+                logging.info(
+                    "Database has no Alembic version; stamping to head %s without running migrations.",
+                    head_revision,
+                )
+                command.stamp(alembic_cfg, head_revision)
+                return
+
+            if current_revision == head_revision:
+                logging.info(
+                    "Database already at Alembic head %s; skipping migration run.",
+                    head_revision,
+                )
+                return
+
+            logging.info(
+                "Upgrading database from revision %s to head %s.",
+                current_revision,
+                head_revision,
+            )
             command.upgrade(alembic_cfg, "head")
             logging.info("Alembic migrations completed successfully")
         except Exception as exc:
