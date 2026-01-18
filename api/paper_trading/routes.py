@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 from pydantic import TypeAdapter, ValidationError
 from deals.gateway import DealGateway
@@ -6,7 +6,7 @@ from pybinbot import Status, BotBase
 from databases.tables.bot_table import PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.utils import get_session
-from pybinbot import BinanceErrors, BinbotErrors, StandardResponse
+from pybinbot import BinanceErrors, BinbotErrors
 from tools.handle_error import api_response
 from bots.models import BotModel, BotResponse, BotListResponse, BotPairsList
 from typing import List, Optional
@@ -82,9 +82,9 @@ def get_one_by_symbol(symbol: str, session: Session = Depends(get_session)):
         bot_model = BotModelResponse.dump_from_table(bot)
         return BotResponse(message="Successfully found one bot.", data=bot_model)
     except ValidationError as error:
-        return StandardResponse(message="Bot not found.", error=1, data=error.json())
+        return BotResponse(message="Bot not found.", error=1, data=error.json())
     except BinbotErrors as error:
-        return StandardResponse(message=error.message, error=1)
+        return BotResponse(message=error.message, error=1)
 
 
 @paper_trading_blueprint.post("/paper-trading", tags=["paper trading"])
@@ -116,7 +116,9 @@ def edit(id: str, bot_item: BotModel, session: Session = Depends(get_session)):
 
 
 @paper_trading_blueprint.delete("/paper-trading", tags=["paper trading"])
-def delete(id: List[str], session: Session = Depends(get_session)):
+def delete(
+    id: List[str] = Query(...), session: Session = Depends(get_session)
+):
     """
     Receives a list of `id=a1b2c3&id=b2c3d4`
     """
@@ -129,7 +131,11 @@ def delete(id: List[str], session: Session = Depends(get_session)):
 
 @paper_trading_blueprint.get("/paper-trading/activate/{id}", tags=["paper trading"])
 def activate(id: str, session: Session = Depends(get_session)):
-    bot = PaperTradingTableCrud(session=session).get_one(bot_id=id)
+    try:
+        bot = PaperTradingTableCrud(session=session).get_one(bot_id=id)
+    except BinbotErrors as error:
+        return BotResponse(message=error.message, error=1)
+
     if not bot:
         return BotResponse(message="Bot not found", error=1)
 

@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+from typing import Generator
 from unittest.mock import MagicMock
 
 from pytest import fixture
@@ -27,7 +28,7 @@ mocked_db_data = AutotradeTable(
 
 
 @fixture()
-def client() -> TestClient:
+def client() -> Generator[TestClient, None, None]:
     session_mock = MagicMock()
     session_mock.exec.return_value.first.return_value = mocked_db_data
     session_mock.get.return_value = mocked_db_data

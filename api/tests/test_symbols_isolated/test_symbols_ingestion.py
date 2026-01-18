@@ -7,6 +7,44 @@ from unittest.mock import patch, MagicMock
 from databases.crud.symbols_crud import SymbolsCrud
 
 
+@pytest.fixture(autouse=True)
+def _patch_symbol_crud_apis(monkeypatch):
+    from types import SimpleNamespace
+
+    class DummyKucoinApi:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def get_all_symbols(self):
+            items = [
+                SimpleNamespace(
+                    symbol="BTC-USDC",
+                    enable_trading=True,
+                    st=False,
+                    base_min_size="0.001",
+                    price_increment="0.01",
+                    base_increment="0.0001",
+                    quote_currency="USDC",
+                    base_currency="BTC",
+                    is_margin_enabled=True,
+                ),
+                SimpleNamespace(
+                    symbol="BTC-TRY",
+                    enable_trading=True,
+                    st=False,
+                    base_min_size="0.001",
+                    price_increment="0.01",
+                    base_increment="0.0001",
+                    quote_currency="TRY",
+                    base_currency="BTC",
+                    is_margin_enabled=True,
+                ),
+            ]
+            return SimpleNamespace(data=items)
+
+    monkeypatch.setattr("databases.crud.symbols_crud.KucoinApi", DummyKucoinApi)
+
+
 @pytest.fixture
 def mock_binance_exchange_info():
     """Mock Binance exchange info response with TRY symbols"""

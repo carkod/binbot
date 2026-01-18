@@ -54,6 +54,9 @@ class TestPositionManager:
             pass
 
         class DummyBinanceApi:
+            def __init__(self, *args, **kwargs):
+                pass
+
             def get_ui_klines(self, symbol, interval, limit=200):
                 # Return list of lists (raw klines format)
                 current_time = int(time.time() * 1000)
@@ -88,6 +91,9 @@ class TestPositionManager:
                 return {"rows": [{"interests": "0.0"}]}
 
         class DummyKucoinApi:
+            def __init__(self, *args, **kwargs):
+                pass
+
             def get_ui_klines(self, symbol, interval, limit=200):
                 # Return list of lists (raw klines format)
                 current_time = int(time.time() * 1000)

@@ -26,6 +26,7 @@ from pybinbot import (
     KucoinApi,
 )
 from copy import deepcopy
+from tools.config import Config
 
 
 class BaseStreaming:
@@ -35,8 +36,15 @@ class BaseStreaming:
     """
 
     def __init__(self) -> None:
-        self.binance_api = BinanceApi()
-        self.kucoin_api = KucoinApi()
+        self.config = Config()
+        self.binance_api = BinanceApi(
+            key=self.config.binance_key, secret=self.config.binance_secret
+        )
+        self.kucoin_api = KucoinApi(
+            key=self.config.kucoin_key,
+            secret=self.config.kucoin_secret,
+            passphrase=self.config.kucoin_passphrase,
+        )
         self.bot_controller = BotTableCrud()
         self.paper_trading_controller = PaperTradingTableCrud()
         self.symbols_crud = SymbolsCrud()

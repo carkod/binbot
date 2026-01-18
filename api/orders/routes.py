@@ -3,7 +3,9 @@ from pybinbot import KucoinApi, BinanceErrors
 from tools.handle_error import json_response, json_response_error
 from exchange_apis.binance.orders import BinanceOrderController
 from orders.schemas import OrderParams
+from tools.config import Config
 
+config = Config()
 order_blueprint = APIRouter()
 
 
@@ -50,7 +52,11 @@ def get_all_orders(symbol, order_id: str | None = None, start_time=None):
 @order_blueprint.get("/kucoin/{symbol}/{order_id}", tags=["orders"])
 def get_order_by_id(symbol: str, order_id: str):
     try:
-        data = KucoinApi().get_order_by_order_id(symbol=symbol, order_id=order_id)
+        data = KucoinApi(
+            key=config.kucoin_key,
+            secret=config.kucoin_secret,
+            passphrase=config.kucoin_passphrase,
+        ).get_order_by_order_id(symbol=symbol, order_id=order_id)
         return {
             "message": "Order found!",
             "data": data,

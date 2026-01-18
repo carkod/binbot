@@ -58,17 +58,11 @@ class BotTableCrud:
         for bot_id use endpoint function to get BotModel
         """
         if bot:
-            try:
-                if isinstance(bot.id, UUID):
-                    bot_id = bot.id
-                else:
-                    bot_id = UUID(bot.id)
-            except (ValueError, TypeError, AttributeError) as e:
-                raise BinbotErrors(f"Invalid bot ID format: {bot.id}") from e
+            bot_uuid = bot.id if isinstance(bot.id, UUID) else UUID(bot.id)
         else:
             raise BinbotErrors("Bot id or BotModel object is required")
 
-        bot_result = self.session.get(BotTable, bot_id)
+        bot_result = self.session.get(BotTable, bot_uuid)
 
         if not bot_result:
             raise BinbotErrors("Bot not found")

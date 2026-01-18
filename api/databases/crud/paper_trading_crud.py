@@ -1,11 +1,11 @@
 from typing import List
+from uuid import UUID
 from sqlmodel import Session, select, case, desc, asc
 from databases.tables.bot_table import PaperTradingTable
 from bots.models import BotModel
 from databases.utils import independent_session
 from pybinbot import Status, BotBase, BinbotErrors, SaveBotError
 from collections.abc import Sequence
-from uuid import UUID
 from databases.tables.deal_table import DealTable
 from databases.tables.order_table import FakeOrderTable
 from sqlalchemy.orm.attributes import flag_modified
@@ -208,8 +208,13 @@ class PaperTradingTableCrud:
         """
         Delete a paper trading account by id
         """
-        for id in bot_ids:
-            statement = select(PaperTradingTable).where(PaperTradingTable.id == id)
+        for id_value in bot_ids:
+            try:
+                sanitized_id = UUID(str(id_value))
+            except (TypeError, ValueError):
+                continue
+
+            statement = select(PaperTradingTable).where(PaperTradingTable.id == sanitized_id)
             bot = self.session.exec(statement).first()
             if bot:
                 self.session.delete(bot)

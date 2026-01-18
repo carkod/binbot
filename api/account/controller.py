@@ -1,4 +1,3 @@
-from os import getenv
 from account.schemas import BalanceSchema, KucoinBalance
 from databases.crud.balances_crud import BalancesCrud
 from exchange_apis.binance.assets import Assets
@@ -8,6 +7,7 @@ from sqlmodel import Session
 from exchange_apis.kucoin.deals.base import KucoinBaseBalance
 from typing import Dict
 from enum import Enum
+from tools.config import Config
 
 
 class ConsolidatedAccounts:
@@ -17,8 +17,11 @@ class ConsolidatedAccounts:
         else:
             self.session = session
 
+        self.config = Config()
         self.kucoin_api = KucoinApi(
-            key=getenv("KUCOIN_API_KEY"), secret=getenv("KUCOIN_API_SECRET")
+            key=self.config.kucoin_key,
+            secret=self.config.kucoin_secret,
+            passphrase=self.config.kucoin_passphrase,
         )
         self.binance_assets = Assets(session=self.session)
         self.autotrade_settings = self.binance_assets.autotrade_settings

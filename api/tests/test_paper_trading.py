@@ -134,16 +134,11 @@ def test_paper_trading_edit_bot(client: TestClient):
     assert content["data"]["stop_loss"] == 3
 
 
-def test_paper_trading_delete_bot():
-    # Fix missing json arg for delete tests
-    class CustomTestClient(TestClient):
-        def delete_with_payload(self, **kwargs):
-            return self.request(method="DELETE", **kwargs)
-
-    client = CustomTestClient(app)
-    # Use an ID that exists in the test database
-    response = client.delete_with_payload(
-        url="/paper-trading", json=["86da4c65-2728-4625-be61-a1d5f44d706f"]
+def test_paper_trading_delete_bot(client: TestClient):
+    # Use query params like the production endpoint
+    response = client.delete(
+        "/paper-trading",
+        params=[("id", "86da4c65-2728-4625-be61-a1d5f44d706f")],
     )
 
     assert response.status_code == 200

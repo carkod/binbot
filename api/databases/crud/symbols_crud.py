@@ -3,11 +3,11 @@ from contextlib import contextmanager
 from decimal import Decimal
 from time import time
 from typing import Optional, cast
-
 from sqlalchemy import text, exists
 from sqlalchemy.orm import selectinload, QueryableAttribute
 from sqlalchemy.sql.expression import ColumnElement
 from sqlmodel import select, Session
+from tools.config import Config
 from databases.crud.autotrade_crud import AutotradeCrud
 from databases.crud.asset_index_crud import AssetIndexCrud
 from databases.tables.asset_index_table import AssetIndexTable, SymbolIndexLink
@@ -50,9 +50,15 @@ class SymbolsCrud:
         else:
             self.session = session
 
-        # keep API instances as before
-        self.binance_api = BinanceApi()
-        self.kucoin_api = KucoinApi()
+        self.config = Config()
+        self.binance_api = BinanceApi(
+            key=self.config.binance_key, secret=self.config.binance_secret
+        )
+        self.kucoin_api = KucoinApi(
+            key=self.config.kucoin_key,
+            secret=self.config.kucoin_secret,
+            passphrase=self.config.kucoin_passphrase,
+        )
         self.autotrade_crud = AutotradeCrud()
         self.autotrade_settings = self.autotrade_crud.get_settings()
         self.exchange_id = self.autotrade_settings.exchange_id

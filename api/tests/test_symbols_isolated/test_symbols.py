@@ -3,6 +3,15 @@ from fastapi.testclient import TestClient
 from main import app
 
 
+@pytest.fixture(autouse=True)
+def _patch_symbol_crud_apis(monkeypatch):
+    class DummyKucoinApi:
+        def __init__(self, *args, **kwargs):
+            pass
+
+    monkeypatch.setattr("databases.crud.symbols_crud.KucoinApi", DummyKucoinApi)
+
+
 @pytest.fixture()
 def client() -> TestClient:
     client = TestClient(app)
