@@ -46,7 +46,7 @@ class BinanceLongDeal(BinanceSpotDeal):
 
         return self.active_bot
 
-    def position_manager(self, close_price: float, open_price: float):
+    def deal_exit_orchestration(self, close_price: float, open_price: float):
         # interface consistency
         current_price = close_price
         self.check_failed_switch_long_bot()

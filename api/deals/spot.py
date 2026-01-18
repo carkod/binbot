@@ -46,7 +46,7 @@ class LongDeal(BinanceSpotDeal):
 
         return self.active_bot
 
-    def position_manager(self, current_price: float, open_price: float):
+    def deal_exit_orchestration(self, current_price: float, open_price: float):
         self.check_failed_switch_long_bot()
         self.close_conditions(current_price)
 

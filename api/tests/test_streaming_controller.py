@@ -3,7 +3,9 @@ import time
 
 import pandas as pd
 from pandas import Index
-from pybinbot import Strategy
+from typing import cast
+from pybinbot import Strategy, Status
+from streaming.apex_flow_closing import ApexFlowClose
 from streaming.position_manager import (
     BaseStreaming,
     PositionManager,
@@ -252,83 +254,108 @@ class TestPositionManager:
         assert spreads.bb_mid == 0
         assert spreads.bb_low == 0
 
-    def test_update_bots_parameters_triggers_open_deal_and_save(self, monkeypatch):
+    def test_market_trailing_analytics_updates_bot_parameters_and_saves(
+        self, monkeypatch
+    ):
         base = self._make_base_streaming(monkeypatch)
         sc = PositionManager(base, symbol="BTCUSDC")
 
         bot = self._make_bot(strategy=Strategy.long)
 
-        # Track calls on DealGateway
-        class FakeDealGateway:
-            def __init__(self, bot, db_table):
-                self.bot = bot
-                self.db_table = db_table
-                self.opened = False
-
-            def open_deal(self):
-                self.opened = True
-                return self.bot
-
+        # Force deterministic spreads and ApexFlow context
         monkeypatch.setattr(
-            "streaming.position_manager.DealGateway",
-            FakeDealGateway,
+            sc,
+            "build_bb_spreads",
+            lambda: HABollinguerSpread(bb_high=110, bb_mid=105, bb_low=100),
+            raising=False,
+        )
+        sc.apex_flow_closing = cast(
+            ApexFlowClose,
+            types.SimpleNamespace(
+                df=pd.DataFrame([{"high": 110.0, "low": 100.0}]),
+                get_detectors=lambda: {"vce": True, "mcd": False, "lcrs": False},
+                get_trend_ema=lambda: (2.0, 1.0),
+            ),
         )
 
-        # BB spreads valid values to avoid early return
-        spreads = HABollinguerSpread(bb_high=110, bb_mid=105, bb_low=100)
-        sc.update_bots_parameters(
+        sc.market_trailing_analytics(
             bot=bot,
             db_table=BotTable,
             current_price=101.0,
-            bb_spreads=spreads,
         )
 
         # Bot parameters must be updated and saved
         assert base.bot_controller.saved, "Expected controller.save to be called"
-        # And DealGateway.open_deal should be triggered
-        # Verify via replaced class state
-        dg_instance = FakeDealGateway(bot, BotTable)
-        dg_instance.open_deal()
-        assert dg_instance.opened is True
+        saved_bot = base.bot_controller.saved[0]
+        assert saved_bot.trailling_profit > 0
+        assert saved_bot.trailling_deviation > 0
 
-    def test_dynamic_trailling_updates_for_long_and_paper(self, monkeypatch):
-        base = self._make_base_streaming(
-            monkeypatch, active_pairs=["XUSDC"]
-        )  # decouple from symbol
+    def test_process_deal_runs_trailing_before_deal_exit(self, monkeypatch):
+        base = self._make_base_streaming(monkeypatch, active_pairs=["BTCUSDC"])
         sc = PositionManager(base, symbol="BTCUSDC")
 
-        # Inject current bots directly without DB calls
-        sc.current_bot = self._make_bot(pair="BTCUSDC", strategy=Strategy.long)
-        sc.current_test_bot = self._make_bot(pair="BTCUSDC", strategy=Strategy.long)
+        live_bot = self._make_bot(pair="BTCUSDC", strategy=Strategy.long)
+        live_bot.dynamic_trailling = True
 
-        # Stub DealGateway to avoid external logic
+        monkeypatch.setattr(
+            BaseStreaming,
+            "get_current_bot",
+            lambda self, symbol: live_bot,
+        )
+        monkeypatch.setattr(
+            BaseStreaming,
+            "get_current_test_bot",
+            lambda self, symbol: None,
+        )
+
+        call_order = []
+
+        def fake_market(self, bot, db_table, current_price):
+            call_order.append("trailing")
+            assert bot is live_bot
+
+        monkeypatch.setattr(
+            PositionManager,
+            "market_trailing_analytics",
+            fake_market,
+        )
+
         class FakeDealGateway:
+            exit_calls: list[tuple[float, float]] = []
+
             def __init__(self, bot, db_table):
                 self.bot = bot
                 self.db_table = db_table
 
-            def open_deal(self):
-                return self.bot
+            def deal_exit_orchestration(self, close_price, open_price):
+                call_order.append("deal_exit")
+                FakeDealGateway.exit_calls.append((close_price, open_price))
+
+            def save(self, bot):
+                base.bot_controller.save(bot)
 
         monkeypatch.setattr(
             "streaming.position_manager.DealGateway",
             FakeDealGateway,
         )
 
-        sc.dynamic_trailling()
+        sc.process_deal()
 
-        # Expect at least one save across controllers due to updates
-        assert (
-            len(base.bot_controller.saved) + len(base.paper_trading_controller.saved)
-            >= 1
+        assert call_order.count("trailing") == 1
+        assert call_order.index("trailing") < call_order.index("deal_exit")
+        assert FakeDealGateway.exit_calls, (
+            "Expected deal_exit_orchestration to be called"
         )
 
-    def test_process_klines_calls_deal_updates_for_active_pair(self, monkeypatch):
+    def test_process_deal_calls_deal_exit_orchestration_for_active_pair(
+        self, monkeypatch
+    ):
         base = self._make_base_streaming(monkeypatch, active_pairs=["BTCUSDC"])
         sc = PositionManager(base, symbol="BTCUSDC")
 
         # Provide a current bot via BaseStreaming.get_current_bot
         bot = self._make_bot(pair="BTCUSDC", strategy=Strategy.long)
+        bot.dynamic_trailling = False
 
         # Mock DB access by overriding BaseStreaming.get_current_bot at class level
         monkeypatch.setattr(
@@ -343,28 +370,36 @@ class TestPositionManager:
             lambda self, symbol: None,
         )
 
-        # Track that deal_updates is called
+        # Track that deal_exit_orchestration is called
         class FakeDealGateway:
-            def __init__(self, bot, db_table):
-                self.called = False
+            exit_calls: list[tuple[float, float]] = []
 
-            def deal_updates(self, close_price, open_price):
-                self.called = True
+            def __init__(self, bot, db_table):
+                self.bot = bot
+                self.db_table = db_table
+
+            def deal_exit_orchestration(self, close_price, open_price):
+                FakeDealGateway.exit_calls.append((close_price, open_price))
+
+            def save(self, bot):
+                base.bot_controller.save(bot)
 
         monkeypatch.setattr(
             "streaming.position_manager.DealGateway",
             FakeDealGateway,
         )
 
-        sc.process_klines()
-        # No assertion on FakeDealGateway instance; simply ensure no exceptions
-        assert True
+        sc.process_deal()
+        assert FakeDealGateway.exit_calls, (
+            "Expected deal_exit_orchestration to be called"
+        )
 
-    def test_process_klines_binance_error_sets_status_and_saves(self, monkeypatch):
+    def test_process_deal_binance_error_sets_status_and_saves(self, monkeypatch):
         base = self._make_base_streaming(monkeypatch, active_pairs=["BTCUSDC"])
         sc = PositionManager(base, symbol="BTCUSDC")
 
         bot = self._make_bot(pair="BTCUSDC", strategy=Strategy.long)
+        bot.dynamic_trailling = False
 
         # Mock DB access by overriding BaseStreaming.get_current_bot at class level
         monkeypatch.setattr(
@@ -381,9 +416,10 @@ class TestPositionManager:
 
         class ErrorDealGateway:
             def __init__(self, bot, db_table):
-                pass
+                self.bot = bot
+                self.db_table = db_table
 
-            def deal_updates(self, close_price, open_price):
+            def deal_exit_orchestration(self, close_price, open_price):
                 # Raise BinanceErrors with code -2010 to hit error path
                 raise BinanceErrors("Order error", -2010)
 
@@ -396,9 +432,10 @@ class TestPositionManager:
             ErrorDealGateway,
         )
 
-        sc.process_klines()
-        # Controller should have attempted save on error
+        sc.process_deal()
+        # Controller should have attempted save on error and status updated
         assert base.bot_controller.saved or base.paper_trading_controller.saved
+        assert bot.status == Status.error
 
     def test_streaming_controller_uses_kucoin_api_for_kucoin_symbols(self, monkeypatch):
         """Test that PositionManager uses KucoinApi when exchange_id is KUCOIN"""

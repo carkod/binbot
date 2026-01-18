@@ -45,7 +45,7 @@ class CandlesCrud:
             f"✅ Created timeseries collection: {self.collection_name} for {symbol}"
         )
         # Not found, fetch from Binance
-        klines = self.binance_api.get_ui_klines(symbol=symbol, interval=interval)
+        klines = self.binance_api.get_ui_klines(symbol=symbol, interval=interval.value)
         if klines:
             # Store in MongoDB
             docs = []
