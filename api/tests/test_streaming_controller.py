@@ -44,7 +44,12 @@ class TestPositionManager:
             def get_symbol(self, symbol: str):
                 # Assume 4-letter quote (USDT/USDC). Good enough for tests.
                 base, quote = symbol[:-4], symbol[-4:]
-                return types.SimpleNamespace(base_asset=base, quote_asset=quote)
+                return types.SimpleNamespace(
+                    base_asset=base,
+                    quote_asset=quote,
+                    price_precision=4,
+                    qty_precision=4,
+                )
 
         class DummyCandlesCrud:
             pass
@@ -174,6 +179,7 @@ class TestPositionManager:
     def _make_bot(self, pair="BTCUSDC", strategy=Strategy.long):
         # Lightweight BotModel-like object for tests
         bot = types.SimpleNamespace()
+        bot.name = "apex_aggressive_momo"
         bot.pair = pair
         bot.fiat = "USDC"
         bot.strategy = strategy
@@ -196,14 +202,6 @@ class TestPositionManager:
         # methods used in error handling
         bot.add_log = lambda msg: None
         return bot
-
-    def test_calc_quantile_volatility_reasonable(self, monkeypatch):
-        base = self._make_base_streaming(monkeypatch)
-        sc = PositionManager(base, symbol="BTCUSDC")
-
-        value = sc.calc_quantile_volatility(window=40, quantile=0.9)
-        assert isinstance(value, float)
-        assert 0 <= value <= 1  # quantile of mean abs returns
 
     def test_build_bb_spreads_minimum_length(self, monkeypatch):
         base = self._make_base_streaming(monkeypatch)

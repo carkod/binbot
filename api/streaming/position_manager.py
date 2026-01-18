@@ -2,7 +2,6 @@ import logging
 from datetime import datetime
 from typing import Type, Union
 
-import pandas as pd
 from streaming.apex_flow_closing import ApexFlowClose
 from deals.gateway import DealGateway
 from bots.models import BotModel
@@ -144,33 +143,6 @@ class PositionManager:
 
         self.df = HeikinAshi().post_process(self.df)
         self.btc_df = HeikinAshi().post_process(self.btc_df)
-
-    def calc_quantile_volatility(
-        self, window: int = 100, quantile: float = 0.9
-    ) -> float:
-        """
-        Calculate rolling quantile-based volatility for stop loss adaptation.
-        Returns the specified quantile of rolling absolute returns over the window.
-        Uses absolute returns instead of log returns, larger window, and higher quantile.
-        """
-        if not self.klines or len(self.klines) < window:
-            return 0.0
-
-        # Extract close prices from klines
-        close_prices = [float(k[4]) for k in self.klines[-window:]]
-        prices = pd.Series(close_prices)
-
-        # Use absolute returns instead of log returns
-        abs_returns = prices.pct_change().abs().dropna()
-        if len(abs_returns) < 5:
-            return 0.0
-        rolling_vol = (
-            abs_returns.rolling(window=min(40, len(abs_returns) // 2)).mean().dropna()
-        )
-        if len(rolling_vol) < 5:
-            return 0.0
-        quantile_value = float(rolling_vol.quantile(quantile))
-        return quantile_value
 
     def process_klines(self) -> None:
         """
@@ -316,6 +288,63 @@ class PositionManager:
         else:
             return 0
 
+    def set_long_trail_params(
+        self,
+        top_spread: float,
+        bottom_spread: float,
+        bot_profit: float,
+        bot: BotModel,
+        current_price: float,
+        expansion_multiplier: float,
+        is_aggressive_momo: bool,
+        expansion_range: float,
+        trail_tighten_mult: float,
+    ) -> None:
+        """
+        LONG trailing logic.
+
+        Rules:
+        - stop_loss is a fixed safety net (handled elsewhere, never trailed)
+        - trailing_profit is a ceiling trigger only
+        - trailing_deviation is the real stop once trailing starts
+        """
+
+        # ─────────────────────────────
+        # Trailing Profit (ceiling)
+        # ─────────────────────────────
+        raw_trail_profit = top_spread * trail_tighten_mult * expansion_multiplier
+
+        # Progressive tightening as profits grow
+        if bot_profit >= 5:
+            raw_trail_profit = min(raw_trail_profit, 2.0)
+        elif bot_profit >= 3:
+            raw_trail_profit = min(raw_trail_profit, 3.0)
+
+        bot.trailling_profit = round_numbers(max(0.6, raw_trail_profit), 2)
+
+        # ─────────────────────────────
+        # Trailing Deviation (real stop)
+        # ─────────────────────────────
+        bot.trailling_deviation = round_numbers(
+            max(0.6, bottom_spread * trail_tighten_mult),
+            2,
+        )
+
+        # ─────────────────────────────
+        # Safety stop (only set once)
+        # ─────────────────────────────
+        if bot.stop_loss == 0:
+            if is_aggressive_momo:
+                bot.stop_loss = round_numbers(
+                    bot.deal.opening_price - (expansion_range * 0.5),
+                    self.symbol_data.price_precision,
+                )
+            else:
+                bot.stop_loss = round_numbers(
+                    bot.deal.opening_price * (1 - 0.03),
+                    self.symbol_data.price_precision,
+                )
+
     def update_bots_parameters(
         self,
         bot: BotModel,
@@ -324,12 +353,15 @@ class PositionManager:
         bb_spreads: HABollinguerSpread,
     ) -> None:
         """
-        ApexFlow-aware asymmetric trailing:
-        - Trailing deviation and stop loss adapt geometrically based on PnL
-        - Trailing profit expands if ApexFlow detects volatility/momentum expansion
-        - Detector signals prevent premature exit while keeping stop geometry safe
+        ApexFlow-aware trailing manager.
+
+        Philosophy:
+        - stop_loss = emergency only
+        - trailing_deviation = active stop after trailing
+        - trailing_profit = trigger, never exit
         """
-        controller: Union[PaperTradingTableCrud, BotTableCrud] = (
+
+        controller = (
             self.base_streaming.bot_controller
             if db_table == BotTable
             else self.base_streaming.paper_trading_controller
@@ -337,60 +369,49 @@ class PositionManager:
 
         original_bot = deepcopy(bot)
 
-        # --- Compute quantile-based volatility for stop loss ---
-        quantile_vol = self.calc_quantile_volatility(window=40, quantile=0.99)
-        if quantile_vol == 0:
-            quantile_vol = 0.03  # fallback 3%
-
-        # --- Bollinger spreads ---
-        if bb_spreads.bb_high == 0 or bb_spreads.bb_low == 0 or bb_spreads.bb_mid == 0:
+        # ─────────────────────────────
+        # Bollinger spreads
+        # ─────────────────────────────
+        if bb_spreads.bb_high == 0 or bb_spreads.bb_low == 0:
             return
 
-        top_spread = round_numbers(
-            abs((bb_spreads.bb_high - bb_spreads.bb_mid) / bb_spreads.bb_high) * 100, 2
+        top_spread = (
+            abs((bb_spreads.bb_high - bb_spreads.bb_mid) / bb_spreads.bb_high) * 100
         )
-        whole_spread = round_numbers(
-            abs((bb_spreads.bb_high - bb_spreads.bb_low) / bb_spreads.bb_high) * 100, 2
-        )
-        bottom_spread = round_numbers(
-            abs((bb_spreads.bb_mid - bb_spreads.bb_low) / bb_spreads.bb_mid) * 100, 2
+        bottom_spread = (
+            abs((bb_spreads.bb_mid - bb_spreads.bb_low) / bb_spreads.bb_mid) * 100
         )
 
-        # Clamp spreads to sane ranges
-        whole_spread = min(max(whole_spread, 2), 8)
-        top_spread = min(max(top_spread, 1.5), 6)
-        bottom_spread = min(max(bottom_spread, 1), 4)
+        top_spread = min(max(top_spread, 1.5), 6.0)
+        bottom_spread = min(max(bottom_spread, 1.0), 4.0)
 
-        # --- Compute current profit ---
+        # ─────────────────────────────
+        # Profit
+        # ─────────────────────────────
         bot_profit = self.compute_single_bot_profit(bot, current_price)
-        # recent trades
-        row = self.apex_flow_closing.df.iloc[-1]
 
-        # --- ApexFlow Detector Check ---
+        # ─────────────────────────────
+        # ApexFlow detectors
+        # ─────────────────────────────
+        row = self.apex_flow_closing.df.iloc[-1]
         detectors = self.apex_flow_closing.get_detectors()
-        expansion_range = row["high"] - row["low"]
 
         vce_signal = detectors.get("vce", False)
         mcd_signal = detectors.get("mcd", False)
         lcrs_signal = detectors.get("lcrs", False)
 
-        is_aggressive_momo = bot.name.lower().find("aggressive_momo") != -1
+        expansion_range = row["high"] - row["low"]
+        is_aggressive_momo = bot.name.lower().find("aggressive momo") != -1
 
-        # --- Trend filter (EMA fast/slow) ---
+        # ─────────────────────────────
+        # Trend filter (only for tightening)
+        # ─────────────────────────────
         ema_fast, ema_slow = self.apex_flow_closing.get_trend_ema()
         trend_up = ema_fast > ema_slow if ema_fast and ema_slow else True
 
-        # Determine if Apex allows exit
-        if bot.strategy == Strategy.long:
-            detector_exit_flag = (
-                not (vce_signal or mcd_signal or lcrs_signal) or not trend_up
-            )
-        else:
-            detector_exit_flag = (
-                not (vce_signal or mcd_signal or lcrs_signal) or trend_up
-            )
-
-        # --- Expansion-aware multiplier ---
+        # ─────────────────────────────
+        # Expansion multiplier
+        # ─────────────────────────────
         expansion_multiplier = 1.0
         if vce_signal:
             expansion_multiplier += 0.2
@@ -398,62 +419,39 @@ class PositionManager:
             expansion_multiplier += 0.1
         expansion_multiplier = min(expansion_multiplier, 1.5)
 
-        # --- Asymmetric geometry: tighten for profits, protect losses ---
-        # Compute geometric multiplier for trailing deviation based on PnL
-        trail_tighten_mult = 1.0
-        if bot_profit > 0:
-            trail_tighten_mult = max(0.6, 1.0 - (bot_profit / 100))  # tighten for gains
+        # ─────────────────────────────
+        # Trailing tightening schedule
+        # ─────────────────────────────
+        if bot_profit < 2:
+            trail_tighten_mult = 1.0
+        elif bot_profit < 5:
+            trail_tighten_mult = 0.7
         else:
-            trail_tighten_mult = 1.0  # leave room for losses
+            trail_tighten_mult = 0.45
 
-        # --- Adjust trailing parameters ---
-        bot.trailling = True
+        # Do not tighten against trend while signals are alive
+        if (vce_signal or mcd_signal or lcrs_signal) and trend_up:
+            trail_tighten_mult = max(trail_tighten_mult, 0.7)
+
+        # ─────────────────────────────
+        # Apply strategy-specific logic
+        # ─────────────────────────────
         if bot.strategy == Strategy.long:
-            bot.trailling_profit = round_numbers(
-                max(0.5, top_spread * trail_tighten_mult * expansion_multiplier), 2
-            )
-            bot.trailling_deviation = round_numbers(
-                max(0.6, bottom_spread * trail_tighten_mult), 2
-            )
-            if is_aggressive_momo:
-                bot.stop_loss = bot.deal.opening_price - (expansion_range * 0.5)
-            else:
-                bot.stop_loss = round_numbers(
-                    bot.deal.opening_price * (1 - 0.03),
-                    self.symbol_data.price_precision,
-                )
-
-        elif bot.strategy == Strategy.margin_short:
-            bot.trailling_profit = round_numbers(
-                max(0.5, bottom_spread * trail_tighten_mult * expansion_multiplier), 2
-            )
-            bot.trailling_deviation = round_numbers(
-                max(0.6, top_spread * trail_tighten_mult), 2
-            )
-            bot.stop_loss = round_numbers(
-                max(3.0, min(quantile_vol * 100 * trail_tighten_mult, 7.0)), 2
+            self.set_long_trail_params(
+                top_spread=top_spread,
+                bottom_spread=bottom_spread,
+                bot_profit=bot_profit,
+                bot=bot,
+                current_price=current_price,
+                expansion_multiplier=expansion_multiplier,
+                is_aggressive_momo=is_aggressive_momo,
+                expansion_range=expansion_range,
+                trail_tighten_mult=trail_tighten_mult,
             )
 
-        # --- Force trailing & stop to be outside current price if Apex blocks exit ---
-        if not detector_exit_flag and bot.strategy == Strategy.long:
-            # move stop below current price and trailing deviation above price
-            bot.stop_loss = min(bot.stop_loss, original_bot.stop_loss)
-            bot.trailling_deviation = max(
-                bot.trailling_deviation,
-                abs(
-                    bot.trailling_deviation + (current_price - bot.trailling_deviation)
-                ),
-            )
-        else:
-            bot.stop_loss = max(bot.stop_loss, original_bot.stop_loss)
-            bot.trailling_deviation = max(
-                bot.trailling_deviation,
-                abs(
-                    bot.trailling_deviation - (current_price - bot.trailling_deviation)
-                ),
-            )
-
-        # --- Save only if changed ---
+        # ─────────────────────────────
+        # Persist only if changed
+        # ─────────────────────────────
         if (
             bot.trailling_profit != original_bot.trailling_profit
             or bot.trailling_deviation != original_bot.trailling_deviation
