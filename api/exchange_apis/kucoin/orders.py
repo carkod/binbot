@@ -2,7 +2,7 @@ import random
 import uuid
 import logging
 from time import sleep, time
-from exchange_apis.kucoin.rest import KucoinRest
+from exchange_apis.kucoin.market import KucoinMarket
 from kucoin_universal_sdk.generate.spot.order.model_add_order_sync_resp import (
     AddOrderSyncResp,
 )
@@ -60,7 +60,7 @@ from kucoin_universal_sdk.generate.spot.market import (
 )
 
 
-class KucoinOrders(KucoinRest):
+class KucoinOrders(KucoinMarket):
     """
     Convienience wrapper for Kucoin order operations.
 
