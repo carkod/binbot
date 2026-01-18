@@ -28,7 +28,8 @@ class Config:
     def __init__(self):
         self._env = os.getenv("ENV", "")
         self._ci_mode = self._env.lower() == "ci"
-        self._validate_required_vars()
+        if not self._ci_mode:
+            self._validate_required_vars()
 
     def _get_required(self, key: str) -> str:
         """Get required environment variable or raise exception"""
@@ -50,9 +51,6 @@ class Config:
 
     def _validate_required_vars(self):
         """Validate that all required environment variables are present"""
-        if self._ci_mode:
-            return
-
         required_vars = [
             "PYTHONUNBUFFERED",
             "DEBUG",
@@ -87,7 +85,7 @@ class Config:
         ]
 
         missing = [var for var in required_vars if not os.getenv(var)]
-        if missing and not self._ci_mode:
+        if missing:
             raise ConfigurationError(
                 f"Missing required environment variables: {', '.join(missing)}"
             )
