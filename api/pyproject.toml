@@ -23,7 +23,7 @@ dependencies = [
     "pydantic-settings>=2.10.1",
     "confluent-kafka>=2.11.1",
     "aiokafka>=0.12.0",
-    "pybinbot>=0.4.11",
+    "pybinbot>=0.4.17",
 ]
 
 [project.urls]

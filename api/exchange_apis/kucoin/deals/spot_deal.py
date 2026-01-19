@@ -308,7 +308,7 @@ class KucoinSpotDeal(KucoinBaseBalance):
         try:
             system_order = self.kucoin_api.buy_order(
                 symbol=self.symbol,
-                qty=(qty * repurchase_multiplier),
+                qty=round_numbers(qty * repurchase_multiplier, self.qty_precision),
             )
 
         except RestError as e:

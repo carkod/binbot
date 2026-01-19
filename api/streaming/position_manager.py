@@ -425,7 +425,6 @@ class PositionManager:
         when price and symbol match existent deal
         """
         symbol = self.symbol
-        logging.info(f"Processing deals for {symbol}")
         close_price = float(self.klines[-1][4])
         open_price = float(self.klines[-1][1])
         converted_symbol = symbol.replace("-", "")
