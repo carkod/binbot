@@ -1,16 +1,15 @@
-import asyncio
+from time import sleep
 from streaming.position_manager import (
     PositionManager,
     BaseStreaming,
 )
 from pybinbot import configure_logging
 
-# initialization data
-bs = BaseStreaming()
-configure_logging(force=True)
 
-
-async def process_klines():
+def main():
+    # initialization data
+    bs = BaseStreaming()
+    configure_logging(force=True)
     total_count = len(bs.active_bot_pairs)
     index = 0
     while True:
@@ -24,32 +23,10 @@ async def process_klines():
 
         symbol = bs.active_bot_pairs[index]
         sc = PositionManager(bs, symbol)
-        sc.process_klines()
+        sc.process_deal()
         index += 1
-        await asyncio.sleep(15)
-
-
-async def dynamic_trailing():
-    total_count = len(bs.active_bot_pairs)
-    index = 0
-    while True:
-        if index == total_count - 1:
-            bs.get_all_active_pairs()
-            total_count = len(bs.active_bot_pairs)
-            index = 0
-
-        symbol = bs.active_bot_pairs[index]
-        sc = PositionManager(bs, symbol)
-        sc.dynamic_trailling()
-        index += 1
-        await asyncio.sleep(15)
-
-
-async def main():
-    updates_task = asyncio.create_task(process_klines())
-    trailing_task = asyncio.create_task(dynamic_trailing())
-    await asyncio.gather(updates_task, trailing_task)
+        sleep(15)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

@@ -59,11 +59,13 @@ class DealGateway:
         """
         return self.deal.close_all()
 
-    def deal_updates(self, close_price: float, open_price: float) -> BotModel:
+    def deal_exit_orchestration(
+        self, close_price: float, open_price: float
+    ) -> BotModel:
         """
         Abstract method for streaming deals during bot runtime
         """
-        return self.deal.position_manager(
+        return self.deal.deal_exit_orchestration(
             close_price=close_price, open_price=open_price
         )
 

@@ -154,54 +154,6 @@ class PositionManager:
         self.df = HeikinAshi().post_process(self.df)
         self.btc_df = HeikinAshi().post_process(self.btc_df)
 
-    def process_klines(self) -> None:
-        """
-        Updates deals with klines websockets,
-        when price and symbol match existent deal
-        """
-        symbol = self.symbol
-        logging.info(f"Processing klines for {symbol}")
-        close_price = float(self.klines[-1][4])
-        open_price = float(self.klines[-1][1])
-        converted_symbol = symbol.replace("-", "")
-
-        if converted_symbol in self.base_streaming.active_bot_pairs:
-            current_bot = self.base_streaming.get_current_bot(converted_symbol)
-            current_test_bot = self.base_streaming.get_current_test_bot(
-                converted_symbol
-            )
-
-            try:
-                if current_bot:
-                    deal = DealGateway(bot=current_bot, db_table=BotTable)
-                    deal.deal_updates(
-                        close_price,
-                        open_price,
-                    )
-                elif current_test_bot:
-                    deal = DealGateway(bot=current_test_bot, db_table=PaperTradingTable)
-                    deal.deal_updates(
-                        close_price,
-                        open_price,
-                    )
-                else:
-                    return
-
-            except BinanceErrors as error:
-                if error.code in (-2010, -1013):
-                    if current_bot:
-                        bot = current_bot
-                    elif current_test_bot:
-                        bot = current_test_bot
-                    else:
-                        return
-
-                    bot.add_log(error.message)
-                    bot.status = Status.error
-                    deal.save(bot)
-
-        return
-
     def load_current_bots(self, symbol: str) -> None:
         try:
             current_bot_payload = self.base_streaming.get_current_bot(symbol)
@@ -354,12 +306,11 @@ class PositionManager:
                     self.symbol_data.price_precision,
                 )
 
-    def update_bots_parameters(
+    def market_trailing_analytics(
         self,
         bot: BotModel,
         db_table: Type[Union[PaperTradingTable, BotTable]],
         current_price: float,
-        bb_spreads: HABollinguerSpread,
     ) -> None:
         """
         ApexFlow-aware trailing manager.
@@ -381,6 +332,7 @@ class PositionManager:
         # ─────────────────────────────
         # Bollinger spreads
         # ─────────────────────────────
+        bb_spreads = self.build_bb_spreads()
         if bb_spreads.bb_high == 0 or bb_spreads.bb_low == 0:
             return
 
@@ -466,37 +418,64 @@ class PositionManager:
             or bot.stop_loss != original_bot.stop_loss
         ):
             controller.save(bot)
-            deal = DealGateway(bot, db_table=db_table)
-            deal.open_deal()
 
-    def dynamic_trailling(self) -> None:
+    def process_deal(self) -> None:
         """
-        Update bot with dynamic trailling enabled to update
-        take_profit and trailling according to bollinguer bands
-        dynamic movements in the market
+        Updates deals with klines websockets,
+        when price and symbol match existent deal
         """
         symbol = self.symbol
         close_price = float(self.klines[-1][4])
+        open_price = float(self.klines[-1][1])
         converted_symbol = symbol.replace("-", "")
 
-        # Check if it matches any active bots
-        self.load_current_bots(converted_symbol)
-
-        bb_spreads = self.build_bb_spreads()
-
-        if self.current_bot and self.current_bot.dynamic_trailling:
-            self.update_bots_parameters(
-                bot=self.current_bot,
-                bb_spreads=bb_spreads,
-                db_table=BotTable,
-                current_price=close_price,
+        if converted_symbol in self.base_streaming.active_bot_pairs:
+            self.current_bot = self.base_streaming.get_current_bot(converted_symbol)
+            self.current_test_bot = self.base_streaming.get_current_test_bot(
+                converted_symbol
             )
 
-        if self.current_test_bot and self.current_test_bot.dynamic_trailling:
-            self.update_bots_parameters(
-                bot=self.current_test_bot,
-                bb_spreads=bb_spreads,
-                db_table=PaperTradingTable,
-                current_price=close_price,
-            )
-        pass
+            try:
+                if self.current_bot:
+                    if self.current_bot.dynamic_trailling:
+                        self.market_trailing_analytics(
+                            bot=self.current_bot,
+                            db_table=BotTable,
+                            current_price=close_price,
+                        )
+                    deal = DealGateway(bot=self.current_bot, db_table=BotTable)
+                    deal.deal_exit_orchestration(
+                        close_price,
+                        open_price,
+                    )
+                elif self.current_test_bot:
+                    if self.current_test_bot.dynamic_trailling:
+                        self.market_trailing_analytics(
+                            bot=self.current_test_bot,
+                            db_table=PaperTradingTable,
+                            current_price=close_price,
+                        )
+                    deal = DealGateway(
+                        bot=self.current_test_bot, db_table=PaperTradingTable
+                    )
+                    deal.deal_exit_orchestration(
+                        close_price,
+                        open_price,
+                    )
+                else:
+                    return
+
+            except BinanceErrors as error:
+                if error.code in (-2010, -1013):
+                    if self.current_bot:
+                        bot = self.current_bot
+                    elif self.current_test_bot:
+                        bot = self.current_test_bot
+                    else:
+                        return
+
+                    bot.add_log(error.message)
+                    bot.status = Status.error
+                    deal.save(bot)
+
+        return
