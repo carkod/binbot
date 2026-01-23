@@ -14,6 +14,7 @@ from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from bots.models import BotModel, OrderModel
 from exchange_apis.kucoin.deals.spot_deal import KucoinSpotDeal
 from exchange_apis.kucoin.deals.margin_deal import KucoinMarginDeal
+from kucoin_universal_sdk.internal.infra.default_transport import RestError
 
 
 class KucoinLongDeal(KucoinSpotDeal):
@@ -212,13 +213,14 @@ class KucoinLongDeal(KucoinSpotDeal):
 
         return self.active_bot
 
-    def trailling_profit(self) -> BotModel | None:
+    def trailling_profit(self, repurchase_multiplier: float = 1) -> BotModel | None:
         """
         Sell at take_profit price, because prices will not reach trailling
         """
 
         if isinstance(self.controller, PaperTradingTableCrud):
-            qty = 1.0  # all qty simulated
+            # all qty simulated
+            qty = 1.0
         else:
             qty = self.kucoin_api.get_single_spot_balance(self.symbol_info.base_asset)
             # Already sold?
@@ -243,12 +245,25 @@ class KucoinLongDeal(KucoinSpotDeal):
                 "Dispatching sell order for trailling profit...",
                 self.active_bot,
             )
-            # Dispatch real order
-            # No price means market order
-            system_order = self.kucoin_api.sell_order(
-                symbol=self.symbol,
-                qty=round_numbers(qty, self.qty_precision),
-            )
+            try:
+                # Dispatch real order
+                # No price means market order
+                system_order = self.kucoin_api.sell_order(
+                    symbol=self.symbol,
+                    qty=round_numbers(qty * repurchase_multiplier, self.qty_precision),
+                )
+            except RestError as e:
+                code = float(e.response.code)
+                if code == 200004:
+                    if repurchase_multiplier - 0.2 <= 0:
+                        self.controller.update_logs(
+                            bot=self.active_bot,
+                            log_message="Base order failed due to insufficient balance after retries.",
+                        )
+                        return self.active_bot
+                    self.trailling_profit(
+                        repurchase_multiplier=repurchase_multiplier - 0.2
+                    )
 
         price = float(system_order.price)
 
