@@ -11,7 +11,6 @@ from databases.crud.candles_crud import CandlesCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
-from streaming.models import HABollinguerSpread
 from pybinbot import (
     Status,
     Strategy,
@@ -24,6 +23,7 @@ from pybinbot import (
     BinbotErrors,
     BinanceApi,
     KucoinApi,
+    HABollinguerSpread,
 )
 from copy import deepcopy
 from tools.config import Config
@@ -269,10 +269,6 @@ class PositionManager:
         - trailing_profit is a ceiling trigger only
         - trailing_deviation is the real stop once trailing starts
         """
-
-        # ─────────────────────────────
-        # Trailing Profit (ceiling)
-        # ─────────────────────────────
         raw_trail_profit = top_spread * trail_tighten_mult * expansion_multiplier
 
         # Progressive tightening as profits grow
@@ -282,18 +278,11 @@ class PositionManager:
             raw_trail_profit = min(raw_trail_profit, 3.0)
 
         bot.trailling_profit = round_numbers(max(0.6, raw_trail_profit), 2)
-
-        # ─────────────────────────────
-        # Trailing Deviation (real stop)
-        # ─────────────────────────────
         bot.trailling_deviation = round_numbers(
             max(0.6, bottom_spread * trail_tighten_mult),
             2,
         )
 
-        # ─────────────────────────────
-        # Safety stop (only set once)
-        # ─────────────────────────────
         if bot.stop_loss == 0:
             if is_aggressive_momo:
                 bot.stop_loss = round_numbers(

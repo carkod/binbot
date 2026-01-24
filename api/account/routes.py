@@ -13,14 +13,17 @@ from pybinbot import (
     BinbotErrors,
     LowBalanceCleanupError,
     MarginLoanNotFound,
+    KucoinApi,
 )
 from tools.handle_error import json_response_error, json_response_message
 from sqlmodel import Session
 from databases.utils import get_session
 from databases.crud.balances_crud import BalancesCrud
 from typing import Literal
+from tools.config import Config
 
 account_blueprint = APIRouter()
+config = Config()
 
 
 @account_blueprint.get("/balance", response_model=BalanceResponse, tags=["account"])
@@ -146,3 +149,22 @@ def one_click_liquidation(
 
     except BinbotErrors as error:
         return json_response_error(f"Error liquidating {asset}: {error.message}")
+
+
+@account_blueprint.get("/kucoin/balance/{asset}", tags=["account"])
+def get_single_balance(asset: str):
+    data = KucoinApi(
+        key=config.kucoin_key,
+        secret=config.kucoin_secret,
+        passphrase=config.kucoin_passphrase,
+    ).get_single_spot_balance(asset=asset)
+    if data == 0:
+        return HTTPException(
+            status_code=404,
+            detail=f"No balance found for asset {asset}",
+        )
+
+    return {
+        "message": "Balance found!",
+        "data": data,
+    }

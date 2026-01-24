@@ -178,34 +178,43 @@ class KucoinLongDeal(KucoinSpotDeal):
                     "Dispatching sell order for trailling profit...",
                     self.active_bot,
                 )
-                # Dispatch real order
-                system_order = self.kucoin_api.sell_order(symbol=self.symbol, qty=qty)
+                try:
+                    # Dispatch real order
+                    system_order = self.kucoin_api.sell_order(
+                        symbol=self.symbol, qty=qty
+                    )
 
-            price = float(system_order.price)
-            stop_loss_order = OrderModel(
-                timestamp=system_order.created_at,
-                order_id=system_order.id,
-                deal_type=DealType.take_profit,
-                pair=system_order.symbol,
-                order_side=system_order.side,
-                order_type=system_order.type,
-                price=price,
-                qty=float(system_order.deal_size),
-                time_in_force=system_order.time_in_force,
-                status=OrderStatus.NEW if system_order.active else OrderStatus.FILLED,
-            )
+                except Exception as e:
+                    print(f"Error executing stop loss sell order: {e}")
 
-            self.active_bot.deal.total_commissions += float(system_order.fee)
+            if system_order:
+                price = float(system_order.price)
+                stop_loss_order = OrderModel(
+                    timestamp=system_order.created_at,
+                    order_id=system_order.id,
+                    deal_type=DealType.take_profit,
+                    pair=system_order.symbol,
+                    order_side=system_order.side,
+                    order_type=system_order.type,
+                    price=price,
+                    qty=float(system_order.deal_size),
+                    time_in_force=system_order.time_in_force,
+                    status=OrderStatus.NEW
+                    if system_order.active
+                    else OrderStatus.FILLED,
+                )
 
-            self.active_bot.orders.append(stop_loss_order)
-            self.active_bot.deal.closing_price = price
-            self.active_bot.deal.closing_qty = float(system_order.deal_size)
-            self.active_bot.deal.closing_timestamp = system_order.created_at
-            msg = "Completed Stop loss."
-            if self.active_bot.margin_short_reversal:
-                msg += " Scheduled to switch strategy"
+                self.active_bot.deal.total_commissions += float(system_order.fee)
 
-            self.active_bot.add_log(msg)
+                self.active_bot.orders.append(stop_loss_order)
+                self.active_bot.deal.closing_price = price
+                self.active_bot.deal.closing_qty = float(system_order.deal_size)
+                self.active_bot.deal.closing_timestamp = system_order.created_at
+                msg = "Completed Stop loss."
+                if self.active_bot.margin_short_reversal:
+                    msg += " Scheduled to switch strategy"
+
+                self.active_bot.add_log(msg)
 
         self.active_bot.status = Status.completed
         self.controller.save(self.active_bot)
@@ -215,7 +224,7 @@ class KucoinLongDeal(KucoinSpotDeal):
 
     def trailling_profit(self, repurchase_multiplier: float = 1) -> BotModel | None:
         """
-        Sell at take_profit price, because prices will not reach trailling
+        Sell at take_profit price, because prices will not reach trailing
         """
 
         if isinstance(self.controller, PaperTradingTableCrud):

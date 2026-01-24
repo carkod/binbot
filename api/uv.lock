@@ -340,7 +340,7 @@ requires-dist = [
     { name = "psycopg2" },
     { name = "py3cw", specifier = ">=0.0.39" },
     { name = "py4j", specifier = ">=0.10.9" },
-    { name = "pybinbot", specifier = ">=0.4.18" },
+    { name = "pybinbot", specifier = ">=0.4.26" },
     { name = "pydantic-settings", specifier = ">=2.10.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0.2" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=1.2.0" },
@@ -1949,10 +1949,11 @@ wheels = [
 
 [[package]]
 name = "pybinbot"
-version = "0.4.18"
+version = "0.4.26"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
+    { name = "aiokafka" },
     { name = "kucoin-universal-sdk" },
     { name = "numpy" },
     { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.14'" },
@@ -1963,9 +1964,9 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c9/3d/f2435dc83abc49909ce19c50289269b4a8bf26d4665b61ef20413f58bc4a/pybinbot-0.4.18.tar.gz", hash = "sha256:882830294fb5c529a364d3a6ef898e3b88c019850a40a74f5210e1665cecf521", size = 38739, upload-time = "2026-01-23T18:22:17.617Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/26/85/bd2b3d2db9ceaec1bb2d28621a3c8144b22ddbc62844c29b9d64cca2cf79/pybinbot-0.4.26.tar.gz", hash = "sha256:e578d4ea33fcfddd79bfefab0f1c66ead633e8935fe8c5c16fdf937472171b61", size = 46082, upload-time = "2026-01-24T19:01:58.23Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ae/93/ac9a7588ab55194c06c3b3e58bc1f2bd5ac4ea82430e1b18c3fcf8f4b448/pybinbot-0.4.18-py3-none-any.whl", hash = "sha256:65f57a720cd14ece776370efda5c193fd43267c974c0bcaffe3cc1d0442c68f3", size = 39159, upload-time = "2026-01-23T18:22:15.9Z" },
+    { url = "https://files.pythonhosted.org/packages/32/23/178fbb3cb8f8661387a4a6aadd290a77abe95bc560b5adf9d1ded2f3dd6c/pybinbot-0.4.26-py3-none-any.whl", hash = "sha256:77d7a406ba9991e9d8bbf1c78e0aa648fe3d80ab587e1010909b778b8faf0bfa", size = 48782, upload-time = "2026-01-24T19:01:57.013Z" },
 ]
 
 [[package]]
@@ -2418,15 +2419,15 @@ wheels = [
 
 [[package]]
 name = "rich"
-version = "14.2.0"
+version = "14.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "markdown-it-py" },
     { name = "pygments" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fb/d2/8920e102050a0de7bfabeb4c4614a49248cf8d5d7a8d01885fbb24dc767a/rich-14.2.0.tar.gz", hash = "sha256:73ff50c7c0c1c77c8243079283f4edb376f0f6442433aecb8ce7e6d0b92d1fe4", size = 219990, upload-time = "2025-10-09T14:16:53.064Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/aa/9c/137848452e130e71f3ca9a9876751ddcac99e4b1f248ed297996c8c2d728/rich-14.3.0.tar.gz", hash = "sha256:b75e54d3abbcc49137e83e4db54dc86c5e47687eebc95aa0305363231a36e699", size = 230113, upload-time = "2026-01-24T12:25:46.336Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/25/7a/b0178788f8dc6cafce37a212c99565fa1fe7872c70c6c9c1e1a372d9d88f/rich-14.2.0-py3-none-any.whl", hash = "sha256:76bc51fe2e57d2b1be1f96c524b890b816e334ab4c1e45888799bfaab0021edd", size = 243393, upload-time = "2025-10-09T14:16:51.245Z" },
+    { url = "https://files.pythonhosted.org/packages/fa/e0/83cbdcb81b5cbbbe355648dd402b410437806544f48ee218a2354798f012/rich-14.3.0-py3-none-any.whl", hash = "sha256:0b8c1e368c1125b9e993c2d2f1342802525f4853fc6dac2e8e9e88bac0f45bce", size = 309950, upload-time = "2026-01-24T12:25:44.679Z" },
 ]
 
 [[package]]
