@@ -5,8 +5,8 @@ from pybinbot import (
     BinanceKlineIntervals,
     CloseConditions,
     ExchangeId,
+    StandardResponse,
 )
-from pybinbot import StandardResponse
 
 
 class AutotradeSettingsSchema(BaseModel):

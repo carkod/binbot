@@ -321,11 +321,6 @@ class KucoinSpotDeal(KucoinBaseBalance):
                     )
                     return self.active_bot
                 self.base_order(repurchase_multiplier=repurchase_multiplier - 0.2)
-        except TimeoutError as e:
-            self.controller.update_logs(
-                bot=self.active_bot,
-                log_message=f"Base order failed: {e}.",
-            )
 
         # mostly for mypy to be happy
         if not system_order:
