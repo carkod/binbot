@@ -1,3 +1,4 @@
+import logging
 from typing import Type, Union
 from pybinbot import (
     round_numbers,
@@ -185,7 +186,7 @@ class KucoinLongDeal(KucoinSpotDeal):
                     )
 
                 except Exception as e:
-                    print(f"Error executing stop loss sell order: {e}")
+                    logging.error(f"Error executing stop loss sell order: {e}")
 
             if system_order:
                 price = float(system_order.price)
