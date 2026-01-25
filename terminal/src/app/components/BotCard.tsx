@@ -72,9 +72,7 @@ const BotCard: FC<BotCardProps> = ({
               <p>Mode</p>
             </Col>
             <Col md="6" xs="5">
-              <p className="capitalize">
-                {bot.mode ? bot.mode : "Unknown"}
-              </p>
+              <p className="capitalize">{bot.mode ? bot.mode : "Unknown"}</p>
             </Col>
           </Row>
           <Row>
