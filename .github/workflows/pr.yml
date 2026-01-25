@@ -39,12 +39,12 @@ jobs:
         working-directory: api
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
       # Setup Python (faster than using Python container)
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version-file: "./api/.python-version"
 
@@ -64,14 +64,14 @@ jobs:
         working-directory: api
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       # Setup Python (faster than using Python container)
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version-file: "./api/.python-version"
       - name: Install the project
@@ -89,7 +89,7 @@ jobs:
         working-directory: terminal
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -107,7 +107,7 @@ jobs:
         working-directory: terminal
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
