@@ -50,7 +50,7 @@ jobs:
 
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Build image
         run: |
           docker build -t carloswufei/binbot:${{ github.sha }} -t carloswufei/binbot:latest -f api/Dockerfile api
@@ -86,7 +86,7 @@ jobs:
 
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Build image
         run: |
           docker build -t carloswufei/binbot_nginx:${{ github.sha }} -t carloswufei/binbot_nginx:latest .
@@ -105,7 +105,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
       - name: Build image
         run: |
           docker build -t carloswufei/binbot_streaming:${{ github.sha }} -t carloswufei/binbot_streaming:latest -f api/Dockerfile.streaming api
@@ -132,7 +132,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Build image
         run: |
           docker build -t carloswufei/binbot_cronjobs:${{ github.sha }} -t carloswufei/binbot_cronjobs:latest -f api/Dockerfile.cronjobs api

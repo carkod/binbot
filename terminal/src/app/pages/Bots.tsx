@@ -46,14 +46,11 @@ export const BotsPage: FC<{}> = () => {
     data: botsData,
     error: botsError,
     isFetching: isFetchingBots,
-  } = useGetBotsQuery(
-    {
-      status: filterStatus,
-      startDate,
-      endDate,
-    },
-    { skip: Boolean(symbolState) },
-  );
+  } = useGetBotsQuery({
+    status: filterStatus,
+    startDate,
+    endDate,
+  });
 
   const {
     refetch: refetchSymbol,
@@ -95,22 +92,27 @@ export const BotsPage: FC<{}> = () => {
   const handleDelete = (botId: string) => {
     setBotToDelete(botId);
   };
-  const confirmDelete = (index) => {
+  const confirmDelete = async (index) => {
     if (index === 1) {
-      removeBots([botToDelete]);
+      await removeBots([botToDelete]).unwrap();
+      setBotToDelete(null);
+      await refetchBots();
     } else if (index === 2) {
-      deactivateBot(botToDelete);
+      await deactivateBot(botToDelete).unwrap();
+      setBotToDelete(null);
+      await refetchBots();
+    } else {
+      setBotToDelete(null);
     }
-    setBotToDelete(null);
-    dispatch(() => refetch());
     return false;
   };
-  const onSubmitBulkAction = () => {
+
+  const onSubmitBulkAction = async () => {
     switch (bulkActions) {
       case BulkAction.DELETE:
-        removeBots(selectedCards);
+        await removeBots(selectedCards).unwrap();
         selectCards([]);
-        dispatch(() => refetch());
+        await refetchBots();
         break;
       case BulkAction.SELECT_ALL:
         if (data?.bots?.ids.length > 0) {

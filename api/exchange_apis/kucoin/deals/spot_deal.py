@@ -310,6 +310,9 @@ class KucoinSpotDeal(KucoinBaseBalance):
                 symbol=self.symbol,
                 qty=round_numbers(qty * repurchase_multiplier, self.qty_precision),
             )
+            logging.warning(
+                f"Base order placed with qty: {round_numbers(qty * repurchase_multiplier, self.qty_precision)}"
+            )
 
         except RestError as e:
             code = float(e.response.code)
