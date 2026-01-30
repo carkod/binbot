@@ -6,8 +6,6 @@ from tools.handle_error import (
 )
 from charts.controllers import MarketDominationController
 from charts.models import AdrSeriesResponse
-from pybinbot import StandardResponse
-from databases.crud.candles_crud import CandlesCrud
 
 charts_blueprint = APIRouter()
 
@@ -48,29 +46,6 @@ def top_losers():
 
     except Exception as error:
         return json_response_error(f"Failed to retrieve top gainers data: {error}")
-
-
-@charts_blueprint.get(
-    "/btc-correlation", response_model=StandardResponse, tags=["charts"]
-)
-def get_btc_correlation(symbol: str):
-    try:
-        corr, btc_price = CandlesCrud().get_btc_correlation(asset_symbol=symbol)
-        if corr:
-            return json_response(
-                {
-                    "data": {
-                        "correlation": corr,
-                        "24hr_price_change": btc_price,
-                    },
-                    "message": "Successfully retrieved BTC correlation data.",
-                    "error": 0,
-                }
-            )
-        else:
-            raise HTTPException(404, detail="Not enough one day candlestick data")
-    except Exception as error:
-        return json_response_error(f"Failed to retrieve BTC correlation data: {error}")
 
 
 @charts_blueprint.get(

@@ -1,7 +1,6 @@
 import logging
 from databases.db import setup_kafka_db
-from pandas import DataFrame, Index, to_numeric
-from pybinbot import BinanceKlineIntervals, round_numbers, BinanceApi
+from pybinbot import BinanceKlineIntervals, BinanceApi
 from databases.crud.symbols_crud import SymbolsCrud
 from datetime import datetime, timezone
 from pymongo.errors import OperationFailure
@@ -102,59 +101,3 @@ class CandlesCrud:
             self.db[self.collection_name].find(query).limit(limit).sort("timestamp", 1)
         )
         return cached
-
-    def get_btc_correlation(self, asset_symbol: str) -> tuple[float, float]:
-        """
-        Get BTC correlation data for 1 day interval
-        """
-        asset_data = self.binance_api.get_ui_klines(
-            symbol=asset_symbol, interval=BinanceKlineIntervals.one_day
-        )
-
-        btc_data = self.get_or_cache_klines(
-            symbol="BTCUSDC", interval=BinanceKlineIntervals.one_day
-        )
-
-        # Format asset_data DataFrame columns to match Binance API kline data
-        asset_df = DataFrame(asset_data)
-        btc_df = DataFrame(
-            btc_data,
-            columns=[
-                "open_time",
-                "open",
-                "high",
-                "low",
-                "close",
-                "volume",
-                "close_time",
-            ],
-        )
-
-        # Binance API kline format: [open_time, open, high, low, close, volume, close_time, ...]
-        if len(asset_df.columns) >= 7:
-            extra_cols = [f"col_{i}" for i in range(7, len(asset_df.columns))]
-            asset_df.columns = Index(
-                [
-                    "open_time",
-                    "open",
-                    "high",
-                    "low",
-                    "close",
-                    "volume",
-                    "close_time",
-                ]
-                + extra_cols
-            )
-
-        # Ensure close columns are numeric
-        if "close" in asset_df.columns:
-            asset_df["close"] = to_numeric(asset_df["close"], errors="coerce")
-
-            p_correlation = asset_df["close"].corr(btc_df["close"], method="pearson")
-
-            # Use cached call (default 1 hour). For 30 hours, pass ttl_seconds=30*3600
-            price_perct = self.binance_api.ticker_24_last_price_cached(ttl_seconds=3600)
-
-            return round_numbers(p_correlation), round_numbers(price_perct)
-        else:
-            return 0, 0
