@@ -310,20 +310,15 @@ class KucoinSpotDeal(KucoinBaseBalance):
                 symbol=self.symbol,
                 qty=round_numbers(qty * repurchase_multiplier, self.qty_precision),
             )
-            logging.warning(
-                f"Base order placed with qty: {round_numbers(qty * repurchase_multiplier, self.qty_precision)}"
-            )
 
         except RestError as e:
             code = float(e.response.code)
-            if code == 200004:
-                if repurchase_multiplier - 0.2 <= 0:
-                    self.controller.update_logs(
-                        bot=self.active_bot,
-                        log_message="Base order failed due to insufficient balance after retries.",
-                    )
-                    return self.active_bot
-                self.base_order(repurchase_multiplier=repurchase_multiplier - 0.2)
+            msg = e.response.message
+            self.controller.update_logs(
+                bot=self.active_bot,
+                log_message=f"Base order failed ({code}): {msg}",
+            )
+            return self.active_bot
 
         # mostly for mypy to be happy
         if not system_order:
