@@ -70,6 +70,7 @@ export enum BotType {
 }
 
 export enum QuoteAsset {
+  USDT = "USDT",
   USDC = "USDC",
   BTC = "BTC",
   ETH = "ETH",

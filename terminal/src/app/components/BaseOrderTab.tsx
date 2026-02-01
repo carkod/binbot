@@ -11,16 +11,12 @@ import {
   MarketType,
   TabsKeys,
 } from "../../utils/enums";
-import { useAppDispatch, useAppSelector } from "../hooks";
+import { useAppDispatch, useAppSelector, useSymbolData } from "../hooks";
 import { type AppDispatch } from "../store";
 import { InputTooltip } from "./InputTooltip";
 import SymbolSearch from "./SymbolSearch";
 import { useParams } from "react-router";
 import { SpinnerContext } from "../Layout";
-import {
-  useGetSymbolsQuery,
-  useLazyGetOneSymbolQuery,
-} from "../../features/symbolsApiSlice";
 import {
   selectTestBot,
   setTestBotField,
@@ -37,7 +33,8 @@ const BaseOrderTab: FC<{
 }> = ({ botType = BotType.BOTS }) => {
   const { symbol, id } = useParams();
   const dispatch: AppDispatch = useAppDispatch();
-  const { data: symbols } = useGetSymbolsQuery();
+  const { symbolsList, quoteAsset, baseAsset, updateQuoteBaseState } =
+    useSymbolData();
   let { bot } = useAppSelector(selectBot);
   if (botType === BotType.PAPER_TRADING) {
     const testBot = useAppSelector(selectTestBot);
@@ -47,13 +44,8 @@ const BaseOrderTab: FC<{
   const { data: autotradeSettings, isLoading: loadingSettings } =
     useGetSettingsQuery();
 
-  const [triggerGetOneSymbol] = useLazyGetOneSymbolQuery();
-
-  const [quoteAsset, setQuoteAsset] = useState<string>("");
-  const [baseAsset, setBaseAsset] = useState<string>("");
-  const [errorsState, setErrorsState] = useImmer<ErrorsState>({});
-  const [symbolsList, setSymbolsList] = useImmer<string[]>([]);
   const [currentPrice, setCurrentPrice] = useState<number>(0);
+  const [errorsState, setErrorsState] = useImmer<ErrorsState>({});
   const {
     register,
     watch,
@@ -92,16 +84,6 @@ const BaseOrderTab: FC<{
     }
   };
 
-  // Memoize composedPair to avoid unnecessary recalculation
-  const updateQuoteBaseState = (pair) => {
-    triggerGetOneSymbol(pair)
-      .unwrap()
-      .then((data) => {
-        setQuoteAsset(data.quote_asset);
-        setBaseAsset(data.base_asset);
-      });
-  };
-
   // Data
   useEffect(() => {
     const { unsubscribe } = watch((v, { name }) => {
@@ -121,11 +103,6 @@ const BaseOrderTab: FC<{
         }
       }
     });
-
-    if (symbols && symbolsList.length === 0) {
-      const pairs = symbols.map((symbol) => symbol.id);
-      setSymbolsList(pairs);
-    }
 
     if (symbol && !id) {
       reset({
@@ -173,7 +150,6 @@ const BaseOrderTab: FC<{
   }, [
     quoteAsset,
     baseAsset,
-    symbols,
     symbolsList,
     bot,
     reset,

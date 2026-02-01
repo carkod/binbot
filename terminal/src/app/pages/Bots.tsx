@@ -55,7 +55,6 @@ export const BotsPage: FC<{}> = () => {
   const {
     refetch: refetchSymbol,
     data: symbolData,
-    error: symbolError,
     isFetching: isFetchingSymbol,
   } = useGetOneBySymbolQuery(symbolState, { skip: !symbolState });
 
@@ -72,7 +71,6 @@ export const BotsPage: FC<{}> = () => {
       }
     : botsData;
   const refetch = symbolState ? refetchSymbol : refetchBots;
-  const error = symbolState ? symbolError : botsError;
   const isFetching = symbolState ? isFetchingSymbol : isFetchingBots;
 
   // Symbols search dependencies

@@ -27,6 +27,7 @@ from pybinbot import (
 )
 from copy import deepcopy
 from tools.config import Config
+from exchange_apis.kucoin.futures import KucoinFutures
 
 
 class BaseStreaming:
@@ -40,7 +41,7 @@ class BaseStreaming:
         self.binance_api = BinanceApi(
             key=self.config.binance_key, secret=self.config.binance_secret
         )
-        self.kucoin_api = KucoinApi(
+        self.kucoin_api = KucoinFutures(
             key=self.config.kucoin_key,
             secret=self.config.kucoin_secret,
             passphrase=self.config.kucoin_passphrase,

@@ -17,6 +17,7 @@ import { singleBot } from "../../features/bots/botInitialState";
 import { SpinnerContext } from "../Layout";
 import { useGetBalanceQuery } from "../../features/balanceApiSlice";
 import BalanceAnalysis from "../components/BalanceAnalysis";
+import { SymbolProvider } from "../providers/SymbolProvider";
 
 export const BotDetail: FC<{}> = () => {
   const { id } = useParams();
@@ -49,38 +50,40 @@ export const BotDetail: FC<{}> = () => {
   }, [data, matchNewRoute, dispatch, loadingBot, loadingEstimates]);
 
   return (
-    <div className="content">
-      <Container fluid>
-        <Row>
-          <Col md="12" sm="12">
-            <ChartContainer bot={bot} setCurrentPrice={setCurrentPrice} />
-          </Col>
-        </Row>
-        {bot && id && (
+    <SymbolProvider>
+      <div className="content">
+        <Container fluid>
           <Row>
-            <Col md="7" sm="12">
-              <BotInfo bot={bot} />
-            </Col>
-            <Col md="5" sm="12">
-              {bot.logs?.length > 0 && <LogsInfo events={bot.logs} />}
+            <Col md="12" sm="12">
+              <ChartContainer bot={bot} setCurrentPrice={setCurrentPrice} />
             </Col>
           </Row>
-        )}
+          {bot && id && (
+            <Row>
+              <Col md="7" sm="12">
+                <BotInfo bot={bot} />
+              </Col>
+              <Col md="5" sm="12">
+                {bot.logs?.length > 0 && <LogsInfo events={bot.logs} />}
+              </Col>
+            </Row>
+          )}
 
-        <Row>
-          <Col md="7" sm="12">
-            <Card>
-              <Card.Body>
-                <BotDetailTabs />
-              </Card.Body>
-            </Card>
-          </Col>
-          <Col md="5" sm="12">
-            {accountData && <BalanceAnalysis accountData={accountData} />}
-          </Col>
-        </Row>
-      </Container>
-    </div>
+          <Row>
+            <Col md="7" sm="12">
+              <Card>
+                <Card.Body>
+                  <BotDetailTabs />
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col md="5" sm="12">
+              {accountData && <BalanceAnalysis accountData={accountData} />}
+            </Col>
+          </Row>
+        </Container>
+      </div>
+    </SymbolProvider>
   );
 };
 
