@@ -9,6 +9,7 @@ from pybinbot import (
     Status,
     Strategy,
     timestamp,
+    MarketType,
 )
 from sqlmodel import Relationship, SQLModel, Field
 from databases.tables.order_table import ExchangeOrderTable, FakeOrderTable
@@ -46,6 +47,9 @@ class BotTable(SQLModel, table=True):
     dynamic_trailling: bool = Field(default=False)
     logs: list = Field(default=[], sa_column=Column(JSON))
     mode: str = Field(default="manual")
+    market_type: MarketType = Field(
+        default=MarketType.SPOT, sa_column=Column(Enum(MarketType))
+    )
     name: str = Field(default="Default bot")
     status: Status = Field(default=Status.inactive, sa_column=Column(Enum(Status)))
     stop_loss: float = Field(
@@ -142,6 +146,9 @@ class PaperTradingTable(SQLModel, table=True):
     dynamic_trailling: bool = Field(default=False)
     logs: list = Field(default=[], sa_column=Column(JSON))
     mode: str = Field(default="manual")
+    market_type: MarketType = Field(
+        default=MarketType.SPOT, sa_column=Column(Enum(MarketType))
+    )
     name: str = Field(default="Default bot")
     status: Status = Field(default=Status.inactive, sa_column=Column(Enum(Status)))
     stop_loss: float = Field(
