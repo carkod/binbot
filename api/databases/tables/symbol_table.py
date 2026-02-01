@@ -67,3 +67,11 @@ class SymbolTable(SQLModel, table=True):
             raise ValueError("cooldown is required when cooldown timestamp is filled")
 
         return value
+
+    def get_futures_symbol(self) -> str:
+        """
+        Return the futures symbol string.
+        """
+        if not self.id.endswith("M"):
+            return self.id + "M"
+        return self.id

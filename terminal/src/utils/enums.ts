@@ -80,3 +80,9 @@ export enum ExchangeId {
   KUCOIN = "kucoin",
   BINANCE = "binance",
 }
+
+export enum MarketType {
+  SPOT = "SPOT",
+  MARGIN = "MARGIN",
+  FUTURES = "FUTURES",
+}

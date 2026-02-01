@@ -1,4 +1,9 @@
-import { BotStatus, BotStrategy, QuoteAsset } from "../../utils/enums";
+import {
+  BotStatus,
+  BotStrategy,
+  QuoteAsset,
+  MarketType,
+} from "../../utils/enums";
 
 export interface Deal {
   base_order_size: number;
@@ -29,6 +34,7 @@ export interface Bot {
   dynamic_trailling: boolean;
   logs: string[];
   mode: string;
+  market_type: MarketType;
   name: string;
   status: BotStatus;
   stop_loss: number;
@@ -64,6 +70,7 @@ export const singleBot: Bot = {
   quote_asset: QuoteAsset.USDC,
   logs: [],
   mode: "manual",
+  market_type: MarketType.SPOT,
   name: `terminal`,
   pair: "",
   take_profit: 2.3,

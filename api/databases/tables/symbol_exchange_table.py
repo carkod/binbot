@@ -20,6 +20,7 @@ class SymbolExchangeTable(SQLModel, table=True):
         description="Minimum price x qty value for this exchange",
     )
     is_margin_trading_allowed: bool = Field(default=False)
+    has_futures: bool = Field(default=False, description="Because symbol data sits on the same table, this is the place where we differentiate it")
     price_precision: int = Field(
         default=0,
         description="Usually there are 2 price precisions, one for base and another for quote, here we usually indicate quote, since we always use the same base: USDC",

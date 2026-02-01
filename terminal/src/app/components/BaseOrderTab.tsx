@@ -4,7 +4,13 @@ import { type FieldValues, useForm } from "react-hook-form";
 import { useImmer } from "use-immer";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 import { selectBot, setField, setToggle } from "../../features/bots/botSlice";
-import { BotStatus, BotStrategy, BotType, TabsKeys } from "../../utils/enums";
+import {
+  BotStatus,
+  BotStrategy,
+  BotType,
+  MarketType,
+  TabsKeys,
+} from "../../utils/enums";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { type AppDispatch } from "../store";
 import { InputTooltip } from "./InputTooltip";
@@ -20,6 +26,7 @@ import {
   setTestBotField,
   setTestBotToggle,
 } from "../../features/bots/paperTradingSlice";
+import { capitalizeFirst } from "../../utils/strings";
 
 interface ErrorsState {
   pair?: string;
@@ -127,6 +134,7 @@ const BaseOrderTab: FC<{
         strategy: bot.strategy,
         pair: symbol,
         quote_asset: bot.quote_asset,
+        market_type: bot.market_type,
       });
       if (botType === BotType.PAPER_TRADING) {
         dispatch(setTestBotField({ name: "pair", value: symbol }));
@@ -142,6 +150,7 @@ const BaseOrderTab: FC<{
         strategy: bot.strategy,
         pair: id,
         quote_asset: bot.quote_asset,
+        market_type: bot.market_type,
       });
     }
 
@@ -172,6 +181,7 @@ const BaseOrderTab: FC<{
     watch,
     bot.pair,
     bot.quote_asset,
+    bot.market_type,
   ]);
 
   return (
@@ -235,22 +245,54 @@ const BaseOrderTab: FC<{
             </InputGroup>
           </Col>
           <Col md="6" sm="12">
-            <Form.Group>
-              <Form.Label htmlFor="strategy">Strategy</Form.Label>
-              <Form.Select
-                id="strategy"
-                name="strategy"
-                {...register("strategy", { required: "Strategy is required" })}
-              >
-                <option value={BotStrategy.LONG}>Long</option>
-                <option value={BotStrategy.MARGIN_SHORT}>Margin short</option>
-              </Form.Select>
-              {errors.strategy && (
-                <Form.Control.Feedback type="invalid">
-                  {errors.strategy.message as string}
-                </Form.Control.Feedback>
-              )}
-            </Form.Group>
+            <Row>
+              <Col>
+                <Form.Group>
+                  <Form.Label htmlFor="strategy">Strategy</Form.Label>
+                  <Form.Select
+                    id="strategy"
+                    name="strategy"
+                    {...register("strategy", {
+                      required: "Strategy is required",
+                    })}
+                  >
+                    <option value={BotStrategy.LONG}>Long</option>
+                    <option value={BotStrategy.MARGIN_SHORT}>
+                      Margin short
+                    </option>
+                  </Form.Select>
+                  {errors.strategy && (
+                    <Form.Control.Feedback type="invalid">
+                      {errors.strategy.message as string}
+                    </Form.Control.Feedback>
+                  )}
+                </Form.Group>
+              </Col>
+              <Col>
+                <Form.Group>
+                  <Form.Label htmlFor="market_type">Market Type</Form.Label>
+                  <Form.Select
+                    id="market_type"
+                    name="market_type"
+                    {...register("market_type", {
+                      required: "Market type is required",
+                    })}
+                  >
+                    <option value={MarketType.SPOT}>
+                      {capitalizeFirst(MarketType.SPOT)}
+                    </option>
+                    <option value={MarketType.FUTURES}>
+                      {capitalizeFirst(MarketType.FUTURES)}
+                    </option>
+                  </Form.Select>
+                  {errors.strategy && (
+                    <Form.Control.Feedback type="invalid">
+                      {errors.strategy.message as string}
+                    </Form.Control.Feedback>
+                  )}
+                </Form.Group>
+              </Col>
+            </Row>
           </Col>
           {bot.pair && (
             <Row>
