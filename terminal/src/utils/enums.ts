@@ -70,6 +70,7 @@ export enum BotType {
 }
 
 export enum QuoteAsset {
+  USDT = "USDT",
   USDC = "USDC",
   BTC = "BTC",
   ETH = "ETH",
@@ -79,4 +80,10 @@ export enum QuoteAsset {
 export enum ExchangeId {
   KUCOIN = "kucoin",
   BINANCE = "binance",
+}
+
+export enum MarketType {
+  SPOT = "SPOT",
+  MARGIN = "MARGIN",
+  FUTURES = "FUTURES",
 }

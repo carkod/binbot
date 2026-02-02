@@ -340,7 +340,7 @@ requires-dist = [
     { name = "psycopg2" },
     { name = "py3cw", specifier = ">=0.0.39" },
     { name = "py4j", specifier = ">=0.10.9" },
-    { name = "pybinbot", specifier = ">=0.4.38" },
+    { name = "pybinbot", specifier = ">=0.4.42" },
     { name = "pydantic-settings", specifier = ">=2.10.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0.2" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=1.2.0" },
@@ -1949,7 +1949,7 @@ wheels = [
 
 [[package]]
 name = "pybinbot"
-version = "0.4.38"
+version = "0.4.42"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -1964,9 +1964,9 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0f/c0/59894134fc6647bb8d1391790c4f8d1daa58200a25001ad01cdedbe2a8e6/pybinbot-0.4.38.tar.gz", hash = "sha256:1c3a47ef502de68779dc9d745cae38ddeb130ff60aee31425d09795e75e17e5b", size = 46832, upload-time = "2026-02-01T01:48:58.608Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/31/8a/2076c748ce97dd171628357feb0707f705cb2110658fe9675a30d19bb444/pybinbot-0.4.42.tar.gz", hash = "sha256:ae057fb060036d4a5433d81afa7733e3b6d5559cf93324137a44b27cfcc2f1f4", size = 46930, upload-time = "2026-02-01T21:56:15.459Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a9/32/26d1a64912beb9521d31e83cf75f4fc7f94e51e8a8649591679a49dd08e1/pybinbot-0.4.38-py3-none-any.whl", hash = "sha256:b6ff09994b21e6d3bf3f1eacb2b4edd7642543b4b289fbb0233992cc4f98c9be", size = 49080, upload-time = "2026-02-01T01:48:56.924Z" },
+    { url = "https://files.pythonhosted.org/packages/1c/61/351bed7a2de625554d85509b84a08cc6d275fd67019e7fbef5afacc003f1/pybinbot-0.4.42-py3-none-any.whl", hash = "sha256:12682f259e8df6872f51a6225c78a466d136a28380d578ca83794022f432d33a", size = 49194, upload-time = "2026-02-01T21:56:14.313Z" },
 ]
 
 [[package]]
@@ -2419,29 +2419,29 @@ wheels = [
 
 [[package]]
 name = "rich"
-version = "14.3.1"
+version = "14.3.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "markdown-it-py" },
     { name = "pygments" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a1/84/4831f881aa6ff3c976f6d6809b58cdfa350593ffc0dc3c58f5f6586780fb/rich-14.3.1.tar.gz", hash = "sha256:b8c5f568a3a749f9290ec6bddedf835cec33696bfc1e48bcfecb276c7386e4b8", size = 230125, upload-time = "2026-01-24T21:40:44.847Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/74/99/a4cab2acbb884f80e558b0771e97e21e939c5dfb460f488d19df485e8298/rich-14.3.2.tar.gz", hash = "sha256:e712f11c1a562a11843306f5ed999475f09ac31ffb64281f73ab29ffdda8b3b8", size = 230143, upload-time = "2026-02-01T16:20:47.908Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/87/2a/a1810c8627b9ec8c57ec5ec325d306701ae7be50235e8fd81266e002a3cc/rich-14.3.1-py3-none-any.whl", hash = "sha256:da750b1aebbff0b372557426fb3f35ba56de8ef954b3190315eb64076d6fb54e", size = 309952, upload-time = "2026-01-24T21:40:42.969Z" },
+    { url = "https://files.pythonhosted.org/packages/ef/45/615f5babd880b4bd7d405cc0dc348234c5ffb6ed1ea33e152ede08b2072d/rich-14.3.2-py3-none-any.whl", hash = "sha256:08e67c3e90884651da3239ea668222d19bea7b589149d8014a21c633420dbb69", size = 309963, upload-time = "2026-02-01T16:20:46.078Z" },
 ]
 
 [[package]]
 name = "rich-toolkit"
-version = "0.18.0"
+version = "0.18.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
     { name = "rich" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/22/ef/1943fe86c3dfe16ce6c0a6db6e9c8153a387a171fd65e26fe6c33b65be3a/rich_toolkit-0.18.0.tar.gz", hash = "sha256:b038021a86387809a4573ed8c7857dd5751402ae3d6c7570c79a403042fa6036", size = 191907, upload-time = "2026-02-01T00:54:22.939Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/da/f1/bcfbde3ca38db54b5dcf7ee3d0caf3ed9133a169aec5a58ad9ec50ba12e8/rich_toolkit-0.18.1.tar.gz", hash = "sha256:bf104f1945a7252debeda7d7138118eaf848fff5ea81d9eda556cbc5f911122c", size = 192514, upload-time = "2026-02-01T10:56:31.857Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/99/37/28e902b01c122fa1e8ff7e57dafe4d1f0faa67270fd24245b8013c91dfa1/rich_toolkit-0.18.0-py3-none-any.whl", hash = "sha256:150e5e8514f11f47cfb756677768da68b6b54343418009024308680598fcf0b7", size = 32138, upload-time = "2026-02-01T00:54:21.616Z" },
+    { url = "https://files.pythonhosted.org/packages/da/43/6f9860c4bfb1f181c347941542a8955ce24b228f84550253765aa1854d53/rich_toolkit-0.18.1-py3-none-any.whl", hash = "sha256:04011a9751f4c2becdf44bd1aaff8562d4b00caf04f14e483a9873c15fbe3154", size = 32255, upload-time = "2026-02-01T10:56:33.071Z" },
 ]
 
 [[package]]
@@ -2677,15 +2677,15 @@ wheels = [
 
 [[package]]
 name = "sqlmodel"
-version = "0.0.31"
+version = "0.0.32"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic" },
     { name = "sqlalchemy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/56/b8/e7cd6def4a773f25d6e29ffce63ccbfd6cf9488b804ab6fb9b80d334b39d/sqlmodel-0.0.31.tar.gz", hash = "sha256:2d41a8a9ee05e40736e2f9db8ea28cbfe9b5d4e5a18dd139e80605025e0c516c", size = 94952, upload-time = "2025-12-28T12:35:01.436Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d1/89/67f8964f3b2ed073fa4e95201e708291935d00e3600f36f09c1be3e279fe/sqlmodel-0.0.32.tar.gz", hash = "sha256:48e8fe4c8c3d7d8bf8468db17fa92ca680421e86cfec8b352217ef40736767be", size = 94140, upload-time = "2026-02-01T18:19:14.752Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6c/72/5aa5be921800f6418a949a73c9bb7054890881143e6bc604a93d228a95a3/sqlmodel-0.0.31-py3-none-any.whl", hash = "sha256:6d946d56cac4c2db296ba1541357cee2e795d68174e2043cd138b916794b1513", size = 27093, upload-time = "2025-12-28T12:35:00.108Z" },
+    { url = "https://files.pythonhosted.org/packages/ed/de/d9b40ed2c570fd612c2abd57e4d9084a9d8eb1797447e2ce897b77b1c4b2/sqlmodel-0.0.32-py3-none-any.whl", hash = "sha256:d62f0702599592046c1a136d3512feab3d5a80e2988642ef0ed2c89b9b8b297b", size = 27416, upload-time = "2026-02-01T18:19:15.992Z" },
 ]
 
 [[package]]

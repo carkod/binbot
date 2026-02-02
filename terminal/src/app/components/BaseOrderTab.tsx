@@ -4,22 +4,25 @@ import { type FieldValues, useForm } from "react-hook-form";
 import { useImmer } from "use-immer";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 import { selectBot, setField, setToggle } from "../../features/bots/botSlice";
-import { BotStatus, BotStrategy, BotType, TabsKeys } from "../../utils/enums";
-import { useAppDispatch, useAppSelector } from "../hooks";
+import {
+  BotStatus,
+  BotStrategy,
+  BotType,
+  MarketType,
+  TabsKeys,
+} from "../../utils/enums";
+import { useAppDispatch, useAppSelector, useSymbolData } from "../hooks";
 import { type AppDispatch } from "../store";
 import { InputTooltip } from "./InputTooltip";
 import SymbolSearch from "./SymbolSearch";
 import { useParams } from "react-router";
 import { SpinnerContext } from "../Layout";
 import {
-  useGetSymbolsQuery,
-  useLazyGetOneSymbolQuery,
-} from "../../features/symbolsApiSlice";
-import {
   selectTestBot,
   setTestBotField,
   setTestBotToggle,
 } from "../../features/bots/paperTradingSlice";
+import { capitalizeFirst } from "../../utils/strings";
 
 interface ErrorsState {
   pair?: string;
@@ -30,7 +33,8 @@ const BaseOrderTab: FC<{
 }> = ({ botType = BotType.BOTS }) => {
   const { symbol, id } = useParams();
   const dispatch: AppDispatch = useAppDispatch();
-  const { data: symbols } = useGetSymbolsQuery();
+  const { symbolsList, quoteAsset, baseAsset, updateQuoteBaseState } =
+    useSymbolData();
   let { bot } = useAppSelector(selectBot);
   if (botType === BotType.PAPER_TRADING) {
     const testBot = useAppSelector(selectTestBot);
@@ -40,13 +44,8 @@ const BaseOrderTab: FC<{
   const { data: autotradeSettings, isLoading: loadingSettings } =
     useGetSettingsQuery();
 
-  const [triggerGetOneSymbol] = useLazyGetOneSymbolQuery();
-
-  const [quoteAsset, setQuoteAsset] = useState<string>("");
-  const [baseAsset, setBaseAsset] = useState<string>("");
-  const [errorsState, setErrorsState] = useImmer<ErrorsState>({});
-  const [symbolsList, setSymbolsList] = useImmer<string[]>([]);
   const [currentPrice, setCurrentPrice] = useState<number>(0);
+  const [errorsState, setErrorsState] = useImmer<ErrorsState>({});
   const {
     register,
     watch,
@@ -85,16 +84,6 @@ const BaseOrderTab: FC<{
     }
   };
 
-  // Memoize composedPair to avoid unnecessary recalculation
-  const updateQuoteBaseState = (pair) => {
-    triggerGetOneSymbol(pair)
-      .unwrap()
-      .then((data) => {
-        setQuoteAsset(data.quote_asset);
-        setBaseAsset(data.base_asset);
-      });
-  };
-
   // Data
   useEffect(() => {
     const { unsubscribe } = watch((v, { name }) => {
@@ -115,11 +104,6 @@ const BaseOrderTab: FC<{
       }
     });
 
-    if (symbols && symbolsList.length === 0) {
-      const pairs = symbols.map((symbol) => symbol.id);
-      setSymbolsList(pairs);
-    }
-
     if (symbol && !id) {
       reset({
         name: bot.name,
@@ -127,6 +111,7 @@ const BaseOrderTab: FC<{
         strategy: bot.strategy,
         pair: symbol,
         quote_asset: bot.quote_asset,
+        market_type: bot.market_type,
       });
       if (botType === BotType.PAPER_TRADING) {
         dispatch(setTestBotField({ name: "pair", value: symbol }));
@@ -142,6 +127,7 @@ const BaseOrderTab: FC<{
         strategy: bot.strategy,
         pair: id,
         quote_asset: bot.quote_asset,
+        market_type: bot.market_type,
       });
     }
 
@@ -164,7 +150,6 @@ const BaseOrderTab: FC<{
   }, [
     quoteAsset,
     baseAsset,
-    symbols,
     symbolsList,
     bot,
     reset,
@@ -172,6 +157,7 @@ const BaseOrderTab: FC<{
     watch,
     bot.pair,
     bot.quote_asset,
+    bot.market_type,
   ]);
 
   return (
@@ -235,22 +221,54 @@ const BaseOrderTab: FC<{
             </InputGroup>
           </Col>
           <Col md="6" sm="12">
-            <Form.Group>
-              <Form.Label htmlFor="strategy">Strategy</Form.Label>
-              <Form.Select
-                id="strategy"
-                name="strategy"
-                {...register("strategy", { required: "Strategy is required" })}
-              >
-                <option value={BotStrategy.LONG}>Long</option>
-                <option value={BotStrategy.MARGIN_SHORT}>Margin short</option>
-              </Form.Select>
-              {errors.strategy && (
-                <Form.Control.Feedback type="invalid">
-                  {errors.strategy.message as string}
-                </Form.Control.Feedback>
-              )}
-            </Form.Group>
+            <Row>
+              <Col>
+                <Form.Group>
+                  <Form.Label htmlFor="strategy">Strategy</Form.Label>
+                  <Form.Select
+                    id="strategy"
+                    name="strategy"
+                    {...register("strategy", {
+                      required: "Strategy is required",
+                    })}
+                  >
+                    <option value={BotStrategy.LONG}>Long</option>
+                    <option value={BotStrategy.MARGIN_SHORT}>
+                      Margin short
+                    </option>
+                  </Form.Select>
+                  {errors.strategy && (
+                    <Form.Control.Feedback type="invalid">
+                      {errors.strategy.message as string}
+                    </Form.Control.Feedback>
+                  )}
+                </Form.Group>
+              </Col>
+              <Col>
+                <Form.Group>
+                  <Form.Label htmlFor="market_type">Market Type</Form.Label>
+                  <Form.Select
+                    id="market_type"
+                    name="market_type"
+                    {...register("market_type", {
+                      required: "Market type is required",
+                    })}
+                  >
+                    <option value={MarketType.SPOT}>
+                      {capitalizeFirst(MarketType.SPOT)}
+                    </option>
+                    <option value={MarketType.FUTURES}>
+                      {capitalizeFirst(MarketType.FUTURES)}
+                    </option>
+                  </Form.Select>
+                  {errors.strategy && (
+                    <Form.Control.Feedback type="invalid">
+                      {errors.strategy.message as string}
+                    </Form.Control.Feedback>
+                  )}
+                </Form.Group>
+              </Col>
+            </Row>
           </Col>
           {bot.pair && (
             <Row>

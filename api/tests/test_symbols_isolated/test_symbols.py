@@ -5,11 +5,11 @@ from main import app
 
 @pytest.fixture(autouse=True)
 def _patch_symbol_crud_apis(monkeypatch):
-    class DummyKucoinApi:
+    class DummyKucoinFutures:
         def __init__(self, *args, **kwargs):
             pass
 
-    monkeypatch.setattr("databases.crud.symbols_crud.KucoinApi", DummyKucoinApi)
+    monkeypatch.setattr("databases.crud.symbols_crud.KucoinFutures", DummyKucoinFutures)
 
 
 @pytest.fixture()

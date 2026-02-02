@@ -1,6 +1,6 @@
 import React, { useEffect, useState, type FC } from "react";
 import { Badge, Card, Col, Row } from "react-bootstrap";
-import { useAppDispatch } from "../hooks";
+import { useAppDispatch, useSymbolData } from "../hooks";
 import { computeSingleBotProfit } from "../../features/bots/profits";
 import { roundDecimals } from "../../utils/math";
 import { useImmer } from "use-immer";
@@ -20,8 +20,10 @@ const ChartContainer: FC<{
   setCurrentPrice: PayloadActionCreator<number>;
 }> = ({ bot, setCurrentPrice }) => {
   const dispatch: AppDispatch = useAppDispatch();
+  const { quoteAsset } = useSymbolData();
   const [currentChartPrice, setCurrentChartPrice] = useImmer<number>(0);
   const [currentOrderLines, setCurrentOrderLines] = useImmer<OrderLine[]>([]);
+  const [exchangeSymbol, setExchangeSymbol] = useImmer<string>(bot.pair);
   const [botProfit, setBotProfit] = useState<number>(Number(0));
   const { data: autotradeSettings } = useGetSettingsQuery();
   const exchangeState =
@@ -60,7 +62,21 @@ const ChartContainer: FC<{
         dispatch(setCurrentPrice(currentChartPrice));
       }
     }
-  }, [currentChartPrice, bot, setBotProfit, botProfit]);
+
+    if (Boolean(bot?.pair) && exchangeState === Exchange.KUCOIN) {
+      setExchangeSymbol(
+        (draft) =>
+          (draft = bot.pair.replace(quoteAsset, "") + "-" + quoteAsset),
+      );
+    }
+  }, [
+    currentChartPrice,
+    bot,
+    setBotProfit,
+    botProfit,
+    exchangeState,
+    quoteAsset,
+  ]);
 
   return (
     <Card style={{ minHeight: "650px" }}>
@@ -101,7 +117,7 @@ const ChartContainer: FC<{
       <Card.Body>
         {bot?.pair && (
           <TVChartContainer
-            symbol={bot.pair}
+            symbol={exchangeSymbol}
             // Take interval value from autotrade settings
             interval={"1h" as ResolutionString}
             timescaleMarks={updateTimescaleMarks(bot)}

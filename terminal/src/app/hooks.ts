@@ -6,7 +6,12 @@
 /* eslint-disable @typescript-eslint/no-restricted-imports */
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "./store";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useContext } from "react";
+import {
+  useLazyGetOneSymbolQuery,
+  useGetSymbolsQuery,
+} from "../features/symbolsApiSlice";
+import { createContext } from "react";
 
 // Use throughout your app instead of plain `useDispatch` and `useSelector`
 export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
@@ -36,4 +41,66 @@ export const useBreakpoint = () => {
   }, [update]);
 
   return size;
+};
+
+// Symbol Context and Hook
+interface SymbolContextType {
+  symbolsList: string[];
+  quoteAsset: string;
+  baseAsset: string;
+  updateQuoteBaseState: (pair: string) => void;
+  isLoading: boolean;
+}
+
+export const SymbolContext = createContext<SymbolContextType | undefined>(
+  undefined,
+);
+
+export const useSymbolData = () => {
+  const context = useContext(SymbolContext);
+  if (!context) {
+    throw new Error("useSymbolData must be used within a SymbolProvider");
+  }
+  return context;
+};
+
+export const useSymbolDataProvider = () => {
+  const { data: symbols } = useGetSymbolsQuery();
+  const [triggerGetOneSymbol] = useLazyGetOneSymbolQuery();
+  const [symbolsList, setSymbolsList] = useState<string[]>([]);
+  const [quoteAsset, setQuoteAsset] = useState<string>("");
+  const [baseAsset, setBaseAsset] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const updateQuoteBaseState = useCallback(
+    (pair: string) => {
+      setIsLoading(true);
+      triggerGetOneSymbol(pair)
+        .unwrap()
+        .then((data) => {
+          setQuoteAsset(data.quote_asset);
+          setBaseAsset(data.base_asset);
+          setIsLoading(false);
+        })
+        .catch(() => {
+          setIsLoading(false);
+        });
+    },
+    [triggerGetOneSymbol],
+  );
+
+  useEffect(() => {
+    if (symbols && symbolsList.length === 0) {
+      const pairs = symbols.map((symbol) => symbol.id);
+      setSymbolsList(pairs);
+    }
+  }, [symbols, symbolsList]);
+
+  return {
+    symbolsList,
+    quoteAsset,
+    baseAsset,
+    updateQuoteBaseState,
+    isLoading,
+  };
 };

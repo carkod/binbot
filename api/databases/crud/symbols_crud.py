@@ -2,7 +2,7 @@ import logging
 from contextlib import contextmanager
 from decimal import Decimal
 from time import time
-from typing import Optional, cast
+from typing import Optional, Union, cast
 from sqlalchemy import text, exists
 from sqlalchemy.orm import selectinload, QueryableAttribute
 from sqlalchemy.sql.expression import ColumnElement
@@ -15,8 +15,15 @@ from databases.tables.symbol_exchange_table import SymbolExchangeTable
 from databases.tables.symbol_table import SymbolTable
 from databases.utils import independent_session, engine
 from symbols.models import SymbolModel, SymbolRequestPayload
-from pybinbot import QuoteAssets, ExchangeId, BinanceApi, KucoinApi, BinbotErrors
+from pybinbot import QuoteAssets, ExchangeId, BinanceApi, BinbotErrors
 from sqlalchemy.sql import delete
+from exchange_apis.kucoin.futures import KucoinFutures
+from kucoin_universal_sdk.generate.spot.market.model_get_all_symbols_resp import (
+    GetAllSymbolsResp,
+)
+from kucoin_universal_sdk.generate.futures.market.model_get_all_symbols_resp import (
+    GetAllSymbolsResp as FuturesGetAllSymbolsResp,
+)
 
 
 # -------------------------
@@ -54,7 +61,7 @@ class SymbolsCrud:
         self.binance_api = BinanceApi(
             key=self.config.binance_key, secret=self.config.binance_secret
         )
-        self.kucoin_api = KucoinApi(
+        self.kucoin_api = KucoinFutures(
             key=self.config.kucoin_key,
             secret=self.config.kucoin_secret,
             passphrase=self.config.kucoin_passphrase,
@@ -66,11 +73,10 @@ class SymbolsCrud:
     # -------------------------
     # Utility helpers
     # -------------------------
-    def _convert_to_int(self, value: str) -> int:
-        parsed_value = str(value.rstrip(".0"))
-        decimal = Decimal(parsed_value).as_tuple()
-        exponent = abs(int(decimal.exponent))
-        return exponent
+    def _convert_to_int(self, value: Union[float, str]) -> int:
+        dec = Decimal(str(value))
+        exponent = int(dec.as_tuple().exponent)
+        return abs(exponent)
 
     def _exchange_combined_statement(self, exchange_id: ExchangeId):
         exchange_exists = exists().where(
@@ -528,10 +534,67 @@ class SymbolsCrud:
                     is_margin_trading_allowed=item.get("isMarginTradingAllowed", False),
                 )
 
-    def kucoin_symbols_ingestion(self):
-        exchange_info_data = self.kucoin_api.get_all_symbols()
-        for item in exchange_info_data.data:
+    def ingest_futures_data(self, all_raw_symbols: FuturesGetAllSymbolsResp):
+        for item in all_raw_symbols.data:
+            symbol = item.symbol
+
+            active = True
+            if symbol in ("BTCUSDC", "ETHUSDC", "BNBUSDC"):
+                active = False
+
+            if item.quote_currency in list(QuoteAssets):
+                price_precision = self._convert_to_int(item.tick_size)
+                qty_precision = self._convert_to_int(item.lot_size)
+                min_notional = self._convert_to_int(
+                    float(item.tick_size)
+                    * float(item.lot_size)
+                    * float(item.multiplier)
+                )
+
+                with get_session() as s:
+                    result = s.exec(
+                        select(SymbolTable).where(SymbolTable.id == symbol)
+                    ).first()
+                    if result:
+                        self._add_exchange_link_if_not_exists(
+                            s,
+                            symbol=symbol,
+                            exchange_id=ExchangeId.KUCOIN,
+                            min_notional=min_notional,
+                            price_precision=price_precision,
+                            qty_precision=qty_precision,
+                            quote_asset=item.quote_currency,
+                            base_asset=item.base_currency,
+                            is_margin_trading_allowed=False,
+                        )
+                    else:
+                        self.add_symbol(
+                            symbol=symbol,
+                            quote_asset=item.quote_currency,
+                            base_asset=item.base_currency,
+                            exchange_id=ExchangeId.KUCOIN,
+                            active=active,
+                            price_precision=price_precision,
+                            qty_precision=qty_precision,
+                            min_notional=min_notional,
+                        )
+                        # ensure exchange link added in same session
+                        self._add_exchange_link_if_not_exists(
+                            s,
+                            symbol=symbol,
+                            exchange_id=ExchangeId.KUCOIN,
+                            min_notional=min_notional,
+                            price_precision=price_precision,
+                            qty_precision=qty_precision,
+                            quote_asset=item.quote_currency,
+                            base_asset=item.base_currency,
+                            is_margin_trading_allowed=False,
+                        )
+
+    def ingest_spot_data(self, all_raw_symbols: GetAllSymbolsResp):
+        for item in all_raw_symbols.data:
             symbol = item.symbol.replace("-", "")
+
             if not item.enable_trading or item.symbol.startswith(
                 ("DOWN", "UP", "AUD", "EUR", "GBP")
             ):
@@ -585,6 +648,13 @@ class SymbolsCrud:
                             base_asset=item.base_currency,
                             is_margin_trading_allowed=item.is_margin_enabled,
                         )
+
+    def kucoin_symbols_ingestion(self):
+        all_spot_symbols = self.kucoin_api.get_all_symbols()
+        all_future_symbols = self.kucoin_api.futures_market_api.get_all_symbols()
+
+        self.ingest_spot_data(all_spot_symbols)
+        self.ingest_futures_data(all_future_symbols)
 
     def etl_symbols_ingestion(self, delete_existing: bool = False):
         if delete_existing:

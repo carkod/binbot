@@ -11,7 +11,7 @@ from databases.crud.symbols_crud import SymbolsCrud
 def _patch_symbol_crud_apis(monkeypatch):
     from types import SimpleNamespace
 
-    class DummyKucoinApi:
+    class DummyKucoinFutures:
         def __init__(self, *args, **kwargs):
             pass
 
@@ -42,7 +42,7 @@ def _patch_symbol_crud_apis(monkeypatch):
             ]
             return SimpleNamespace(data=items)
 
-    monkeypatch.setattr("databases.crud.symbols_crud.KucoinApi", DummyKucoinApi)
+    monkeypatch.setattr("databases.crud.symbols_crud.KucoinFutures", DummyKucoinFutures)
 
 
 @pytest.fixture
