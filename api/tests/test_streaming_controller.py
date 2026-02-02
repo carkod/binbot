@@ -7,10 +7,10 @@ from typing import cast
 from pybinbot import Strategy, Status
 from streaming.apex_flow_closing import ApexFlowClose
 from streaming.position_manager import (
-    BaseStreaming,
     PositionManager,
     HABollinguerSpread,
 )
+from streaming.base import BaseStreaming
 from databases.tables.bot_table import BotTable
 from pandas import DataFrame
 from pybinbot import ExchangeId, HeikinAshi, BinanceErrors
@@ -122,14 +122,12 @@ class TestPositionManager:
                     )
                 return klines
 
-        monkeypatch.setattr("streaming.position_manager.BotTableCrud", DummyBotCrud)
-        monkeypatch.setattr(
-            "streaming.position_manager.PaperTradingTableCrud", DummyPaperCrud
-        )
-        monkeypatch.setattr("streaming.position_manager.SymbolsCrud", DummySymbolsCrud)
-        monkeypatch.setattr("streaming.position_manager.CandlesCrud", DummyCandlesCrud)
-        monkeypatch.setattr("streaming.position_manager.BinanceApi", DummyBinanceApi)
-        monkeypatch.setattr("streaming.position_manager.KucoinApi", DummyKucoinApi)
+        monkeypatch.setattr("streaming.base.BotTableCrud", DummyBotCrud)
+        monkeypatch.setattr("streaming.base.PaperTradingTableCrud", DummyPaperCrud)
+        monkeypatch.setattr("streaming.base.SymbolsCrud", DummySymbolsCrud)
+        monkeypatch.setattr("streaming.base.CandlesCrud", DummyCandlesCrud)
+        monkeypatch.setattr("streaming.base.BinanceApi", DummyBinanceApi)
+        monkeypatch.setattr("streaming.base.KucoinFutures", DummyKucoinApi)
 
         def patched_pre_process(self, exchange, candles):
             from pandas import to_datetime
@@ -197,6 +195,9 @@ class TestPositionManager:
         bot.stop_loss = 0.0
         bot.status = None
         bot.name = "test_bot"
+
+        # Add dummy orders list to satisfy order_updates logic
+        bot.orders = []
 
         # deal payload used by profit computation
         deal = types.SimpleNamespace()
