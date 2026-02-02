@@ -203,6 +203,18 @@ services:
   #   depends_on:
   #     - api
 
+  order_updates:
+    build:
+      context: api/
+      dockerfile: Dockerfile.order_updates
+    image: binbot_order_updates
+    env_file:
+      - .env
+    restart: on-failure
+    container_name: binbot_order_updates
+    depends_on:
+      - api
+
   # grafana:
   #   build:
   #     context: grafana-mongodb-docker
