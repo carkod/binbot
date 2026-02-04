@@ -1,24 +1,17 @@
 import asyncio
 import logging
-from pydantic import BaseModel
-from typing import Callable, Optional
-
+from pybinbot import KucoinApi, OrderStatus
 from kucoin_universal_sdk.api import DefaultClient
-from kucoin_universal_sdk.model.client_option import ClientOptionBuilder
-from kucoin_universal_sdk.model.constants import GLOBAL_API_ENDPOINT
+from kucoin_universal_sdk.model import TransportOptionBuilder
+from kucoin_universal_sdk.model import ClientOptionBuilder
+from kucoin_universal_sdk.model.constants import (
+    GLOBAL_API_ENDPOINT,
+    GLOBAL_FUTURES_API_ENDPOINT,
+)
 from kucoin_universal_sdk.model.websocket_option import WebSocketClientOptionBuilder
+from databases.crud.exchange_order_crud import ExchangeOrderTableCrud
 
 logger = logging.getLogger(__name__)
-
-
-class OrderUpdate(BaseModel):
-    order_id: str
-    symbol: str
-    side: str  # buy / sell
-    status: str  # open / match / done
-    filled_qty: float
-    filled_quote: float
-    price: Optional[float]
 
 
 class KucoinOrderWS:
@@ -36,28 +29,42 @@ class KucoinOrderWS:
         api_key: str,
         api_secret: str,
         api_passphrase: str,
-        on_update: Callable[[OrderUpdate], None],
     ):
         self.api_key = api_key
         self.api_secret = api_secret
         self.api_passphrase = api_passphrase
-        self.on_update = on_update
         self._running = False
         self._ws_started = False
+        self.kucoin_api = KucoinApi(
+            key=api_key, secret=api_secret, passphrase=api_passphrase
+        )
+
+        # Build websocket option separately
+        ws_option = WebSocketClientOptionBuilder().build()
 
         # Initialize KuCoin Universal SDK client
+        http_transport_option = (
+            TransportOptionBuilder()
+            .set_keep_alive(True)
+            .set_max_pool_size(10)
+            .set_max_connection_per_pool(10)
+            .build()
+        )
+
         client_option = (
             ClientOptionBuilder()
             .set_key(api_key)
             .set_secret(api_secret)
             .set_passphrase(api_passphrase)
+            .set_transport_option(http_transport_option)
             .set_spot_endpoint(GLOBAL_API_ENDPOINT)
-            .set_websocket_client_option(WebSocketClientOptionBuilder().build())
+            .set_futures_endpoint(GLOBAL_FUTURES_API_ENDPOINT)
+            .set_websocket_client_option(ws_option)
             .build()
         )
 
-        self.client = DefaultClient(client_option)
-        ws_service = self.client.ws_service()
+        client = DefaultClient(client_option)
+        ws_service = client.ws_service()
         self.private_ws = ws_service.new_spot_private_ws()
 
         logger.info("KuCoin Order WS initialized")
@@ -77,11 +84,11 @@ class KucoinOrderWS:
         # Small delay to ensure connection is ready
         await asyncio.sleep(0.1)
 
-        self.private_ws.order_events(callback=self.on_order_event)
-        logger.info("Subscribed to /spotMarket/tradeOrders")
+        self.private_ws.order_v2(callback=self.on_order_event)
+        logger.info("Subscribed to order updates")
         self._running = True
 
-    def on_order_event(self, topic: str, subject: str, data: dict):
+    def on_order_event(self, topic, subject, data: dict) -> None:
         """
         Callback for order events from KuCoin websocket.
 
@@ -90,45 +97,34 @@ class KucoinOrderWS:
             subject: The subject/event type
             data: The order event data
         """
-        try:
-            if not isinstance(data, dict):
-                logger.warning(f"Unexpected data type: {type(data)}")
-                return
+        if not isinstance(data, dict):
+            logger.error(f"Unexpected data type: {type(data)}")
+            return
 
-            event_type = data.get("type")  # open | match | done
+        event_type = data.get("type")  # open | match | done
+        status = (
+            OrderStatus.map_from_kucoin_status(event_type)
+            if event_type
+            else OrderStatus.FILLED
+        )
+        order = ExchangeOrderTableCrud().update_one(
+            order_id=data["orderId"],
+            price=float(data["price"]),
+            filled_qty=float(data["filledSize"]),
+            order_time=int(data["orderTime"]),
+            status=status,
+            side=data["side"],
+        )
 
-            order = OrderUpdate(
-                order_id=data.get("orderId", ""),
-                symbol=data.get("symbol", ""),
-                side=data.get("side", ""),
-                status=event_type or "",
-                filled_qty=float(data.get("filledSize", 0) or 0),
-                filled_quote=float(data.get("filledFunds", 0) or 0),
-                price=float(data["price"]) if data.get("price") else None,
-            )
-
-            logger.info(
-                f"Order event: {event_type} - {order.symbol} {order.side} "
-                f"filled: {order.filled_qty}"
-            )
-
-            self.on_update(order)
-
-        except Exception as e:
-            logger.error(f"Error processing order event: {e}", exc_info=True)
+        logger.info(
+            f"Order event: {event_type}"
+            f"Status: {order.status}"
+            f"Topic: {topic}"
+            f"Subject: {subject}"
+        )
 
     async def run_forever(self):
         """Keep the event loop alive while processing order updates."""
         logger.info("run_forever() started for order updates")
-
-        try:
-            while self._running:
-                await asyncio.sleep(1)
-        except asyncio.CancelledError:
-            logger.warning("run_forever: CancelledError - shutting down")
-            raise
-        except Exception as e:
-            logger.error(f"run_forever: Unexpected error: {e}", exc_info=True)
-            raise
-        finally:
-            logger.info("run_forever() EXITING!")
+        while self._running:
+            await asyncio.sleep(1)

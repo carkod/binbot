@@ -1,25 +1,19 @@
 import asyncio
-import logging
 from pybinbot import configure_logging
-from streaming.kucoin_order_ws import KucoinOrderWS, OrderUpdate
+from streaming.kucoin_order_ws import KucoinOrderWS
 from os import getenv
 from dotenv import load_dotenv
 
 load_dotenv()
 
 
-async def handle_order(order: OrderUpdate):
-    logging.info(f"Order {order.order_id}: {order.status}")
-
-
 async def main():
     # initialization data
     configure_logging(force=True)
     ws = KucoinOrderWS(
-        api_key=getenv("KUCOIN_KEY"),
-        api_secret=getenv("KUCOIN_SECRET"),
-        api_passphrase=getenv("KUCOIN_PASSPHRASE"),
-        on_update=handle_order,
+        api_key=getenv("KUCOIN_KEY", ""),
+        api_secret=getenv("KUCOIN_SECRET", ""),
+        api_passphrase=getenv("KUCOIN_PASSPHRASE", ""),
     )
     await ws.subscribe_orders()
     await ws.run_forever()
