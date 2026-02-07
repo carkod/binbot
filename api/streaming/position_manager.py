@@ -359,6 +359,11 @@ class PositionManager:
             try:
                 if self.current_bot:
                     # fill incomplete orders first
+                    if self.base_streaming.exchange != ExchangeId.KUCOIN:
+                        raise NotImplementedError(
+                            "Order updates only implemented for Kucoin"
+                        )
+
                     self.base_streaming.order_updates(bot=self.current_bot)
                     if self.current_bot.dynamic_trailling:
                         self.market_trailing_analytics(

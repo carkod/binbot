@@ -8,11 +8,19 @@ from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
 from dotenv import load_dotenv
 from exchange_apis.kucoin.futures import KucoinFutures
-from pybinbot import (BinanceApi, BinbotErrors, ExchangeId,
-                      KucoinKlineIntervals, OrderStatus, Status)
+from pybinbot import (
+    BinanceApi,
+    BinanceKlineIntervals,
+    BinbotErrors,
+    ExchangeId,
+    KucoinKlineIntervals,
+    OrderStatus,
+    Status,
+)
 from tools.config import Config
 
 load_dotenv()
+
 
 class BaseStreaming:
     """
@@ -36,8 +44,24 @@ class BaseStreaming:
         self.cs = CandlesCrud()
         self.autotrade_crud = AutotradeCrud()
         self.autotrade_settings = self.autotrade_crud.get_settings()
-        self.interval = self.autotrade_settings.candlestick_interval
-        self.exchange = self.autotrade_settings.exchange_id
+        self.exchange = ExchangeId(self.autotrade_settings.exchange_id)
+        candlestick_interval = self.autotrade_settings.candlestick_interval
+        if self.exchange == ExchangeId.KUCOIN:
+            self.interval: KucoinKlineIntervals | BinanceKlineIntervals
+            if isinstance(candlestick_interval, BinanceKlineIntervals):
+                interval = BinanceKlineIntervals.to_kucoin_interval(
+                    candlestick_interval
+                )
+                self.interval = KucoinKlineIntervals(interval)
+            elif isinstance(candlestick_interval, KucoinKlineIntervals):
+                self.interval = candlestick_interval
+            else:
+                raise ValueError(
+                    f"Invalid interval type: {candlestick_interval}. Must be BinanceKlineIntervals or KucoinKlineIntervals."
+                )
+        else:
+            self.interval = candlestick_interval
+
         # Always have it active
         self.active_bot_pairs: list = self.get_all_active_pairs()
 
@@ -91,7 +115,7 @@ class BaseStreaming:
 
                 # Check if order is expired based on 15m interval
                 # this should be a good measure, because candles have closed
-                interval_ms = KucoinKlineIntervals.get_interval_ms(self.interval.value)
+                interval_ms = self.interval.get_ms()
                 now_ms = int(datetime.now().timestamp() * 1000)
                 order_ms = int(order.timestamp * 1000)
                 is_expired = (now_ms - order_ms) > interval_ms
@@ -99,11 +123,8 @@ class BaseStreaming:
                 if system_order and float(system_order.deal_size) > 0:
                     order.price = float(system_order.price)
                     order.qty = float(system_order.deal_size)
-                    order.status = (
-                        OrderStatus.FILLED
-                        if system_order.status == "done"
-                        or system_order.status == "match"
-                        else OrderStatus.NEW
+                    order.status = OrderStatus.map_from_kucoin_status(
+                        system_order.status
                     )
 
                 if not system_order or is_expired:

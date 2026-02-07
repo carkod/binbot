@@ -293,6 +293,10 @@ class TestPositionManager:
 
     def test_process_deal_runs_trailing_before_deal_exit(self, monkeypatch):
         base = self._make_base_streaming(monkeypatch, active_pairs=["BTCUSDC"])
+        # Set exchange to KUCOIN to avoid NotImplementedError for order updates
+        from pybinbot import ExchangeId
+
+        base.exchange = ExchangeId.KUCOIN
         sc = PositionManager(base, symbol="BTCUSDC")
 
         live_bot = self._make_bot(pair="BTCUSDC", strategy=Strategy.long)
@@ -340,6 +344,13 @@ class TestPositionManager:
             FakeDealGateway,
         )
 
+        # Mock order_updates to prevent it from doing anything
+        monkeypatch.setattr(
+            BaseStreaming,
+            "order_updates",
+            lambda self, bot: None,
+        )
+
         sc.process_deal()
 
         assert call_order.count("trailing") == 1
@@ -352,6 +363,10 @@ class TestPositionManager:
         self, monkeypatch
     ):
         base = self._make_base_streaming(monkeypatch, active_pairs=["BTCUSDC"])
+        # Set exchange to KUCOIN to avoid NotImplementedError for order updates
+        from pybinbot import ExchangeId
+
+        base.exchange = ExchangeId.KUCOIN
         sc = PositionManager(base, symbol="BTCUSDC")
 
         # Provide a current bot via BaseStreaming.get_current_bot
@@ -390,6 +405,13 @@ class TestPositionManager:
             FakeDealGateway,
         )
 
+        # Mock order_updates to prevent it from doing anything
+        monkeypatch.setattr(
+            BaseStreaming,
+            "order_updates",
+            lambda self, bot: None,
+        )
+
         sc.process_deal()
         assert FakeDealGateway.exit_calls, (
             "Expected deal_exit_orchestration to be called"
@@ -397,6 +419,10 @@ class TestPositionManager:
 
     def test_process_deal_binance_error_sets_status_and_saves(self, monkeypatch):
         base = self._make_base_streaming(monkeypatch, active_pairs=["BTCUSDC"])
+        # Set exchange to KUCOIN to avoid NotImplementedError for order updates
+        from pybinbot import ExchangeId
+
+        base.exchange = ExchangeId.KUCOIN
         sc = PositionManager(base, symbol="BTCUSDC")
 
         bot = self._make_bot(pair="BTCUSDC", strategy=Strategy.long)
@@ -431,6 +457,13 @@ class TestPositionManager:
         monkeypatch.setattr(
             "streaming.position_manager.DealGateway",
             ErrorDealGateway,
+        )
+
+        # Mock order_updates to prevent it from doing anything
+        monkeypatch.setattr(
+            BaseStreaming,
+            "order_updates",
+            lambda self, bot: None,
         )
 
         sc.process_deal()
