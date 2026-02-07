@@ -1,5 +1,4 @@
 import logging
-
 from typing import Type, Union
 from urllib.error import HTTPError
 from bots.models import BotModel, OrderModel
@@ -25,6 +24,7 @@ from pybinbot import (
 )
 from databases.crud.symbols_crud import SymbolsCrud
 from exchange_apis.binance.deals.factory import BinanceDeal
+from tools.config import Config
 
 
 class BinanceMarginDeal(BinanceDeal):
@@ -49,8 +49,9 @@ class BinanceMarginDeal(BinanceDeal):
         self.active_bot = bot
         self.db_table = db_table
         self.symbols_crud = SymbolsCrud()
+        self.config = Config()
         self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
-        self.binbot_api = BinbotApi()
+        self.binbot_api = BinbotApi(base_url=self.config.backend_domain)
 
     """
     Reusable utility functions

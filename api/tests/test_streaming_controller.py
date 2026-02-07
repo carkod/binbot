@@ -346,9 +346,9 @@ class TestPositionManager:
 
         # Mock order_updates to prevent it from doing anything
         monkeypatch.setattr(
-            BaseStreaming,
+            PositionManager,
             "order_updates",
-            lambda self, bot: None,
+            lambda self, bot: bot,
         )
 
         sc.process_deal()
@@ -407,9 +407,9 @@ class TestPositionManager:
 
         # Mock order_updates to prevent it from doing anything
         monkeypatch.setattr(
-            BaseStreaming,
+            PositionManager,
             "order_updates",
-            lambda self, bot: None,
+            lambda self, bot: bot,
         )
 
         sc.process_deal()
@@ -461,9 +461,9 @@ class TestPositionManager:
 
         # Mock order_updates to prevent it from doing anything
         monkeypatch.setattr(
-            BaseStreaming,
+            PositionManager,
             "order_updates",
-            lambda self, bot: None,
+            lambda self, bot: bot,
         )
 
         sc.process_deal()

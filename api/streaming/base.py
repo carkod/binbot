@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from bots.models import BotModel
 from databases.crud.autotrade_crud import AutotradeCrud
 from databases.crud.bot_crud import BotTableCrud
@@ -14,8 +12,8 @@ from pybinbot import (
     BinbotErrors,
     ExchangeId,
     KucoinKlineIntervals,
-    OrderStatus,
     Status,
+    KucoinApi,
 )
 from tools.config import Config
 
@@ -33,7 +31,12 @@ class BaseStreaming:
         self.binance_api = BinanceApi(
             key=self.config.binance_key, secret=self.config.binance_secret
         )
-        self.kucoin_api = KucoinFutures(
+        self.kucoin_api = KucoinApi(
+            key=self.config.kucoin_key,
+            secret=self.config.kucoin_secret,
+            passphrase=self.config.kucoin_passphrase,
+        )
+        self.kucoin_futures_api = KucoinFutures(
             key=self.config.kucoin_key,
             secret=self.config.kucoin_secret,
             passphrase=self.config.kucoin_passphrase,
@@ -64,6 +67,31 @@ class BaseStreaming:
 
         # Always have it active
         self.active_bot_pairs: list = self.get_all_active_pairs()
+
+    def convert_to_kucoin_symbol(self, bot: BotModel) -> str:
+        """
+        Convert symbol to KuCoin format if exchange is KuCoin
+        e.g. BTCUSDC -> BTC-USDC
+        """
+        if self.exchange == ExchangeId.KUCOIN:
+            quote = (
+                bot.pair.replace(
+                    bot.pair.replace(
+                        bot.quote_asset.value
+                        if hasattr(bot.quote_asset, "value")
+                        else str(bot.quote_asset),
+                        "",
+                    ),
+                    "",
+                )
+                if hasattr(bot, "quote_asset") and bot.quote_asset
+                else "USDT"
+            )
+            base = bot.pair.replace(quote, "")
+            kucoin_symbol = f"{base}-{quote}"
+            return kucoin_symbol
+        else:
+            return bot.pair
 
     def get_all_active_pairs(self) -> list:
         """
@@ -100,40 +128,3 @@ class BaseStreaming:
         except BinbotErrors:
             bot = None
             return bot
-
-    def order_updates(self, bot: BotModel) -> BotModel:
-        """
-        Take order id from list of bot.orders
-        and fetch order details from exchange
-        """
-        for order in bot.orders:
-            if (
-                self.exchange == ExchangeId.KUCOIN
-                and order.status != OrderStatus.FILLED
-            ):
-                system_order = self.kucoin_api.get_order(order_id=str(order.order_id))
-
-                # Check if order is expired based on 15m interval
-                # this should be a good measure, because candles have closed
-                interval_ms = self.interval.get_ms()
-                now_ms = int(datetime.now().timestamp() * 1000)
-                order_ms = int(order.timestamp * 1000)
-                is_expired = (now_ms - order_ms) > interval_ms
-
-                if system_order and float(system_order.deal_size) > 0:
-                    order.price = float(system_order.price)
-                    order.qty = float(system_order.deal_size)
-                    order.status = OrderStatus.map_from_kucoin_status(
-                        system_order.status
-                    )
-
-                if not system_order or is_expired:
-                    self.kucoin_api.cancel_order(order_id=str(order.order_id))
-                    bot.status = Status.inactive
-                    bot.add_log(
-                        f"Order {order.order_id} expired and cancelled. Bot set to inactive.",
-                    )
-
-            self.bot_controller.save(data=bot)
-
-        return bot

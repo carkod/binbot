@@ -56,7 +56,7 @@ def get_order_by_id(symbol: str, order_id: str):
             key=config.kucoin_key,
             secret=config.kucoin_secret,
             passphrase=config.kucoin_passphrase,
-        ).get_order_by_order_id(symbol=symbol, order_id=order_id)
+        ).get_order(symbol=symbol, order_id=order_id)
         return {
             "message": "Order found!",
             "data": data,

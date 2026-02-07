@@ -2,7 +2,7 @@ from typing import List
 from uuid import UUID
 from fastapi import Query
 from sqlmodel import Session, asc, desc, select, case
-from bots.models import BotModel
+from bots.models import BotModel, OrderModel
 from databases.tables.bot_table import BotTable
 from databases.tables.deal_table import DealTable
 from databases.tables.order_table import ExchangeOrderTable
@@ -11,7 +11,6 @@ from pybinbot import (
     QuoteAssets,
     Status,
     Strategy,
-    round_numbers,
     ts_to_humandate,
     BotBase,
     timestamp,
@@ -292,24 +291,19 @@ class BotTableCrud:
         else:
             raise BinbotErrors("Order not found")
 
-    def update_order(
-        self, order: ExchangeOrderTable, commission: float
-    ) -> ExchangeOrderTable:
+    def update_order(self, order: OrderModel) -> ExchangeOrderTable:
         """
         Update order data
         """
-
-        initial_bot = self.get_one(bot_id=str(order.bot_id))
-        initial_bot.deal.total_commissions += round_numbers(commission)
-        initial_bot.logs.append("Order status updated")
-
-        self.session.add(order)
-        self.session.add(initial_bot)
+        existing_order = self.get_order(str(order.order_id))
+        if not existing_order:
+            raise BinbotErrors("Order not found")
+        existing_order.sqlmodel_update(order.model_dump())
+        self.session.add(existing_order)
         self.session.commit()
-        self.session.refresh(order)
-        self.session.refresh(initial_bot)
+        self.session.refresh(existing_order)
         self.session.close()
-        return order
+        return existing_order
 
     def get_active_pairs(self) -> Sequence[str]:
         """
