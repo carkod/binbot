@@ -6,11 +6,7 @@ from streaming.apex_flow_closing import ApexFlowClose
 from deals.gateway import DealGateway
 from bots.models import BotModel
 from databases.crud.autotrade_crud import AutotradeCrud
-from databases.crud.bot_crud import BotTableCrud
-from databases.crud.candles_crud import CandlesCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
-from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from databases.crud.symbols_crud import SymbolsCrud
 from pybinbot import (
     Status,
     Strategy,
@@ -20,77 +16,12 @@ from pybinbot import (
     Indicators,
     HeikinAshi,
     BinanceErrors,
-    BinbotErrors,
     BinanceApi,
     KucoinApi,
     HABollinguerSpread,
 )
 from copy import deepcopy
-from tools.config import Config
-from exchange_apis.kucoin.futures import KucoinFutures
-
-
-class BaseStreaming:
-    """
-    Static data that doesn't change often, loaded once on startup
-    and used across the application
-    """
-
-    def __init__(self) -> None:
-        self.config = Config()
-        self.binance_api = BinanceApi(
-            key=self.config.binance_key, secret=self.config.binance_secret
-        )
-        self.kucoin_api = KucoinFutures(
-            key=self.config.kucoin_key,
-            secret=self.config.kucoin_secret,
-            passphrase=self.config.kucoin_passphrase,
-        )
-        self.bot_controller = BotTableCrud()
-        self.paper_trading_controller = PaperTradingTableCrud()
-        self.symbols_crud = SymbolsCrud()
-        self.cs = CandlesCrud()
-        self.autotrade_crud = AutotradeCrud()
-        self.autotrade_settings = self.autotrade_crud.get_settings()
-        self.exchange = self.autotrade_settings.exchange_id
-        # Always have it active
-        self.active_bot_pairs: list = self.get_all_active_pairs()
-
-    def get_all_active_pairs(self) -> list:
-        """
-        Reused by children classes
-        so it needs to be reassigned to self.active_bot_pairs
-        """
-        bot_active_pairs = list(self.bot_controller.get_active_pairs())
-        paper_trading_active_pairs = list(
-            self.paper_trading_controller.get_active_pairs()
-        )
-        active_pairs = list(set(bot_active_pairs + paper_trading_active_pairs))
-        active_pairs.extend(["BTCUSDC", "ETHUSDC"])
-        self.active_bot_pairs = active_pairs
-        return active_pairs
-
-    def get_current_bot(self, symbol: str) -> BotModel | None:
-        try:
-            current_bot = self.bot_controller.get_one(
-                symbol=symbol, status=Status.active
-            )
-            bot = BotModel.dump_from_table(current_bot)
-            return bot
-        except BinbotErrors:
-            bot = None
-            return bot
-
-    def get_current_test_bot(self, symbol: str) -> BotModel | None:
-        try:
-            current_test_bot = self.paper_trading_controller.get_one(
-                symbol=symbol, status=Status.active
-            )
-            bot = BotModel.dump_from_table(current_test_bot)
-            return bot
-        except BinbotErrors:
-            bot = None
-            return bot
+from streaming.base import BaseStreaming
 
 
 class PositionManager:
@@ -427,6 +358,13 @@ class PositionManager:
 
             try:
                 if self.current_bot:
+                    # fill incomplete orders first
+                    if self.base_streaming.exchange != ExchangeId.KUCOIN:
+                        raise NotImplementedError(
+                            "Order updates only implemented for Kucoin"
+                        )
+
+                    self.base_streaming.order_updates(bot=self.current_bot)
                     if self.current_bot.dynamic_trailling:
                         self.market_trailing_analytics(
                             bot=self.current_bot,
