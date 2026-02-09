@@ -104,7 +104,7 @@ class KucoinFutures(KucoinApi):
         resp = futures_order_api.cancel_order_by_id(request)
         return resp
 
-    def get_order(self, order_id: str) -> GetOrderByOrderIdResp:
+    def retrieve_order(self, order_id: str) -> GetOrderByOrderIdResp:
         """
         Get order status/details by order_id.
         """

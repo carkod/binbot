@@ -193,7 +193,7 @@ class KucoinLongDeal(KucoinSpotDeal):
                 stop_loss_order = OrderModel(
                     timestamp=system_order.created_at,
                     order_id=system_order.id,
-                    deal_type=DealType.take_profit,
+                    deal_type=DealType.stop_loss,
                     pair=system_order.symbol,
                     order_side=system_order.side,
                     order_type=system_order.type,
