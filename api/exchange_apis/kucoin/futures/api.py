@@ -1,4 +1,6 @@
 from datetime import datetime
+from pybinbot import KucoinRest, KucoinKlineIntervals, OrderType
+from uuid import uuid4
 from kucoin_universal_sdk.api import DefaultClient
 from kucoin_universal_sdk.model import TransportOptionBuilder
 from kucoin_universal_sdk.model import ClientOptionBuilder
@@ -20,8 +22,6 @@ from kucoin_universal_sdk.generate.futures.order.model_cancel_order_by_id_resp i
 from kucoin_universal_sdk.generate.futures.order.model_get_order_by_order_id_resp import (
     GetOrderByOrderIdResp,
 )
-from pybinbot import KucoinApi, KucoinKlineIntervals, OrderType
-from uuid import uuid4
 from kucoin_universal_sdk.generate.account.transfer.model_flex_transfer_req import (
     FlexTransferReq,
     FlexTransferReqBuilder,
@@ -40,9 +40,15 @@ from kucoin_universal_sdk.generate.futures.positions.model_modify_margin_leverag
 from kucoin_universal_sdk.generate.futures.positions.model_modify_margin_leverage_resp import (
     ModifyMarginLeverageResp,
 )
+from kucoin_universal_sdk.generate.futures.positions.model_get_position_details_req import (
+    GetPositionDetailsReqBuilder,
+)
+from kucoin_universal_sdk.generate.futures.positions.model_get_position_details_resp import (
+    GetPositionDetailsResp,
+)
 
 
-class KucoinFutures(KucoinApi):
+class KucoinFutures(KucoinRest):
     """
     Basic Kucoin Futures order endpoints using KucoinApi as base.
 
@@ -59,7 +65,6 @@ class KucoinFutures(KucoinApi):
         self.key = key
         self.secret = secret
         self.passphrase = passphrase
-        # Placeholder: set up futures client/api here
         self.futures_client = self.setup_futures_client()
         self.futures_market_api = (
             self.futures_client.rest_service().get_futures_service().get_market_api()
@@ -287,6 +292,13 @@ class KucoinFutures(KucoinApi):
             .build()
         )
         return self.futures_positions_api.modify_margin_leverage(req)
+
+    def get_futures_position(self, symbol: str) -> GetPositionDetailsResp:
+        """
+        Get current futures position details for a symbol.
+        """
+        req = GetPositionDetailsReqBuilder().set_symbol(symbol).build()
+        return self.futures_positions_api.get_position_details(req)
 
     def place_futures_order(
         self,

@@ -1,12 +1,9 @@
-import logging
 from typing import Type, Union
 from time import time
-
 from pybinbot import (
     round_numbers,
     DealType,
     OrderStatus,
-    Strategy,
     Status,
 )
 from databases.tables.bot_table import BotTable, PaperTradingTable
@@ -18,7 +15,10 @@ from exchange_apis.kucoin.deals.base import KucoinBaseBalance
 from kucoin_universal_sdk.model.common import RestError
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
 from pybinbot import BinbotErrors
-from exchange_apis.kucoin.models import FuturesBot
+from exchange_apis.kucoin.futures.api import KucoinFutures
+from tools.config import Config
+from bots.models import FuturesBot
+
 
 class KucoinFuturesDeal(KucoinBaseBalance):
     """
@@ -38,6 +38,12 @@ class KucoinFuturesDeal(KucoinBaseBalance):
         super().__init__()
         self.active_bot = bot
         self.db_table = db_table
+        self.config = Config()
+        self.kucoin_api = KucoinFutures(
+            key=self.config.kucoin_key,
+            secret=self.config.kucoin_secret,
+            passphrase=self.config.kucoin_passphrase,
+        )
 
         if db_table == PaperTradingTable:
             self.controller = PaperTradingTableCrud()
@@ -52,14 +58,14 @@ class KucoinFuturesDeal(KucoinBaseBalance):
     # ENTRY
     # ---------------------------------------------------------
 
-    def open_position(self) -> BotModel:
+    def base_order(self) -> BotModel:
         """
         Opens a futures LONG position.
         """
         if self.active_bot.status == Status.active:
             return self.active_bot
 
-        if self.active_bot.contracts <= 0:
+        if self.active_bot.fiat_order_size <= 0:
             raise BinbotErrors("Futures contracts must be > 0")
 
         try:
@@ -87,8 +93,11 @@ class KucoinFuturesDeal(KucoinBaseBalance):
         # Fetch position as source of truth
         position = self.kucoin_api.get_futures_position(self.symbol)
 
-        if not position or float(position.currentQty) == 0:
+        if not position:
             raise BinbotErrors("Order placed but no position found")
+
+        if float(position.currentQty) == 0:
+            raise BinbotErrors("Order placed but position qty is zero")
 
         entry_price = float(position.avgEntryPrice)
         qty = abs(float(position.currentQty))
@@ -130,8 +139,7 @@ class KucoinFuturesDeal(KucoinBaseBalance):
             return
 
         stop_price = round_numbers(
-            self.active_bot.deal.opening_price
-            * (1 - self.active_bot.stop_loss / 100),
+            self.active_bot.deal.opening_price * (1 - self.active_bot.stop_loss / 100),
             self.price_precision,
         )
 
