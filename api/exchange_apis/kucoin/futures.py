@@ -20,7 +20,7 @@ from kucoin_universal_sdk.generate.futures.order.model_cancel_order_by_id_resp i
 from kucoin_universal_sdk.generate.futures.order.model_get_order_by_order_id_resp import (
     GetOrderByOrderIdResp,
 )
-from pybinbot import KucoinApi, KucoinKlineIntervals
+from pybinbot import KucoinApi, KucoinKlineIntervals, OrderType
 from uuid import uuid4
 from kucoin_universal_sdk.generate.account.transfer.model_flex_transfer_req import (
     FlexTransferReq,
@@ -28,9 +28,17 @@ from kucoin_universal_sdk.generate.account.transfer.model_flex_transfer_req impo
 )
 from kucoin_universal_sdk.generate.futures.market import (
     GetKlinesReqBuilder,
+    GetSymbolReqBuilder,
+    GetPartOrderBookReqBuilder,
 )
 from kucoin_universal_sdk.generate.account.transfer.model_flex_transfer_resp import (
     FlexTransferResp,
+)
+from kucoin_universal_sdk.generate.futures.positions.model_modify_margin_leverage_req import (
+    ModifyMarginLeverageReqBuilder,
+)
+from kucoin_universal_sdk.generate.futures.positions.model_modify_margin_leverage_resp import (
+    ModifyMarginLeverageResp,
 )
 
 
@@ -52,12 +60,15 @@ class KucoinFutures(KucoinApi):
         self.secret = secret
         self.passphrase = passphrase
         # Placeholder: set up futures client/api here
-        self.client = self.setup_client()
+        self.futures_client = self.setup_futures_client()
         self.futures_market_api = (
-            self.client.rest_service().get_futures_service().get_market_api()
+            self.futures_client.rest_service().get_futures_service().get_market_api()
         )
         self.futures_order_api = (
-            self.client.rest_service().get_futures_service().get_order_api()
+            self.futures_client.rest_service().get_futures_service().get_order_api()
+        )
+        self.futures_positions_api = (
+            self.futures_client.rest_service().get_futures_service().get_positions_api()
         )
 
     def setup_futures_client(self) -> DefaultClient:
@@ -80,63 +91,66 @@ class KucoinFutures(KucoinApi):
         client = DefaultClient(client_option)
         return client
 
-    def place_order(
-        self,
-        symbol: str,
-        side: AddOrderReq.SideEnum,
-        qty: float,
-        price: float,
-        leverage: int = 1,
-        **kwargs,
-    ) -> AddOrderResp:
+    def _tick_size(self, symbol: str) -> float:
         """
-        Place a futures order (buy/sell).
-        side: "buy" or "sell"
-        order_type: "limit" or "market"
-        price: required for limit orders
+        Cached in production
         """
-        client_oid = str(uuid4())
-        builder = (
-            AddOrderReqBuilder()
-            .set_client_oid(client_oid)
-            .set_symbol(symbol)
-            .set_side(side.lower())
-            .set_type(order_type.lower())
-            .set_leverage(leverage)
-        )
-        # Use size parameter for quantity (lot size)
-        if qty:
-            builder = builder.set_size(int(qty))
-        if order_type.upper() == "LIMIT" and price is not None:
-            builder = builder.set_price(str(price))
-        request = builder.build()
-        resp = self.futures_order_api.add_order(request)
-        return resp
+        req = GetSymbolReqBuilder().set_symbol(symbol).build()
+        info = self.futures_market_api.get_symbol(req)
+        if info.tick_size is None:
+            raise ValueError(f"tick_size not available for symbol {symbol}")
+        return float(info.tick_size)
+
+    def _aggressive_price(
+        self, symbol: str, size: float, side: AddOrderReq.SideEnum
+    ) -> float:
+        """
+        Cross spread by 1 tick max
+        """
+        # Use part order book (top levels) as level2 equivalent
+        req = GetPartOrderBookReqBuilder().set_size(size).set_symbol(symbol).build()
+        book = self.futures_market_api.get_part_order_book(req)
+
+        tick = self._tick_size(symbol)
+
+        if side == AddOrderReq.SideEnum.BUY:
+            best_ask = float(book.asks[0][0])
+            return best_ask + tick
+
+        best_bid = float(book.bids[0][0])
+        return best_bid - tick
 
     def buy(
         self,
         symbol: str,
         qty: float,
-        order_type: str = "LIMIT",
-        price: float = None,
         leverage: int = 1,
-        **kwargs,
     ) -> AddOrderResp:
-        return self.place_order(
-            symbol, "BUY", qty, order_type, price, leverage, **kwargs
+        price = self._aggressive_price(symbol, size=qty, side=AddOrderReq.SideEnum.BUY)
+        return self.place_futures_order(
+            symbol=symbol,
+            side=AddOrderReq.SideEnum.BUY,
+            size=qty,
+            leverage=leverage,
+            price=price,
+            order_type=OrderType.limit,
         )
 
     def sell(
         self,
         symbol: str,
         qty: float,
-        order_type: str = "LIMIT",
-        price: float = None,
         leverage: int = 1,
-        **kwargs,
     ) -> AddOrderResp:
-        return self.place_order(
-            symbol, "SELL", qty, order_type, price, leverage, **kwargs
+        price = self._aggressive_price(symbol, size=qty, side=AddOrderReq.SideEnum.SELL)
+        return self.place_futures_order(
+            symbol=symbol,
+            side=AddOrderReq.SideEnum.SELL,
+            size=qty,
+            leverage=leverage,
+            price=price,
+            order_type=OrderType.limit,
+            reduce_only=True,
         )
 
     def cancel_order(self, order_id: str) -> CancelOrderByIdResp:
@@ -148,7 +162,7 @@ class KucoinFutures(KucoinApi):
         resp = self.futures_order_api.cancel_order_by_id(request)
         return resp
 
-    def get_order(self, order_id: str) -> GetOrderByOrderIdResp:
+    def retrieve_order(self, order_id: str) -> GetOrderByOrderIdResp:
         """
         Get order status/details by order_id.
         """
@@ -195,7 +209,7 @@ class KucoinFutures(KucoinApi):
         )
         return self.transfer_api.flex_transfer(req)
 
-    def get_ui_klines(
+    def get_futures_ui_klines(
         self,
         symbol: str,
         interval: str,
@@ -258,3 +272,78 @@ class KucoinFutures(KucoinApi):
             )
 
         return klines
+
+    def set_futures_leverage(
+        self, symbol: str, leverage: int
+    ) -> ModifyMarginLeverageResp:
+        """Set cross-margin leverage for a futures symbol.
+
+        This uses the Kucoin futures positions API `modify_margin_leverage` endpoint.
+        """
+        req = (
+            ModifyMarginLeverageReqBuilder()
+            .set_symbol(symbol)
+            .set_leverage(str(leverage))
+            .build()
+        )
+        return self.futures_positions_api.modify_margin_leverage(req)
+
+    def place_futures_order(
+        self,
+        symbol: str,
+        side: AddOrderReq.SideEnum,
+        size: float,
+        leverage: int = 5,
+        order_type: OrderType = OrderType.limit,
+        margin_mode: AddOrderReq.MarginModeEnum = AddOrderReq.MarginModeEnum.ISOLATED,
+        reduce_only: bool = False,
+        close_order: bool = False,
+        price: float | None = None,
+    ) -> AddOrderResp:
+        """Place a Kucoin futures order using the official SDK.
+
+        Args:
+            symbol: Futures contract symbol, e.g. "BTCUSDTM" or "BTC-USDT" depending on market.
+            side: "buy" or "sell" (case-insensitive).
+            size: Contract size (lot size) as float.
+            price: Limit price as float; required for limit orders.
+            leverage: Leverage multiplier.
+            order_type: Internal OrderType (limit/market).
+            margin_mode: Optional margin mode, "ISOLATED" or "CROSS".
+            reduce_only: Optional reduce-only flag.
+            close_order: Optional close-position flag.
+            client_oid: Optional client order id; if omitted a UUID is generated.
+        """
+
+        client_oid = str(uuid4())
+
+        if order_type == OrderType.limit:
+            type_enum = AddOrderReq.TypeEnum.LIMIT
+        else:
+            type_enum = AddOrderReq.TypeEnum.MARKET
+
+        builder = (
+            AddOrderReqBuilder()
+            .set_client_oid(client_oid)
+            .set_symbol(symbol)
+            .set_side(side)
+            .set_type(type_enum)
+            .set_margin_mode(margin_mode)
+        )
+
+        if leverage is not None:
+            builder = builder.set_leverage(str(leverage))
+
+        if price is not None:
+            builder = builder.set_price(str(price))
+
+        builder = builder.set_size(int(size))
+
+        if reduce_only is not None:
+            builder = builder.set_reduce_only(reduce_only)
+
+        if close_order is not None:
+            builder = builder.set_close_order(close_order)
+
+        req = builder.build()
+        return self.futures_order_api.add_order(req)

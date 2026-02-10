@@ -5,7 +5,7 @@ from databases.crud.candles_crud import CandlesCrud
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
 from dotenv import load_dotenv
-from exchange_apis.kucoin.futures import KucoinFutures
+from api.exchange_apis.kucoin.futures_api import KucoinFutures
 from pybinbot import (
     BinanceApi,
     BinanceKlineIntervals,
