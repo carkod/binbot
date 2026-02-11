@@ -8,6 +8,7 @@ import {
 import { Layout } from "./app/Layout";
 import AutotradePage from "./app/pages/Autotrade";
 import BotDetail from "./app/pages/BotDetail";
+import FuturesBotDetail from "./app/pages/FuturesBotDetail";
 import BotsPage from "./app/pages/Bots";
 import DashboardPage from "./app/pages/Dashboard";
 import LoginPage from "./app/pages/Login";
@@ -58,11 +59,28 @@ export const routes = [
     nav: true,
   },
   {
+    path: "bots/futures/new/:symbol?",
+    link: "/bots/futures/new",
+    icon: null,
+    name: "New Futures Bot",
+    element: <FuturesBotDetail />,
+    id: "new-futures-bot",
+    nav: true,
+  },
+  {
     path: "bots/edit/:id",
     icon: null,
     name: "Edit Bot",
     element: <BotDetail />,
     id: "edit-bot",
+    nav: false,
+  },
+  {
+    path: "bots/futures/edit/:id",
+    icon: null,
+    name: "Edit Futures Bot",
+    element: <FuturesBotDetail />,
+    id: "edit-futures-bot",
     nav: false,
   },
   {
