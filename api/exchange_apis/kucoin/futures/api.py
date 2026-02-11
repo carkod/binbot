@@ -1,23 +1,17 @@
 from datetime import datetime
-from pybinbot import KucoinRest, KucoinKlineIntervals, OrderType
+from pybinbot import KucoinRest, KucoinKlineIntervals, OrderType, OrderStatus, DealType
 from uuid import uuid4
-from kucoin_universal_sdk.api import DefaultClient
-from kucoin_universal_sdk.model import TransportOptionBuilder
-from kucoin_universal_sdk.model import ClientOptionBuilder
-from kucoin_universal_sdk.model import (
-    GLOBAL_FUTURES_API_ENDPOINT,
-)
+from time import time
+from typing import List
+from bots.models import OrderModel
+from tools.config import Config
 from kucoin_universal_sdk.generate.futures.order import (
     AddOrderReqBuilder,
-    CancelOrderByIdReqBuilder,
     GetOrderByOrderIdReqBuilder,
 )
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
 from kucoin_universal_sdk.generate.futures.order.model_add_order_resp import (
     AddOrderResp,
-)
-from kucoin_universal_sdk.generate.futures.order.model_cancel_order_by_id_resp import (
-    CancelOrderByIdResp,
 )
 from kucoin_universal_sdk.generate.futures.order.model_get_order_by_order_id_resp import (
     GetOrderByOrderIdResp,
@@ -46,6 +40,9 @@ from kucoin_universal_sdk.generate.futures.positions.model_get_position_details_
 from kucoin_universal_sdk.generate.futures.positions.model_get_position_details_resp import (
     GetPositionDetailsResp,
 )
+from kucoin_universal_sdk.generate.futures.order import (
+    CancelAllOrdersV3ReqBuilder,
+)
 
 
 class KucoinFutures(KucoinRest):
@@ -56,45 +53,13 @@ class KucoinFutures(KucoinRest):
     Futures API KucoinApi(KucoinFutures) in pybinbot
     """
 
-    def __init__(self, key: str, secret: str, passphrase: str):
+    def __init__(self):
+        self.config = Config()
         super().__init__(
-            key=key,
-            secret=secret,
-            passphrase=passphrase,
+            key=self.config.kucoin_key,
+            secret=self.config.kucoin_secret,
+            passphrase=self.config.kucoin_passphrase,
         )
-        self.key = key
-        self.secret = secret
-        self.passphrase = passphrase
-        self.futures_client = self.setup_futures_client()
-        self.futures_market_api = (
-            self.futures_client.rest_service().get_futures_service().get_market_api()
-        )
-        self.futures_order_api = (
-            self.futures_client.rest_service().get_futures_service().get_order_api()
-        )
-        self.futures_positions_api = (
-            self.futures_client.rest_service().get_futures_service().get_positions_api()
-        )
-
-    def setup_futures_client(self) -> DefaultClient:
-        http_transport_option = (
-            TransportOptionBuilder()
-            .set_keep_alive(True)
-            .set_max_pool_size(10)
-            .set_max_connection_per_pool(10)
-            .build()
-        )
-        client_option = (
-            ClientOptionBuilder()
-            .set_key(self.key)
-            .set_secret(self.secret)
-            .set_passphrase(self.passphrase)
-            .set_transport_option(http_transport_option)
-            .set_futures_endpoint(GLOBAL_FUTURES_API_ENDPOINT)
-            .build()
-        )
-        client = DefaultClient(client_option)
-        return client
 
     def _tick_size(self, symbol: str) -> float:
         """
@@ -129,16 +94,61 @@ class KucoinFutures(KucoinRest):
         self,
         symbol: str,
         qty: float,
-        leverage: int = 1,
-    ) -> AddOrderResp:
+    ) -> OrderModel:
+        """
+        Place an order and get the order
+        leverage is set separately via set_futures_leverage
+        """
         price = self._aggressive_price(symbol, size=qty, side=AddOrderReq.SideEnum.BUY)
-        return self.place_futures_order(
+        order_resp = self.place_futures_order(
             symbol=symbol,
             side=AddOrderReq.SideEnum.BUY,
             size=qty,
-            leverage=leverage,
             price=price,
             order_type=OrderType.limit,
+        )
+        if not order_resp or not order_resp.order_id:
+            order_resp = self.place_futures_order(
+                symbol=symbol,
+                side=AddOrderReq.SideEnum.BUY,
+                size=qty,
+                price=price,
+                order_type=OrderType.market,
+            )
+
+        # Fetch order details as source of truth for status/fills
+        order_details = self.retrieve_order(order_resp.order_id)
+
+        if order_details and order_details.status is not None:
+            status = OrderStatus.map_from_kucoin_status(order_details.status.value)
+            filled_size = (
+                float(order_details.filled_size)
+                if order_details.filled_size is not None
+                else float(order_details.size or 0)
+            )
+            price_used = (
+                float(order_details.avg_deal_price)
+                if order_details.avg_deal_price is not None
+                else float(order_details.price or price)
+            )
+            timestamp = order_details.created_at
+        else:
+            status = OrderStatus.NEW
+            filled_size = qty
+            price_used = price
+            timestamp = int(time() * 1000)
+
+        return OrderModel(
+            order_id=order_resp.order_id,
+            order_type=OrderType.limit.value,
+            pair=symbol,
+            timestamp=timestamp,
+            order_side=AddOrderReq.SideEnum.BUY.value,
+            qty=filled_size,
+            price=price_used,
+            status=status,
+            time_in_force=order_details.time_in_force,
+            deal_type=DealType.base_order,
         )
 
     def sell(
@@ -146,9 +156,9 @@ class KucoinFutures(KucoinRest):
         symbol: str,
         qty: float,
         leverage: int = 1,
-    ) -> AddOrderResp:
+    ) -> OrderModel:
         price = self._aggressive_price(symbol, size=qty, side=AddOrderReq.SideEnum.SELL)
-        return self.place_futures_order(
+        order_resp = self.place_futures_order(
             symbol=symbol,
             side=AddOrderReq.SideEnum.SELL,
             size=qty,
@@ -158,14 +168,63 @@ class KucoinFutures(KucoinRest):
             reduce_only=True,
         )
 
-    def cancel_order(self, order_id: str) -> CancelOrderByIdResp:
+        if not order_resp or not order_resp.order_id:
+            order_resp = self.place_futures_order(
+                symbol=symbol,
+                side=AddOrderReq.SideEnum.SELL,
+                size=qty,
+                leverage=leverage,
+                price=price,
+                order_type=OrderType.market,
+                reduce_only=True,
+            )
+
+        order_details = self.retrieve_order(order_resp.order_id)
+
+        if order_details and order_details.status is not None:
+            status = OrderStatus.map_from_kucoin_status(order_details.status.value)
+            filled_size = (
+                float(order_details.filled_size)
+                if order_details.filled_size is not None
+                else float(order_details.size or 0)
+            )
+            price_used = (
+                float(order_details.avg_deal_price)
+                if order_details.avg_deal_price is not None
+                else float(order_details.price or price)
+            )
+            timestamp = order_details.created_at
+        else:
+            status = OrderStatus.NEW
+            filled_size = qty
+            price_used = price
+            timestamp = int(time() * 1000)
+
+        return OrderModel(
+            order_id=order_resp.order_id,
+            order_type=OrderType.limit.value,
+            pair=symbol,
+            timestamp=timestamp,
+            order_side=AddOrderReq.SideEnum.SELL.value,
+            qty=filled_size,
+            price=price_used,
+            status=status,
+            time_in_force=order_details.time_in_force,
+            deal_type=DealType.base_order,
+        )
+
+    def cancel_all_futures_orders(self, symbol: str) -> List[str]:
+        """Cancel all open futures orders, optionally filtered by symbol.
+
+        Uses the futures Cancel All Orders V3 endpoint, which supports
+        an optional symbol filter. This cancels standard (non-stop)
+        futures orders in bulk, rather than one order_id at a time.
         """
-        Cancel a futures order by order_id.
-        """
-        builder = CancelOrderByIdReqBuilder().set_order_id(order_id)
-        request = builder.build()
-        resp = self.futures_order_api.cancel_order_by_id(request)
-        return resp
+        request = CancelAllOrdersV3ReqBuilder().set_symbol(symbol).build()
+        # We intentionally ignore the detailed response; any errors will
+        # be raised via the transport layer.
+        response = self.futures_order_api.cancel_all_orders_v3(request)
+        return response.cancelled_order_ids
 
     def retrieve_order(self, order_id: str) -> GetOrderByOrderIdResp:
         """
@@ -311,6 +370,9 @@ class KucoinFutures(KucoinRest):
         reduce_only: bool = False,
         close_order: bool = False,
         price: float | None = None,
+        stop: AddOrderReq.StopEnum | None = None,
+        stop_price: float | None = None,
+        stop_price_type: AddOrderReq.StopPriceTypeEnum | None = None,
     ) -> AddOrderResp:
         """Place a Kucoin futures order using the official SDK.
 
@@ -324,6 +386,11 @@ class KucoinFutures(KucoinRest):
             margin_mode: Optional margin mode, "ISOLATED" or "CROSS".
             reduce_only: Optional reduce-only flag.
             close_order: Optional close-position flag.
+            stop: Optional stop direction (DOWN/UP). If provided, stop_price and
+                stop_price_type must also be set.
+            stop_price: Optional stop trigger price. Required when stop is set.
+            stop_price_type: Optional stop price type (TP/MP/IP). Required when
+                stop is set.
             client_oid: Optional client order id; if omitted a UUID is generated.
         """
 
@@ -356,6 +423,16 @@ class KucoinFutures(KucoinRest):
 
         if close_order is not None:
             builder = builder.set_close_order(close_order)
+
+        # Optional stop-loss / take-profit trigger parameters
+        if stop is not None:
+            if stop_price is None or stop_price_type is None:
+                raise ValueError(
+                    "stop_price and stop_price_type must be provided when stop is set"
+                )
+            builder = builder.set_stop(stop)
+            builder = builder.set_stop_price(str(stop_price))
+            builder = builder.set_stop_price_type(stop_price_type)
 
         req = builder.build()
         return self.futures_order_api.add_order(req)

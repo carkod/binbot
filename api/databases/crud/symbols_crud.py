@@ -15,9 +15,9 @@ from databases.tables.symbol_exchange_table import SymbolExchangeTable
 from databases.tables.symbol_table import SymbolTable
 from databases.utils import independent_session, engine
 from symbols.models import SymbolModel, SymbolRequestPayload
-from pybinbot import QuoteAssets, ExchangeId, BinanceApi, BinbotErrors
+from pybinbot import QuoteAssets, ExchangeId, BinanceApi, BinbotErrors, KucoinApi
 from sqlalchemy.sql import delete
-from exchange_apis.kucoin.futures import KucoinFutures
+from exchange_apis.kucoin.futures.api import KucoinFutures
 from kucoin_universal_sdk.generate.spot.market.model_get_all_symbols_resp import (
     GetAllSymbolsResp,
 )
@@ -61,11 +61,12 @@ class SymbolsCrud:
         self.binance_api = BinanceApi(
             key=self.config.binance_key, secret=self.config.binance_secret
         )
-        self.kucoin_api = KucoinFutures(
+        self.kucoin_api = KucoinApi(
             key=self.config.kucoin_key,
             secret=self.config.kucoin_secret,
             passphrase=self.config.kucoin_passphrase,
         )
+        self.kucoin_futures_api = KucoinFutures()
         self.autotrade_crud = AutotradeCrud()
         self.autotrade_settings = self.autotrade_crud.get_settings()
         self.exchange_id = self.autotrade_settings.exchange_id

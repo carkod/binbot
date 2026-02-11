@@ -21,6 +21,7 @@ from pybinbot import (
     BinanceApi,
     KucoinApi,
     HABollinguerSpread,
+    convert_to_kucoin_symbol,
 )
 from copy import deepcopy
 from streaming.base import BaseStreaming
@@ -352,7 +353,7 @@ class PositionManager:
             if self.base_streaming.exchange == ExchangeId.KUCOIN and (
                 order.price == 0 or order.qty == 0
             ):
-                kucoin_symbol = self.base_streaming.convert_to_kucoin_symbol(bot)
+                kucoin_symbol = convert_to_kucoin_symbol(bot)
                 system_order = self.base_streaming.kucoin_api.get_order(
                     symbol=kucoin_symbol,
                     order_id=str(order.order_id),

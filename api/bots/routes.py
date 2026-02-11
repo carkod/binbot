@@ -15,10 +15,11 @@ from bots.models import (
 )
 from typing import Optional
 from bots.models import BotModelResponse
-from pybinbot import BinanceErrors, BinbotErrors
+from pybinbot import BinanceErrors, BinbotErrors, MarketType
 from deals.gateway import DealGateway
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from kucoin_universal_sdk.model.common import RestError
+from exchange_apis.kucoin.futures.futures_deal import KucoinFuturesDeal
 
 bot_blueprint = APIRouter()
 bot_ta = TypeAdapter(BotModelResponse)
@@ -151,8 +152,12 @@ def activate_by_id(id: str, session: Session = Depends(get_session)):
     try:
         bot = BotTableCrud(session=session).get_one(bot_id=id)
         bot_model = BotModel.dump_from_table(bot)
-        deal_instance = DealGateway(bot_model, db_table=BotTable)
-        data = deal_instance.open_deal()
+        if bot_model.market_type == MarketType.FUTURES:
+            data = KucoinFuturesDeal(bot_model, db_table=BotTable).open_deal()
+        else:
+            deal_instance = DealGateway(bot_model, db_table=BotTable)
+            data = deal_instance.open_deal()
+
         response_data = BotModelResponse.model_construct(**data.model_dump())
         message = "Successfully activated bot."
         if bot.status == Status.active:

@@ -5,7 +5,7 @@ from databases.crud.candles_crud import CandlesCrud
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
 from dotenv import load_dotenv
-from api.exchange_apis.kucoin.futures_api import KucoinFutures
+from exchange_apis.kucoin.futures.api import KucoinFutures
 from pybinbot import (
     BinanceApi,
     BinanceKlineIntervals,
@@ -36,11 +36,7 @@ class BaseStreaming:
             secret=self.config.kucoin_secret,
             passphrase=self.config.kucoin_passphrase,
         )
-        self.kucoin_futures_api = KucoinFutures(
-            key=self.config.kucoin_key,
-            secret=self.config.kucoin_secret,
-            passphrase=self.config.kucoin_passphrase,
-        )
+        self.kucoin_futures_api = KucoinFutures()
         self.bot_controller = BotTableCrud()
         self.paper_trading_controller = PaperTradingTableCrud()
         self.symbols_crud = SymbolsCrud()
@@ -67,31 +63,6 @@ class BaseStreaming:
 
         # Always have it active
         self.active_bot_pairs: list = self.get_all_active_pairs()
-
-    def convert_to_kucoin_symbol(self, bot: BotModel) -> str:
-        """
-        Convert symbol to KuCoin format if exchange is KuCoin
-        e.g. BTCUSDC -> BTC-USDC
-        """
-        if self.exchange == ExchangeId.KUCOIN:
-            quote = (
-                bot.pair.replace(
-                    bot.pair.replace(
-                        bot.quote_asset.value
-                        if hasattr(bot.quote_asset, "value")
-                        else str(bot.quote_asset),
-                        "",
-                    ),
-                    "",
-                )
-                if hasattr(bot, "quote_asset") and bot.quote_asset
-                else "USDT"
-            )
-            base = bot.pair.replace(quote, "")
-            kucoin_symbol = f"{base}-{quote}"
-            return kucoin_symbol
-        else:
-            return bot.pair
 
     def get_all_active_pairs(self) -> list:
         """
