@@ -1,7 +1,7 @@
 from apscheduler.schedulers.blocking import BlockingScheduler
 from account.controller import ConsolidatedAccounts
 from exchange_apis.binance.assets import Assets
-from databases.crud.symbols_crud import SymbolsCrud
+from databases.symbols_etl import SymbolDataEtl
 from charts.controllers import MarketDominationController
 from databases.utils import independent_session
 from pybinbot import configure_logging
@@ -15,7 +15,7 @@ def main():
     assets = Assets(session=independent_session())
     consolidated_accounts = ConsolidatedAccounts(session=independent_session())
     market_domination = MarketDominationController()
-    symbols_crud = SymbolsCrud()
+    symbols_crud = SymbolDataEtl(session=independent_session())
 
     # Jobs should be distributed as far as possible from each other
     # to avoid overloading RAM and also avoid hitting rate limits due to high weight

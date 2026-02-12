@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, BackgroundTasks
+from databases.symbols_etl import SymbolDataEtl
 from databases.crud.symbols_crud import SymbolsCrud
 from symbols.models import GetOneSymbolResponse
 from databases.utils import get_session
@@ -59,7 +60,7 @@ def store_symbols(
     """
     try:
         background_tasks.add_task(
-            SymbolsCrud(session=session).etl_symbols_ingestion, delete_existing
+            SymbolDataEtl(session=session).etl_symbols_ingestion, delete_existing
         )
         return GetOneSymbolResponse(message="Symbols ingestion started in background!")
     except (IntegrityError, DataError, SQLAlchemyError) as e:
@@ -78,7 +79,7 @@ def reingest_symbols(
     Reingest all symbols from Binance and Kucoin (runs in background)
     """
     try:
-        background_tasks.add_task(SymbolsCrud(session=session).etl_symbols_updates)
+        background_tasks.add_task(SymbolDataEtl(session=session).etl_symbols_updates)
         return GetOneSymbolResponse(
             message="Symbols reingestion started in background!"
         )

@@ -4,7 +4,7 @@ Tests for symbol ingestion functions to verify TRY symbols are excluded from Bin
 
 import pytest
 from unittest.mock import patch, MagicMock
-from databases.crud.symbols_crud import SymbolsCrud
+from databases.symbols_etl import SymbolDataEtl
 
 
 @pytest.fixture(autouse=True)
@@ -112,7 +112,7 @@ def test_binance_symbols_ingestion_excludes_try(
         mock_instance.exchange_info.return_value = mock_binance_exchange_info
         MockBinanceApi.return_value = mock_instance
 
-        crud = SymbolsCrud()
+        crud = SymbolDataEtl()
         crud.binance_symbols_ingestion()
 
         # Verify symbols were added correctly
@@ -138,7 +138,7 @@ def test_etl_exchange_info_update_excludes_try(
         mock_instance.exchange_info.return_value = mock_binance_exchange_info
         MockBinanceApi.return_value = mock_instance
 
-        crud = SymbolsCrud()
+        crud = SymbolDataEtl()
         crud.kucoin_symbols_reingestion()
 
         # Verify symbols were added correctly

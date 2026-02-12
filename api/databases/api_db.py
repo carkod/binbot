@@ -1,5 +1,6 @@
 import logging
 import os
+from databases.symbols_etl import SymbolDataEtl
 from databases.tables.autotrade_table import AutotradeTable, TestAutotradeTable
 from databases.tables.deal_table import DealTable
 from databases.tables.order_table import ExchangeOrderTable, FakeOrderTable
@@ -405,12 +406,13 @@ class ApiDb:
         Use BNBUSDC, because db init will add BTCUSDC
         """
         self.symbols = SymbolsCrud(self.session)
+        self.symbols_etl = SymbolDataEtl(self.session)
         self.asset_indexes = AssetIndexCrud(self.session)
 
         try:
             self.symbols.get_symbol("DASHBTC")
         except BinbotErrors:
-            self.symbols.etl_symbols_ingestion(delete_existing=True)
+            self.symbols_etl.etl_symbols_ingestion(delete_existing=True)
 
         pass
 

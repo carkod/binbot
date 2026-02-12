@@ -13,7 +13,7 @@ from pybinbot import (
 )
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from bots.models import BotModel, OrderModel
+from bots.models import FuturesBot, OrderModel
 from exchange_apis.kucoin.futures.futures_deal import KucoinFuturesDeal
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import (
     AddOrderReq,
@@ -30,20 +30,20 @@ class FuturesLongDeal(KucoinFuturesDeal):
     """
 
     def __init__(
-        self, bot: BotModel, db_table: Type[Union[BotTable, PaperTradingTable]]
+        self, bot: FuturesBot, db_table: Type[Union[BotTable, PaperTradingTable]]
     ) -> None:
         # Re-use KucoinFuturesDeal initialisation (futures APIs, controller, symbol)
         super().__init__(bot=bot, db_table=db_table)
-        self.active_bot: BotModel = bot
+        self.active_bot = bot
 
-    def clean_fiat_currency(self) -> BotModel:
+    def clean_fiat_currency(self) -> FuturesBot:
         """
         Futures deals use contract accounts; there is no spot fiat to clean.
         This is a no-op kept for interface compatibility.
         """
         return self.active_bot
 
-    def take_profit_order(self) -> BotModel:
+    def take_profit_order(self) -> FuturesBot:
         """
         Futures take profit:
         - Closes the current LONG futures position with a reduce-only SELL.
@@ -72,9 +72,7 @@ class FuturesLongDeal(KucoinFuturesDeal):
             )
         else:
             # Real futures: close current LONG position via reduce-only SELL
-            position = self.kucoin_futures_api.get_futures_position(
-                self.kucoin_symbol
-            )
+            position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
             if not position or float(position.current_qty) == 0:
                 self.controller.update_logs(
                     bot=self.active_bot,
@@ -113,14 +111,14 @@ class FuturesLongDeal(KucoinFuturesDeal):
         self.active_bot.status = Status.completed
 
         bot = self.controller.save(self.active_bot)
-        bot = BotModel.model_construct(**bot.model_dump())
+        bot = FuturesBot.model_construct(**bot.model_dump())
         self.controller.update_logs(
             bot=self.active_bot, log_message="Completed futures take profit."
         )
 
         return bot
 
-    def execute_stop_loss(self) -> BotModel:
+    def execute_stop_loss(self) -> FuturesBot:
         """
         Update stop limit after websocket
 
@@ -150,9 +148,7 @@ class FuturesLongDeal(KucoinFuturesDeal):
                 status=OrderStatus.FILLED,
             )
         else:
-            position = self.kucoin_futures_api.get_futures_position(
-                self.kucoin_symbol
-            )
+            position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
             if not position or float(position.current_qty) == 0:
                 self.controller.update_logs(
                     bot=self.active_bot,
@@ -198,7 +194,7 @@ class FuturesLongDeal(KucoinFuturesDeal):
 
         return self.active_bot
 
-    def trailling_profit(self, repurchase_multiplier: float = 1) -> BotModel | None:
+    def trailling_profit(self, repurchase_multiplier: float = 1) -> FuturesBot | None:
         """
         Sell at take_profit price, because prices will not reach trailing
         """
@@ -220,9 +216,7 @@ class FuturesLongDeal(KucoinFuturesDeal):
                 status=OrderStatus.FILLED,
             )
         else:
-            position = self.kucoin_futures_api.get_futures_position(
-                self.kucoin_symbol
-            )
+            position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
             if not position or float(position.current_qty) == 0:
                 self.controller.update_logs(
                     "qty=0, unable to execute futures trailling_profit",
@@ -262,9 +256,7 @@ class FuturesLongDeal(KucoinFuturesDeal):
         # new deal parameters to replace previous
         self.active_bot.deal.closing_price = float(order_data.price)
         self.active_bot.deal.closing_qty = float(order_data.qty)
-        self.active_bot.deal.closing_timestamp = round_timestamp(
-            order_data.timestamp
-        )
+        self.active_bot.deal.closing_timestamp = round_timestamp(order_data.timestamp)
 
         self.active_bot.status = Status.completed
         self.active_bot.add_log(
@@ -363,7 +355,7 @@ class FuturesLongDeal(KucoinFuturesDeal):
                 and open_price > current_price
             ):
                 self.controller.update_logs(
-                    f"Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.symbol}",
+                    f"Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.kucoin_symbol}",
                     self.active_bot,
                 )
                 self.trailling_profit()
