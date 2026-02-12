@@ -4,7 +4,7 @@ from databases.crud.symbols_crud import SymbolsCrud
 from symbols.models import GetOneSymbolResponse
 from databases.utils import get_session
 from sqlmodel import Session
-from pybinbot import StandardResponse, BinbotErrors
+from pybinbot import StandardResponse, BinbotErrors, MarketType
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError, DataError
 from symbols.models import SymbolRequestPayload
 from typing import Optional
@@ -16,6 +16,7 @@ symbols_blueprint = APIRouter()
 @symbols_blueprint.get("/symbols", tags=["Symbols"])
 def get_all_symbols(
     active: Optional[bool] = None,
+    market_type: str | None = None,
     index: Optional[str] = None,
     session: Session = Depends(get_session),
 ):
@@ -31,8 +32,12 @@ def get_all_symbols(
         if no results are found, returns empty list
     """
     try:
+        market_type_enum: MarketType | None = None
+        if market_type is not None:
+            market_type_enum = MarketType(market_type)
+
         response_model = SymbolsCrud(session=session).get_all(
-            active=active, index_id=index
+            active=active, market_type=market_type_enum, index_id=index
         )
         return {
             "message": "Successfully retrieved active symbols",

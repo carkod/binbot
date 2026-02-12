@@ -7,7 +7,7 @@ from sqlmodel import select, Session
 from databases.tables.symbol_exchange_table import SymbolExchangeTable
 from databases.tables.symbol_table import SymbolTable
 from databases.utils import get_db_session
-from pybinbot import ExchangeId
+from pybinbot import ExchangeId, MarketType
 
 
 class SymbolsCrudUtils:
@@ -19,7 +19,9 @@ class SymbolsCrudUtils:
         exponent = int(dec.as_tuple().exponent)
         return abs(exponent)
 
-    def _exchange_combined_statement(self, exchange_id: ExchangeId):
+    def _exchange_combined_statement(
+        self, exchange_id: ExchangeId, market_type: MarketType | None = None
+    ):
         exchange_exists = exists().where(
             cast(ColumnElement, SymbolExchangeTable.exchange_id == exchange_id)
             & cast(ColumnElement, SymbolExchangeTable.symbol_id == SymbolTable.id)
@@ -33,6 +35,15 @@ class SymbolsCrudUtils:
             )
             .where(exchange_exists)
         )
+
+        if market_type == MarketType.FUTURES and exchange_id != ExchangeId.KUCOIN:
+            raise NotImplementedError(
+                "Futures market type is only supported for Kucoin exchange"
+            )
+
+        if exchange_id == ExchangeId.KUCOIN and market_type == MarketType.FUTURES:
+            statement = statement.where(SymbolTable.id.endswith("USDTM"))
+
         return statement
 
     # -------------------------

@@ -24,9 +24,9 @@ export type Routes = {
   path: string;
   name?: string;
   icon?: string;
-  link?: string; // Decides if shows on Sidebar
+  link?: string;
   element: React.FC;
-  id: string; // Unique name to match path
+  id: string;
 };
 
 export const routes = [

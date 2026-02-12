@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from pybinbot import KucoinRest, KucoinKlineIntervals, OrderType, OrderStatus, DealType
 from uuid import uuid4
 from time import time
@@ -40,6 +41,11 @@ from kucoin_universal_sdk.generate.futures.positions.model_get_position_details_
 from kucoin_universal_sdk.generate.futures.positions.model_get_position_details_resp import (
     GetPositionDetailsResp,
 )
+from kucoin_universal_sdk.generate.futures.positions import (
+    SwitchMarginModeReq,
+    SwitchMarginModeReqBuilder,
+    SwitchMarginModeResp,
+)
 from kucoin_universal_sdk.generate.futures.order import (
     CancelAllOrdersV3ReqBuilder,
 )
@@ -55,40 +61,54 @@ class KucoinFutures(KucoinRest):
 
     def __init__(self):
         self.config = Config()
+        self.DEFAULT_LEVERAGE = (
+            1.5  # assuming stop loss 3% by default, conservative risk
+        )
+        self.DEFAULT_MULTIPLIER = 1  # for USDT-M futures
         super().__init__(
             key=self.config.kucoin_key,
             secret=self.config.kucoin_secret,
             passphrase=self.config.kucoin_passphrase,
         )
+        self.setup_futures_api()
+
+    def get_symbol_info(self, symbol: str):
+        req = GetSymbolReqBuilder().set_symbol(symbol).build()
+        return self.futures_market_api.get_symbol(req)
 
     def _tick_size(self, symbol: str) -> float:
         """
         Cached in production
         """
-        req = GetSymbolReqBuilder().set_symbol(symbol).build()
-        info = self.futures_market_api.get_symbol(req)
+        info = self.get_symbol_info(symbol)
         if info.tick_size is None:
             raise ValueError(f"tick_size not available for symbol {symbol}")
         return float(info.tick_size)
 
-    def _aggressive_price(
+    def matching_engine(
         self, symbol: str, size: float, side: AddOrderReq.SideEnum
     ) -> float:
         """
         Cross spread by 1 tick max
         """
-        # Use part order book (top levels) as level2 equivalent
-        req = GetPartOrderBookReqBuilder().set_size(size).set_symbol(symbol).build()
-        book = self.futures_market_api.get_part_order_book(req)
+        req = (
+            GetPartOrderBookReqBuilder()
+            .set_size(str(int(size)))
+            .set_symbol(symbol)
+            .build()
+        )
+        book = self.futures_market_api.get_full_order_book(req)
 
-        tick = self._tick_size(symbol)
+        tick = Decimal(str(self._tick_size(symbol)))
 
         if side == AddOrderReq.SideEnum.BUY:
-            best_ask = float(book.asks[0][0])
-            return best_ask + tick
+            best_ask = Decimal(book.asks[0][0])
+            price = best_ask + tick
+        else:
+            best_bid = Decimal(book.bids[0][0])
+            price = best_bid - tick
 
-        best_bid = float(book.bids[0][0])
-        return best_bid - tick
+        return float(price)
 
     def buy(
         self,
@@ -99,11 +119,12 @@ class KucoinFutures(KucoinRest):
         Place an order and get the order
         leverage is set separately via set_futures_leverage
         """
-        price = self._aggressive_price(symbol, size=qty, side=AddOrderReq.SideEnum.BUY)
+        price = self.matching_engine(symbol, size=qty, side=AddOrderReq.SideEnum.BUY)
+
         order_resp = self.place_futures_order(
             symbol=symbol,
             side=AddOrderReq.SideEnum.BUY,
-            size=qty,
+            size=int(qty),
             price=price,
             order_type=OrderType.limit,
         )
@@ -111,7 +132,7 @@ class KucoinFutures(KucoinRest):
             order_resp = self.place_futures_order(
                 symbol=symbol,
                 side=AddOrderReq.SideEnum.BUY,
-                size=qty,
+                size=int(qty),
                 price=price,
                 order_type=OrderType.market,
             )
@@ -157,7 +178,7 @@ class KucoinFutures(KucoinRest):
         qty: float,
         leverage: int = 1,
     ) -> OrderModel:
-        price = self._aggressive_price(symbol, size=qty, side=AddOrderReq.SideEnum.SELL)
+        price = self.matching_engine(symbol, size=qty, side=AddOrderReq.SideEnum.SELL)
         order_resp = self.place_futures_order(
             symbol=symbol,
             side=AddOrderReq.SideEnum.SELL,
@@ -352,6 +373,21 @@ class KucoinFutures(KucoinRest):
         )
         return self.futures_positions_api.modify_margin_leverage(req)
 
+    def set_futures_margin_mode(
+        self, symbol: str, margin_mode: SwitchMarginModeReq.MarginModeEnum
+    ) -> SwitchMarginModeResp:
+        """Set margin mode (ISOLATED or CROSS) for a futures symbol.
+
+        This uses the dedicated futures positions margin-mode endpoint.
+        """
+        req = (
+            SwitchMarginModeReqBuilder()
+            .set_symbol(symbol)
+            .set_margin_mode(margin_mode)
+            .build()
+        )
+        return self.futures_positions_api.switch_margin_mode(req)
+
     def get_futures_position(self, symbol: str) -> GetPositionDetailsResp:
         """
         Get current futures position details for a symbol.
@@ -364,9 +400,9 @@ class KucoinFutures(KucoinRest):
         symbol: str,
         side: AddOrderReq.SideEnum,
         size: float,
-        leverage: int = 5,
+        leverage: int = 2,
         order_type: OrderType = OrderType.limit,
-        margin_mode: AddOrderReq.MarginModeEnum = AddOrderReq.MarginModeEnum.ISOLATED,
+        margin_mode: str | None = "ISOLATED",
         reduce_only: bool = False,
         close_order: bool = False,
         price: float | None = None,
@@ -396,6 +432,12 @@ class KucoinFutures(KucoinRest):
 
         client_oid = str(uuid4())
 
+        # Ensure the symbol-level margin mode is set before placing the order.
+        if margin_mode is not None:
+            # Map the string ("ISOLATED"/"CROSS") to the futures margin-mode enum
+            mm_enum = SwitchMarginModeReq.MarginModeEnum[margin_mode]
+            self.set_futures_margin_mode(symbol, mm_enum)
+
         if order_type == OrderType.limit:
             type_enum = AddOrderReq.TypeEnum.LIMIT
         else:
@@ -407,7 +449,6 @@ class KucoinFutures(KucoinRest):
             .set_symbol(symbol)
             .set_side(side)
             .set_type(type_enum)
-            .set_margin_mode(margin_mode)
         )
 
         if leverage is not None:

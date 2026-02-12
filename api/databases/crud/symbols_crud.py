@@ -11,7 +11,7 @@ from databases.tables.symbol_exchange_table import SymbolExchangeTable
 from databases.tables.symbol_table import SymbolTable
 from databases.utils import independent_session, engine
 from symbols.models import SymbolModel, SymbolRequestPayload
-from pybinbot import ExchangeId, BinanceApi, BinbotErrors, KucoinApi
+from pybinbot import ExchangeId, BinanceApi, BinbotErrors, KucoinApi, MarketType
 from sqlalchemy.sql import delete
 from exchange_apis.kucoin.futures.api import KucoinFutures
 from databases.utils import get_db_session
@@ -103,9 +103,14 @@ class SymbolsCrud(SymbolsCrudUtils):
         return result
 
     def get_all(
-        self, active: Optional[bool] = None, index_id: Optional[str] = None
+        self,
+        active: Optional[bool] = None,
+        market_type: MarketType | None = None,
+        index_id: Optional[str] = None,
     ) -> list[SymbolModel]:
-        statement = self._exchange_combined_statement(self.exchange_id)
+        statement = self._exchange_combined_statement(
+            self.exchange_id, market_type=market_type
+        )
 
         if index_id is not None:
             statement = statement.join(

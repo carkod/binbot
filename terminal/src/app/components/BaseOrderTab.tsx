@@ -22,7 +22,6 @@ import {
   setTestBotField,
   setTestBotToggle,
 } from "../../features/bots/paperTradingSlice";
-import { capitalizeFirst } from "../../utils/strings";
 
 interface ErrorsState {
   pair?: string;
@@ -244,30 +243,6 @@ const BaseOrderTab: FC<{
                   )}
                 </Form.Group>
               </Col>
-              <Col>
-                <Form.Group>
-                  <Form.Label htmlFor="market_type">Market Type</Form.Label>
-                  <Form.Select
-                    id="market_type"
-                    name="market_type"
-                    {...register("market_type", {
-                      required: "Market type is required",
-                    })}
-                  >
-                    <option value={MarketType.SPOT}>
-                      {capitalizeFirst(MarketType.SPOT)}
-                    </option>
-                    <option value={MarketType.FUTURES}>
-                      {capitalizeFirst(MarketType.FUTURES)}
-                    </option>
-                  </Form.Select>
-                  {errors.strategy && (
-                    <Form.Control.Feedback type="invalid">
-                      {errors.strategy.message as string}
-                    </Form.Control.Feedback>
-                  )}
-                </Form.Group>
-              </Col>
             </Row>
           </Col>
           {bot.pair && (
@@ -276,7 +251,7 @@ const BaseOrderTab: FC<{
                 <InputTooltip
                   name="base_order_size"
                   tooltip={"Amount of base asset to trade"}
-                  label="Base order size"
+                  label={bot.market_type === MarketType.FUTURES ? "Contract size" : "Base order size"}
                   errors={errors}
                   secondaryText={quoteAsset}
                 >

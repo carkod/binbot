@@ -13,7 +13,7 @@ from pybinbot import (
 )
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from bots.models import FuturesBot, OrderModel
+from bots.models import BotModel, OrderModel
 from exchange_apis.kucoin.futures.futures_deal import KucoinFuturesDeal
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import (
     AddOrderReq,
@@ -30,20 +30,20 @@ class FuturesLongDeal(KucoinFuturesDeal):
     """
 
     def __init__(
-        self, bot: FuturesBot, db_table: Type[Union[BotTable, PaperTradingTable]]
+        self, bot: BotModel, db_table: Type[Union[BotTable, PaperTradingTable]]
     ) -> None:
         # Re-use KucoinFuturesDeal initialisation (futures APIs, controller, symbol)
         super().__init__(bot=bot, db_table=db_table)
         self.active_bot = bot
 
-    def clean_fiat_currency(self) -> FuturesBot:
+    def clean_fiat_currency(self) -> BotModel:
         """
         Futures deals use contract accounts; there is no spot fiat to clean.
         This is a no-op kept for interface compatibility.
         """
         return self.active_bot
 
-    def take_profit_order(self) -> FuturesBot:
+    def take_profit_order(self) -> BotModel:
         """
         Futures take profit:
         - Closes the current LONG futures position with a reduce-only SELL.
@@ -111,14 +111,14 @@ class FuturesLongDeal(KucoinFuturesDeal):
         self.active_bot.status = Status.completed
 
         bot = self.controller.save(self.active_bot)
-        bot = FuturesBot.model_construct(**bot.model_dump())
+        bot = BotModel.model_construct(**bot.model_dump())
         self.controller.update_logs(
             bot=self.active_bot, log_message="Completed futures take profit."
         )
 
         return bot
 
-    def execute_stop_loss(self) -> FuturesBot:
+    def execute_stop_loss(self) -> BotModel:
         """
         Update stop limit after websocket
 
@@ -194,7 +194,7 @@ class FuturesLongDeal(KucoinFuturesDeal):
 
         return self.active_bot
 
-    def trailling_profit(self, repurchase_multiplier: float = 1) -> FuturesBot | None:
+    def trailling_profit(self, repurchase_multiplier: float = 1) -> BotModel | None:
         """
         Sell at take_profit price, because prices will not reach trailing
         """

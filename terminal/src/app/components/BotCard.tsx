@@ -87,16 +87,6 @@ const BotCard: FC<BotCardProps> = ({
           </Row>
           <Row>
             <Col md="6" xs="7">
-              <p>Market Type</p>
-            </Col>
-            <Col md="6" xs="5">
-              <p className="capitalize">
-                {capitalizeFirst(bot.market_type || MarketType.SPOT)}
-              </p>
-            </Col>
-          </Row>
-          <Row>
-            <Col md="6" xs="7">
               <p>Open @</p>
             </Col>
             <Col md="6" xs="5">

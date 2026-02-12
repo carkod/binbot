@@ -41,13 +41,25 @@ export interface SymbolResponse extends StandardResponse {
   data: ISymbol[];
 }
 
+export interface GetSymbolsParams {
+  market_type?: string;
+}
+
 export const symbolsApiSlice = userApiSlice.injectEndpoints({
   endpoints: (build) => ({
-    getSymbols: build.query<ISymbol[], void>({
-      query: () => ({
-        url: `${import.meta.env.VITE_SYMBOLS}`,
-        providesTags: ["symbols"],
-      }),
+    getSymbols: build.query<ISymbol[], GetSymbolsParams | void>({
+      query: (params) => {
+        const queryParams =
+          params && params.market_type
+            ? { market_type: params.market_type }
+            : undefined;
+
+        return {
+          url: `${import.meta.env.VITE_SYMBOLS}`,
+          ...(queryParams ? { params: queryParams } : {}),
+          providesTags: ["symbols"],
+        };
+      },
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
           notifification("error", message);

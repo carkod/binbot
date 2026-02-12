@@ -55,7 +55,7 @@ export const FuturesBotDetail: FC<{}> = () => {
   }, [data, matchNewRoute, dispatch, loadingBot, loadingEstimates, setSpinner]);
 
   return (
-    <SymbolProvider>
+    <SymbolProvider marketType={MarketType.FUTURES}>
       <div className="content">
         <Container fluid>
           <Row>

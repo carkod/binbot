@@ -1,4 +1,3 @@
-import logging
 from typing import Type, Union
 from pybinbot import (
     round_numbers,
@@ -179,14 +178,8 @@ class KucoinLongDeal(KucoinSpotDeal):
                     "Dispatching sell order for trailling profit...",
                     self.active_bot,
                 )
-                try:
-                    # Dispatch real order
-                    system_order = self.kucoin_api.sell_order(
-                        symbol=self.symbol, qty=qty
-                    )
-
-                except Exception as e:
-                    logging.error(f"Error executing stop loss sell order: {e}")
+                # Dispatch real order
+                system_order = self.kucoin_api.sell_order(symbol=self.symbol, qty=qty)
 
             if system_order:
                 price = float(system_order.price)

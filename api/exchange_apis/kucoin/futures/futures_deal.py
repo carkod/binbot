@@ -14,11 +14,11 @@ from databases.crud.bot_crud import BotTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
 from bots.models import BotModel
 from exchange_apis.kucoin.deals.base import KucoinBaseBalance
-from kucoin_universal_sdk.model.common import RestError
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
 from pybinbot import BinbotErrors
 from exchange_apis.kucoin.futures.api import KucoinFutures
-from bots.models import FuturesBot
+from exchange_apis.kucoin.futures.balance import KucoinFuturesBalance
+from bots.models import OrderModel
 
 
 class KucoinFuturesDeal(KucoinBaseBalance):
@@ -33,7 +33,7 @@ class KucoinFuturesDeal(KucoinBaseBalance):
 
     def __init__(
         self,
-        bot: FuturesBot,
+        bot: BotModel,
         db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable,
     ) -> None:
         super().__init__()
@@ -51,35 +51,114 @@ class KucoinFuturesDeal(KucoinBaseBalance):
         self.price_precision = self.symbol_info.price_precision
         self.kucoin_symbol = convert_to_kucoin_symbol(bot)
 
+    def calculate_contracts(self, price: float) -> float:
+        """
+        Calculate the number of contracts based on balance, stop loss, risk per trade, price, and contract multiplier.
+
+        balance: Available USDT balance.
+        stop_loss_percent: Stop loss as a decimal (e.g., 3% = 0.03).
+        max_risk_percent: Max risk per trade as a decimal (e.g., 5% = 0.05).
+        price: Current price of FLOCK.
+        multiplier: Size of one contract (default 1).
+
+        Returns: Number of contracts to buy (float).
+        """
+        balance = self.active_bot.fiat_order_size
+        stop_loss_percent = self.active_bot.stop_loss
+        max_risk_usdt = balance * self.kucoin_futures_api.DEFAULT_LEVERAGE
+        info = self.kucoin_futures_api.get_symbol_info(self.kucoin_symbol)
+        multiplier = info.multiplier
+        if not multiplier:
+            multiplier = self.kucoin_futures_api.DEFAULT_MULTIPLIER
+
+        # Calculate the total position size you can afford if the stop loss hits
+        max_position_size = max_risk_usdt / stop_loss_percent
+
+        # Calculate the number of contracts
+        contracts = round_numbers(
+            max_position_size / (price * float(multiplier)), self.price_precision
+        )
+
+        return contracts
+
+    def compute_available_balance(self):
+        """Place a futures BUY order using available fiat balance.
+
+        Balance lookup order:
+        1. Futures account (available balance)
+        2. Main account (spot main wallet)
+        3. Trade account (spot trading wallet)
+
+        Raises BinbotErrors if there is no fiat balance or if the
+        configured base order size exceeds the available balance.
+        """
+        futures_available = 0.0
+        try:
+            _, _, futures_available = KucoinFuturesBalance().compute_futures_balance()
+        except NotImplementedError:
+            futures_available = 0.0
+
+        available_balance = 0.0
+
+        if futures_available > 0:
+            available_balance = futures_available
+        else:
+            # 2) Fall back to MAIN, then TRADE accounts from spot API snapshot
+            result_balances, _, _ = self.compute_balance()
+
+            if (
+                "main" in result_balances
+                and self.fiat in result_balances["main"]
+                and float(result_balances["main"][self.fiat]) > 0
+            ):
+                available_balance = float(result_balances["main"][self.fiat])
+            elif (
+                "trade" in result_balances
+                and self.fiat in result_balances["trade"]
+                and float(result_balances["trade"][self.fiat]) > 0
+            ):
+                available_balance = float(result_balances["trade"][self.fiat])
+
+        if available_balance <= 0:
+            raise BinbotErrors(
+                f"Insufficient balances: no available {self.fiat} in futures, main, or trade accounts."
+            )
+
+        if self.active_bot.fiat_order_size > available_balance:
+            raise BinbotErrors(
+                f"Requested base order size {self.active_bot.fiat_order_size} {self.fiat} "
+                f"exceeds available balance {available_balance} {self.fiat}."
+            )
+
+        return available_balance
+
     def base_order(self) -> BotModel:
         """
         Opens a futures LONG position.
         """
-        if self.active_bot.status == Status.active:
-            return self.active_bot
-
         if self.active_bot.fiat_order_size <= 0:
-            raise BinbotErrors("Futures contracts must be > 0")
+            raise BinbotErrors("Fiat order size must be set.")
 
-        try:
-            # Explicit leverage (important)
-            self.kucoin_futures_api.set_futures_leverage(
-                symbol=self.kucoin_symbol,
-                leverage=self.active_bot.leverage,
-            )
-
-            order = self.kucoin_futures_api.buy(
-                symbol=self.kucoin_symbol,
-                qty=self.active_bot.fiat_order_size,
-            )
-
-        except RestError as e:
+        available_balance = self.compute_available_balance()
+        if self.active_bot.fiat_order_size > available_balance:
             raise BinbotErrors(
-                f"Futures entry failed ({e.response.code}): {e.response.message}"
+                f"Requested base order size {self.active_bot.fiat_order_size} {self.fiat} "
+                f"exceeds available balance {available_balance} {self.fiat}."
             )
 
-        if not order:
-            raise BinbotErrors("Futures entry returned empty order")
+        price = self.kucoin_futures_api.matching_engine(
+            symbol=self.kucoin_symbol, side=AddOrderReq.SideEnum.BUY, size=1
+        )
+        contracts = self.calculate_contracts(price)
+
+        if contracts <= 0:
+            raise BinbotErrors(
+                "Calculated contracts is 0. Check if the order size, stop loss, and risk settings are correct."
+            )
+        order: OrderModel = self.kucoin_futures_api.buy(
+            symbol=self.kucoin_symbol,
+            qty=contracts,
+        )
 
         order.deal_type = DealType.base_order
         self.active_bot.orders.append(order)
@@ -127,10 +206,6 @@ class KucoinFuturesDeal(KucoinBaseBalance):
             log_message=f"Stop loss set @ {stop_price}",
         )
 
-    # ---------------------------------------------------------
-    # TAKE PROFIT
-    # ---------------------------------------------------------
-
     def place_take_profit(self, price: float) -> None:
         price = round_numbers(price, self.price_precision)
 
@@ -165,7 +240,7 @@ class KucoinFuturesDeal(KucoinBaseBalance):
             log_message=f"Take profit set @ {price}",
         )
 
-    def update_parameters(self) -> FuturesBot:
+    def update_parameters(self) -> BotModel:
         if self.active_bot.stop_loss > 0:
             buy_price = self.active_bot.deal.opening_price
             stop_loss_price = buy_price - (
@@ -196,7 +271,7 @@ class KucoinFuturesDeal(KucoinBaseBalance):
 
         return self.active_bot
 
-    def update_parameters_with_activation(self) -> FuturesBot:
+    def update_parameters_with_activation(self) -> BotModel:
         # Update stop loss regarless of base order
         if self.active_bot.stop_loss > 0:
             price = self.active_bot.deal.opening_price
@@ -229,11 +304,11 @@ class KucoinFuturesDeal(KucoinBaseBalance):
         self.controller.save(self.active_bot)
         return self.active_bot
 
-    # ---------------------------------------------------------
-    # CLOSE / PANIC / CRASH RECOVERY
-    # ---------------------------------------------------------
-
     def close_all(self) -> BotModel:
+        """
+        Closes all open positions and cancels all orders.
+        To be used also for panic selling from terminal.
+        """
         position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
 
         if position and float(position.current_qty) != 0:
@@ -261,10 +336,6 @@ class KucoinFuturesDeal(KucoinBaseBalance):
 
         self.controller.save(self.active_bot)
         return self.active_bot
-
-    # ---------------------------------------------------------
-    # SYNC / CRASH RECOVERY
-    # ---------------------------------------------------------
 
     def sync_from_exchange(self) -> None:
         """
