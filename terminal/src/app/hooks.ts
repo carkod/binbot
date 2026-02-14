@@ -11,7 +11,7 @@ import {
   useLazyGetOneSymbolQuery,
   useGetSymbolsQuery,
 } from "../features/symbolsApiSlice";
-import { MarketType } from "../utils/enums";
+import type { MarketType } from "../utils/enums";
 import { createContext } from "react";
 
 // Use throughout your app instead of plain `useDispatch` and `useSelector`

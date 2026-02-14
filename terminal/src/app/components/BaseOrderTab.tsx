@@ -65,17 +65,16 @@ const BaseOrderTab: FC<{
     // Only when selected not typed in
     // this way we avoid any errors
     if (e.target.value) {
+      const pair = e.target.value;
       if (botType === BotType.PAPER_TRADING) {
-        dispatch(setTestBotField({ name: "pair", value: e.target.value }));
+        dispatch(setTestBotField({ name: "pair", value: pair }));
       } else {
-        dispatch(setField({ name: "pair", value: e.target.value }));
+        dispatch(setField({ name: "pair", value: pair }));
       }
       setErrorsState((draft) => {
         delete draft["pair"];
       });
-      if (bot.pair) {
-        updateQuoteBaseState(bot.pair);
-      }
+      updateQuoteBaseState(pair);
     } else {
       setErrorsState((draft) => {
         draft["pair"] = "Please select a pair";
@@ -128,10 +127,6 @@ const BaseOrderTab: FC<{
         quote_asset: bot.quote_asset,
         market_type: bot.market_type,
       });
-    }
-
-    if (Boolean(bot.pair) && !(Boolean(quoteAsset) || Boolean(baseAsset))) {
-      updateQuoteBaseState(bot.pair);
     }
 
     if (
