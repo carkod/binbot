@@ -10,15 +10,33 @@ import BotsPage from "../Bots";
 import { SpinnerContext } from "../../Layout";
 import { BulkAction } from "../../components/BotsActions";
 import { makeStore } from "../../store"; // Import the store configuration
+import { SymbolContext } from "../../hooks";
 
 const store = makeStore();
 
-const renderWithProviders = (ui, { store }) => {
+const mockSymbolContextValue = {
+  symbolsList: ["BTCUSDT", "ETHUSDT"],
+  quoteAsset: "USDT",
+  baseAsset: "BTC",
+  updateQuoteBaseState: vi.fn(),
+  isLoading: false,
+};
+
+const renderWithProviders = (
+  ui,
+  {
+    store,
+    symbolContextValue = mockSymbolContextValue,
+    spinnerContextValue = { spinner: false, setSpinner: vi.fn() },
+  },
+) => {
   return render(
     <Provider store={store}>
-      <SpinnerContext.Provider value={{ spinner: false, setSpinner: vi.fn() }}>
-        {ui}
-      </SpinnerContext.Provider>
+      <SymbolContext.Provider value={symbolContextValue}>
+        <SpinnerContext.Provider value={spinnerContextValue}>
+          {ui}
+        </SpinnerContext.Provider>
+      </SymbolContext.Provider>
     </Provider>,
   );
 };
@@ -68,15 +86,13 @@ describe("BotsPage", () => {
 
   it("filters bots by symbol when searching", () => {
     const setSpinnerMock = vi.fn();
-    render(
-      <Provider store={store}>
-        <SpinnerContext.Provider
-          value={{ spinner: false, setSpinner: setSpinnerMock }}
-        >
-          <BotsPage />
-        </SpinnerContext.Provider>
-      </Provider>,
-    );
+    renderWithProviders(<BotsPage />, {
+      store,
+      spinnerContextValue: {
+        spinner: false,
+        setSpinner: setSpinnerMock,
+      },
+    });
     const input = testingScreen.getByPlaceholderText(/Search by pair/i);
     fireEvent.change(input, { target: { value: "ARBTC" } });
     expect(input).toHaveValue("ARBTC");

@@ -11,6 +11,7 @@ import {
   useLazyGetOneSymbolQuery,
   useGetSymbolsQuery,
 } from "../features/symbolsApiSlice";
+import type { MarketType } from "../utils/enums";
 import { createContext } from "react";
 
 // Use throughout your app instead of plain `useDispatch` and `useSelector`
@@ -64,8 +65,10 @@ export const useSymbolData = () => {
   return context;
 };
 
-export const useSymbolDataProvider = () => {
-  const { data: symbols } = useGetSymbolsQuery();
+export const useSymbolDataProvider = (marketType?: MarketType) => {
+  const { data: symbols } = useGetSymbolsQuery(
+    marketType ? { market_type: marketType } : undefined,
+  );
   const [triggerGetOneSymbol] = useLazyGetOneSymbolQuery();
   const [symbolsList, setSymbolsList] = useState<string[]>([]);
   const [quoteAsset, setQuoteAsset] = useState<string>("");
@@ -90,11 +93,23 @@ export const useSymbolDataProvider = () => {
   );
 
   useEffect(() => {
-    if (symbols && symbolsList.length === 0) {
-      const pairs = symbols.map((symbol) => symbol.id);
-      setSymbolsList(pairs);
+    if (!symbols) {
+      return;
     }
-  }, [symbols, symbolsList]);
+
+    const pairs = symbols.map((symbol) => symbol.id);
+
+    setSymbolsList((prev) => {
+      if (prev.length === pairs.length) {
+        const hasSameValues = prev.every((id, index) => id === pairs[index]);
+        if (hasSameValues) {
+          return prev;
+        }
+      }
+
+      return pairs;
+    });
+  }, [symbols]);
 
   return {
     symbolsList,

@@ -3,10 +3,27 @@ import "@testing-library/jest-dom";
 import { filterSymbolByBaseAsset } from "../../utils/api";
 import SymbolSearch from "./SymbolSearch";
 import { vi } from "vitest";
+import type { ReactElement } from "react";
+import { SymbolContext } from "../hooks";
 
 vi.mock("../../features/autotradeApiSlice", () => ({
   useGetSettingsQuery: vi.fn(() => ({ data: {} })),
 }));
+
+const mockSymbolContextValue = {
+  symbolsList: ["BTCUSDT", "ETHUSDT"],
+  quoteAsset: "USDT",
+  baseAsset: "BTC",
+  updateQuoteBaseState: vi.fn(),
+  isLoading: false,
+};
+
+const renderWithSymbolProvider = (ui: ReactElement) =>
+  render(
+    <SymbolContext.Provider value={mockSymbolContextValue}>
+      {ui}
+    </SymbolContext.Provider>,
+  );
 
 describe("Search symbols", () => {
   it("returns symbols only with the given baseAsset", () => {
@@ -19,20 +36,22 @@ describe("Search symbols", () => {
 
 describe("SymbolSearch component", () => {
   it("does not render label if not passed", () => {
-    render(<SymbolSearch name="pair" options={["BTCUSDT"]} />);
+    renderWithSymbolProvider(
+      <SymbolSearch name="pair" options={["BTCUSDT"]} />,
+    );
     // Should not find any label element
     expect(rtlScreen.queryByText(/Select pair/i)).not.toBeInTheDocument();
   });
 
   it("renders label if passed", () => {
-    render(
+    renderWithSymbolProvider(
       <SymbolSearch name="pair" label="Select pair" options={["BTCUSDT"]} />,
     );
     expect(rtlScreen.getByText("Select pair")).toBeInTheDocument();
   });
 
   it("renders placeholder if passed", () => {
-    render(
+    renderWithSymbolProvider(
       <SymbolSearch
         name="pair"
         options={["BTCUSDT"]}
@@ -45,7 +64,7 @@ describe("SymbolSearch component", () => {
   });
 
   it("shows error message when errors object is passed", () => {
-    render(
+    renderWithSymbolProvider(
       <SymbolSearch
         name="pair"
         options={["BTCUSDT"]}

@@ -8,6 +8,7 @@ import {
 import { Layout } from "./app/Layout";
 import AutotradePage from "./app/pages/Autotrade";
 import BotDetail from "./app/pages/BotDetail";
+import FuturesBotDetail from "./app/pages/FuturesBotDetail";
 import BotsPage from "./app/pages/Bots";
 import DashboardPage from "./app/pages/Dashboard";
 import LoginPage from "./app/pages/Login";
@@ -23,9 +24,9 @@ export type Routes = {
   path: string;
   name?: string;
   icon?: string;
-  link?: string; // Decides if shows on Sidebar
+  link?: string;
   element: React.FC;
-  id: string; // Unique name to match path
+  id: string;
 };
 
 export const routes = [
@@ -58,11 +59,28 @@ export const routes = [
     nav: true,
   },
   {
+    path: "bots/futures/new/:symbol?",
+    link: "/bots/futures/new",
+    icon: null,
+    name: "New Futures Bot",
+    element: <FuturesBotDetail />,
+    id: "new-futures-bot",
+    nav: true,
+  },
+  {
     path: "bots/edit/:id",
     icon: null,
     name: "Edit Bot",
     element: <BotDetail />,
     id: "edit-bot",
+    nav: false,
+  },
+  {
+    path: "bots/futures/edit/:id",
+    icon: null,
+    name: "Edit Futures Bot",
+    element: <FuturesBotDetail />,
+    id: "edit-futures-bot",
     nav: false,
   },
   {

@@ -153,6 +153,7 @@ def activate_by_id(id: str, session: Session = Depends(get_session)):
         bot_model = BotModel.dump_from_table(bot)
         deal_instance = DealGateway(bot_model, db_table=BotTable)
         data = deal_instance.open_deal()
+
         response_data = BotModelResponse.model_construct(**data.model_dump())
         message = "Successfully activated bot."
         if bot.status == Status.active:

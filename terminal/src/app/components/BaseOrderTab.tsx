@@ -22,7 +22,6 @@ import {
   setTestBotField,
   setTestBotToggle,
 } from "../../features/bots/paperTradingSlice";
-import { capitalizeFirst } from "../../utils/strings";
 
 interface ErrorsState {
   pair?: string;
@@ -66,17 +65,16 @@ const BaseOrderTab: FC<{
     // Only when selected not typed in
     // this way we avoid any errors
     if (e.target.value) {
+      const pair = e.target.value;
       if (botType === BotType.PAPER_TRADING) {
-        dispatch(setTestBotField({ name: "pair", value: e.target.value }));
+        dispatch(setTestBotField({ name: "pair", value: pair }));
       } else {
-        dispatch(setField({ name: "pair", value: e.target.value }));
+        dispatch(setField({ name: "pair", value: pair }));
       }
       setErrorsState((draft) => {
         delete draft["pair"];
       });
-      if (bot.pair) {
-        updateQuoteBaseState(bot.pair);
-      }
+      updateQuoteBaseState(pair);
     } else {
       setErrorsState((draft) => {
         draft["pair"] = "Please select a pair";
@@ -131,10 +129,6 @@ const BaseOrderTab: FC<{
       });
     }
 
-    if (Boolean(bot.pair) && !(Boolean(quoteAsset) || Boolean(baseAsset))) {
-      updateQuoteBaseState(bot.pair);
-    }
-
     if (
       bot.deal?.current_price !== currentPrice &&
       bot.deal?.closing_price === 0
@@ -150,8 +144,6 @@ const BaseOrderTab: FC<{
   }, [
     quoteAsset,
     baseAsset,
-    symbolsList,
-    bot,
     reset,
     dispatch,
     watch,
@@ -168,7 +160,6 @@ const BaseOrderTab: FC<{
             <SymbolSearch
               name="pair"
               label="Select pair"
-              options={symbolsList}
               disabled={bot.status === BotStatus.COMPLETED}
               value={bot.pair}
               onBlur={handlePairBlur}
@@ -244,30 +235,6 @@ const BaseOrderTab: FC<{
                   )}
                 </Form.Group>
               </Col>
-              <Col>
-                <Form.Group>
-                  <Form.Label htmlFor="market_type">Market Type</Form.Label>
-                  <Form.Select
-                    id="market_type"
-                    name="market_type"
-                    {...register("market_type", {
-                      required: "Market type is required",
-                    })}
-                  >
-                    <option value={MarketType.SPOT}>
-                      {capitalizeFirst(MarketType.SPOT)}
-                    </option>
-                    <option value={MarketType.FUTURES}>
-                      {capitalizeFirst(MarketType.FUTURES)}
-                    </option>
-                  </Form.Select>
-                  {errors.strategy && (
-                    <Form.Control.Feedback type="invalid">
-                      {errors.strategy.message as string}
-                    </Form.Control.Feedback>
-                  )}
-                </Form.Group>
-              </Col>
             </Row>
           </Col>
           {bot.pair && (
@@ -276,7 +243,11 @@ const BaseOrderTab: FC<{
                 <InputTooltip
                   name="base_order_size"
                   tooltip={"Amount of base asset to trade"}
-                  label="Base order size"
+                  label={
+                    bot.market_type === MarketType.FUTURES
+                      ? "Contract size"
+                      : "Base order size"
+                  }
                   errors={errors}
                   secondaryText={quoteAsset}
                 >
