@@ -115,6 +115,7 @@ class KucoinFutures(KucoinRest):
         self,
         symbol: str,
         qty: float,
+        reduce_only: bool = False,
     ) -> OrderModel:
         """
         Place an order and get the order
@@ -127,7 +128,9 @@ class KucoinFutures(KucoinRest):
             side=AddOrderReq.SideEnum.BUY,
             size=int(qty),
             price=price,
+            leverage=int(self.DEFAULT_LEVERAGE),
             order_type=OrderType.limit,
+            reduce_only=reduce_only,
         )
         if not order_resp or not order_resp.order_id:
             order_resp = self.place_futures_order(
@@ -135,7 +138,9 @@ class KucoinFutures(KucoinRest):
                 side=AddOrderReq.SideEnum.BUY,
                 size=int(qty),
                 price=price,
+                leverage=int(self.DEFAULT_LEVERAGE),
                 order_type=OrderType.market,
+                reduce_only=reduce_only,
             )
 
         # Small delay to allow order to be processed and show up in order details endpoint;
@@ -175,6 +180,7 @@ class KucoinFutures(KucoinRest):
         symbol: str,
         qty: float,
         leverage: int = 1,
+        reduce_only: bool = False,
     ) -> OrderModel:
         price = self.matching_engine(symbol, size=qty, side=AddOrderReq.SideEnum.SELL)
         order_resp = self.place_futures_order(
@@ -184,7 +190,7 @@ class KucoinFutures(KucoinRest):
             leverage=leverage,
             price=price,
             order_type=OrderType.limit,
-            reduce_only=True,
+            reduce_only=reduce_only,
         )
 
         if not order_resp or not order_resp.order_id:
@@ -195,7 +201,7 @@ class KucoinFutures(KucoinRest):
                 leverage=leverage,
                 price=price,
                 order_type=OrderType.market,
-                reduce_only=True,
+                reduce_only=reduce_only,
             )
 
         try:
