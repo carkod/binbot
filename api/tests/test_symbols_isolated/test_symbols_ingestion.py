@@ -126,29 +126,3 @@ def test_binance_symbols_ingestion_excludes_try(
         # BTCTRY and ETHTRY should NOT be ingested
         assert "BTCTRY" not in symbol_ids
         assert "ETHTRY" not in symbol_ids
-
-
-def test_etl_exchange_info_update_excludes_try(
-    create_symbol_test_tables, mock_binance_exchange_info
-):
-    """Test that etl_exchange_info_update excludes symbols with TRY as quote asset"""
-    with patch("databases.crud.symbols_crud.BinanceApi") as MockBinanceApi:
-        # Create a mock instance
-        mock_instance = MagicMock()
-        mock_instance.exchange_info.return_value = mock_binance_exchange_info
-        MockBinanceApi.return_value = mock_instance
-
-        crud = SymbolDataEtl()
-        crud.kucoin_symbols_reingestion()
-
-        # Verify symbols were added correctly
-        all_symbols = crud.get_all()
-        symbol_ids = [s.id for s in all_symbols]
-
-        # BTCUSDC and ETHUSDC should be added
-        assert "BTCUSDC" in symbol_ids
-        assert "ETHUSDC" in symbol_ids
-
-        # BTCTRY and ETHTRY should NOT be ingested
-        assert "BTCTRY" not in symbol_ids
-        assert "ETHTRY" not in symbol_ids

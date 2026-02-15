@@ -22,9 +22,11 @@ from pybinbot import (
     KucoinApi,
     HABollinguerSpread,
     convert_to_kucoin_symbol,
+    MarketType,
 )
 from copy import deepcopy
 from streaming.base import BaseStreaming
+from kucoin_universal_sdk.model.common import RestError
 
 
 class PositionManager:
@@ -425,6 +427,106 @@ class PositionManager:
 
         return bot
 
+    def futures_order_updates(self, bot: BotModel) -> BotModel:
+        """
+        Take order id from list of bot.orders
+        and fetch order details from exchange
+        """
+        for order in bot.orders:
+            if self.base_streaming.exchange == ExchangeId.KUCOIN and (
+                order.price == 0 or order.qty == 0
+            ):
+                kucoin_symbol = convert_to_kucoin_symbol(bot)
+
+                # Check if order is expired based on 15m interval
+                # this should be a good measure, because candles have closed
+                interval_ms = self.base_streaming.interval.get_ms()
+                now_ms = int(datetime.now().timestamp() * 1000)
+                order_ms = int(order.timestamp * 1000)
+                is_expired = (now_ms - order_ms) > interval_ms
+
+                try:
+                    # Fetch order details as source of truth for status/fills
+                    system_order = (
+                        self.base_streaming.kucoin_futures_api.retrieve_order(
+                            str(order.order_id)
+                        )
+                    )
+                    if is_expired:
+                        raise RestError(
+                            response=type(
+                                "obj",
+                                (object,),
+                                {"code": 100001, "message": "Order expired"},
+                            )()
+                        )
+                    status = OrderStatus.map_from_kucoin_status(
+                        system_order.status.value
+                    )
+                    filled_size = float(system_order.filled_size)
+                    price_used = float(system_order.avg_deal_price)
+                    timestamp = system_order.created_at
+
+                    if float(system_order.price) > 0:
+                        order.price = round_numbers(
+                            system_order.price, self.price_precision
+                        )
+
+                    order.qty = round_numbers(filled_size, self.qty_precision)
+                    order.status = status
+                    order.timestamp = timestamp
+                    order.price = round_numbers(price_used, self.price_precision)
+                    self.base_streaming.bot_controller.update_order(order)
+                    bot.add_log(f"Order {order.order_id} updated from system")
+
+                    if (
+                        order.deal_type == DealType.base_order
+                        and bot.deal.opening_price == 0
+                        and order.price > 0
+                    ):
+                        bot.deal.opening_price = order.price
+                        bot.deal.opening_qty = order.qty
+                        bot.deal.opening_timestamp = order.timestamp
+                        bot.status = Status.active
+
+                    if (
+                        (
+                            order.deal_type == DealType.take_profit
+                            or order.deal_type == DealType.stop_loss
+                            or order.deal_type == DealType.panic_close
+                            or order.deal_type == DealType.trailling_profit
+                        )
+                        and bot.deal.closing_price == 0
+                        and order.price > 0
+                    ):
+                        bot.deal.closing_price = order.price
+                        bot.deal.closing_qty = order.qty
+                        bot.deal.closing_timestamp = order.timestamp
+                        bot.status = Status.completed
+
+                    self.base_streaming.bot_controller.save(data=bot)
+
+                except RestError as e:
+                    if float(e.response.code) == 100001:
+                        try:
+                            self.base_streaming.kucoin_futures_api.cancel_all_futures_orders(
+                                kucoin_symbol
+                            )
+                            bot.status = Status.inactive
+                            bot.add_log(
+                                f"Order {order.order_id} expired and cancelled. Bot set to inactive.",
+                            )
+                            self.base_streaming.bot_controller.save(data=bot)
+                        except Exception as cancel_e:
+                            bot.add_log(
+                                f"Failed to cancel all futures orders for {kucoin_symbol}: {str(cancel_e)}"
+                            )
+                            self.base_streaming.bot_controller.save(data=bot)
+                    else:
+                        raise e
+
+        return bot
+
     def process_deal(self) -> None:
         """
         Updates deals with klines websockets,
@@ -448,8 +550,11 @@ class PositionManager:
                         raise NotImplementedError(
                             "Order updates only implemented for Kucoin"
                         )
+                    if self.current_bot.market_type == MarketType.FUTURES:
+                        self.futures_order_updates(bot=self.current_bot)
+                    else:
+                        self.order_updates(bot=self.current_bot)
 
-                    self.order_updates(bot=self.current_bot)
                     if self.current_bot.dynamic_trailling:
                         self.market_trailing_analytics(
                             bot=self.current_bot,

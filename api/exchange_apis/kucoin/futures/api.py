@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from pybinbot import KucoinRest, KucoinKlineIntervals, OrderType, OrderStatus, DealType
 from uuid import uuid4
-from time import time
+from time import sleep, time
 from typing import List
 from bots.models import OrderModel
 from tools.config import Config
@@ -49,6 +49,7 @@ from kucoin_universal_sdk.generate.futures.positions import (
 from kucoin_universal_sdk.generate.futures.order import (
     CancelAllOrdersV3ReqBuilder,
 )
+from kucoin_universal_sdk.model.common import RestError
 
 
 class KucoinFutures(KucoinRest):
@@ -137,27 +138,24 @@ class KucoinFutures(KucoinRest):
                 order_type=OrderType.market,
             )
 
-        # Fetch order details as source of truth for status/fills
-        order_details = self.retrieve_order(order_resp.order_id)
-
-        if order_details and order_details.status is not None:
+        # Small delay to allow order to be processed and show up in order details endpoint;
+        sleep(5)
+        try:
+            # Fetch order details as source of truth for status/fills
+            order_details = self.retrieve_order(order_resp.order_id)
             status = OrderStatus.map_from_kucoin_status(order_details.status.value)
-            filled_size = (
-                float(order_details.filled_size)
-                if order_details.filled_size is not None
-                else float(order_details.size or 0)
-            )
-            price_used = (
-                float(order_details.avg_deal_price)
-                if order_details.avg_deal_price is not None
-                else float(order_details.price or price)
-            )
+            filled_size = float(order_details.filled_size)
+            price_used = float(order_details.avg_deal_price)
             timestamp = order_details.created_at
-        else:
-            status = OrderStatus.NEW
-            filled_size = qty
-            price_used = price
-            timestamp = int(time() * 1000)
+
+        except RestError as e:
+            if float(e.response.code) == 100001:
+                status = OrderStatus.NEW
+                filled_size = qty
+                price_used = price
+                timestamp = int(time() * 1000)
+            else:
+                raise e
 
         return OrderModel(
             order_id=order_resp.order_id,
@@ -200,26 +198,20 @@ class KucoinFutures(KucoinRest):
                 reduce_only=True,
             )
 
-        order_details = self.retrieve_order(order_resp.order_id)
-
-        if order_details and order_details.status is not None:
+        try:
+            order_details = self.retrieve_order(order_resp.order_id)
             status = OrderStatus.map_from_kucoin_status(order_details.status.value)
-            filled_size = (
-                float(order_details.filled_size)
-                if order_details.filled_size is not None
-                else float(order_details.size or 0)
-            )
-            price_used = (
-                float(order_details.avg_deal_price)
-                if order_details.avg_deal_price is not None
-                else float(order_details.price or price)
-            )
+            filled_size = float(order_details.filled_size)
+            price_used = float(order_details.avg_deal_price)
             timestamp = order_details.created_at
-        else:
-            status = OrderStatus.NEW
-            filled_size = qty
-            price_used = price
-            timestamp = int(time() * 1000)
+        except RestError as e:
+            if float(e.response.code) == 100001:
+                status = OrderStatus.NEW
+                filled_size = qty
+                price_used = price
+                timestamp = int(time() * 1000)
+            else:
+                raise e
 
         return OrderModel(
             order_id=order_resp.order_id,
