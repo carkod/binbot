@@ -144,8 +144,6 @@ const BaseOrderTab: FC<{
   }, [
     quoteAsset,
     baseAsset,
-    symbolsList,
-    bot,
     reset,
     dispatch,
     watch,
@@ -162,7 +160,6 @@ const BaseOrderTab: FC<{
             <SymbolSearch
               name="pair"
               label="Select pair"
-              options={symbolsList}
               disabled={bot.status === BotStatus.COMPLETED}
               value={bot.pair}
               onBlur={handlePairBlur}
@@ -246,7 +243,11 @@ const BaseOrderTab: FC<{
                 <InputTooltip
                   name="base_order_size"
                   tooltip={"Amount of base asset to trade"}
-                  label={bot.market_type === MarketType.FUTURES ? "Contract size" : "Base order size"}
+                  label={
+                    bot.market_type === MarketType.FUTURES
+                      ? "Contract size"
+                      : "Base order size"
+                  }
                   errors={errors}
                   secondaryText={quoteAsset}
                 >

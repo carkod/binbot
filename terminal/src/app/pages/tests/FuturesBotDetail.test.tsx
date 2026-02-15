@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { render } from "@testing-library/react";
 import { vi } from "vitest";
 
-import BotModelDetail from "../BotModelDetail";
+import FuturesBotDetail from "../FuturesBotDetail";
 import { store } from "../../store";
 import { MarketType } from "../../../utils/enums";
 import { setBot } from "../../../features/bots/botSlice";
@@ -43,7 +43,7 @@ const SpinnerContext = React.createContext({
   setSpinner: (_value: boolean) => {},
 });
 
-describe("BotModelDetail page", () => {
+describe("FuturesBotDetail page", () => {
   it("renders without crashing", () => {
     const { container } = render(
       <Provider store={store}>
@@ -52,7 +52,7 @@ describe("BotModelDetail page", () => {
         >
           <MemoryRouter initialEntries={["/bots/futures/new"]}>
             <Routes>
-              <Route path="/bots/futures/new" element={<BotModelDetail />} />
+              <Route path="/bots/futures/new" element={<FuturesBotDetail />} />
             </Routes>
           </MemoryRouter>
         </SpinnerContext.Provider>
@@ -70,7 +70,7 @@ describe("BotModelDetail page", () => {
         >
           <MemoryRouter initialEntries={["/bots/futures/new"]}>
             <Routes>
-              <Route path="/bots/futures/new" element={<BotModelDetail />} />
+              <Route path="/bots/futures/new" element={<FuturesBotDetail />} />
             </Routes>
           </MemoryRouter>
         </SpinnerContext.Provider>
@@ -104,7 +104,7 @@ describe("BotModelDetail page", () => {
             <Routes>
               <Route
                 path="/bots/futures/edit/:id"
-                element={<BotModelDetail />}
+                element={<FuturesBotDetail />}
               />
             </Routes>
           </MemoryRouter>

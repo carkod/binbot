@@ -33,10 +33,11 @@ const ChartContainer: FC<{
 
   const updatedPrice = (price) => {
     price = roundDecimals(price, 4);
-    if (currentChartPrice !== parseFloat(price)) {
-      const newOrderLines = updateOrderLines(bot, price);
+    const roundedPrice = parseFloat(price);
+    if (currentChartPrice !== roundedPrice) {
+      const newOrderLines = updateOrderLines(bot, roundedPrice);
       setCurrentOrderLines(newOrderLines);
-      setCurrentChartPrice(parseFloat(price));
+      setCurrentChartPrice(roundedPrice);
     }
   };
 
@@ -50,33 +51,49 @@ const ChartContainer: FC<{
 
   useEffect(() => {
     if (bot.id && bot.deal.opening_price > 0) {
-      const initialBotProfit = computeSingleBotProfit(bot);
-      setBotProfit(initialBotProfit);
+      setBotProfit(computeSingleBotProfit(bot));
+    }
+  }, [bot]);
+
+  useEffect(() => {
+    if (!currentChartPrice) {
+      return;
     }
 
-    if (currentChartPrice !== 0) {
-      const newOrderLines = updateOrderLines(bot, currentChartPrice);
-      setCurrentOrderLines((draft) => (draft = newOrderLines));
-      setBotProfit(computeSingleBotProfit(bot, currentChartPrice));
-      if (bot.deal?.current_price !== currentChartPrice) {
-        dispatch(setCurrentPrice(currentChartPrice));
+    const newOrderLines = updateOrderLines(bot, currentChartPrice);
+    const hasDifferentOrderLines =
+      JSON.stringify(newOrderLines) !== JSON.stringify(currentOrderLines);
+
+    if (hasDifferentOrderLines) {
+      setCurrentOrderLines(newOrderLines);
+    }
+
+    const nextBotProfit = computeSingleBotProfit(bot, currentChartPrice);
+    setBotProfit((prev) => (prev !== nextBotProfit ? nextBotProfit : prev));
+
+    if (bot.deal?.current_price !== currentChartPrice) {
+      dispatch(setCurrentPrice(currentChartPrice));
+    }
+  }, [bot, currentChartPrice, currentOrderLines, dispatch, setCurrentPrice]);
+
+  useEffect(() => {
+    if (!bot?.pair) {
+      return;
+    }
+
+    const kucoinPair = quoteAsset
+      ? bot.pair.replace(quoteAsset, "") + "-" + quoteAsset
+      : bot.pair;
+    const nextSymbol =
+      exchangeState === Exchange.KUCOIN ? kucoinPair : bot.pair;
+
+    setExchangeSymbol((draft) => {
+      if (draft === nextSymbol) {
+        return;
       }
-    }
-
-    if (Boolean(bot?.pair) && exchangeState === Exchange.KUCOIN) {
-      setExchangeSymbol(
-        (draft) =>
-          (draft = bot.pair.replace(quoteAsset, "") + "-" + quoteAsset),
-      );
-    }
-  }, [
-    currentChartPrice,
-    bot,
-    setBotProfit,
-    botProfit,
-    exchangeState,
-    quoteAsset,
-  ]);
+      return nextSymbol;
+    });
+  }, [bot.pair, exchangeState, quoteAsset]);
 
   return (
     <Card style={{ minHeight: "650px" }}>

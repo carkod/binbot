@@ -3,11 +3,11 @@ import { Typeahead } from "react-bootstrap-typeahead";
 import "react-bootstrap-typeahead/css/Typeahead.css";
 import Form from "react-bootstrap/Form";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
+import { useSymbolData } from "../hooks";
 
 type SymbolSearchProps = {
   name: string;
   label?: string;
-  options: string[];
   value?: string;
   defaultValue?: string;
   required?: boolean;
@@ -20,26 +20,27 @@ type SymbolSearchProps = {
 const SymbolSearch: FC<SymbolSearchProps> = ({
   name,
   label = null,
-  options,
   value,
-  onBlur,
+  onBlur = () => undefined,
   required = false,
   disabled = false,
   errors = {},
   placeholder = "",
 }) => {
-  const [state, setState] = useState<string>(value);
-  const [optionsState, setOptionsState] = useState<string[]>(options);
+  const [state, setState] = useState<string>(value ?? "");
+  const [options, setOptions] = useState<string[]>([]);
   const { data: autotradeSettings } = useGetSettingsQuery();
+  const { symbolsList } = useSymbolData();
 
   useEffect(() => {
     if (value) {
       setState(value);
     }
-    if (options && options.length > 0) {
-      setOptionsState(options);
+
+    if (symbolsList && symbolsList.length > 0) {
+      setOptions(symbolsList);
     }
-  }, [value, options, autotradeSettings?.fiat]);
+  }, [value, autotradeSettings?.fiat, symbolsList]);
 
   return (
     <Form.Group>
@@ -51,7 +52,7 @@ const SymbolSearch: FC<SymbolSearchProps> = ({
       )}
       <Typeahead
         id={name}
-        options={optionsState}
+        options={options}
         {...(required
           ? { isInvalid: Boolean(errors?.[name]) || Boolean(value) === false }
           : {})}

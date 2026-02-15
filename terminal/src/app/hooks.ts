@@ -93,11 +93,23 @@ export const useSymbolDataProvider = (marketType?: MarketType) => {
   );
 
   useEffect(() => {
-    if (symbols && symbolsList.length === 0) {
-      const pairs = symbols.map((symbol) => symbol.id);
-      setSymbolsList(pairs);
+    if (!symbols) {
+      return;
     }
-  }, [symbols, symbolsList]);
+
+    const pairs = symbols.map((symbol) => symbol.id);
+
+    setSymbolsList((prev) => {
+      if (prev.length === pairs.length) {
+        const hasSameValues = prev.every((id, index) => id === pairs[index]);
+        if (hasSameValues) {
+          return prev;
+        }
+      }
+
+      return pairs;
+    });
+  }, [symbols]);
 
   return {
     symbolsList,
