@@ -1,5 +1,4 @@
 from typing import Dict, Tuple
-from enum import Enum
 from databases.crud.autotrade_crud import AutotradeCrud
 from databases.crud.bot_crud import BotTableCrud
 from exchange_apis.kucoin.futures.api import KucoinFutures
@@ -23,7 +22,7 @@ class KucoinFuturesBalance:
         (no MAIN/TRADE/MARGIN split), so we normalize it under a
         synthetic "futures" account type.
         """
-        futures_request = GetFuturesAccountReqBuilder().build()
+        futures_request = GetFuturesAccountReqBuilder().set_currency(self.fiat).build()
         account = self.kucoin_api.futures_account_api.get_futures_account(
             futures_request
         )
@@ -57,25 +56,12 @@ class KucoinFuturesBalance:
         fiat_available = 0.0
 
         kucoin_balances = self.get_account_balance_by_type()
-        for account_type, balances in kucoin_balances.items():
-            account_type_str = (
-                account_type.value if isinstance(account_type, Enum) else account_type
-            )
-            if account_type_str != "futures":
-                continue
+        # because with Futures, we don't have underlying asset,
+        # balances only return USDT
+        fiat_balance = kucoin_balances["futures"][self.fiat]
 
-            for asset, value in balances.items():
-                if asset != self.fiat:
-                    raise NotImplementedError(
-                        "Non-USDT-M futures accounts are not supported yet"
-                    )
-
-                balance = float(value["balance"])
-                if balance <= 0:
-                    continue
-
-                estimated_total_fiat += balance
-                fiat_available += float(value["available"])
-                result_balances[asset] = balance
+        estimated_total_fiat += float(fiat_balance["balance"])
+        fiat_available += float(fiat_balance["available"])
+        result_balances[self.fiat] = float(fiat_balance["balance"])
 
         return result_balances, estimated_total_fiat, fiat_available

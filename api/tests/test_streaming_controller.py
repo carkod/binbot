@@ -4,7 +4,7 @@ import time
 import pandas as pd
 from pandas import Index
 from typing import cast
-from pybinbot import Strategy, Status
+from pybinbot import Strategy, Status, MarketType
 from streaming.apex_flow_closing import ApexFlowClose
 from streaming.position_manager import (
     PositionManager,
@@ -116,7 +116,6 @@ class TestPositionManager:
                             low_price,
                             close_price,
                             1000,
-                            timestamp + 60000,
                             500,
                         ]
                     )
@@ -127,6 +126,7 @@ class TestPositionManager:
         monkeypatch.setattr("streaming.base.SymbolsCrud", DummySymbolsCrud)
         monkeypatch.setattr("streaming.base.CandlesCrud", DummyCandlesCrud)
         monkeypatch.setattr("streaming.base.BinanceApi", DummyBinanceApi)
+        monkeypatch.setattr("streaming.base.KucoinApi", DummyKucoinApi)
         monkeypatch.setattr("streaming.base.KucoinFutures", DummyKucoinApi)
 
         def patched_pre_process(self, exchange, candles):
@@ -140,7 +140,19 @@ class TestPositionManager:
                 df = df_raw.iloc[:, : len(cols)]
                 df.columns = Index(cols)
             else:
-                df = DataFrame(candles, columns=HeikinAshi().kucoin_cols)
+                df_raw = DataFrame(candles)
+                kucoin_cols = HeikinAshi().kucoin_cols
+                if df_raw.shape[1] == len(kucoin_cols):
+                    df_raw.columns = Index(kucoin_cols)
+                elif df_raw.shape[1] == len(kucoin_cols) - 1:
+                    # Recent Kucoin klines omit close_time; derive it from open_time
+                    df_raw.columns = Index(kucoin_cols[:-1])
+                    df_raw["close_time"] = df_raw["open_time"]
+                else:
+                    raise ValueError(
+                        f"Unexpected KuCoin dummy kline column count: {df_raw.shape[1]}"
+                    )
+                df = df_raw
 
             # Convert numeric columns
             numeric_cols = ["open", "high", "low", "close", "volume"]
@@ -175,13 +187,24 @@ class TestPositionManager:
         base = BaseStreaming()
 
         # Freeze active pairs to a predictable list
-        pairs = active_pairs or ["BTCUSDC", "ETHUSDC", "TESTUSDC"]
+        pairs = list(active_pairs or ["BTCUSDC", "ETHUSDC", "TESTUSDC"])
+        # Include Kucoin-style dashed symbols so converted_symbol lookups succeed
+        dash_pairs = []
+        for pair in pairs:
+            if "-" not in pair and len(pair) > 4:
+                dash_pairs.append(f"{pair[:-4]}-{pair[-4:]}")
+        pairs.extend(dash_pairs)
         monkeypatch.setattr(base, "active_bot_pairs", pairs, raising=False)
 
         # Replace active pairs after init (init used dummies returning empty list)
         return base
 
-    def _make_bot(self, pair="BTCUSDC", strategy=Strategy.long):
+    def _make_bot(
+        self,
+        pair="BTCUSDC",
+        strategy=Strategy.long,
+        market_type=MarketType.SPOT,
+    ):
         # Lightweight BotModel-like object for tests
         bot = types.SimpleNamespace()
         bot.name = "apex_aggressive_momo"
@@ -195,6 +218,7 @@ class TestPositionManager:
         bot.stop_loss = 0.0
         bot.status = None
         bot.name = "test_bot"
+        bot.market_type = market_type
 
         # Add dummy orders list to satisfy order_updates logic
         bot.orders = []
@@ -249,6 +273,7 @@ class TestPositionManager:
 
         base.binance_api = ShortBinanceApi()
         sc = PositionManager(base, symbol="BTCUSDC")
+        sc.dataframe_ops()
 
         spreads = sc.build_bb_spreads()
         assert spreads.bb_high == 0
@@ -471,6 +496,75 @@ class TestPositionManager:
         assert base.bot_controller.saved or base.paper_trading_controller.saved
         assert bot.status == Status.error
 
+    def test_process_deal_calls_futures_order_updates_for_futures_bot(
+        self, monkeypatch
+    ):
+        base = self._make_base_streaming(monkeypatch, active_pairs=["BTCUSDC"])
+        from pybinbot import ExchangeId
+
+        base.exchange = ExchangeId.KUCOIN
+        sc = PositionManager(base, symbol="BTCUSDC")
+
+        futures_bot = self._make_bot(
+            pair="BTCUSDC",
+            strategy=Strategy.long,
+            market_type=MarketType.FUTURES,
+        )
+        futures_bot.dynamic_trailling = False
+
+        monkeypatch.setattr(
+            BaseStreaming,
+            "get_current_bot",
+            lambda self, symbol: futures_bot,
+        )
+        monkeypatch.setattr(
+            BaseStreaming,
+            "get_current_test_bot",
+            lambda self, symbol: None,
+        )
+
+        call_order: list[str] = []
+
+        def fake_futures_updates(self, bot):
+            call_order.append("futures")
+            return bot
+
+        def fake_order_updates(self, bot):
+            call_order.append("spot")
+            return bot
+
+        monkeypatch.setattr(
+            PositionManager,
+            "futures_order_updates",
+            fake_futures_updates,
+        )
+        monkeypatch.setattr(PositionManager, "order_updates", fake_order_updates)
+
+        class FakeDealGateway:
+            exit_calls: list[tuple[float, float]] = []
+
+            def __init__(self, bot, db_table):
+                self.bot = bot
+                self.db_table = db_table
+
+            def deal_exit_orchestration(self, close_price, open_price):
+                FakeDealGateway.exit_calls.append((close_price, open_price))
+
+            def save(self, bot):
+                base.bot_controller.save(bot)
+
+        monkeypatch.setattr(
+            "streaming.position_manager.DealGateway",
+            FakeDealGateway,
+        )
+
+        sc.process_deal()
+
+        assert call_order == ["futures"]
+        assert FakeDealGateway.exit_calls, (
+            "Expected deal_exit_orchestration to be called for futures bots"
+        )
+
     def test_streaming_controller_uses_kucoin_api_for_kucoin_symbols(self, monkeypatch):
         """Test that PositionManager uses KucoinApi when exchange_id is KUCOIN"""
         base = self._make_base_streaming(monkeypatch)
@@ -546,7 +640,8 @@ class TestPositionManager:
         base.binance_api.get_ui_klines = track_binance_klines
 
         # Instantiate controller to trigger klines fetch
-        PositionManager(base, symbol="BTCUSDC")
+        sc = PositionManager(base, symbol="BTCUSDC")
+        sc.dataframe_ops()
 
         # Assert that KucoinApi was used, not BinanceApi
         assert len(kucoin_called) > 0, "KucoinApi.get_ui_klines should have been called"

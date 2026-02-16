@@ -9,6 +9,7 @@ from databases.crud.autotrade_crud import AutotradeCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from pybinbot import (
     DealType,
+    KucoinKlineIntervals,
     OrderStatus,
     Status,
     Strategy,
@@ -22,9 +23,12 @@ from pybinbot import (
     KucoinApi,
     HABollinguerSpread,
     convert_to_kucoin_symbol,
+    MarketType,
 )
 from copy import deepcopy
 from streaming.base import BaseStreaming
+from kucoin_universal_sdk.model.common import RestError
+from exchange_apis.kucoin.futures.futures_deal import KucoinFutures
 
 
 class PositionManager:
@@ -33,32 +37,40 @@ class PositionManager:
         # Gets any signal to restart streaming
         self.autotrade_controller = AutotradeCrud()
         self.symbol_data = base.symbols_crud.get_symbol(symbol)
+        self.autotrade_settings = self.autotrade_controller.get_settings()
         self.price_precision = self.symbol_data.price_precision
         self.qty_precision = self.symbol_data.qty_precision
         self.base_streaming = base
         self.symbol = symbol
         self.benchmark_symbol = "BTCUSDT"
         self.kucoin_benchmark_symbol = "BTC-USDT"
-        self.api: Union[BinanceApi, KucoinApi]
+        self.api: Union[BinanceApi, KucoinApi, KucoinFutures]
 
-        binance_interval = BinanceKlineIntervals.fifteen_minutes
+        binance_interval = BinanceKlineIntervals(
+            self.autotrade_settings.candlestick_interval
+        )
+        kucoin_interval = KucoinKlineIntervals(
+            BinanceKlineIntervals.to_kucoin_interval(binance_interval)
+        )
+        self.interval: Union[BinanceKlineIntervals, KucoinKlineIntervals]
         # Prepare interval based on exchange
         if self.base_streaming.exchange == ExchangeId.KUCOIN:
-            self.interval = binance_interval.to_kucoin_interval()
-            self.symbol = (
-                self.symbol_data.base_asset + "-" + self.symbol_data.quote_asset
-            )
-            self.api = self.base_streaming.kucoin_api
+            self.interval = kucoin_interval
+            if self.symbol.endswith("USDTM"):
+                self.api = self.base_streaming.kucoin_futures_api
+                # there's no BTCUSDTM
+                self.kucoin_benchmark_symbol = "ETHBTCUSDTM"
+            else:
+                self.api = self.base_streaming.kucoin_api
+
         else:
-            self.interval = binance_interval.value
+            self.interval = binance_interval
             self.api = self.base_streaming.binance_api
 
         self.current_bot: BotModel | None = None
         self.current_test_bot: BotModel | None = None
-        self.dataframe_ops(self.interval)
-        self.apex_flow_closing = ApexFlowClose(self.df, self.btc_df)
 
-    def dataframe_ops(self, interval: str) -> None:
+    def dataframe_ops(self) -> None:
         """
         Converts klines to DataFrame for indicator calculations
         """
@@ -66,21 +78,22 @@ class PositionManager:
         # Get klines from the appropriate exchange
         self.klines = self.api.get_ui_klines(
             symbol=self.symbol,
-            interval=interval,
+            interval=str(self.interval.value),
         )
         self.btc_klines = self.api.get_ui_klines(
             symbol=self.kucoin_benchmark_symbol
             if self.base_streaming.exchange == ExchangeId.KUCOIN
             else self.benchmark_symbol,
-            interval=interval,
+            interval=str(self.interval.value),
         )
         candles = self.klines.copy()
         df, _, _ = HeikinAshi().pre_process(
             exchange=self.base_streaming.exchange, candles=candles
         )
         self.df = df
+        btc_candles = self.btc_klines.copy()
         btc_df, _, _ = HeikinAshi().pre_process(
-            exchange=self.base_streaming.exchange, candles=self.btc_klines.copy()
+            exchange=self.base_streaming.exchange, candles=btc_candles
         )
         self.btc_df = btc_df
 
@@ -425,17 +438,131 @@ class PositionManager:
 
         return bot
 
+    def futures_order_updates(self, bot: BotModel) -> BotModel:
+        """
+        Take order id from list of bot.orders
+        and fetch order details from exchange
+        """
+        for order in bot.orders:
+            if order.status == OrderStatus.FILLED:
+                continue
+
+            if self.base_streaming.exchange == ExchangeId.KUCOIN and (
+                order.price == 0 or order.qty == 0
+            ):
+                kucoin_symbol = convert_to_kucoin_symbol(bot)
+
+                # Check if order is expired based on 15m interval
+                # this should be a good measure, because candles have closed
+                interval_ms = self.base_streaming.interval.get_ms()
+                now_ms = int(datetime.now().timestamp() * 1000)
+                order_ms = int(order.timestamp * 1000)
+                is_expired = (now_ms - order_ms) > interval_ms
+
+                try:
+                    # Fetch order details as source of truth for status/fills
+                    system_order = (
+                        self.base_streaming.kucoin_futures_api.retrieve_order(
+                            str(order.order_id)
+                        )
+                    )
+                    if is_expired:
+                        raise RestError(
+                            response=type(
+                                "obj",
+                                (object,),
+                                {"code": 100001, "message": "Order expired"},
+                            )()
+                        )
+                    status = OrderStatus.map_from_kucoin_status(
+                        system_order.status.value
+                    )
+                    filled_size = float(system_order.filled_size)
+                    price_used = float(system_order.avg_deal_price)
+                    timestamp = system_order.created_at
+
+                    if float(system_order.price) > 0:
+                        order.price = round_numbers(
+                            system_order.price, self.price_precision
+                        )
+
+                    order.qty = round_numbers(filled_size, self.qty_precision)
+                    order.status = status
+                    order.timestamp = timestamp
+                    order.price = round_numbers(price_used, self.price_precision)
+                    self.base_streaming.bot_controller.update_order(order)
+                    bot.add_log(f"Order {order.order_id} updated from system")
+
+                    if (
+                        order.deal_type == DealType.base_order
+                        and bot.deal.opening_price == 0
+                        and order.price > 0
+                    ):
+                        bot.deal.opening_price = order.price
+                        bot.deal.opening_qty = order.qty
+                        bot.deal.opening_timestamp = order.timestamp
+                        bot.status = Status.active
+
+                    if (
+                        (
+                            order.deal_type == DealType.take_profit
+                            or order.deal_type == DealType.stop_loss
+                            or order.deal_type == DealType.panic_close
+                            or order.deal_type == DealType.trailling_profit
+                        )
+                        and bot.deal.closing_price == 0
+                        and order.price > 0
+                    ):
+                        bot.deal.closing_price = order.price
+                        bot.deal.closing_qty = order.qty
+                        bot.deal.closing_timestamp = order.timestamp
+                        bot.status = Status.completed
+
+                    self.base_streaming.bot_controller.save(data=bot)
+
+                except RestError as e:
+                    if float(e.response.code) == 100001:
+                        try:
+                            self.base_streaming.kucoin_futures_api.cancel_all_futures_orders(
+                                kucoin_symbol
+                            )
+                            bot.status = Status.inactive
+                            bot.add_log(
+                                f"Order {order.order_id} expired and cancelled. Bot set to inactive.",
+                            )
+                            self.base_streaming.bot_controller.save(data=bot)
+                        except Exception as cancel_e:
+                            bot.add_log(
+                                f"Failed to cancel all futures orders for {kucoin_symbol}: {str(cancel_e)}"
+                            )
+                            self.base_streaming.bot_controller.save(data=bot)
+                    else:
+                        raise e
+
+        return bot
+
     def process_deal(self) -> None:
         """
         Updates deals with klines websockets,
         when price and symbol match existent deal
         """
-        symbol = self.symbol
-        close_price = float(self.klines[-1][4])
-        open_price = float(self.klines[-1][1])
-        converted_symbol = symbol.replace("-", "")
+        if (
+            self.base_streaming.exchange == ExchangeId.KUCOIN
+            and not self.symbol.endswith("USDTM")
+        ):
+            converted_symbol = (
+                self.symbol_data.base_asset + "-" + self.symbol_data.quote_asset
+            )
+        else:
+            converted_symbol = self.symbol
 
         if converted_symbol in self.base_streaming.active_bot_pairs:
+            self.dataframe_ops()
+            self.apex_flow_closing = ApexFlowClose(self.df, self.btc_df)
+
+            close_price = float(self.klines[-1][4])
+            open_price = float(self.klines[-1][1])
+
             self.current_bot = self.base_streaming.get_current_bot(converted_symbol)
             self.current_test_bot = self.base_streaming.get_current_test_bot(
                 converted_symbol
@@ -448,8 +575,12 @@ class PositionManager:
                         raise NotImplementedError(
                             "Order updates only implemented for Kucoin"
                         )
+                    else:
+                        if self.current_bot.market_type == MarketType.FUTURES:
+                            self.futures_order_updates(bot=self.current_bot)
+                        else:
+                            self.order_updates(bot=self.current_bot)
 
-                    self.order_updates(bot=self.current_bot)
                     if self.current_bot.dynamic_trailling:
                         self.market_trailing_analytics(
                             bot=self.current_bot,

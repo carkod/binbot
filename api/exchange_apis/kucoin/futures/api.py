@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from pybinbot import KucoinRest, KucoinKlineIntervals, OrderType, OrderStatus, DealType
 from uuid import uuid4
-from time import time
+from time import sleep, time
 from typing import List
 from bots.models import OrderModel
 from tools.config import Config
@@ -49,6 +49,7 @@ from kucoin_universal_sdk.generate.futures.positions import (
 from kucoin_universal_sdk.generate.futures.order import (
     CancelAllOrdersV3ReqBuilder,
 )
+from kucoin_universal_sdk.model.common import RestError
 
 
 class KucoinFutures(KucoinRest):
@@ -114,6 +115,7 @@ class KucoinFutures(KucoinRest):
         self,
         symbol: str,
         qty: float,
+        reduce_only: bool = False,
     ) -> OrderModel:
         """
         Place an order and get the order
@@ -126,7 +128,9 @@ class KucoinFutures(KucoinRest):
             side=AddOrderReq.SideEnum.BUY,
             size=int(qty),
             price=price,
+            leverage=int(self.DEFAULT_LEVERAGE),
             order_type=OrderType.limit,
+            reduce_only=reduce_only,
         )
         if not order_resp or not order_resp.order_id:
             order_resp = self.place_futures_order(
@@ -134,37 +138,47 @@ class KucoinFutures(KucoinRest):
                 side=AddOrderReq.SideEnum.BUY,
                 size=int(qty),
                 price=price,
+                leverage=int(self.DEFAULT_LEVERAGE),
                 order_type=OrderType.market,
+                reduce_only=reduce_only,
             )
 
-        # Fetch order details as source of truth for status/fills
-        order_details = self.retrieve_order(order_resp.order_id)
-
-        if order_details and order_details.status is not None:
+        # Small delay to allow order to be processed and show up in order details endpoint;
+        sleep(5)
+        try:
+            # Fetch order details as source of truth for status/fills
+            order_details = self.retrieve_order(order_resp.order_id)
+            # status it he only enum field to help with db consistency
             status = OrderStatus.map_from_kucoin_status(order_details.status.value)
-            filled_size = (
-                float(order_details.filled_size)
-                if order_details.filled_size is not None
-                else float(order_details.size or 0)
-            )
-            price_used = (
-                float(order_details.avg_deal_price)
-                if order_details.avg_deal_price is not None
-                else float(order_details.price or price)
-            )
+            filled_size = float(order_details.filled_size)
+            price_used = float(order_details.avg_deal_price)
             timestamp = order_details.created_at
-        else:
-            status = OrderStatus.NEW
-            filled_size = qty
-            price_used = price
-            timestamp = int(time() * 1000)
+
+        except RestError as e:
+            if float(e.response.code) == 100001:
+                order_details = GetOrderByOrderIdResp(
+                    order_id=order_resp.order_id,
+                    symbol=symbol,
+                    side=AddOrderReq.SideEnum.SELL,
+                    type=AddOrderReq.TypeEnum.LIMIT,
+                    price=str(price),
+                    size=str(qty),
+                    filled_size=str(qty),
+                    time_in_force=AddOrderReq.TimeInForceEnum.GOOD_TILL_CANCELED.value,
+                )
+                status = OrderStatus.NEW
+                filled_size = qty
+                price_used = price
+                timestamp = int(time() * 1000)
+            else:
+                raise e
 
         return OrderModel(
             order_id=order_resp.order_id,
-            order_type=OrderType.limit.value,
+            order_type=order_details.type.value,
             pair=symbol,
             timestamp=timestamp,
-            order_side=AddOrderReq.SideEnum.BUY.value,
+            order_side=order_details.side.value,
             qty=filled_size,
             price=price_used,
             status=status,
@@ -177,6 +191,7 @@ class KucoinFutures(KucoinRest):
         symbol: str,
         qty: float,
         leverage: int = 1,
+        reduce_only: bool = False,
     ) -> OrderModel:
         price = self.matching_engine(symbol, size=qty, side=AddOrderReq.SideEnum.SELL)
         order_resp = self.place_futures_order(
@@ -186,7 +201,7 @@ class KucoinFutures(KucoinRest):
             leverage=leverage,
             price=price,
             order_type=OrderType.limit,
-            reduce_only=True,
+            reduce_only=reduce_only,
         )
 
         if not order_resp or not order_resp.order_id:
@@ -197,36 +212,41 @@ class KucoinFutures(KucoinRest):
                 leverage=leverage,
                 price=price,
                 order_type=OrderType.market,
-                reduce_only=True,
+                reduce_only=reduce_only,
             )
 
-        order_details = self.retrieve_order(order_resp.order_id)
-
-        if order_details and order_details.status is not None:
+        try:
+            order_details = self.retrieve_order(order_resp.order_id)
             status = OrderStatus.map_from_kucoin_status(order_details.status.value)
-            filled_size = (
-                float(order_details.filled_size)
-                if order_details.filled_size is not None
-                else float(order_details.size or 0)
-            )
-            price_used = (
-                float(order_details.avg_deal_price)
-                if order_details.avg_deal_price is not None
-                else float(order_details.price or price)
-            )
+            filled_size = float(order_details.filled_size)
+            price_used = float(order_details.avg_deal_price)
             timestamp = order_details.created_at
-        else:
-            status = OrderStatus.NEW
-            filled_size = qty
-            price_used = price
-            timestamp = int(time() * 1000)
+        except RestError as e:
+            if float(e.response.code) == 100001:
+                # filler response to wait for completetion
+                order_details = GetOrderByOrderIdResp(
+                    order_id=order_resp.order_id,
+                    symbol=symbol,
+                    side=AddOrderReq.SideEnum.SELL,
+                    type=AddOrderReq.TypeEnum.LIMIT,
+                    price=str(price),
+                    size=str(qty),
+                    filled_size=str(qty),
+                    time_in_force=AddOrderReq.TimeInForceEnum.GOOD_TILL_CANCELED.value,
+                )
+                status = OrderStatus.NEW
+                filled_size = qty
+                price_used = price
+                timestamp = int(time() * 1000)
+            else:
+                raise e
 
         return OrderModel(
             order_id=order_resp.order_id,
-            order_type=OrderType.limit.value,
+            order_type=order_details.type.value,
             pair=symbol,
             timestamp=timestamp,
-            order_side=AddOrderReq.SideEnum.SELL.value,
+            order_side=order_details.side.value,
             qty=filled_size,
             price=price_used,
             status=status,
@@ -294,7 +314,7 @@ class KucoinFutures(KucoinRest):
         )
         return self.transfer_api.flex_transfer(req)
 
-    def get_futures_ui_klines(
+    def get_ui_klines(
         self,
         symbol: str,
         interval: str,
@@ -307,7 +327,7 @@ class KucoinFutures(KucoinRest):
 
         Args:
             symbol: Trading pair symbol (e.g., "BTC-USDT")
-            interval: Kline interval (e.g., "15min", "1hour", "1day")
+            interval: Kline interval is a string to keep consistency across exchanges and market type
             limit: Number of klines to retrieve (max 1500, default 500)
             start_time: Start time in milliseconds (optional)
             end_time: End time in milliseconds (optional)
@@ -316,7 +336,9 @@ class KucoinFutures(KucoinRest):
             [timestamp, open, high, low, close, volume, close_time, ...]
         """
         # Compute time window based on limit and interval
-        interval_ms = KucoinKlineIntervals.get_interval_ms(interval)
+        interval_enum = KucoinKlineIntervals(interval)
+        granularity = interval_enum.to_minutes()
+        interval_ms = KucoinKlineIntervals.get_interval_ms(interval_enum)
         now_ms = int(datetime.now().timestamp() * 1000)
         # Align end_time to interval boundary
         end_time = now_ms - (now_ms % interval_ms)
@@ -325,9 +347,9 @@ class KucoinFutures(KucoinRest):
         builder = (
             GetKlinesReqBuilder()
             .set_symbol(symbol)
-            .set_granularity(interval)
-            .set_from_(start_time // 1000)
-            .set_to(end_time // 1000)
+            .set_granularity(granularity)
+            .set_from_(start_time)
+            .set_to(end_time)
         )
 
         request = builder.build()

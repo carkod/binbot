@@ -19,6 +19,7 @@ import PaperTradingPage from "./app/pages/PaperTradingPage";
 import PaperTradingDetail from "./app/pages/PaperTradingDetail";
 import SymbolsPage from "./app/pages/Symbols";
 import TestAutotradePage from "./app/pages/TestAutotrade";
+import { SymbolProvider } from "./app/providers/SymbolProvider";
 
 export type Routes = {
   path: string;
@@ -158,7 +159,11 @@ const rootRouter = createBrowserRouter(
     {
       id: "root",
       path: "/",
-      element: <Layout />,
+      element: (
+        <SymbolProvider>
+          <Layout />
+        </SymbolProvider>
+      ),
       hydrateFallbackElement: <div>Loading...</div>,
       children: routes,
     },

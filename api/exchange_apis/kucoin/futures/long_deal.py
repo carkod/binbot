@@ -1,4 +1,3 @@
-import logging
 from time import time
 from typing import Type, Union
 
@@ -10,6 +9,7 @@ from pybinbot import (
     OrderSide,
     OrderStatus,
     OrderType,
+    Strategy,
 )
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
@@ -81,13 +81,28 @@ class FuturesLongDeal(KucoinFuturesDeal):
                 return self.active_bot
 
             qty = round_numbers(abs(float(position.current_qty)), 8)
-            order = self.kucoin_futures_api.place_futures_order(
-                symbol=self.kucoin_symbol,
-                side=AddOrderReq.SideEnum.SELL,
-                size=qty,
-                order_type=OrderType.market,
-                reduce_only=True,
-            )
+            if self.active_bot.strategy == Strategy.margin_short:
+                self.controller.update_logs(
+                    "Dispatching futures buy order for take profit...",
+                    self.active_bot,
+                )
+                order = self.kucoin_futures_api.buy(
+                    symbol=self.kucoin_symbol,
+                    qty=qty,
+                    reduce_only=True,
+                )
+            else:
+                self.controller.update_logs(
+                    "Dispatching futures sell order for take profit...",
+                    self.active_bot,
+                )
+                order = self.kucoin_futures_api.place_futures_order(
+                    symbol=self.kucoin_symbol,
+                    side=AddOrderReq.SideEnum.SELL,
+                    size=qty,
+                    order_type=OrderType.market,
+                    reduce_only=True,
+                )
 
             # We don't have full fee info here; focus on core fields
             price = float(order.price) if getattr(order, "price", None) else 0.0
@@ -120,13 +135,13 @@ class FuturesLongDeal(KucoinFuturesDeal):
 
     def execute_stop_loss(self) -> BotModel:
         """
-        Update stop limit after websocket
+        Place a stop loss limit order, since we've hit the threshold
 
         - Hard sell (order status="FILLED" immediately) initial amount crypto in deal
         - Close current opened take profit order
         - Deactivate bot
         """
-        self.controller.update_logs("Executing futures stop loss...", self.active_bot)
+        self.controller.update_logs("Placing Futures stop loss...", self.active_bot)
 
         # Paper trading: simulate without hitting the exchange
         if isinstance(self.controller, PaperTradingTableCrud):
@@ -141,7 +156,7 @@ class FuturesLongDeal(KucoinFuturesDeal):
                 deal_type=DealType.stop_loss,
                 pair=self.kucoin_symbol,
                 order_side=OrderSide.sell,
-                order_type="MARKET",
+                order_type=OrderType.limit,
                 price=price,
                 qty=float(qty),
                 time_in_force="GTC",
@@ -157,26 +172,27 @@ class FuturesLongDeal(KucoinFuturesDeal):
                 return self.active_bot
 
             qty = round_numbers(abs(float(position.current_qty)), 8)
-            try:
-                order = self.kucoin_futures_api.place_futures_order(
+            if self.active_bot.strategy == Strategy.margin_short:
+                order = self.kucoin_futures_api.buy(
                     symbol=self.kucoin_symbol,
-                    side=AddOrderReq.SideEnum.SELL,
-                    size=qty,
-                    order_type=OrderType.market,
+                    qty=qty,
                     reduce_only=True,
                 )
-            except Exception as e:  # pragma: no cover - defensive
-                logging.error(f"Error executing futures stop loss order: {e}")
-                return self.active_bot
+            else:
+                order = self.kucoin_futures_api.sell(
+                    symbol=self.kucoin_symbol,
+                    qty=qty,
+                    reduce_only=True,
+                )
 
-            price = float(order.price) if getattr(order, "price", None) else 0.0
+            price = order.price
             stop_loss_order = OrderModel(
                 timestamp=int(time() * 1000),
                 order_id=order.order_id,
                 deal_type=DealType.stop_loss,
                 pair=self.kucoin_symbol,
                 order_side=OrderSide.sell,
-                order_type="MARKET",
+                order_type=OrderType.limit,
                 price=price,
                 qty=float(qty),
                 time_in_force="GTC",
@@ -233,11 +249,18 @@ class FuturesLongDeal(KucoinFuturesDeal):
                 "Dispatching futures sell order for trailling profit...",
                 self.active_bot,
             )
-            # No explicit price means market order in our wrapper
-            order = self.kucoin_futures_api.sell(
-                symbol=self.kucoin_symbol,
-                qty=qty,
-            )
+            if self.active_bot.strategy == Strategy.margin_short:
+                order = self.kucoin_futures_api.buy(
+                    symbol=self.kucoin_symbol,
+                    qty=qty,
+                    reduce_only=True,
+                )
+            else:
+                order = self.kucoin_futures_api.sell(
+                    symbol=self.kucoin_symbol,
+                    qty=qty,
+                    reduce_only=True,
+                )
 
             price = float(order.price)
             order.deal_type = DealType.trailling_profit
