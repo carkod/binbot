@@ -116,7 +116,6 @@ class TestPositionManager:
                             low_price,
                             close_price,
                             1000,
-                            timestamp + 60000,
                             500,
                         ]
                     )
@@ -127,6 +126,7 @@ class TestPositionManager:
         monkeypatch.setattr("streaming.base.SymbolsCrud", DummySymbolsCrud)
         monkeypatch.setattr("streaming.base.CandlesCrud", DummyCandlesCrud)
         monkeypatch.setattr("streaming.base.BinanceApi", DummyBinanceApi)
+        monkeypatch.setattr("streaming.base.KucoinApi", DummyKucoinApi)
         monkeypatch.setattr("streaming.base.KucoinFutures", DummyKucoinApi)
 
         def patched_pre_process(self, exchange, candles):
@@ -140,7 +140,19 @@ class TestPositionManager:
                 df = df_raw.iloc[:, : len(cols)]
                 df.columns = Index(cols)
             else:
-                df = DataFrame(candles, columns=HeikinAshi().kucoin_cols)
+                df_raw = DataFrame(candles)
+                kucoin_cols = HeikinAshi().kucoin_cols
+                if df_raw.shape[1] == len(kucoin_cols):
+                    df_raw.columns = Index(kucoin_cols)
+                elif df_raw.shape[1] == len(kucoin_cols) - 1:
+                    # Recent Kucoin klines omit close_time; derive it from open_time
+                    df_raw.columns = Index(kucoin_cols[:-1])
+                    df_raw["close_time"] = df_raw["open_time"]
+                else:
+                    raise ValueError(
+                        f"Unexpected KuCoin dummy kline column count: {df_raw.shape[1]}"
+                    )
+                df = df_raw
 
             # Convert numeric columns
             numeric_cols = ["open", "high", "low", "close", "volume"]
@@ -175,7 +187,13 @@ class TestPositionManager:
         base = BaseStreaming()
 
         # Freeze active pairs to a predictable list
-        pairs = active_pairs or ["BTCUSDC", "ETHUSDC", "TESTUSDC"]
+        pairs = list(active_pairs or ["BTCUSDC", "ETHUSDC", "TESTUSDC"])
+        # Include Kucoin-style dashed symbols so converted_symbol lookups succeed
+        dash_pairs = []
+        for pair in pairs:
+            if "-" not in pair and len(pair) > 4:
+                dash_pairs.append(f"{pair[:-4]}-{pair[-4:]}")
+        pairs.extend(dash_pairs)
         monkeypatch.setattr(base, "active_bot_pairs", pairs, raising=False)
 
         # Replace active pairs after init (init used dummies returning empty list)
@@ -255,6 +273,7 @@ class TestPositionManager:
 
         base.binance_api = ShortBinanceApi()
         sc = PositionManager(base, symbol="BTCUSDC")
+        sc.dataframe_ops()
 
         spreads = sc.build_bb_spreads()
         assert spreads.bb_high == 0
@@ -621,7 +640,8 @@ class TestPositionManager:
         base.binance_api.get_ui_klines = track_binance_klines
 
         # Instantiate controller to trigger klines fetch
-        PositionManager(base, symbol="BTCUSDC")
+        sc = PositionManager(base, symbol="BTCUSDC")
+        sc.dataframe_ops()
 
         # Assert that KucoinApi was used, not BinanceApi
         assert len(kucoin_called) > 0, "KucoinApi.get_ui_klines should have been called"

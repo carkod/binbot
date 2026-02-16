@@ -135,7 +135,7 @@ class KucoinFuturesDeal(KucoinBaseBalance):
 
     def base_order(self) -> BotModel:
         """
-        Opens a futures LONG position.
+        Futures have positions intrinsically built, the base order can be either LONG or SHORT, we don't need to deal with loans, we simply set the position as an order
         """
         if self.active_bot.fiat_order_size <= 0:
             raise BinbotErrors("Fiat order size must be set.")

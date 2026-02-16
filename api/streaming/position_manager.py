@@ -9,6 +9,7 @@ from databases.crud.autotrade_crud import AutotradeCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from pybinbot import (
     DealType,
+    KucoinKlineIntervals,
     OrderStatus,
     Status,
     Strategy,
@@ -27,6 +28,7 @@ from pybinbot import (
 from copy import deepcopy
 from streaming.base import BaseStreaming
 from kucoin_universal_sdk.model.common import RestError
+from exchange_apis.kucoin.futures.futures_deal import KucoinFutures
 
 
 class PositionManager:
@@ -35,32 +37,40 @@ class PositionManager:
         # Gets any signal to restart streaming
         self.autotrade_controller = AutotradeCrud()
         self.symbol_data = base.symbols_crud.get_symbol(symbol)
+        self.autotrade_settings = self.autotrade_controller.get_settings()
         self.price_precision = self.symbol_data.price_precision
         self.qty_precision = self.symbol_data.qty_precision
         self.base_streaming = base
         self.symbol = symbol
         self.benchmark_symbol = "BTCUSDT"
         self.kucoin_benchmark_symbol = "BTC-USDT"
-        self.api: Union[BinanceApi, KucoinApi]
+        self.api: Union[BinanceApi, KucoinApi, KucoinFutures]
 
-        binance_interval = BinanceKlineIntervals.fifteen_minutes
+        binance_interval = BinanceKlineIntervals(
+            self.autotrade_settings.candlestick_interval
+        )
+        kucoin_interval = KucoinKlineIntervals(
+            BinanceKlineIntervals.to_kucoin_interval(binance_interval)
+        )
+        self.interval: Union[BinanceKlineIntervals, KucoinKlineIntervals]
         # Prepare interval based on exchange
         if self.base_streaming.exchange == ExchangeId.KUCOIN:
-            self.interval = binance_interval.to_kucoin_interval()
-            self.symbol = (
-                self.symbol_data.base_asset + "-" + self.symbol_data.quote_asset
-            )
-            self.api = self.base_streaming.kucoin_api
+            self.interval = kucoin_interval
+            if self.symbol.endswith("USDTM"):
+                self.api = self.base_streaming.kucoin_futures_api
+                # there's no BTCUSDTM
+                self.kucoin_benchmark_symbol = "ETHBTCUSDTM"
+            else:
+                self.api = self.base_streaming.kucoin_api
+
         else:
-            self.interval = binance_interval.value
+            self.interval = binance_interval
             self.api = self.base_streaming.binance_api
 
         self.current_bot: BotModel | None = None
         self.current_test_bot: BotModel | None = None
-        self.dataframe_ops(self.interval)
-        self.apex_flow_closing = ApexFlowClose(self.df, self.btc_df)
 
-    def dataframe_ops(self, interval: str) -> None:
+    def dataframe_ops(self) -> None:
         """
         Converts klines to DataFrame for indicator calculations
         """
@@ -68,21 +78,22 @@ class PositionManager:
         # Get klines from the appropriate exchange
         self.klines = self.api.get_ui_klines(
             symbol=self.symbol,
-            interval=interval,
+            interval=str(self.interval.value),
         )
         self.btc_klines = self.api.get_ui_klines(
             symbol=self.kucoin_benchmark_symbol
             if self.base_streaming.exchange == ExchangeId.KUCOIN
             else self.benchmark_symbol,
-            interval=interval,
+            interval=str(self.interval.value),
         )
         candles = self.klines.copy()
         df, _, _ = HeikinAshi().pre_process(
             exchange=self.base_streaming.exchange, candles=candles
         )
         self.df = df
+        btc_candles = self.btc_klines.copy()
         btc_df, _, _ = HeikinAshi().pre_process(
-            exchange=self.base_streaming.exchange, candles=self.btc_klines.copy()
+            exchange=self.base_streaming.exchange, candles=btc_candles
         )
         self.btc_df = btc_df
 
@@ -433,6 +444,9 @@ class PositionManager:
         and fetch order details from exchange
         """
         for order in bot.orders:
+            if order.status == OrderStatus.FILLED:
+                continue
+
             if self.base_streaming.exchange == ExchangeId.KUCOIN and (
                 order.price == 0 or order.qty == 0
             ):
@@ -532,12 +546,23 @@ class PositionManager:
         Updates deals with klines websockets,
         when price and symbol match existent deal
         """
-        symbol = self.symbol
-        close_price = float(self.klines[-1][4])
-        open_price = float(self.klines[-1][1])
-        converted_symbol = symbol.replace("-", "")
+        if (
+            self.base_streaming.exchange == ExchangeId.KUCOIN
+            and not self.symbol.endswith("USDTM")
+        ):
+            converted_symbol = (
+                self.symbol_data.base_asset + "-" + self.symbol_data.quote_asset
+            )
+        else:
+            converted_symbol = self.symbol
 
         if converted_symbol in self.base_streaming.active_bot_pairs:
+            self.dataframe_ops()
+            self.apex_flow_closing = ApexFlowClose(self.df, self.btc_df)
+
+            close_price = float(self.klines[-1][4])
+            open_price = float(self.klines[-1][1])
+
             self.current_bot = self.base_streaming.get_current_bot(converted_symbol)
             self.current_test_bot = self.base_streaming.get_current_test_bot(
                 converted_symbol
@@ -550,10 +575,11 @@ class PositionManager:
                         raise NotImplementedError(
                             "Order updates only implemented for Kucoin"
                         )
-                    if self.current_bot.market_type == MarketType.FUTURES:
-                        self.futures_order_updates(bot=self.current_bot)
                     else:
-                        self.order_updates(bot=self.current_bot)
+                        if self.current_bot.market_type == MarketType.FUTURES:
+                            self.futures_order_updates(bot=self.current_bot)
+                        else:
+                            self.order_updates(bot=self.current_bot)
 
                     if self.current_bot.dynamic_trailling:
                         self.market_trailing_analytics(
