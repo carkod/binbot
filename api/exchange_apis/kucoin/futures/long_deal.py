@@ -1,7 +1,8 @@
-from time import time
+from time import sleep, time
 from typing import Type, Union
 
 from pybinbot import (
+    BotBase,
     round_numbers,
     round_timestamp,
     DealType,
@@ -317,7 +318,38 @@ class FuturesLongDeal(KucoinFuturesDeal):
 
         return self.active_bot
 
+    def reverse_to_short(self) -> BotModel:
+        """
+        After hitting stop loss, open a short position with a new bot/deal.
+            - Create a new bot with the same parameters but strategy.short and status.inactive
+            - Activate the new bot (open a short deal)
+            - Update logs for both bots
+            - Save changes to the database
+            - Return the updated short bot model
+            - Note: This method assumes that the current active bot is a long position that just got stopped out.
+            - It also assumes that margin_short_reversal is enabled, which allows automatic reversal from long to short after stop loss.
+        """
+        # Step 2: Construct new short bot
+        new_bot_data = self.active_bot.model_dump()
+        new_bot = BotBase.model_construct(**new_bot_data)
+        new_bot.strategy = Strategy.margin_short
+        new_bot.status = Status.inactive
+        new_bot.logs = []
+        bot = self.bot_crud.create(new_bot)
+
+        # Activate
+        bot = self.bot_crud.get_one(bot_id=bot.id)
+        self.active_bot = BotModel.model_construct(**bot.model_dump())
+        self.open_deal()
+
+        self.controller.save(self.active_bot)
+        self.controller.update_logs("Reversed long into short successfully.")
+        return self.active_bot
+
     def exit_long(self, close_price: float, open_price: float) -> BotModel:
+        """
+        Exist logic when strategy.long
+        """
         current_price = round_numbers(close_price, self.price_precision)
         self.active_bot.deal.current_price = current_price
         self.controller.save(self.active_bot)
@@ -329,6 +361,15 @@ class FuturesLongDeal(KucoinFuturesDeal):
             and self.active_bot.deal.stop_loss_price > current_price
         ):
             self.execute_stop_loss()
+            # Makes sure that order completes
+            sleep(5)
+            if self.active_bot.margin_short_reversal:
+                # If margin short reversal is enabled, we want to open a short position after stop loss is hit
+                self.controller.update_logs(
+                    "Margin short reversal enabled, opening short position after stop loss...",
+                    self.active_bot,
+                )
+                self.active_bot = self.reverse_to_short()
 
         # Trailling profit
         if self.active_bot.trailling and self.active_bot.deal.opening_price > 0:

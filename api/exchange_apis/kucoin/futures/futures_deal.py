@@ -345,18 +345,6 @@ class KucoinFuturesDeal(KucoinBaseBalance):
         self.controller.save(self.active_bot)
         return self.active_bot
 
-    def sync_from_exchange(self) -> None:
-        """
-        Reconcile bot state with exchange position.
-        """
-        position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
-
-        if not position or float(position.current_qty) == 0:
-            self.active_bot.status = Status.completed
-            return
-
-        self.active_bot.deal.current_price = float(position.mark_price)
-
     def open_deal(self) -> BotModel:
         base_order = next(
             (

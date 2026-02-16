@@ -73,7 +73,6 @@ class BotTableCrud:
 
         return bot
 
-    # ------------------- Getters -------------------
     def get(
         self,
         status: Status | None = None,
