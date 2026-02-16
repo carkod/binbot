@@ -1,3 +1,8 @@
+from copy import deepcopy
+
+from bots.models import BotModel
+
+
 mock_deal_data = {
     "id": "550e8400-e29b-41d4-a716-446655440000",
     "base_order_size": 15.0,
@@ -97,3 +102,20 @@ mock_bot_data_superusdt = {
     "orders": [],
     "deal": mock_deal_data,
 }
+
+
+def _build_bot_model(payload: dict) -> BotModel:
+    """Create an isolated BotModel from a raw payload for tests."""
+    return BotModel.model_validate(deepcopy(payload))
+
+
+def make_mock_bot_model() -> BotModel:
+    return _build_bot_model(mock_bot_data)
+
+
+def make_mock_bot_active_model() -> BotModel:
+    return _build_bot_model(mock_bot_data_active)
+
+
+def make_mock_bot_superusdt_model() -> BotModel:
+    return _build_bot_model(mock_bot_data_superusdt)

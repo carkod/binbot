@@ -1,90 +1,79 @@
-from typing import List
+from typing import List, Sequence, Union
 from uuid import UUID
-from fastapi import Query
-from sqlmodel import Session, asc, desc, select, case
+from sqlmodel import Session, select, asc, desc, case
+from sqlalchemy.orm.attributes import flag_modified
+
 from bots.models import BotModel, OrderModel
 from databases.tables.bot_table import BotTable
 from databases.tables.deal_table import DealTable
 from databases.tables.order_table import ExchangeOrderTable
-from databases.utils import independent_session
 from pybinbot import (
-    QuoteAssets,
     Status,
     Strategy,
     ts_to_humandate,
-    BotBase,
     timestamp,
     SaveBotError,
     BinbotErrors,
+    BotBase,
 )
-from collections.abc import Sequence
-from sqlalchemy.orm.attributes import flag_modified
-from databases.crud.symbols_crud import SymbolsCrud
+from databases.utils import get_session
 
 
 class BotTableCrud:
     """
-    CRUD and database operations for the SQL API DB
-    bot_table table.
-
-    Use for lower level APIs that require a session
-    e.g.
-    client-side -> receive json -> bots.routes -> BotModelCrud
+    CRUD for BotTable.
+    Session can be injected or auto-created internally.
+    All methods return ORM objects (BotTable), conversion to BotModel happens in service layer.
     """
 
-    def __init__(
-        self,
-        # Some instances of AutotradeSettingsController are used outside of the FastAPI context
-        # this is designed this way for reusability
-        session: Session | None = None,
-    ):
-        if session is None:
-            session = independent_session()
-        self.session = session
+    def __init__(self, session: Session | None = None):
+        self._external_session = session
 
+    @property
+    def session(self) -> Session:
+        """
+        Provide a session. If an external session is passed, use it.
+        Otherwise, open a temporary context-managed session for the operation.
+        """
+        if self._external_session:
+            return self._external_session
+        return get_session()  # returns a context manager
+
+        # Helper to ensure we always work with BotTable
+
+    @staticmethod
+    def _ensure_table(bot: Union[BotModel, BotTable]) -> BotTable:
+        if isinstance(bot, BotModel):
+            # Convert BotModel → BotTable
+            return BotTable.from_model(bot)
+        return bot
+
+    # ------------------- Logs -------------------
     def update_logs(
-        self,
-        log_message: str | list[str],
-        bot: BotModel,
+        self, log_message: str | list[str], bot: Union[BotModel, BotTable]
     ) -> BotTable:
-        """
-        Update logs for a bot
-
-        Id does not require sanitization here as it comes from a BotModel object. So either this is internally provided or BotModel validation has already occurred.
-
-        Args:
-        - bot: BotModel
-
-        bot has to be passed
-        for bot_id use endpoint function to get BotModel
-        """
-        bot_result = self.session.get(BotTable, bot.id)
-        if not bot_result:
+        bot = self._ensure_table(bot)
+        if not bot:
             raise BinbotErrors("Bot not found")
 
-        generated_ts = ts_to_humandate(timestamp())
+        ts = ts_to_humandate(ts=timestamp())
 
         if isinstance(log_message, list):
-            new_logs: list = []
-            for msg in log_message:
-                new_logs.append(f"[{generated_ts}] {msg}")
+            new_logs = [f"[{ts}] {msg}" for msg in log_message]
+            bot.logs = new_logs + bot.logs
+        else:
+            bot.logs.append(f"[{ts}] {log_message}")
 
-            bot_result.logs = new_logs + bot_result.logs
+        flag_modified(bot, "logs")
 
-        elif isinstance(log_message, str):
-            msg = f"[{generated_ts}] {log_message}"
-            bot_result.logs.append(msg)
+        with self.session as s:
+            s.add(bot)
+            s.commit()
+            s.refresh(bot)
 
-        # Update logs as an SQLAlchemy list
-        flag_modified(bot_result, "logs")
+        return bot
 
-        # db operations
-        self.session.add(bot_result)
-        self.session.commit()
-        self.session.refresh(bot_result)
-        self.session.close()
-        return bot_result
-
+    # ------------------- Getters -------------------
     def get(
         self,
         status: Status | None = None,
@@ -93,39 +82,26 @@ class BotTableCrud:
         limit: int = 200,
         offset: int = 0,
     ) -> Sequence[BotTable]:
-        """
-        Get all bots in the db except archived
-        Args:
-        - status: Status enum
-        - start_date and end_date are timestamps in milliseconds
-        - no_cooldown: bool - filter out bots that are in cooldown
-        - limit and offset for pagination
-        """
-        statement = select(BotTable)
-
-        if status and status in list(Status) and status != Status.all:
-            statement = statement.where(BotTable.status == status)
-
+        stmt = select(BotTable)
+        if status and status != Status.all:
+            stmt = stmt.where(BotTable.status == status)
         if start_date:
-            statement = statement.where(BotTable.created_at >= int(start_date))
-
+            stmt = stmt.where(BotTable.created_at >= int(start_date))
         if end_date:
-            statement = statement.where(BotTable.created_at <= int(end_date))
+            stmt = stmt.where(BotTable.created_at <= int(end_date))
 
-        # sorting
-        statement = statement.order_by(
-            desc(BotTable.created_at),
-            case((BotTable.status == Status.active, 1), else_=2),
-            asc(BotTable.pair),
+        stmt = (
+            stmt.order_by(
+                desc(BotTable.created_at),
+                case((BotTable.status == Status.active, 1), else_=2),
+                asc(BotTable.pair),
+            )
+            .limit(limit)
+            .offset(offset)
         )
 
-        # pagination
-        statement = statement.limit(limit).offset(offset)
-
-        # unique is necessary for a joinload
-        bots = self.session.exec(statement).unique().all()
-        self.session.close()
-        return bots
+        with self.session as s:
+            return s.exec(stmt).unique().all()
 
     def get_one(
         self,
@@ -134,182 +110,116 @@ class BotTableCrud:
         status: Status | None = None,
         strategy: Strategy | None = None,
     ) -> BotTable:
-        """
-        Get one bot by id or symbol
 
-        If only bot_id is passed, it will always match 1, so status doesn't matter too much.
-        If only symbol is passed, it is possible to match more than one so more specificity is needed. Therefore, status is used too.
-        """
-        if bot_id:
-            sanitized_uuid = UUID(bot_id)
-            bot = self.session.get(BotTable, sanitized_uuid)
-            if not bot:
-                raise BinbotErrors("Bot not found")
-            return bot
-        elif symbol:
-            status = None if status == Status.all else status
-            if status:
-                bot = self.session.exec(
-                    select(BotTable).where(
-                        BotTable.pair == symbol, BotTable.status == status
-                    )
-                ).first()
-            elif strategy:
-                bot = self.session.exec(
-                    select(BotTable).where(
-                        BotTable.pair == symbol, BotTable.strategy == strategy
-                    )
-                ).first()
-            else:
-                bot = self.session.exec(
-                    select(BotTable).where(BotTable.pair == symbol)
-                ).first()
-            if not bot:
-                raise BinbotErrors("Bot not found")
-            return bot
-        else:
-            raise BinbotErrors("Invalid bot id or symbol")
+        with self.session as s:
+            if bot_id:
+                bot = s.get(BotTable, UUID(bot_id))
+                if not bot:
+                    raise BinbotErrors("Bot not found")
+                return bot
 
+            if symbol:
+                status_filter = None if status == Status.all else status
+                stmt = select(BotTable).where(BotTable.pair == symbol)
+                if status_filter:
+                    stmt = stmt.where(BotTable.status == status_filter)
+                elif strategy:
+                    stmt = stmt.where(BotTable.strategy == strategy)
+
+                bot = s.exec(stmt).first()
+                if not bot:
+                    raise BinbotErrors("Bot not found")
+                return bot
+
+        raise BinbotErrors("Invalid bot id or symbol")
+
+    # ------------------- Create/Save/Delete -------------------
     def create(self, data: BotBase) -> BotTable:
-        """
-        Create a new bot
-
-        It's crucial to reset fields, so bot can trigger base orders
-        and start trailling.
-
-        Args:
-        - data: BotBase includes only flat properties (excludes deal and orders which are generated internally)
-        """
         new_bot = BotTable(**data.model_dump(), deal=DealTable(), orders=[])
+        with self.session as s:
+            s.add(new_bot)
+            s.commit()
+            s.refresh(new_bot)
+        return new_bot
 
-        # db operations
-        self.session.add(new_bot)
-        self.session.commit()
-        self.session.refresh(new_bot)
-        resulted_bot = new_bot
-        return resulted_bot
+    def save(self, data: Union[BotModel, BotTable]) -> BotTable:
+        data = self._ensure_table(data)
+        with self.session as s:
+            bot_row = s.get(BotTable, data.id)
+            if not bot_row:
+                raise SaveBotError("Bot not found")
 
-    def save(self, data: BotModel) -> BotTable:
-        """
-        Save bot
+            # Sync scalar fields
+            bot_row.sqlmodel_update(data.model_dump())
 
-        This can be an edit of an entire object
-        or just a few fields
-        """
-        # due to incompatibility of SQLModel and Pydantic
-        initial_bot = self.get_one(bot_id=str(data.id))
-
-        # new quote_asset field sync
-        composed_pair = data.pair.replace(data.quote_asset, "") + data.quote_asset
-        if data.pair != composed_pair:
-            # need a new session so we don't interfere in current
-            symbol_crud = SymbolsCrud()
-            symbol_data = symbol_crud.get_symbol(data.pair)
-            if symbol_data:
-                data.quote_asset = QuoteAssets[symbol_data.quote_asset]
-
-        deal_id = initial_bot.deal_id
-        initial_bot.sqlmodel_update(data.model_dump())
-
-        # Use deal id from db to avoid creating a new deal
-        # which causes integrity errors
-        # there should always be only 1 deal per bot
-        deal = self.session.get(DealTable, deal_id)
-        if not deal:
-            raise SaveBotError("Bot must be created first before updating")
-        else:
+            # Deal sync
+            deal = s.get(DealTable, bot_row.deal_id)
+            if not deal:
+                raise SaveBotError("Bot must have an associated deal")
             deal.sqlmodel_update(data.deal.model_dump())
-            initial_bot.deal = deal
+            bot_row.deal = deal
 
-        self.session.add(initial_bot)
-        self.session.commit()
+            # Orders sync
+            if hasattr(data, "orders"):
+                for order in data.orders:
+                    existing_order = s.exec(
+                        select(ExchangeOrderTable).where(
+                            ExchangeOrderTable.order_id == order.order_id
+                        )
+                    ).first()
+                    if not existing_order:
+                        new_order = ExchangeOrderTable(
+                            order_type=order.order_type,
+                            time_in_force=order.time_in_force,
+                            timestamp=order.timestamp,
+                            order_id=str(order.order_id),
+                            order_side=order.order_side,
+                            pair=order.pair,
+                            qty=order.qty,
+                            status=order.status,
+                            price=order.price,
+                            deal_type=order.deal_type,
+                            bot_id=data.id,
+                        )
+                        s.add(new_order)
 
-        # Insert update to DB only if it doesn't exist
-        # Assign correct botId in the one side of the one-many relationship
-        if hasattr(data, "orders"):
-            for order in data.orders:
-                statement = select(ExchangeOrderTable).where(
-                    ExchangeOrderTable.order_id == order.order_id
-                )
-                get_order = self.session.exec(statement).first()
-                if not get_order:
-                    new_order_row = ExchangeOrderTable(
-                        order_type=order.order_type,
-                        time_in_force=order.time_in_force,
-                        timestamp=order.timestamp,
-                        order_id=str(order.order_id),
-                        order_side=order.order_side,
-                        pair=order.pair,
-                        qty=order.qty,
-                        status=order.status,
-                        price=order.price,
-                        deal_type=order.deal_type,
-                        bot_id=data.id,
-                    )
-                    self.session.add(new_order_row)
+            s.add(bot_row)
+            s.commit()
+            s.refresh(bot_row)
+        return bot_row
 
-        self.session.commit()
-        self.session.refresh(initial_bot)
-        resulted_bot = initial_bot
-        return resulted_bot
-
-    def delete(self, bot_ids: List[str] = Query(...)) -> List[str]:
-        """
-        Delete by multiple ids.
-        For a single id, pass one id in a list
-        """
-        for id in bot_ids:
-            sanitized_id = UUID(id)
-
-            statement = select(BotTable).where(BotTable.id == sanitized_id)
-            bot = self.session.exec(statement).first()
-            self.session.delete(bot)
-
-        self.session.commit()
-        self.session.close()
+    def delete(self, bot_ids: List[str]) -> List[str]:
+        with self.session as s:
+            for id_str in bot_ids:
+                bot = s.get(BotTable, UUID(id_str))
+                if bot:
+                    s.delete(bot)
+            s.commit()
         return bot_ids
 
-    def update_status(self, bot: BotModel, status: Status) -> BotModel:
-        """
-        Mostly as a replacement of the previous "activate" and "deactivate"
-        although any Status can be passed now
-        """
-        bot.status = status
-        self.save(bot)
-        return bot
-
+    # ------------------- Orders -------------------
     def get_order(self, order_id: str) -> ExchangeOrderTable:
-        """
-        Get one order by order_id
-        """
-        statement = select(ExchangeOrderTable).where(
-            ExchangeOrderTable.order_id == order_id
-        )
-        order = self.session.exec(statement).first()
-        if order:
+        with self.session as s:
+            order = s.exec(
+                select(ExchangeOrderTable).where(
+                    ExchangeOrderTable.order_id == order_id
+                )
+            ).first()
+            if not order:
+                raise BinbotErrors("Order not found")
             return order
-        else:
-            raise BinbotErrors("Order not found")
 
     def update_order(self, order: OrderModel) -> ExchangeOrderTable:
-        """
-        Update order data
-        """
-        existing_order = self.get_order(str(order.order_id))
-        if not existing_order:
-            raise BinbotErrors("Order not found")
-        existing_order.sqlmodel_update(order.model_dump())
-        self.session.add(existing_order)
-        self.session.commit()
-        self.session.refresh(existing_order)
-        self.session.close()
-        return existing_order
+        with self.session as s:
+            existing = self.get_order(str(order.order_id))
+            existing.sqlmodel_update(order.model_dump())
+            s.add(existing)
+            s.commit()
+            s.refresh(existing)
+        return existing
 
+    # ------------------- Utility -------------------
     def get_active_pairs(self) -> Sequence[str]:
-        """
-        Get all active pairs
-        """
-        statement = select(BotTable.pair).where(BotTable.status == Status.active)
-        pairs = self.session.exec(statement).all()
-        self.session.close()
-        return pairs
+        stmt = select(BotTable.pair).where(BotTable.status == Status.active)
+        with self.session as s:
+            return s.exec(stmt).all()

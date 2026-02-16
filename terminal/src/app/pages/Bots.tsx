@@ -74,7 +74,6 @@ export const BotsPage: FC<{}> = () => {
   const isFetching = symbolState ? isFetchingSymbol : isFetchingBots;
 
   // Symbols search dependencies
-  const [symbolsList, setSymbolsList] = useImmer<string[]>([]);
   const { data: allSymbols, isFetching: isFetchingSymbols } =
     useGetSymbolsQuery();
 
@@ -187,7 +186,6 @@ export const BotsPage: FC<{}> = () => {
     if (allSymbols?.length > 0 && !isFetchingSymbols) {
       setSpinner(false);
       const pairs = allSymbols.map((symbol) => symbol.id);
-      setSymbolsList(pairs);
     }
   }, [
     data?.bots?.ids,
@@ -226,7 +224,6 @@ export const BotsPage: FC<{}> = () => {
             >
               <SymbolSearch
                 name="pair"
-                options={symbolsList}
                 defaultValue=""
                 placeholder="Search by pair"
                 onBlur={handleSearchBySymbol}
