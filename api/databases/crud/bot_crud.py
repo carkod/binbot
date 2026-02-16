@@ -16,7 +16,7 @@ from pybinbot import (
     BinbotErrors,
     BotBase,
 )
-from databases.utils import get_session
+from databases.utils import get_db_session
 
 
 class BotTableCrud:
@@ -37,7 +37,7 @@ class BotTableCrud:
         """
         if self._external_session:
             return self._external_session
-        return get_session()  # returns a context manager
+        return get_db_session()  # returns a context manager
 
         # Helper to ensure we always work with BotTable
 

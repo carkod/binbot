@@ -40,7 +40,7 @@ def get_bots(
             offset=offset,
         )
         data = [
-            BotModelResponse.model_construct(**BotModelResponse.model_dump(bot))
+            BotModel.dump_from_table(bot)
             for bot in bots
         ]
         return BotListResponse(message="Successfully found bots!", data=data)
