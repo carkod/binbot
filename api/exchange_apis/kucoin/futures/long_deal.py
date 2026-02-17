@@ -338,12 +338,14 @@ class FuturesLongDeal(KucoinFuturesDeal):
         bot = self.bot_crud.create(new_bot)
 
         # Activate
-        bot = self.bot_crud.get_one(bot_id=bot.id)
+        bot = self.bot_crud.get_one(bot_id=str(bot.id))
         self.active_bot = BotModel.model_construct(**bot.model_dump())
         self.open_deal()
 
         self.controller.save(self.active_bot)
-        self.controller.update_logs("Reversed long into short successfully.")
+        self.controller.update_logs(
+            "Reversed long into short successfully.", self.active_bot
+        )
         return self.active_bot
 
     def exit_long(self, close_price: float, open_price: float) -> BotModel:

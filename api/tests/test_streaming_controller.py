@@ -22,8 +22,10 @@ class TestPositionManager:
         # Monkeypatch internal controller classes BEFORE instantiating BaseStreaming
         # to prevent real DB queries during __init__
         class DummyBotCrud:
-            def __init__(self):
+            def __init__(self, *args, **kwargs):
                 self.saved = []
+                # sessions may be passed by BaseStreaming but unused here
+                self.session = kwargs.get("session") if kwargs else None
 
             def get_active_pairs(self):
                 return []

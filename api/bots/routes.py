@@ -39,10 +39,7 @@ def get_bots(
             limit=limit,
             offset=offset,
         )
-        data = [
-            BotModel.dump_from_table(bot)
-            for bot in bots
-        ]
+        data = [BotModel.dump_from_table(bot) for bot in bots]
         return BotListResponse(message="Successfully found bots!", data=data)
     except BinbotErrors as e:
         return BotResponse(message=e.message, error=1)

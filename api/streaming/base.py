@@ -16,6 +16,8 @@ from pybinbot import (
     KucoinApi,
 )
 from tools.config import Config
+from databases.utils import independent_session
+
 
 load_dotenv()
 
@@ -28,6 +30,7 @@ class BaseStreaming:
 
     def __init__(self) -> None:
         self.config = Config()
+        self.session = independent_session()
         self.binance_api = BinanceApi(
             key=self.config.binance_key, secret=self.config.binance_secret
         )
@@ -37,7 +40,7 @@ class BaseStreaming:
             passphrase=self.config.kucoin_passphrase,
         )
         self.kucoin_futures_api = KucoinFutures()
-        self.bot_controller = BotTableCrud()
+        self.bot_controller = BotTableCrud(session=self.session)
         self.paper_trading_controller = PaperTradingTableCrud()
         self.symbols_crud = SymbolsCrud()
         self.cs = CandlesCrud()
