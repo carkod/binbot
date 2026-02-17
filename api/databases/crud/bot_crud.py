@@ -63,11 +63,12 @@ class BotTableCrud:
     @staticmethod
     def _ensure_table(bot: Union[BotModel, BotTable]) -> BotTable:
         if isinstance(bot, BotModel):
-            bot_table = BotTable.model_construct(**bot.model_dump())
-            bot_table.deal = DealTable.model_construct(**bot.deal.model_dump())
+            bot_payload = bot.model_dump(exclude={"deal", "orders"})
+            bot_table = BotTable(**bot_payload)
+
+            bot_table.deal = DealTable(**bot.deal.model_dump())
             bot_table.orders = [
-                ExchangeOrderTable.model_construct(**order.model_dump())
-                for order in bot.orders
+                ExchangeOrderTable(**order.model_dump()) for order in bot.orders
             ]
             return bot_table
         return bot
