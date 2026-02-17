@@ -19,6 +19,7 @@ from exchange_apis.kucoin.futures.futures_deal import KucoinFuturesDeal
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import (
     AddOrderReq,
 )
+from kucoin_universal_sdk.model.common import RestError
 
 
 class FuturesLongDeal(KucoinFuturesDeal):
@@ -173,27 +174,29 @@ class FuturesLongDeal(KucoinFuturesDeal):
                 status=OrderStatus.FILLED,
             )
         else:
-            position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
-            if not position or float(position.current_qty) == 0:
-                self.controller.update_logs(
-                    bot=self.active_bot,
-                    log_message="No open futures position to stop out.",
-                )
-                return self.active_bot
-
-            qty = round_numbers(abs(float(position.current_qty)), 8)
-            if self.active_bot.strategy == Strategy.margin_short:
-                order = self.kucoin_futures_api.buy(
-                    symbol=self.kucoin_symbol,
-                    qty=qty,
-                    reduce_only=True,
-                )
-            else:
-                order = self.kucoin_futures_api.sell(
-                    symbol=self.kucoin_symbol,
-                    qty=qty,
-                    reduce_only=True,
-                )
+            qty = self.active_bot.deal.opening_qty
+            try:
+                if self.active_bot.strategy == Strategy.margin_short:
+                    order = self.kucoin_futures_api.buy(
+                        symbol=self.kucoin_symbol,
+                        qty=qty,
+                        reduce_only=True,
+                    )
+                else:
+                    order = self.kucoin_futures_api.sell(
+                        symbol=self.kucoin_symbol,
+                        qty=qty,
+                        reduce_only=True,
+                    )
+            except RestError as e:
+                if float(e.response.code) == 300009:
+                    self.controller.update_logs(
+                        bot=self.active_bot,
+                        log_message=f"{str(e.response.message)}",
+                    )
+                    self.active_bot.status = Status.completed
+                    self.controller.save(self.active_bot)
+                    return self.active_bot
 
             price = float(order.price) if getattr(order, "price", None) else 0.0
             close_side = (

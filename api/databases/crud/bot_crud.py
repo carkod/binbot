@@ -60,18 +60,37 @@ class BotTableCrud:
 
         return get_session()
 
-    @staticmethod
-    def _ensure_table(bot: Union[BotModel, BotTable]) -> BotTable:
-        if isinstance(bot, BotModel):
-            bot_payload = bot.model_dump(exclude={"deal", "orders"})
-            bot_table = BotTable(**bot_payload)
+    def update_table(self, bot: Union[BotModel, BotTable]) -> BotTable:
+        """
+        Convert a BotModel to BotTable (or return BotTable as-is),
+        fully populating deal and orders in a detached manner.
+        Safe to attach to a session later for save/commit.
+        """
+        if isinstance(bot, BotTable):
+            return bot
 
-            bot_table.deal = DealTable(**bot.deal.model_dump())
-            bot_table.orders = [
-                ExchangeOrderTable(**order.model_dump()) for order in bot.orders
-            ]
-            return bot_table
-        return bot
+        # Step 1: Copy BotModel fields (except relationships)
+        bot_table = BotTable()
+        for field_name in BotTable.model_fields.keys():
+            if field_name in {"deal", "orders"}:
+                continue
+            if hasattr(bot, field_name):
+                setattr(bot_table, field_name, getattr(bot, field_name))
+
+        # Step 2: Copy DealTable fields
+        bot_table.deal = DealTable()
+        if bot.deal:
+            for field_name in DealTable.model_fields.keys():
+                if hasattr(bot.deal, field_name):
+                    setattr(bot_table.deal, field_name, getattr(bot.deal, field_name))
+
+        # Step 3: Copy Orders
+        bot_table.orders = []
+        for order in getattr(bot, "orders", []):
+            order_row = ExchangeOrderTable.model_construct(**order.model_dump())
+            bot_table.orders.append(order_row)
+
+        return bot_table
 
     def update_logs(
         self, log_message: str | list[str], bot: Union[BotModel, BotTable]
@@ -79,23 +98,30 @@ class BotTableCrud:
         if not bot:
             raise BinbotErrors("Bot not found")
 
-        bot_table = self._ensure_table(bot)
         ts = ts_to_humandate(ts=timestamp())
 
-        if isinstance(log_message, list):
-            new_logs = [f"[{ts}] {msg}" for msg in log_message]
-            bot_table.logs = new_logs + bot_table.logs
-        else:
-            bot_table.logs.append(f"[{ts}] {log_message}")
-
-        flag_modified(bot_table, "logs")
-
         with self._get_session() as s:
-            s.add(bot_table)
-            s.commit()
-            s.refresh(bot_table)
+            # Get the managed bot instance from the session
+            bot_row = s.get(BotTable, UUID(str(bot.id)))
+            if not bot_row:
+                raise BinbotErrors("Bot not found")
 
-        return bot_table
+            if isinstance(log_message, list):
+                new_logs = [f"[{ts}] {msg}" for msg in log_message]
+                bot_row.logs = new_logs + (bot_row.logs or [])
+            else:
+                if bot_row.logs is None:
+                    bot_row.logs = []
+                bot_row.logs.append(f"[{ts}] {log_message}")
+
+            flag_modified(bot_row, "logs")
+
+            s.add(bot_row)
+            s.commit()
+            s.refresh(bot_row)
+            s.expunge(bot_row)
+
+            return bot_row
 
     def get(
         self,
@@ -131,7 +157,10 @@ class BotTableCrud:
         )
 
         with self._get_session() as s:
-            return s.exec(stmt).unique().all()
+            bots = s.exec(stmt).unique().all()
+            for bot in bots:
+                s.expunge(bot)
+            return bots
 
     def get_one(
         self,
@@ -141,31 +170,32 @@ class BotTableCrud:
         strategy: Strategy | None = None,
     ) -> BotTable:
 
-        stmt = select(BotTable).options(
-            selectinload(BOT_DEAL_REL),
-            selectinload(BOT_ORDERS_REL),
-        )
-
-        if bot_id:
-            stmt = stmt.where(BotTable.id == UUID(bot_id))
-
-        elif symbol:
-            stmt = stmt.where(BotTable.pair == symbol)
-
-            if status and status != Status.all:
-                stmt = stmt.where(BotTable.status == status)
-            elif strategy:
-                stmt = stmt.where(BotTable.strategy == strategy)
-
-        else:
-            raise BinbotErrors("Invalid bot id or symbol")
-
         with self._get_session() as s:
+            stmt = select(BotTable).options(
+                selectinload(BOT_DEAL_REL),
+                selectinload(BOT_ORDERS_REL),
+            )
+
+            if bot_id:
+                stmt = stmt.where(BotTable.id == UUID(bot_id))
+
+            elif symbol:
+                stmt = stmt.where(BotTable.pair == symbol)
+
+                if status and status != Status.all:
+                    stmt = stmt.where(BotTable.status == status)
+                elif strategy:
+                    stmt = stmt.where(BotTable.strategy == strategy)
+
+            else:
+                raise BinbotErrors("Invalid bot id or symbol")
+
             bot = s.exec(stmt).first()
 
             if not bot:
                 raise BinbotErrors("Bot not found")
 
+            s.expunge(bot)
             return bot
 
     # --------------------------------------------------
@@ -183,58 +213,66 @@ class BotTableCrud:
             s.add(new_bot)
             s.commit()
             s.refresh(new_bot)
+            s.expunge(new_bot)
 
         return new_bot
 
     def save(self, data: Union[BotModel, BotTable]) -> BotTable:
-        bot_table = self._ensure_table(data)
-
         with self._get_session() as s:
-            bot_row = s.get(BotTable, bot_table.id)
-
+            # Fetch the existing bot from DB (already attached to session)
+            bot_row = s.get(BotTable, UUID(str(data.id)))
             if not bot_row:
                 raise SaveBotError("Bot not found")
 
-            # ---- Sync scalar fields
-            bot_row.sqlmodel_update(bot_table.model_dump())
-
-            # ---- Sync Deal
-            deal = s.get(DealTable, bot_row.deal.id)
-
-            if not deal:
+            if not bot_row.deal:
                 raise SaveBotError("Bot must have associated deal")
 
-            deal.sqlmodel_update(bot_table.deal.model_dump())
-            bot_row.deal = deal
+            # Convert BotModel to BotTable if needed (detached)
+            data_table = self.update_table(data)
 
-            # ---- Sync Orders
-            if hasattr(bot_table, "orders"):
-                for order in bot_table.orders:
-                    existing = s.exec(
-                        select(ExchangeOrderTable).where(
-                            ExchangeOrderTable.order_id == order.order_id
-                        )
-                    ).first()
+            # Update scalar fields on the managed bot_row
+            for field_name in BotTable.model_fields.keys():
+                if field_name in {"id", "deal", "orders", "deal_id"}:
+                    continue
+                if hasattr(data_table, field_name):
+                    setattr(bot_row, field_name, getattr(data_table, field_name))
 
-                    if not existing:
-                        new_order = ExchangeOrderTable(
-                            order_type=order.order_type,
-                            time_in_force=order.time_in_force,
-                            timestamp=order.timestamp,
-                            order_id=str(order.order_id),
-                            order_side=order.order_side,
-                            pair=order.pair,
-                            qty=order.qty,
-                            status=order.status,
-                            price=order.price,
-                            deal_type=order.deal_type,
-                            bot_id=bot_table.id,
-                        )
-                        s.add(new_order)
+            # Update deal fields (preserve existing deal.id)
+            for field_name in DealTable.model_fields.keys():
+                if field_name in {"id", "bot", "paper_trading"}:
+                    continue
+                if hasattr(data_table.deal, field_name):
+                    setattr(
+                        bot_row.deal, field_name, getattr(data_table.deal, field_name)
+                    )
+
+            # Sync orders
+            for order_data in getattr(data_table, "orders", []):
+                existing = s.exec(
+                    select(ExchangeOrderTable).where(
+                        ExchangeOrderTable.order_id == str(order_data.order_id)
+                    )
+                ).first()
+
+                if existing:
+                    for field_name in ExchangeOrderTable.model_fields.keys():
+                        if field_name in {"id", "bot", "bot_id"}:
+                            continue
+                        if hasattr(order_data, field_name):
+                            setattr(
+                                existing, field_name, getattr(order_data, field_name)
+                            )
+                else:
+                    new_order = ExchangeOrderTable.model_construct(
+                        **order_data.model_dump(exclude={"id", "bot"})
+                    )
+                    new_order.bot_id = bot_row.id
+                    s.add(new_order)
 
             s.add(bot_row)
             s.commit()
             s.refresh(bot_row)
+            s.expunge(bot_row)
 
             return bot_row
 
@@ -263,6 +301,7 @@ class BotTableCrud:
             if not order:
                 raise BinbotErrors("Order not found")
 
+            s.expunge(order)
             return order
 
     def update_order(self, order: OrderModel) -> ExchangeOrderTable:
@@ -281,6 +320,7 @@ class BotTableCrud:
             s.add(existing)
             s.commit()
             s.refresh(existing)
+            s.expunge(existing)
 
             return existing
 

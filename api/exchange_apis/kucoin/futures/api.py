@@ -159,8 +159,8 @@ class KucoinFutures(KucoinRest):
                 order_details = GetOrderByOrderIdResp(
                     order_id=order_resp.order_id,
                     symbol=symbol,
-                    side=AddOrderReq.SideEnum.SELL,
-                    type=AddOrderReq.TypeEnum.LIMIT,
+                    side=AddOrderReq.SideEnum.SELL.value,
+                    type=AddOrderReq.TypeEnum.LIMIT.value,
                     price=str(price),
                     size=str(qty),
                     filled_size=str(qty),
@@ -223,12 +223,12 @@ class KucoinFutures(KucoinRest):
             timestamp = order_details.created_at
         except RestError as e:
             if float(e.response.code) == 100001:
-                # filler response to wait for completetion
+                # filler response to wait for completion
                 order_details = GetOrderByOrderIdResp(
                     order_id=order_resp.order_id,
                     symbol=symbol,
-                    side=AddOrderReq.SideEnum.SELL,
-                    type=AddOrderReq.TypeEnum.LIMIT,
+                    side=AddOrderReq.SideEnum.SELL.value,
+                    type=AddOrderReq.TypeEnum.LIMIT.value,
                     price=str(price),
                     size=str(qty),
                     filled_size=str(qty),
