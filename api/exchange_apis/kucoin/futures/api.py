@@ -50,6 +50,10 @@ from kucoin_universal_sdk.generate.futures.order import (
     CancelAllOrdersV3ReqBuilder,
 )
 from kucoin_universal_sdk.model.common import RestError
+from kucoin_universal_sdk.generate.account.account import (
+    GetFuturesAccountReqBuilder,
+    GetFuturesAccountResp,
+)
 
 
 class KucoinFutures(KucoinRest):
@@ -499,3 +503,10 @@ class KucoinFutures(KucoinRest):
 
         req = builder.build()
         return self.futures_order_api.add_order(req)
+
+    def get_futures_balance(self, fiat) -> GetFuturesAccountResp:
+        """
+        Get futures account balances.
+        """
+        req = GetFuturesAccountReqBuilder().set_currency(fiat).build()
+        return self.futures_account_api.get_futures_account(req)
