@@ -7,7 +7,7 @@ import {
   useEditBotMutation,
   useLazyActivateBotQuery,
 } from "../../features/bots/botsApiSlice";
-import { selectBot, setBot } from "../../features/bots/botSlice";
+import { selectBot } from "../../features/bots/botSlice";
 import { BotStatus, MarketType, TabsKeys } from "../../utils/enums";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import BaseOrderTab from "./BaseOrderTab";
@@ -59,11 +59,11 @@ const BotDetailTabs: FC<{ marketType: MarketType }> = ({ marketType }) => {
 
   useEffect(() => {
     if (isActivating) {
-      setSpinner(true);
+      dispatch(setSpinner(true));
     } else {
-      setSpinner(false);
+      dispatch(setSpinner(false));
     }
-  }, [isActivating]);
+  }, [isActivating, dispatch]);
 
   return (
     <Tab.Container defaultActiveKey={TabsKeys.MAIN}>

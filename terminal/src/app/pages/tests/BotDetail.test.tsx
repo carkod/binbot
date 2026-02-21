@@ -8,9 +8,7 @@ import { render } from "@testing-library/react";
 // import { vi } from "vitest"; // Commented out for clarity
 // Place mocks here, after imports, before any usage
 vi.mock("../components/ChartContainer", () => {
-  const ChartContainer = (_props: any) => (
-    <div data-testid="chart-container" />
-  );
+  const ChartContainer = (_props: any) => <div data-testid="chart-container" />;
   ChartContainer.displayName = "ChartContainer";
   return { default: ChartContainer };
 });
@@ -25,9 +23,7 @@ vi.mock("../components/LogsInfo", () => {
   return { default: LogsInfo };
 });
 vi.mock("../components/BotDetailTabs", () => {
-  const BotDetailTabs = (_props: any) => (
-    <div data-testid="bot-detail-tabs" />
-  );
+  const BotDetailTabs = (_props: any) => <div data-testid="bot-detail-tabs" />;
   BotDetailTabs.displayName = "BotDetailTabs";
   return { default: BotDetailTabs };
 });

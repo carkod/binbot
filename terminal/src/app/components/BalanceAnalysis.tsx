@@ -8,14 +8,10 @@ const BalanceAnalysis: FC<{
   accountData: BalanceData;
   marketType: MarketType;
 }> = ({ accountData, marketType }) => {
-  const marketLabel = capitalizeFirst(marketType.toLowerCase());
   return (
     <Card>
       <Card.Header className="d-flex justify-content-between align-items-center">
         <Card.Title as="h5">Account breakdown</Card.Title>
-        <Badge bg="secondary" className="text-uppercase">
-          {marketLabel}
-        </Badge>
       </Card.Header>
       <Card.Body>
         <Row className="u-margin-bottom">

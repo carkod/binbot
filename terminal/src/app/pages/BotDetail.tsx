@@ -67,12 +67,10 @@ export const BotDetail: FC<{}> = () => {
           {bot && id && (
             <Row>
               <Col md="7" sm="12">
-                <BotInfo bot={bot} marketType={currentMarketType} />
+                <BotInfo bot={bot} />
               </Col>
               <Col md="5" sm="12">
-                {bot.logs?.length > 0 && (
-                  <LogsInfo events={bot.logs} marketType={currentMarketType} />
-                )}
+                {bot.logs?.length > 0 && <LogsInfo events={bot.logs} />}
               </Col>
             </Row>
           )}

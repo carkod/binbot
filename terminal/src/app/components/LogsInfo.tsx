@@ -1,22 +1,15 @@
 import React, { type FC, useState } from "react";
-import { Button, Card, ListGroup, Badge } from "react-bootstrap";
-import { type MarketType } from "../../utils/enums";
-import { capitalizeFirst } from "../../utils/strings";
+import { Button, Card, ListGroup } from "react-bootstrap";
 
 const LogInfo: FC<{
   events: string[];
-  marketType: MarketType;
-}> = ({ events, marketType }) => {
+}> = ({ events }) => {
   const [showLogs, toggleLogInfo] = useState(events.length > 0);
-  const marketLabel = capitalizeFirst(marketType.toLowerCase());
   return (
     <Card>
       <Card.Header className="d-flex justify-content-between align-items-center">
         <div>
           <Card.Title as="h5">Event logs</Card.Title>
-          <Badge bg="secondary" className="text-uppercase">
-            {marketLabel}
-          </Badge>
         </div>
         <Button
           onClick={() => toggleLogInfo(!showLogs)}

@@ -43,18 +43,11 @@ const BotCard: FC<BotCardProps> = ({
       className={selectedIds.includes(bot.id) ? "border border-success" : ""}
     >
       <Card.Header className="text-white py-3 border-0 bg-info">
-        <div className="d-flex align-items-center gap-3">
-          <span className="rounded-circle bg-white bg-opacity-25 p-3 d-flex align-items-center justify-content-center">
-            <i className="fa-solid fa-chart-line fa-lg" aria-hidden="true" />
-            <span className="visually-hidden">Futures icon</span>
+        <div className="d-flex align-items-center gap-2">
+          <span className="fw-semibold">
+            <i className="fa-solid fa-chart-line fa-lg" />{" "}
+            {bot.market_type || String(MarketType.SPOT).toUpperCase()}
           </span>
-          <div className="text-start">
-            <span className="text-uppercase small text-white-50">Futures</span>
-            <br />
-            <span className="fw-semibold">
-              {capitalizeFirst(bot.market_type || MarketType.SPOT)}
-            </span>
-          </div>
         </div>
       </Card.Header>
       <br aria-hidden="true" />
@@ -216,14 +209,13 @@ const BotCard: FC<BotCardProps> = ({
           onClick={() => {
             if (bot.market_type === MarketType.FUTURES) {
               navigate(`/bots/futures/edit/${bot.id}`, {
-              state: { bot: bot },
-            });
+                state: { bot: bot },
+              });
             } else {
               navigate(`/bots/edit/${bot.id}`, {
-              state: { bot: bot },
-            });
+                state: { bot: bot },
+              });
             }
-            
           }}
         >
           <i className="fa-solid fa-edit u-disable-events" />

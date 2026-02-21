@@ -12,9 +12,7 @@ import { singleBot } from "../../../features/bots/botInitialState";
 
 // Lightweight mocks for heavy child components
 vi.mock("../components/ChartContainer", () => {
-  const ChartContainer = (_props: any) => (
-    <div data-testid="chart-container" />
-  );
+  const ChartContainer = (_props: any) => <div data-testid="chart-container" />;
   ChartContainer.displayName = "ChartContainer";
   return { default: ChartContainer };
 });
@@ -29,9 +27,7 @@ vi.mock("../components/LogsInfo", () => {
   return { default: LogsInfo };
 });
 vi.mock("../components/BotDetailTabs", () => {
-  const BotDetailTabs = (_props: any) => (
-    <div data-testid="bot-detail-tabs" />
-  );
+  const BotDetailTabs = (_props: any) => <div data-testid="bot-detail-tabs" />;
   BotDetailTabs.displayName = "BotDetailTabs";
   return { default: BotDetailTabs };
 });
