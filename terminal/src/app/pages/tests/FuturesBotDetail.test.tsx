@@ -12,27 +12,33 @@ import { singleBot } from "../../../features/bots/botInitialState";
 
 // Lightweight mocks for heavy child components
 vi.mock("../components/ChartContainer", () => {
-  const ChartContainer = () => <div data-testid="chart-container" />;
+  const ChartContainer = (_props: any) => (
+    <div data-testid="chart-container" />
+  );
   ChartContainer.displayName = "ChartContainer";
   return { default: ChartContainer };
 });
 vi.mock("../components/BotInfo", () => {
-  const BotInfo = () => <div data-testid="bot-info" />;
+  const BotInfo = (_props: any) => <div data-testid="bot-info" />;
   BotInfo.displayName = "BotInfo";
   return { default: BotInfo };
 });
 vi.mock("../components/LogsInfo", () => {
-  const LogsInfo = () => <div data-testid="logs-info" />;
+  const LogsInfo = (_props: any) => <div data-testid="logs-info" />;
   LogsInfo.displayName = "LogsInfo";
   return { default: LogsInfo };
 });
 vi.mock("../components/BotDetailTabs", () => {
-  const BotDetailTabs = () => <div data-testid="bot-detail-tabs" />;
+  const BotDetailTabs = (_props: any) => (
+    <div data-testid="bot-detail-tabs" />
+  );
   BotDetailTabs.displayName = "BotDetailTabs";
   return { default: BotDetailTabs };
 });
 vi.mock("../components/BalanceAnalysis", () => {
-  const BalanceAnalysis = () => <div data-testid="balance-analysis" />;
+  const BalanceAnalysis = (_props: any) => (
+    <div data-testid="balance-analysis" />
+  );
   BalanceAnalysis.displayName = "BalanceAnalysis";
   return { default: BalanceAnalysis };
 });

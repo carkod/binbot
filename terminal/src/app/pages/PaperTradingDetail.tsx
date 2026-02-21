@@ -17,6 +17,7 @@ import PaperTradingDetailTabs from "../components/PaperTradingDetailTabs";
 import { useGetSingleTestBotQuery } from "../../features/bots/paperTradingApiSlice";
 import { useGetBalanceQuery } from "../../features/balanceApiSlice";
 import { SymbolProvider } from "../providers/SymbolProvider";
+import { MarketType } from "../../utils/enums";
 
 export const PaperTradingDetail: FC = () => {
   const { id } = useParams();
@@ -25,6 +26,7 @@ export const PaperTradingDetail: FC = () => {
   const { paperTrading } = useAppSelector(selectTestBot);
   const { data } = useGetSingleTestBotQuery(id, { skip: Boolean(!id) });
   const { data: accountData } = useGetBalanceQuery();
+  const currentMarketType = paperTrading?.market_type ?? MarketType.SPOT;
 
   useEffect(() => {
     if (data && !matchNewRoute) {
@@ -39,7 +41,7 @@ export const PaperTradingDetail: FC = () => {
   }, [data, matchNewRoute, dispatch]);
 
   return (
-    <SymbolProvider>
+    <SymbolProvider marketType={currentMarketType}>
       <div className="content">
         <Container fluid>
           <Row>
@@ -47,17 +49,21 @@ export const PaperTradingDetail: FC = () => {
               <ChartContainer
                 bot={paperTrading}
                 setCurrentPrice={setTestBotCurrentPrice}
+                marketType={currentMarketType}
               />
             </Col>
           </Row>
           {paperTrading && id && (
             <Row>
               <Col md="7" sm="12">
-                <BotInfo bot={paperTrading} />
+                <BotInfo bot={paperTrading} marketType={currentMarketType} />
               </Col>
               <Col md="5" sm="12">
                 {paperTrading.logs?.length > 0 && (
-                  <LogsInfo events={paperTrading.logs} />
+                  <LogsInfo
+                    events={paperTrading.logs}
+                    marketType={currentMarketType}
+                  />
                 )}
               </Col>
             </Row>
@@ -72,7 +78,12 @@ export const PaperTradingDetail: FC = () => {
               </Card>
             </Col>
             <Col md="5" sm="12">
-              {accountData && <BalanceAnalysis accountData={accountData} />}
+              {accountData && (
+                <BalanceAnalysis
+                  accountData={accountData}
+                  marketType={currentMarketType}
+                />
+              )}
             </Col>
           </Row>
         </Container>

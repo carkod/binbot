@@ -35,12 +35,29 @@ const BotCard: FC<BotCardProps> = ({
   const botProfit = computeSingleBotProfit(bot);
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const selectedIds = selectedCards ?? [];
 
   return (
     <Card
       tabIndex={botIndex}
-      className={selectedCards.includes(bot.id) ? "border border-success" : ""}
+      className={selectedIds.includes(bot.id) ? "border border-success" : ""}
     >
+      <Card.Header className="text-white py-3 border-0 bg-info">
+        <div className="d-flex align-items-center gap-3">
+          <span className="rounded-circle bg-white bg-opacity-25 p-3 d-flex align-items-center justify-content-center">
+            <i className="fa-solid fa-chart-line fa-lg" aria-hidden="true" />
+            <span className="visually-hidden">Futures icon</span>
+          </span>
+          <div className="text-start">
+            <span className="text-uppercase small text-white-50">Futures</span>
+            <br />
+            <span className="fw-semibold">
+              {capitalizeFirst(bot.market_type || MarketType.SPOT)}
+            </span>
+          </div>
+        </div>
+      </Card.Header>
+      <br aria-hidden="true" />
       <Card.Body>
         <Container fluid>
           <Row>
@@ -196,18 +213,25 @@ const BotCard: FC<BotCardProps> = ({
         <Button
           variant="info"
           title="Edit this bot"
-          onClick={() =>
-            navigate(`${pathname}/edit/${bot.id}`, {
+          onClick={() => {
+            if (bot.market_type === MarketType.FUTURES) {
+              navigate(`/bot/futures/edit/${bot.id}`, {
               state: { bot: bot },
-            })
-          }
+            });
+            } else {
+              navigate(`/bot/edit/${bot.id}`, {
+              state: { bot: bot },
+            });
+            }
+            
+          }}
         >
           <i className="fa-solid fa-edit u-disable-events" />
         </Button>
         <Button variant="success" onClick={() => handleSelection(bot.id)}>
           <i className="fa-solid fa-check" />
           <span className="visually-hidden">
-            {selectedCards.includes(bot.id) ? "Deselect" : "Select"}
+            {selectedIds.includes(bot.id) ? "Deselect" : "Select"}
           </span>
         </Button>
         <Button variant="danger" onClick={() => handleDelete(bot.id)}>

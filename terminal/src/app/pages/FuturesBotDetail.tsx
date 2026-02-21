@@ -30,6 +30,7 @@ export const FuturesBotDetail: FC<{}> = () => {
   const { data: accountData, isLoading: loadingEstimates } =
     useGetBalanceQuery();
   const { spinner, setSpinner } = useContext(SpinnerContext);
+  const currentMarketType = bot?.market_type ?? MarketType.FUTURES;
 
   useEffect(() => {
     if (data && !matchNewRoute && data.bot) {
@@ -55,21 +56,27 @@ export const FuturesBotDetail: FC<{}> = () => {
   }, [data, matchNewRoute, dispatch, loadingBot, loadingEstimates, setSpinner]);
 
   return (
-    <SymbolProvider marketType={MarketType.FUTURES}>
+    <SymbolProvider marketType={currentMarketType}>
       <div className="content">
         <Container fluid>
           <Row>
             <Col md="12" sm="12">
-              <ChartContainer bot={bot} setCurrentPrice={setCurrentPrice} />
+              <ChartContainer
+                bot={bot}
+                setCurrentPrice={setCurrentPrice}
+                marketType={currentMarketType}
+              />
             </Col>
           </Row>
           {bot && id && (
             <Row>
               <Col md="7" sm="12">
-                <BotInfo bot={bot} />
+                <BotInfo bot={bot} marketType={currentMarketType} />
               </Col>
               <Col md="5" sm="12">
-                {bot.logs?.length > 0 && <LogsInfo events={bot.logs} />}
+                {bot.logs?.length > 0 && (
+                  <LogsInfo events={bot.logs} marketType={currentMarketType} />
+                )}
               </Col>
             </Row>
           )}
@@ -78,12 +85,17 @@ export const FuturesBotDetail: FC<{}> = () => {
             <Col md="7" sm="12">
               <Card>
                 <Card.Body>
-                  <BotDetailTabs />
+                  <BotDetailTabs marketType={currentMarketType} />
                 </Card.Body>
               </Card>
             </Col>
             <Col md="5" sm="12">
-              {accountData && <BalanceAnalysis accountData={accountData} />}
+              {accountData && (
+                <BalanceAnalysis
+                  accountData={accountData}
+                  marketType={currentMarketType}
+                />
+              )}
             </Col>
           </Row>
         </Container>

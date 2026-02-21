@@ -87,7 +87,7 @@ class BotTableCrud:
         # Step 3: Copy Orders
         bot_table.orders = []
         for order in getattr(bot, "orders", []):
-            order_row = ExchangeOrderTable.model_construct(**order.model_dump())
+            order_row = ExchangeOrderTable(**order.model_dump())
             bot_table.orders.append(order_row)
 
         return bot_table

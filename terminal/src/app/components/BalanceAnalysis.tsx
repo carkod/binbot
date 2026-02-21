@@ -1,14 +1,21 @@
 import React, { type FC } from "react";
-import { Card, Col, Row } from "react-bootstrap";
-import { type BalanceData } from "../../features/balanceApiSlice";
+import { Card, Col, Row, Badge } from "react-bootstrap";
+import { type BalanceData } from "../../features/features.types";
+import { type MarketType } from "../../utils/enums";
+import { capitalizeFirst } from "../../utils/strings";
 
 const BalanceAnalysis: FC<{
   accountData: BalanceData;
-}> = ({ accountData }) => {
+  marketType: MarketType;
+}> = ({ accountData, marketType }) => {
+  const marketLabel = capitalizeFirst(marketType.toLowerCase());
   return (
     <Card>
-      <Card.Header>
+      <Card.Header className="d-flex justify-content-between align-items-center">
         <Card.Title as="h5">Account breakdown</Card.Title>
+        <Badge bg="secondary" className="text-uppercase">
+          {marketLabel}
+        </Badge>
       </Card.Header>
       <Card.Body>
         <Row className="u-margin-bottom">
@@ -29,7 +36,7 @@ const BalanceAnalysis: FC<{
         </Row>
         <Row>
           <Col md="8" sm="12">
-            Porfolio of assets
+            Portfolio of assets
             <br />
             (actual)
           </Col>

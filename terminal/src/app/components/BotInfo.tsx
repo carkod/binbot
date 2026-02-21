@@ -11,21 +11,37 @@ import {
 } from "react-bootstrap";
 import { renderDuration, formatTimestamp } from "../../utils/time";
 import type { Bot } from "../../features/bots/botInitialState";
+import { type MarketType } from "../../utils/enums";
+import { capitalizeFirst } from "../../utils/strings";
 
-export default function BotInfo({ bot }: { bot: Bot }) {
+interface BotInfoProps {
+  bot: Bot;
+  marketType: MarketType;
+}
+
+export default function BotInfo({ bot, marketType }: BotInfoProps) {
   const [showOrderInfo, toggleOrderInfo] = useState<boolean>(
     bot.orders?.length > 0,
   );
+  const marketLabel = capitalizeFirst(marketType.toLowerCase());
   return (
     <Card>
-      <Card.Header className="u-space-between">
-        <Card.Title as="h5">Orders information</Card.Title>
-        <Button
-          onClick={() => toggleOrderInfo(!showOrderInfo)}
-          className="u-float-right u-space-bottom"
-        >
-          {showOrderInfo ? "Hide" : "Show"}
-        </Button>
+      <Card.Header className="d-flex justify-content-between align-items-center">
+        <div>
+          <Card.Title as="h5">Orders information</Card.Title>
+          <small className="text-muted text-uppercase">{marketLabel} market</small>
+        </div>
+        <div className="d-flex align-items-center gap-2">
+          <Badge bg="info" className="text-uppercase">
+            {marketLabel}
+          </Badge>
+          <Button
+            onClick={() => toggleOrderInfo(!showOrderInfo)}
+            className="u-float-right u-space-bottom"
+          >
+            {showOrderInfo ? "Hide" : "Show"}
+          </Button>
+        </div>
       </Card.Header>
       {showOrderInfo && (
         <Card.Body>

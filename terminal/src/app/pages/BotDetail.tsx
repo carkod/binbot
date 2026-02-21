@@ -18,6 +18,7 @@ import { SpinnerContext } from "../Layout";
 import { useGetBalanceQuery } from "../../features/balanceApiSlice";
 import BalanceAnalysis from "../components/BalanceAnalysis";
 import { SymbolProvider } from "../providers/SymbolProvider";
+import { MarketType } from "../../utils/enums";
 
 export const BotDetail: FC<{}> = () => {
   const { id } = useParams();
@@ -30,6 +31,7 @@ export const BotDetail: FC<{}> = () => {
   const { data: accountData, isLoading: loadingEstimates } =
     useGetBalanceQuery();
   const { spinner, setSpinner } = useContext(SpinnerContext);
+  const currentMarketType = bot?.market_type ?? MarketType.SPOT;
 
   useEffect(() => {
     if (data && !matchNewRoute) {
@@ -50,21 +52,27 @@ export const BotDetail: FC<{}> = () => {
   }, [data, matchNewRoute, dispatch, loadingBot, loadingEstimates]);
 
   return (
-    <SymbolProvider>
+    <SymbolProvider marketType={currentMarketType}>
       <div className="content">
         <Container fluid>
           <Row>
             <Col md="12" sm="12">
-              <ChartContainer bot={bot} setCurrentPrice={setCurrentPrice} />
+              <ChartContainer
+                bot={bot}
+                setCurrentPrice={setCurrentPrice}
+                marketType={currentMarketType}
+              />
             </Col>
           </Row>
           {bot && id && (
             <Row>
               <Col md="7" sm="12">
-                <BotInfo bot={bot} />
+                <BotInfo bot={bot} marketType={currentMarketType} />
               </Col>
               <Col md="5" sm="12">
-                {bot.logs?.length > 0 && <LogsInfo events={bot.logs} />}
+                {bot.logs?.length > 0 && (
+                  <LogsInfo events={bot.logs} marketType={currentMarketType} />
+                )}
               </Col>
             </Row>
           )}
@@ -73,12 +81,17 @@ export const BotDetail: FC<{}> = () => {
             <Col md="7" sm="12">
               <Card>
                 <Card.Body>
-                  <BotDetailTabs />
+                  <BotDetailTabs marketType={currentMarketType} />
                 </Card.Body>
               </Card>
             </Col>
             <Col md="5" sm="12">
-              {accountData && <BalanceAnalysis accountData={accountData} />}
+              {accountData && (
+                <BalanceAnalysis
+                  accountData={accountData}
+                  marketType={currentMarketType}
+                />
+              )}
             </Col>
           </Row>
         </Container>
