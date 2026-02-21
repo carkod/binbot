@@ -215,11 +215,11 @@ const BotCard: FC<BotCardProps> = ({
           title="Edit this bot"
           onClick={() => {
             if (bot.market_type === MarketType.FUTURES) {
-              navigate(`/bot/futures/edit/${bot.id}`, {
+              navigate(`/bots/futures/edit/${bot.id}`, {
               state: { bot: bot },
             });
             } else {
-              navigate(`/bot/edit/${bot.id}`, {
+              navigate(`/bots/edit/${bot.id}`, {
               state: { bot: bot },
             });
             }

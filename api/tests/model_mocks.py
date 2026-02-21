@@ -1,6 +1,5 @@
 from bots.models import BotModel, OrderModel
 from pybinbot import DealBase as DealModel
-from bots.models import BotModelResponse
 
 id = "02031768-fbb9-4cc7-b549-642f15ab787b"
 ts = 1733973560249.0
@@ -137,7 +136,7 @@ class DealFactoryMock:
         return bot_model
 
 
-mock_bot_model_response = BotModelResponse(
+mock_bot_model_response = BotModel(
     pair="ADXUSDC",
     fiat="USDC",
     base_order_size=15,

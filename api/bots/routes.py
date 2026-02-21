@@ -5,11 +5,10 @@ from typing import Optional
 from pybinbot import Status, BinbotErrors, BinanceErrors
 from bots.models import (
     BotBase,
-    BotModel,
     BotResponse,
     BotListResponse,
     BulkDeleteRequest,
-    BotModelResponse,
+    BotModel,
     ErrorsRequestBody,
 )
 from databases.crud.bot_crud import BotTableCrud
@@ -60,8 +59,8 @@ def get_one_by_id(bot_id: str, session: Session = Depends(get_session)):
     crud = BotTableCrud(session)
     try:
         bot_row = crud.get_one(bot_id=bot_id)
-        data = BotModelResponse.model_construct(**BotModelResponse.model_dump(bot_row))
-        return BotResponse(message="Successfully found one bot.", data=data)
+        bot_model = BotModel.dump_from_table(bot_row)
+        return BotResponse(message="Successfully found one bot.", data=bot_model)
     except BinbotErrors as e:
         return BotResponse(message=e.message, error=1)
 
@@ -71,8 +70,8 @@ def get_one_by_symbol(symbol: str, session: Session = Depends(get_session)):
     crud = BotTableCrud(session)
     try:
         bot_row = crud.get_one(symbol=symbol)
-        data = BotModelResponse.model_construct(**BotModelResponse.model_dump(bot_row))
-        return BotResponse(message="Successfully found one bot.", data=data)
+        bot_model = BotModel.dump_from_table(bot_row)
+        return BotResponse(message="Successfully found one bot.", data=bot_model)
     except BinbotErrors as e:
         return BotResponse(message=e.message, error=1)
 
@@ -81,8 +80,8 @@ def get_one_by_symbol(symbol: str, session: Session = Depends(get_session)):
 def create_bot(bot_item: BotBase, session: Session = Depends(get_session)):
     crud = BotTableCrud(session)
     bot_row = crud.create(bot_item)
-    data = BotModelResponse.model_construct(**BotModelResponse.model_dump(bot_row))
-    return BotResponse(message="Successfully created one bot.", data=data)
+    bot_model = BotModel.dump_from_table(bot_row)
+    return BotResponse(message="Successfully created one bot.", data=bot_model)
 
 
 @bot_blueprint.put("/bot/{bot_id}", response_model=BotResponse, tags=["bots"])
@@ -91,8 +90,8 @@ def edit_bot(bot_id: str, bot_item: BotBase, session: Session = Depends(get_sess
     bot_row = crud.get_one(bot_id=bot_id)
     bot_row.sqlmodel_update(bot_item.model_dump())
     updated_row = crud.save(bot_row)
-    data = BotModelResponse.model_construct(**BotModelResponse.model_dump(updated_row))
-    return BotResponse(message="Successfully edited bot.", data=data)
+    bot_model = BotModel.dump_from_table(updated_row)
+    return BotResponse(message="Successfully edited bot.", data=bot_model)
 
 
 @bot_blueprint.delete("/bot", response_model=BotResponse, tags=["bots"])
@@ -110,17 +109,15 @@ def activate_bot(bot_id: str, session: Session = Depends(get_session)):
     deal_gateway = DealGateway(bot_model, db_table=BotTable)
     try:
         activated_bot = deal_gateway.open_deal()
-        data = BotModelResponse.model_construct(
-            **BotModelResponse.model_dump(activated_bot)
-        )
+        bot_model = BotModel.dump_from_table(activated_bot)
         message = "Successfully activated bot."
         if bot_row.status == Status.active:
             message = "Successfully updated bot."
-        return BotResponse(message=message, data=data)
+        return BotResponse(message=message, data=bot_model)
     except (BinbotErrors, BinanceErrors, RestError) as e:
         deal_gateway.update_logs(str(e))
-        data = BotModelResponse.model_construct(**BotModelResponse.model_dump(bot_row))
-        return BotResponse(message=str(e), data=data, error=1)
+        bot_model = BotModel.dump_from_table(bot_row)
+        return BotResponse(message=str(e), data=bot_model, error=1)
 
 
 @bot_blueprint.delete(
@@ -136,15 +133,14 @@ def deactivate_bot(bot_id: str, session: Session = Depends(get_session)):
     deal_gateway = DealGateway(bot_model, db_table=BotTable)
     try:
         deactivated_bot = deal_gateway.deactivation()
-        data = BotModelResponse.model_construct(
-            **BotModelResponse.model_dump(deactivated_bot)
-        )
+        bot_model = BotModel.dump_from_table(deactivated_bot)
         return BotResponse(
-            message="Successfully triggered panic sell! Bot deactivated.", data=data
+            message="Successfully triggered panic sell! Bot deactivated.",
+            data=bot_model,
         )
     except BinbotErrors as e:
-        data = BotModelResponse.model_construct(**BotModelResponse.model_dump(bot_row))
-        return BotResponse(message=e.message, data=data, error=1)
+        bot_model = BotModel.dump_from_table(bot_row)
+        return BotResponse(message=e.message, data=bot_model, error=1)
 
 
 @bot_blueprint.post("/bot/errors/{bot_id}", response_model=BotResponse, tags=["bots"])
@@ -155,5 +151,5 @@ def post_bot_errors(
     bot_row = crud.get_one(bot_id=bot_id)
     errors_list = bot_errors.errors if hasattr(bot_errors, "errors") else []
     updated_bot = crud.update_logs(errors_list, bot_row)
-    data = BotModelResponse.model_construct(**BotModelResponse.model_dump(updated_bot))
-    return BotResponse(message="Errors posted successfully.", data=data, error=0)
+    bot_model = BotModel.dump_from_table(updated_bot)
+    return BotResponse(message="Errors posted successfully.", data=bot_model, error=0)
