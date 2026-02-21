@@ -168,8 +168,8 @@ def deactivate(id: str, session: Session = Depends(get_session)):
     deal_instance = DealGateway(bot=bot_model, db_table=PaperTradingTable)
 
     try:
-        data = deal_instance.deactivation()
-        response_data = BotModel(**data.model_dump())
+        bot = deal_instance.deactivation()
+        response_data = BotModel.dump_from_table(bot)
         return {
             "message": "Successfully triggered panic sell! Bot deactivated.",
             "data": response_data,

@@ -54,6 +54,9 @@ from kucoin_universal_sdk.generate.account.account import (
     GetFuturesAccountReqBuilder,
     GetFuturesAccountResp,
 )
+from kucoin_universal_sdk.generate.futures.positions.model_get_isolated_margin_risk_limit_resp import (
+    GetIsolatedMarginRiskLimitData,
+)
 
 
 class KucoinFutures(KucoinRest):
@@ -510,3 +513,30 @@ class KucoinFutures(KucoinRest):
         """
         req = GetFuturesAccountReqBuilder().set_currency(fiat).build()
         return self.futures_account_api.get_futures_account(req)
+
+    def get_max_allowed_leverage(self, symbol: str, position_notional: float) -> int:
+        """
+        Returns the maximum leverage allowed for the given symbol
+        based on intended position size.
+        """
+
+        # 1️⃣ Fetch risk limit tiers
+        tiers = self.futures_positions_api.get_isolated_margin_risk_limit(symbol)
+
+        # 2️⃣ Sort tiers by min risk limit ascending
+        tiers_sorted: list[GetIsolatedMarginRiskLimitData] = sorted(
+            tiers.data, key=lambda t: t.min_risk_limit or 0
+        )
+
+        # 3️⃣ Find the tier that matches the position size
+        for tier in tiers_sorted:
+            max_risk = Decimal(str(tier.max_risk_limit or 0))
+            min_risk = Decimal(str(tier.min_risk_limit or 0))
+            if min_risk <= position_notional <= max_risk:
+                # Use initial_margin to compute max allowed leverage
+                if tier.initial_margin:
+                    max_leverage = int(Decimal("1") / Decimal(str(tier.initial_margin)))
+                    return max_leverage
+        # Fallback to last tier
+        last_tier = tiers_sorted[-1]
+        return int(Decimal("1") / Decimal(str(last_tier.initial_margin)))

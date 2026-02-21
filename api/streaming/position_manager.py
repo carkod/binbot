@@ -363,7 +363,10 @@ class PositionManager:
         and fetch order details from exchange
         """
         for order in bot.orders:
-            if self.base_streaming.exchange == ExchangeId.KUCOIN and order.status != OrderStatus.FILLED:
+            if (
+                self.base_streaming.exchange == ExchangeId.KUCOIN
+                and order.status != OrderStatus.FILLED
+            ):
                 kucoin_symbol = convert_to_kucoin_symbol(bot)
                 system_order = self.base_streaming.kucoin_api.get_order(
                     symbol=kucoin_symbol,
@@ -451,7 +454,10 @@ class PositionManager:
             if order.status == OrderStatus.FILLED:
                 continue
 
-            if self.base_streaming.exchange == ExchangeId.KUCOIN and order.status != OrderStatus.FILLED:
+            if (
+                self.base_streaming.exchange == ExchangeId.KUCOIN
+                and order.status != OrderStatus.FILLED
+            ):
                 kucoin_symbol = convert_to_kucoin_symbol(bot)
 
                 # Check if order is expired based on 15m interval
