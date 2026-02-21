@@ -263,9 +263,7 @@ class BotTableCrud:
                                 existing, field_name, getattr(order_data, field_name)
                             )
                 else:
-                    new_order = ExchangeOrderTable.model_construct(
-                        **order_data.model_dump(exclude={"id", "bot"})
-                    )
+                    new_order = ExchangeOrderTable(**order_data.model_dump())
                     new_order.bot_id = bot_row.id
                     s.add(new_order)
 
