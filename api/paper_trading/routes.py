@@ -8,11 +8,10 @@ from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.utils import get_session
 from pybinbot import BinanceErrors, BinbotErrors
 from bots.models import (
-    BotModel,
     BotResponse,
     BotListResponse,
     BotPairsList,
-    BotModelResponse,
+    BotModel,
     ErrorsRequestBody,
     BulkDeleteRequest,
 )
@@ -20,7 +19,7 @@ from typing import Optional
 
 
 paper_trading_blueprint = APIRouter()
-ta = TypeAdapter(list[BotModelResponse])
+ta = TypeAdapter(list[BotModel])
 
 
 @paper_trading_blueprint.get(
@@ -69,7 +68,7 @@ def get_one(
 ):
     try:
         bot = PaperTradingTableCrud(session=session).get_one(bot_id=id, symbol=None)
-        bot_model = BotModelResponse.dump_from_table(bot)
+        bot_model = BotModel.dump_from_table(bot)
         return BotResponse(
             message="Successfully found one paper trading bot.", data=bot_model
         )
@@ -85,7 +84,7 @@ def get_one(
 def get_one_by_symbol(symbol: str, session: Session = Depends(get_session)):
     try:
         bot = PaperTradingTableCrud(session=session).get_one(bot_id=None, symbol=symbol)
-        bot_model = BotModelResponse.dump_from_table(bot)
+        bot_model = BotModel.dump_from_table(bot)
         return BotResponse(message="Successfully found one bot.", data=bot_model)
     except ValidationError as error:
         return BotResponse(message="Bot not found.", error=1, data=error.json())
@@ -169,8 +168,8 @@ def deactivate(id: str, session: Session = Depends(get_session)):
     deal_instance = DealGateway(bot=bot_model, db_table=PaperTradingTable)
 
     try:
-        data = deal_instance.deactivation()
-        response_data = BotModelResponse(**data.model_dump())
+        bot = deal_instance.deactivation()
+        response_data = BotModel.dump_from_table(bot)
         return {
             "message": "Successfully triggered panic sell! Bot deactivated.",
             "data": response_data,
@@ -204,7 +203,7 @@ def bot_errors(
         data = PaperTradingTableCrud(session=session).update_logs(
             log_message=errors, bot=bot_model
         )
-        response_data = BotModelResponse.dump_from_table(data)
+        response_data = BotModel.dump_from_table(data)
         return BotResponse(
             message="Errors posted successfully.", data=response_data, error=0
         )

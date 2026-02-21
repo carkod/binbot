@@ -7,8 +7,10 @@ const LogInfo: FC<{
   const [showLogs, toggleLogInfo] = useState(events.length > 0);
   return (
     <Card>
-      <Card.Header className="u-space-between">
-        <Card.Title as="h5">Event logs </Card.Title>
+      <Card.Header className="d-flex justify-content-between align-items-center">
+        <div>
+          <Card.Title as="h5">Event logs</Card.Title>
+        </div>
         <Button
           onClick={() => toggleLogInfo(!showLogs)}
           className="u-float-right u-space-bottom"

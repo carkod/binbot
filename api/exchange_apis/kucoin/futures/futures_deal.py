@@ -66,6 +66,7 @@ class KucoinFuturesDeal(KucoinBaseBalance):
         """
         balance = self.active_bot.fiat_order_size
         stop_loss_percent = self.active_bot.stop_loss
+        # max_allowed_leverage = self.kucoin_futures_api.get_max_allowed_leverage(self.kucoin_symbol, balance)
         max_risk_usdt = balance * self.kucoin_futures_api.DEFAULT_LEVERAGE
         info = self.kucoin_futures_api.get_symbol_info(self.kucoin_symbol)
         multiplier = info.multiplier
@@ -196,9 +197,14 @@ class KucoinFuturesDeal(KucoinBaseBalance):
             self.price_precision,
         )
 
+        if self.active_bot.strategy == Strategy.margin_short:
+            side = AddOrderReq.SideEnum.BUY
+        else:
+            side = AddOrderReq.SideEnum.SELL
+
         self.kucoin_futures_api.place_futures_order(
             symbol=self.kucoin_symbol,
-            side=AddOrderReq.SideEnum.SELL,
+            side=side,
             order_type=OrderType.market,
             stop=AddOrderReq.StopEnum.DOWN,
             stop_price=stop_price,
@@ -231,9 +237,14 @@ class KucoinFuturesDeal(KucoinBaseBalance):
                         existing_order.status = OrderStatus.CANCELED
                         self.active_bot.orders[index] = existing_order
 
+        if self.active_bot.strategy == Strategy.margin_short:
+            side = AddOrderReq.SideEnum.BUY
+        else:
+            side = AddOrderReq.SideEnum.SELL
+
         order = self.kucoin_futures_api.place_futures_order(
             symbol=self.kucoin_symbol,
-            side=AddOrderReq.SideEnum.SELL,
+            side=side,
             order_type=OrderType.limit,
             price=price,
             size=self.active_bot.deal.opening_qty,

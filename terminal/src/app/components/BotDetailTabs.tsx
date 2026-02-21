@@ -7,15 +7,15 @@ import {
   useEditBotMutation,
   useLazyActivateBotQuery,
 } from "../../features/bots/botsApiSlice";
-import { selectBot, setBot } from "../../features/bots/botSlice";
-import { BotStatus, TabsKeys } from "../../utils/enums";
+import { selectBot } from "../../features/bots/botSlice";
+import { BotStatus, MarketType, TabsKeys } from "../../utils/enums";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import BaseOrderTab from "./BaseOrderTab";
 import StopLossTab from "./StopLossTab";
 import TakeProfit from "./TakeProfitTab";
 import { setSpinner } from "../../features/layoutSlice";
 
-const BotDetailTabs: FC = () => {
+const BotDetailTabs: FC<{ marketType: MarketType }> = ({ marketType }) => {
   const { bot } = useAppSelector(selectBot);
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -27,6 +27,10 @@ const BotDetailTabs: FC = () => {
     useLazyActivateBotQuery();
 
   const [enableActivation, setEnableActivation] = useState(id ? true : false);
+  const getEditPath = (botId: string) =>
+    marketType === MarketType.FUTURES
+      ? `/bots/futures/edit/${botId}`
+      : `/bots/edit/${botId}`;
 
   // Activate and get bot again
   // Deals and orders information need to come from the server
@@ -34,8 +38,7 @@ const BotDetailTabs: FC = () => {
     const { data } = await updateBot({ body: bot, id });
     const result = await trigger(id);
     if (id && data) {
-      console.log("Activation result:", result);
-      navigate(`/bot/edit/${id}`);
+      navigate(getEditPath(id));
     }
   };
   const handlePanicSell = async (id: string) => {
@@ -45,22 +48,22 @@ const BotDetailTabs: FC = () => {
   const onSubmit = async () => {
     if (id && bot.status !== BotStatus.COMPLETED) {
       await updateBot({ body: bot, id });
-      navigate(`/bots/edit/${id}`);
+      navigate(getEditPath(id));
     } else {
       const submitData = { ...bot, id: undefined };
       const { data } = await createBot(submitData);
       setEnableActivation(true);
-      navigate(`/bots/edit/${data.bot.id}`);
+      navigate(getEditPath(data.bot.id));
     }
   };
 
   useEffect(() => {
     if (isActivating) {
-      setSpinner(true);
+      dispatch(setSpinner(true));
     } else {
-      setSpinner(false);
+      dispatch(setSpinner(false));
     }
-  }, [isActivating]);
+  }, [isActivating, dispatch]);
 
   return (
     <Tab.Container defaultActiveKey={TabsKeys.MAIN}>

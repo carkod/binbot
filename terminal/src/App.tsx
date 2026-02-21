@@ -51,15 +51,6 @@ export const routes = [
     nav: true,
   },
   {
-    path: "bots/new/:symbol?",
-    link: "/bots/new",
-    icon: null,
-    name: "New Bot",
-    element: <BotDetail />,
-    id: "new-bot",
-    nav: true,
-  },
-  {
     path: "bots/futures/new/:symbol?",
     link: "/bots/futures/new",
     icon: null,
@@ -69,12 +60,13 @@ export const routes = [
     nav: true,
   },
   {
-    path: "bots/edit/:id",
+    path: "bots/new/:symbol?",
+    link: "/bots/new",
     icon: null,
-    name: "Edit Bot",
+    name: "New Bot",
     element: <BotDetail />,
-    id: "edit-bot",
-    nav: false,
+    id: "new-bot",
+    nav: true,
   },
   {
     path: "bots/futures/edit/:id",
@@ -82,6 +74,14 @@ export const routes = [
     name: "Edit Futures Bot",
     element: <FuturesBotDetail />,
     id: "edit-futures-bot",
+    nav: false,
+  },
+  {
+    path: "bots/edit/:id",
+    icon: null,
+    name: "Edit Bot",
+    element: <BotDetail />,
+    id: "edit-bot",
     nav: false,
   },
   {

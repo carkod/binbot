@@ -35,12 +35,22 @@ const BotCard: FC<BotCardProps> = ({
   const botProfit = computeSingleBotProfit(bot);
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const selectedIds = selectedCards ?? [];
 
   return (
     <Card
       tabIndex={botIndex}
-      className={selectedCards.includes(bot.id) ? "border border-success" : ""}
+      className={selectedIds.includes(bot.id) ? "border border-success" : ""}
     >
+      <Card.Header className="text-white py-3 border-0 bg-info">
+        <div className="d-flex align-items-center gap-2">
+          <span className="fw-semibold">
+            <i className="fa-solid fa-chart-line fa-lg" />{" "}
+            {bot.market_type || String(MarketType.SPOT).toUpperCase()}
+          </span>
+        </div>
+      </Card.Header>
+      <br aria-hidden="true" />
       <Card.Body>
         <Container fluid>
           <Row>
@@ -196,18 +206,24 @@ const BotCard: FC<BotCardProps> = ({
         <Button
           variant="info"
           title="Edit this bot"
-          onClick={() =>
-            navigate(`${pathname}/edit/${bot.id}`, {
-              state: { bot: bot },
-            })
-          }
+          onClick={() => {
+            if (bot.market_type === MarketType.FUTURES) {
+              navigate(`/bots/futures/edit/${bot.id}`, {
+                state: { bot: bot },
+              });
+            } else {
+              navigate(`/bots/edit/${bot.id}`, {
+                state: { bot: bot },
+              });
+            }
+          }}
         >
           <i className="fa-solid fa-edit u-disable-events" />
         </Button>
         <Button variant="success" onClick={() => handleSelection(bot.id)}>
           <i className="fa-solid fa-check" />
           <span className="visually-hidden">
-            {selectedCards.includes(bot.id) ? "Deselect" : "Select"}
+            {selectedIds.includes(bot.id) ? "Deselect" : "Select"}
           </span>
         </Button>
         <Button variant="danger" onClick={() => handleDelete(bot.id)}>

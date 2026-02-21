@@ -12,13 +12,15 @@ import { type ResolutionString } from "../../../charting_library/charting_librar
 import { type AppDispatch } from "../store";
 import { type Bot } from "../../features/bots/botInitialState";
 import { type PayloadActionCreator } from "@reduxjs/toolkit";
-import { BotStatus } from "../../utils/enums";
+import { BotStatus, type MarketType } from "../../utils/enums";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
+import { capitalizeFirst } from "../../utils/strings";
 
 const ChartContainer: FC<{
   bot: Bot;
   setCurrentPrice: PayloadActionCreator<number>;
-}> = ({ bot, setCurrentPrice }) => {
+  marketType: MarketType;
+}> = ({ bot, setCurrentPrice, marketType }) => {
   const dispatch: AppDispatch = useAppDispatch();
   const { quoteAsset } = useSymbolData();
   const [currentChartPrice, setCurrentChartPrice] = useImmer<number>(0);
@@ -26,14 +28,15 @@ const ChartContainer: FC<{
   const [exchangeSymbol, setExchangeSymbol] = useImmer<string>(bot.pair);
   const [botProfit, setBotProfit] = useState<number>(Number(0));
   const { data: autotradeSettings } = useGetSettingsQuery();
+  const marketLabel = capitalizeFirst(marketType.toLowerCase());
   const exchangeState =
     autotradeSettings?.exchange_id?.toLowerCase() === "kucoin"
       ? Exchange.KUCOIN
       : Exchange.BINANCE;
 
-  const updatedPrice = (price) => {
+  const updatedPrice = (price: number) => {
     price = roundDecimals(price, 4);
-    const roundedPrice = parseFloat(price);
+    const roundedPrice = parseFloat(price.toString());
     if (currentChartPrice !== roundedPrice) {
       const newOrderLines = updateOrderLines(bot, roundedPrice);
       setCurrentOrderLines(newOrderLines);
@@ -41,7 +44,7 @@ const ChartContainer: FC<{
     }
   };
 
-  const handleInitialPrice = (price) => {
+  const handleInitialPrice = (price: number) => {
     if (!bot.deal.opening_price && bot.status !== BotStatus.ACTIVE) {
       setCurrentChartPrice(price);
     }
@@ -126,7 +129,10 @@ const ChartContainer: FC<{
               >
                 {bot.status}
               </Badge>{" "}
-              <Badge color="info">{bot.strategy}</Badge>
+              <Badge bg="info">{bot.strategy}</Badge>{" "}
+              <Badge bg="dark" className="text-uppercase">
+                {marketLabel}
+              </Badge>
             </Card.Title>
           </Col>
         </Row>

@@ -363,8 +363,9 @@ class PositionManager:
         and fetch order details from exchange
         """
         for order in bot.orders:
-            if self.base_streaming.exchange == ExchangeId.KUCOIN and (
-                order.price == 0 or order.qty == 0
+            if (
+                self.base_streaming.exchange == ExchangeId.KUCOIN
+                and order.status != OrderStatus.FILLED
             ):
                 kucoin_symbol = convert_to_kucoin_symbol(bot)
                 system_order = self.base_streaming.kucoin_api.get_order(
@@ -428,11 +429,17 @@ class PositionManager:
                         bot.add_log(
                             f"Failed to cancel order {order.order_id}: {str(e)}"
                         )
+                    if order.deal_type == DealType.base_order:
+                        bot.status = Status.inactive
+                        bot.add_log(
+                            f"Order {order.order_id} expired and cancelled. Bot set to inactive.",
+                        )
+                    else:
+                        bot.add_log(
+                            f"Order {order.order_id} expired and cancelled.",
+                        )
 
-                    bot.status = Status.inactive
-                    bot.add_log(
-                        f"Order {order.order_id} expired and cancelled. Bot set to inactive.",
-                    )
+                    self.base_streaming.bot_controller.update_order(order)
 
             self.base_streaming.bot_controller.save(data=bot)
 
@@ -447,8 +454,9 @@ class PositionManager:
             if order.status == OrderStatus.FILLED:
                 continue
 
-            if self.base_streaming.exchange == ExchangeId.KUCOIN and (
-                order.price == 0 or order.qty == 0
+            if (
+                self.base_streaming.exchange == ExchangeId.KUCOIN
+                and order.status != OrderStatus.FILLED
             ):
                 kucoin_symbol = convert_to_kucoin_symbol(bot)
 
@@ -526,11 +534,17 @@ class PositionManager:
                             self.base_streaming.kucoin_futures_api.cancel_all_futures_orders(
                                 kucoin_symbol
                             )
-                            bot.status = Status.inactive
-                            bot.add_log(
-                                f"Order {order.order_id} expired and cancelled. Bot set to inactive.",
-                            )
-                            self.base_streaming.bot_controller.save(data=bot)
+                            if order.deal_type == DealType.base_order:
+                                bot.status = Status.inactive
+                                bot.add_log(
+                                    f"Order {order.order_id} expired and cancelled. Bot set to inactive.",
+                                )
+                                self.base_streaming.bot_controller.save(data=bot)
+                            else:
+                                bot.add_log(
+                                    f"Order {order.order_id} expired and cancelled.",
+                                )
+                                self.base_streaming.bot_controller.save(data=bot)
                         except Exception as cancel_e:
                             bot.add_log(
                                 f"Failed to cancel all futures orders for {kucoin_symbol}: {str(cancel_e)}"

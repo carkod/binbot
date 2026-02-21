@@ -12,20 +12,28 @@ import {
 import { renderDuration, formatTimestamp } from "../../utils/time";
 import type { Bot } from "../../features/bots/botInitialState";
 
-export default function BotInfo({ bot }: { bot: Bot }) {
+interface BotInfoProps {
+  bot: Bot;
+}
+
+export default function BotInfo({ bot }: BotInfoProps) {
   const [showOrderInfo, toggleOrderInfo] = useState<boolean>(
     bot.orders?.length > 0,
   );
   return (
     <Card>
-      <Card.Header className="u-space-between">
-        <Card.Title as="h5">Orders information</Card.Title>
-        <Button
-          onClick={() => toggleOrderInfo(!showOrderInfo)}
-          className="u-float-right u-space-bottom"
-        >
-          {showOrderInfo ? "Hide" : "Show"}
-        </Button>
+      <Card.Header className="d-flex justify-content-between align-items-center">
+        <div>
+          <Card.Title as="h5">Orders information</Card.Title>
+        </div>
+        <div className="d-flex align-items-center gap-2">
+          <Button
+            onClick={() => toggleOrderInfo(!showOrderInfo)}
+            className="u-float-right u-space-bottom"
+          >
+            {showOrderInfo ? "Hide" : "Show"}
+          </Button>
+        </div>
       </Card.Header>
       {showOrderInfo && (
         <Card.Body>

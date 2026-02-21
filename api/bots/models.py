@@ -122,81 +122,12 @@ class BotModel(BotBase):
             return bot
 
 
-class BotModelResponse(BotBase):
-    id: str = Field(default="")
-    deal: DealModel = Field(...)
-    orders: List[OrderModel] = Field(default=[])
-
-    model_config = {
-        "from_attributes": True,
-        "use_enum_values": True,
-        "json_schema_extra": {
-            "description": "API response model with id, deal, and orders. Deal and orders fields are populated by the system",
-            "examples": [
-                {
-                    "id": "550e8400-e29b-41d4-a716-446655440000",
-                    "pair": "BNBUSDT",
-                    "fiat": "USDC",
-                    "quote_asset": "USDC",
-                    "fiat_order_size": 15,
-                    "candlestick_interval": "15m",
-                    "close_condition": "dynamic_trailling",
-                    "cooldown": 0,
-                    "created_at": 1702999999.0,
-                    "updated_at": 1702999999.0,
-                    "dynamic_trailling": False,
-                    "logs": [],
-                    "mode": "manual",
-                    "name": "Default bot",
-                    "status": "inactive",
-                    "stop_loss": 0,
-                    "take_profit": 2.3,
-                    "trailling": True,
-                    "trailling_deviation": 0.63,
-                    "trailling_profit": 2.3,
-                    "margin_short_reversal": False,
-                    "strategy": "long",
-                    "deal": {},
-                    "orders": [],
-                }
-            ],
-        },
-    }
-
-    @field_validator("id", mode="before")
-    def deserialize_id(cls, v):
-        if isinstance(v, UUID):
-            cls.id = str(v)
-            return str(v)
-        return v
-
-    @classmethod
-    def dump_from_table(cls, bot):
-        """
-        Same as model_dump() but from
-        BotTable
-
-        Use model_validate to cast/pre-validate data to avoid unecessary validation errors
-        """
-        if isinstance(bot, BotTable) or isinstance(bot, PaperTradingTable):
-            model = BotModelResponse.model_construct(**bot.model_dump())
-            deal_model = DealModel.model_validate(bot.deal.model_dump())
-            order_models = [
-                OrderModel.model_validate(order.model_dump()) for order in bot.orders
-            ]
-            model.deal = deal_model
-            model.orders = order_models
-            return model
-        else:
-            return bot
-
-
 class BotDataErrorResponse(BotBase):
     error: str
 
 
 class BotResponse(IResponseBase):
-    data: Optional[BotModelResponse] = Field(default=None)
+    data: Optional[BotModel] = Field(default=None)
 
 
 class BotPairsList(IResponseBase):
