@@ -275,7 +275,9 @@ class SymbolDataEtl(SymbolsCrud):
 
     def kucoin_symbols_ingestion(self):
         all_spot_symbols = self.kucoin_api.get_all_symbols()
-        all_future_symbols = self.kucoin_api.futures_market_api.get_all_symbols()
+        all_future_symbols = (
+            self.kucoin_futures_api.futures_market_api.get_all_symbols()
+        )
 
         self.ingest_spot_data(all_spot_symbols)
         self.ingest_futures_data(all_future_symbols)

@@ -103,7 +103,7 @@ class BotModel(BotBase):
             return bot
 
     @classmethod
-    def model_to_table(cls, bot):
+    def model_to_table(cls, bot) -> BotTable:
         """
         Same as model_dump() but from
         BotModel to BotTable

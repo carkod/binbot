@@ -2,6 +2,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch, Mock
 from uuid import UUID
+from contextlib import contextmanager
 
 from sqlmodel import SQLModel, create_engine, Session
 from sqlalchemy.pool import StaticPool
@@ -72,8 +73,13 @@ def create_test_tables():
     SQLModel.metadata.create_all(test_engine)
 
     # Override get_session to use test database
-    def get_test_session():
+    @contextmanager
+    def get_test_session_manager():
         with Session(test_engine) as session:
+            yield session
+
+    def get_test_session():
+        with get_test_session_manager() as session:
             yield session
 
     app.dependency_overrides[get_session] = get_test_session
@@ -360,8 +366,8 @@ def create_test_tables():
         side_effect=mock_independent_session,
     )
     patcher4 = patch(
-        "databases.crud.bot_crud.independent_session",
-        side_effect=mock_independent_session,
+        "databases.crud.bot_crud.get_session",
+        new=get_test_session_manager,
     )
     patcher5 = patch(
         "databases.crud.asset_index_crud.independent_session",

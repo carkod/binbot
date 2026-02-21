@@ -50,6 +50,10 @@ from kucoin_universal_sdk.generate.futures.order import (
     CancelAllOrdersV3ReqBuilder,
 )
 from kucoin_universal_sdk.model.common import RestError
+from kucoin_universal_sdk.generate.account.account import (
+    GetFuturesAccountReqBuilder,
+    GetFuturesAccountResp,
+)
 
 
 class KucoinFutures(KucoinRest):
@@ -159,8 +163,8 @@ class KucoinFutures(KucoinRest):
                 order_details = GetOrderByOrderIdResp(
                     order_id=order_resp.order_id,
                     symbol=symbol,
-                    side=AddOrderReq.SideEnum.SELL,
-                    type=AddOrderReq.TypeEnum.LIMIT,
+                    side=AddOrderReq.SideEnum.SELL.value,
+                    type=AddOrderReq.TypeEnum.LIMIT.value,
                     price=str(price),
                     size=str(qty),
                     filled_size=str(qty),
@@ -223,12 +227,12 @@ class KucoinFutures(KucoinRest):
             timestamp = order_details.created_at
         except RestError as e:
             if float(e.response.code) == 100001:
-                # filler response to wait for completetion
+                # filler response to wait for completion
                 order_details = GetOrderByOrderIdResp(
                     order_id=order_resp.order_id,
                     symbol=symbol,
-                    side=AddOrderReq.SideEnum.SELL,
-                    type=AddOrderReq.TypeEnum.LIMIT,
+                    side=AddOrderReq.SideEnum.SELL.value,
+                    type=AddOrderReq.TypeEnum.LIMIT.value,
                     price=str(price),
                     size=str(qty),
                     filled_size=str(qty),
@@ -499,3 +503,10 @@ class KucoinFutures(KucoinRest):
 
         req = builder.build()
         return self.futures_order_api.add_order(req)
+
+    def get_futures_balance(self, fiat) -> GetFuturesAccountResp:
+        """
+        Get futures account balances.
+        """
+        req = GetFuturesAccountReqBuilder().set_currency(fiat).build()
+        return self.futures_account_api.get_futures_account(req)

@@ -1,13 +1,54 @@
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 from main import app
 from pytest import fixture
-from tests.fixtures.mock_bot_table import mock_bot_data, mock_bot_data_superusdt
+from tests.fixtures.mock_bot_table import (
+    mock_bot_data,
+    mock_bot_data_superusdt,
+    make_mock_bot_model,
+    make_mock_bot_active_model,
+    make_mock_bot_superusdt_model,
+)
+from uuid import UUID
 
 
 @fixture()
 def client() -> TestClient:
     client = TestClient(app)
     return client
+
+
+@fixture()
+def bot_models():
+    default_bot = make_mock_bot_model()
+    active_bot = make_mock_bot_active_model()
+    superusdt_bot = make_mock_bot_superusdt_model()
+
+    epic_bot = make_mock_bot_model()
+    epic_bot.id = UUID("44db75ee-15c2-4a48-a346-4ffdc3ac5506")
+    epic_bot.pair = "EPICUSDC"
+    epic_bot.fiat_order_size = 15
+
+    return {
+        "default": default_bot,
+        "active": active_bot,
+        "super": superusdt_bot,
+        "epic": epic_bot,
+    }
+
+
+@fixture()
+def mock_deal_gateway(bot_models):
+    with (
+        patch(
+            "deals.gateway.DealGateway.open_deal", return_value=bot_models["epic"]
+        ) as mock_open,
+        patch(
+            "deals.gateway.DealGateway.deactivation",
+            return_value=bot_models["active"],
+        ) as mock_deactivate,
+    ):
+        yield {"open": mock_open, "deactivate": mock_deactivate}
 
 
 mock_id = "cff9e468-87ee-46fa-8678-17af132b8434"
@@ -100,29 +141,29 @@ def test_delete_bot(client: TestClient):
 
     assert response.status_code == 200
     content = response.json()
-    assert content["message"] == "Sucessfully deleted bot."
+    assert content["message"] == "Successfully deleted bots."
 
 
-def test_activate_by_id(client: TestClient):
+def test_activate_by_id(client: TestClient, mock_deal_gateway, bot_models):
     mock_activate_id = "44db75ee-15c2-4a48-a346-4ffdc3ac5506"
     response = client.get(f"/bot/activate/{mock_activate_id}")
 
     assert response.status_code == 200
     content = response.json()
-    assert content["data"]["pair"] == "EPICUSDC"
-    assert content["data"]["fiat"] == "USDC"
-    assert content["data"]["fiat_order_size"] == 15
+    assert content["data"]["pair"] == bot_models["epic"].pair
+    assert content["data"]["fiat"] == bot_models["epic"].fiat
+    assert content["data"]["fiat_order_size"] == bot_models["epic"].fiat_order_size
 
 
-def test_deactivate(client: TestClient):
+def test_deactivate(client: TestClient, mock_deal_gateway, bot_models):
     deactivate_id = "ebda4958-837c-4544-bf97-9bf449698152"
     response = client.delete(f"/bot/deactivate/{deactivate_id}")
 
     assert response.status_code == 200
     content = response.json()
-    assert content["data"]["pair"] == "ADAUSDC"
-    assert content["data"]["fiat"] == "USDC"
-    assert content["data"]["fiat_order_size"] == 15
+    assert content["data"]["pair"] == bot_models["active"].pair
+    assert content["data"]["fiat"] == bot_models["active"].fiat
+    assert content["data"]["fiat_order_size"] == bot_models["active"].fiat_order_size
 
 
 def test_post_bot_errors_str(client: TestClient):

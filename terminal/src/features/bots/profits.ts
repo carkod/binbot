@@ -27,80 +27,76 @@ export function computeSingleBotProfit(
   bot: Bot,
   realTimeCurrPrice: number = 0,
 ) {
+  if (!bot?.deal) {
+    return 0;
+  }
+
   const base_order_size =
-    bot.deal.base_order_size > 0
+    bot.deal.base_order_size && bot.deal.base_order_size > 0
       ? bot.deal.base_order_size
       : bot.fiat_order_size;
 
-  if (bot.deal && base_order_size > 0) {
-    if (bot.deal.opening_price > 0) {
-      // 1. closing price, 2. real time price, 3. deal current price
-      const currentPrice =
-        bot.deal.closing_price > 0
-          ? bot.deal.closing_price
-          : realTimeCurrPrice > 0
-            ? realTimeCurrPrice
-            : bot.deal.current_price;
-      const buyPrice = bot.deal.opening_price;
-      let profitChange = 0;
-      if (currentPrice > 0) {
-        profitChange = getProfit(buyPrice, currentPrice, bot.strategy);
-        return roundDecimals(profitChange, 2);
-      } else {
-        return 0;
-      }
-    } else if (bot.deal.closing_price > 0) {
-      // Completed margin short
-      const profitChange = getProfit(
-        bot.deal.opening_price,
-        bot.deal.closing_price,
-        bot.strategy,
-      );
-      return roundDecimals(profitChange, 2);
-    } else {
-      // Not completed margin_short
-      const closePrice =
-        bot.deal.closing_price > 0
-          ? bot.deal.closing_price
-          : realTimeCurrPrice || bot.deal.current_price;
-
-      if (closePrice === 0) {
-        return 0;
-      }
-      const profitChange = getProfit(
-        bot.deal.opening_price,
-        closePrice,
-        bot.strategy,
-      );
-      return roundDecimals(profitChange, 2);
-    }
-  } else {
+  if (base_order_size <= 0) {
     return 0;
   }
+
+  if (bot.deal.opening_price > 0) {
+    // 1. closing price, 2. real time price, 3. deal current price
+    const currentPrice =
+      bot.deal.closing_price > 0
+        ? bot.deal.closing_price
+        : realTimeCurrPrice > 0
+          ? realTimeCurrPrice
+          : bot.deal.current_price;
+    const buyPrice = bot.deal.opening_price;
+    if (currentPrice > 0) {
+      const profitChange = getProfit(buyPrice, currentPrice, bot.strategy);
+      return roundDecimals(profitChange, 2);
+    }
+    return 0;
+  }
+
+  if (bot.deal.closing_price > 0) {
+    // Completed margin short
+    const profitChange = getProfit(
+      bot.deal.opening_price,
+      bot.deal.closing_price,
+      bot.strategy,
+    );
+    return roundDecimals(profitChange, 2);
+  }
+
+  // Not completed margin_short
+  const closePrice =
+    bot.deal.closing_price > 0
+      ? bot.deal.closing_price
+      : realTimeCurrPrice || bot.deal.current_price;
+
+  if (closePrice === 0) {
+    return 0;
+  }
+  const profitChange = getProfit(
+    bot.deal.opening_price,
+    closePrice,
+    bot.strategy,
+  );
+  return roundDecimals(profitChange, 2);
 }
 
-export function computeTotalProfit(bots: Bot[]) {
-  let currTotalProfit: number = 0;
-  const totalProfit = bots
-    .map((bot) => bot)
-    .reduce((accumulator, bot) => {
-      let openingPrice = 0;
-      let closingPrice = bot.deal.current_price;
+export function computeTotalProfit(bots: Bot[] = []) {
+  const totalProfit = bots.reduce((accumulator, bot) => {
+    const openingPrice = bot?.deal?.opening_price ?? 0;
+    const closingOverride = bot?.deal?.closing_price ?? 0;
+    const currentPrice = bot?.deal?.current_price ?? 0;
+    const closingPrice = closingOverride > 0 ? closingOverride : currentPrice;
 
-      if (bot.deal.opening_price > 0) {
-        openingPrice = bot.deal.opening_price;
-      }
-      if (bot.deal.closing_price > 0) {
-        closingPrice = bot.deal.closing_price;
-      }
+    if (closingPrice === 0 || openingPrice === 0) {
+      return accumulator;
+    }
 
-      if (closingPrice === 0 || openingPrice === 0) {
-        currTotalProfit = 0;
-      } else {
-        currTotalProfit = getProfit(openingPrice, closingPrice, bot.strategy);
-      }
-      return accumulator + currTotalProfit;
-    }, 0);
+    const profit = getProfit(openingPrice, closingPrice, bot.strategy);
+    return accumulator + profit;
+  }, 0);
   return roundDecimals(totalProfit, 2);
 }
 

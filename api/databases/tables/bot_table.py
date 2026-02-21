@@ -1,5 +1,5 @@
 from uuid import uuid4, UUID
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 from pydantic import field_validator
 from sqlalchemy import JSON, Column, Enum
 from pybinbot import (
@@ -14,8 +14,11 @@ from pybinbot import (
 from sqlmodel import Relationship, SQLModel, Field
 from databases.tables.order_table import ExchangeOrderTable, FakeOrderTable
 from databases.tables.deal_table import DealTable
+
 # avoids circular imports
 # https://sqlmodel.tiangolo.com/tutorial/code-structure/#hero-model-file
+if TYPE_CHECKING:
+    from bots.models import BotModel
 
 
 class BotTable(SQLModel, table=True):
@@ -89,6 +92,19 @@ class BotTable(SQLModel, table=True):
         "from_attributes": True,
         "use_enum_values": True,
     }
+
+    @classmethod
+    def from_model(cls, model: "BotModel") -> "BotTable":
+        """
+        Converts a BotModel instance into a BotTable instance for CRUD operations.
+        """
+        # Use only the fields defined on BotTable
+        data = {
+            field: getattr(model, field)
+            for field in cls.model_fields.keys()
+            if hasattr(model, field)
+        }
+        return cls(**data)
 
     @field_validator("logs", mode="before")
     def validate_logs(cls, v, info):

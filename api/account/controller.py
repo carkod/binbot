@@ -5,6 +5,7 @@ from pybinbot import ExchangeId, round_numbers, KucoinApi
 from databases.utils import get_session
 from sqlmodel import Session
 from exchange_apis.kucoin.deals.base import KucoinBaseBalance
+from exchange_apis.kucoin.futures.futures_deal import KucoinFutures
 from typing import Dict
 from enum import Enum
 from tools.config import Config
@@ -23,6 +24,7 @@ class ConsolidatedAccounts:
             secret=self.config.kucoin_secret,
             passphrase=self.config.kucoin_passphrase,
         )
+        self.kucoin_futures_api = KucoinFutures()
         self.binance_assets = Assets(session=self.session)
         self.autotrade_settings = self.binance_assets.autotrade_settings
         self.balances_crud = BalancesCrud(session=self.session)
@@ -118,8 +120,11 @@ class ConsolidatedAccounts:
         Get balances grouped by account type for KuCoin exchange
         """
         balances_by_type = self.kucoin_api.get_account_balance_by_type()
-        fiat_available = 0.0
-        estimated_total_fiat = 0.0
+        futures_balances = self.kucoin_futures_api.get_futures_balance(self.fiat)
+
+        fiat_available = futures_balances.available_balance
+        estimated_total_fiat = futures_balances.account_equity
+
         result_balances: dict[str, dict[str, float]] = {}
 
         for account_type, balances in balances_by_type.items():

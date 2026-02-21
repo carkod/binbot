@@ -1,5 +1,7 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session
 
+from databases.utils import get_session
 from tools.handle_error import (
     json_response,
     json_response_error,
@@ -11,7 +13,7 @@ charts_blueprint = APIRouter()
 
 
 @charts_blueprint.get("/top-gainers", tags=["charts"])
-def top_gainers():
+def top_gainers(session: Session = Depends(get_session)):
     try:
         gainers, losers = MarketDominationController().gainers_losers()
         if gainers:
@@ -30,7 +32,7 @@ def top_gainers():
 
 
 @charts_blueprint.get("/top-losers", tags=["charts"])
-def top_losers():
+def top_losers(session: Session = Depends(get_session)):
     try:
         gainers, losers = MarketDominationController().gainers_losers()
         if losers:
@@ -54,7 +56,7 @@ def top_losers():
     summary="Similar to market_domination, renamed and lighter data size",
     response_model=AdrSeriesResponse,
 )
-def get_adr_series(size: int = 14):
+def get_adr_series(size: int = 14, session: Session = Depends(get_session)):
     data = MarketDominationController().get_adrs(size)
     try:
         if not data:
@@ -78,7 +80,7 @@ def get_adr_series(size: int = 14):
     summary="Get algorithm profit and loss",
     response_model=AdrSeriesResponse,
 )
-def algorithm_performance(size: int = 14):
+def algorithm_performance():
     algorithm_performance_data = MarketDominationController().algo_performance()
     if algorithm_performance_data:
         return json_response(
