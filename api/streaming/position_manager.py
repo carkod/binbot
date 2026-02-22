@@ -574,7 +574,18 @@ class PositionManager:
             self.dataframe_ops()
             self.apex_flow_closing = ApexFlowClose(self.df, self.btc_df)
 
+            # Use Kucoin ticker API to get the latest close price
             close_price = float(self.klines[-1][4])
+            if self.base_streaming.exchange == ExchangeId.KUCOIN:
+                symbol_info = self.base_streaming.kucoin_futures_api.get_symbol_info(
+                    self.symbol
+                )
+                close_price = (
+                    symbol_info.last_trade_price
+                    if symbol_info and symbol_info.last_trade_price
+                    else float(self.klines[-1][4])
+                )
+
             open_price = float(self.klines[-1][1])
 
             self.current_bot = self.base_streaming.get_current_bot(converted_symbol)

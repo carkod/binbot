@@ -123,6 +123,12 @@ class TestPositionManager:
                     )
                 return klines
 
+            def get_symbol_info(self, symbol):
+                class DummySymbolInfo:
+                    last_trade_price = 101.0
+
+                return DummySymbolInfo()
+
         monkeypatch.setattr("streaming.base.BotTableCrud", DummyBotCrud)
         monkeypatch.setattr("streaming.base.PaperTradingTableCrud", DummyPaperCrud)
         monkeypatch.setattr("streaming.base.SymbolsCrud", DummySymbolsCrud)
@@ -130,6 +136,18 @@ class TestPositionManager:
         monkeypatch.setattr("streaming.base.BinanceApi", DummyBinanceApi)
         monkeypatch.setattr("streaming.base.KucoinApi", DummyKucoinApi)
         monkeypatch.setattr("streaming.base.KucoinFutures", DummyKucoinApi)
+
+        # Mock get_symbol_info for KucoinFutures used in process_deal
+        class DummySymbolInfo:
+            last_trade_price = 101.0
+
+        def dummy_get_symbol_info(symbol):
+            return DummySymbolInfo()
+
+        monkeypatch.setattr(
+            "exchange_apis.kucoin.futures.futures_deal.KucoinFutures.get_symbol_info",
+            dummy_get_symbol_info,
+        )
 
         def patched_pre_process(self, exchange, candles):
             from pandas import to_datetime

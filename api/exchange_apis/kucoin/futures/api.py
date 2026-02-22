@@ -1,4 +1,3 @@
-from datetime import datetime
 from decimal import Decimal
 from pybinbot import KucoinRest, KucoinKlineIntervals, OrderType, OrderStatus, DealType
 from uuid import uuid4
@@ -330,58 +329,59 @@ class KucoinFutures(KucoinRest):
         end_time=None,
     ) -> list[list]:
         """
-        Get raw klines/candlestick data from Kucoin Futures.
+        Get raw klines/candlestick data from KuCoin Futures.
 
-        Args:
-            symbol: Trading pair symbol (e.g., "BTC-USDT")
-            interval: Kline interval is a string to keep consistency across exchanges and market type
-            limit: Number of klines to retrieve (max 1500, default 500)
-            start_time: Start time in milliseconds (optional)
-            end_time: End time in milliseconds (optional)
-        Returns:
-            List of klines in format compatible with Binance format:
-            [timestamp, open, high, low, close, volume, close_time, ...]
+        Returns Binance-compatible format:
+        [open_time_ms, open, high, low, close, volume, close_time_ms]
         """
-        # Compute time window based on limit and interval
+
+        # --- Interval ---
         interval_enum = KucoinKlineIntervals(interval)
-        granularity = interval_enum.to_minutes()
-        interval_ms = KucoinKlineIntervals.get_interval_ms(interval_enum)
-        now_ms = int(datetime.now().timestamp() * 1000)
-        # Align end_time to interval boundary
-        end_time = now_ms - (now_ms % interval_ms)
-        start_time = end_time - (limit * interval_ms)
+        granularity = interval_enum.to_minutes()  # e.g., 15 for 15min
+        interval_ms = granularity * 60 * 1000  # 15*60*1000 = 900_000 ms
+
+        # --- UTC now in ms ---
+        now_ms = int(time() * 1000)
+
+        # --- Determine start / end times ---
+        if end_time is None:
+            # Align end_time to the last fully closed candle
+            end_time = now_ms - (now_ms % interval_ms)
+
+        if start_time is None:
+            start_time = end_time - (limit * interval_ms)
 
         builder = (
             GetKlinesReqBuilder()
             .set_symbol(symbol)
             .set_granularity(granularity)
-            .set_from_(start_time)
-            .set_to(end_time)
+            .set_from_(int(start_time))
+            .set_to(int(end_time))
         )
-
         request = builder.build()
         response = self.futures_market_api.get_klines(request)
 
-        # Convert Kucoin format to Binance-compatible format
+        # --- Parse response ---
         klines = []
         for kline in response.data:
-            open_time = kline[0] * 1000  # convert to ms
+            open_time_ms = int(kline[0])
             open_price = float(kline[1])
             high_price = float(kline[2])
             low_price = float(kline[3])
             close_price = float(kline[4])
             volume = float(kline[5])
-            close_time = open_time + interval_ms - 1
+
+            close_time_ms = open_time_ms + interval_ms - 1
 
             klines.append(
                 [
-                    open_time,
+                    open_time_ms,
                     open_price,
                     high_price,
                     low_price,
                     close_price,
                     volume,
-                    close_time,
+                    close_time_ms,
                 ]
             )
 
