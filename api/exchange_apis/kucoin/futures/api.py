@@ -329,61 +329,61 @@ class KucoinFutures(KucoinRest):
         end_time=None,
     ) -> list[list]:
         """
-        Get the latest fully closed klines/candlesticks from KuCoin Futures.
+        Get raw klines/candlestick data from KuCoin Futures.
 
-        Returns list of candles in Binance-compatible format:
+        Returns Binance-compatible format:
         [open_time_ms, open, high, low, close, volume, close_time_ms]
         """
 
         # --- Interval ---
         interval_enum = KucoinKlineIntervals(interval)
-        granularity = interval_enum.to_minutes()        # e.g., 15 for "15min"
-        interval_ms = granularity * 60 * 1000          # 15*60*1000 = 900_000 ms
+        granularity = interval_enum.to_minutes()  # e.g., 15 for 15min
+        interval_ms = granularity * 60 * 1000  # 15*60*1000 = 900_000 ms
+
+        # --- UTC now in ms ---
+        now_ms = int(time() * 1000)
 
         # --- Determine start / end times ---
-        now_ms = int(time() * 1000)  # current UTC in ms
-
-        # Align end_time to the last fully closed candle
         if end_time is None:
+            # Align end_time to the last fully closed candle
             end_time = now_ms - (now_ms % interval_ms)
 
-        # Pull `limit` candles before end_time
         if start_time is None:
             start_time = end_time - (limit * interval_ms)
 
-        # --- Build request (KuCoin expects seconds) ---
         builder = (
             GetKlinesReqBuilder()
             .set_symbol(symbol)
             .set_granularity(granularity)
-            .set_from_(int(start_time // 1000))
-            .set_to(int(end_time // 1000))
+            .set_from_(int(start_time))
+            .set_to(int(end_time))
         )
         request = builder.build()
         response = self.futures_market_api.get_klines(request)
 
-        # Parse and convert to Binance-compatible format
+        # --- Parse response ---
         klines = []
         for kline in response.data:
-            open_time_ms = int(kline[0])       # KuCoin already returns ms
+            open_time_ms = int(kline[0])
             open_price = float(kline[1])
             high_price = float(kline[2])
             low_price = float(kline[3])
             close_price = float(kline[4])
             volume = float(kline[5])
 
-            # Close time = open + interval - 1 ms
             close_time_ms = open_time_ms + interval_ms - 1
 
-            klines.append([
-                open_time_ms,
-                open_price,
-                high_price,
-                low_price,
-                close_price,
-                volume,
-                close_time_ms,
-            ])
+            klines.append(
+                [
+                    open_time_ms,
+                    open_price,
+                    high_price,
+                    low_price,
+                    close_price,
+                    volume,
+                    close_time_ms,
+                ]
+            )
 
         return klines
 
