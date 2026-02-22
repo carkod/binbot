@@ -270,7 +270,14 @@ class KucoinFuturesDeal(KucoinBaseBalance):
             self.active_bot.deal.stop_loss_price = round_numbers(
                 stop_loss_price, self.price_precision
             )
-            self.kucoin_futures_api.cancel_all_futures_orders(self.kucoin_symbol)
+            stop_orders = self.kucoin_futures_api.get_all_stop_loss_orders(
+                self.kucoin_symbol
+            )
+            stop_order_ids = [order.id for order in stop_orders]
+            self.kucoin_futures_api.futures_order_api.batch_cancel_orders(
+                stop_order_ids
+            )
+
             self.place_stop_loss()
 
         if (
