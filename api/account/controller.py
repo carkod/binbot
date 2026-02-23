@@ -1,11 +1,10 @@
 from account.schemas import BalanceSchema, KucoinBalance
 from databases.crud.balances_crud import BalancesCrud
 from exchange_apis.binance.assets import Assets
-from pybinbot import ExchangeId, round_numbers, KucoinApi
+from pybinbot import ExchangeId, round_numbers, KucoinApi, KucoinFutures
 from databases.utils import get_session
 from sqlmodel import Session
 from exchange_apis.kucoin.deals.base import KucoinBaseBalance
-from exchange_apis.kucoin.futures.futures_deal import KucoinFutures
 from typing import Dict
 from enum import Enum
 from tools.config import Config
@@ -24,7 +23,11 @@ class ConsolidatedAccounts:
             secret=self.config.kucoin_secret,
             passphrase=self.config.kucoin_passphrase,
         )
-        self.kucoin_futures_api = KucoinFutures()
+        self.kucoin_futures_api = KucoinFutures(
+            key=self.config.kucoin_key,
+            secret=self.config.kucoin_secret,
+            passphrase=self.config.kucoin_passphrase,
+        )
         self.binance_assets = Assets(session=self.session)
         self.autotrade_settings = self.binance_assets.autotrade_settings
         self.balances_crud = BalancesCrud(session=self.session)
