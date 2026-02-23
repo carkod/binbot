@@ -15,16 +15,19 @@ from pybinbot import (
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from bots.models import BotModel, OrderModel
-from exchange_apis.kucoin.futures.futures_deal import KucoinFuturesDeal
+from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import (
     AddOrderReq,
 )
 from kucoin_universal_sdk.model.common import RestError
 
 
-class FuturesLongDeal(KucoinFuturesDeal):
+class PositionDeal(KucoinPositionDeal):
     """
-    Long deal implementation for Kucoin futures trading.
+    Position-based implementation for Kucoin futures trading.
+
+    Previously called FuturesLongDeal, but long or short position logic is all handled within this class
+    since Kucoin Futures logic allows easy isolated margin and switching positions.
 
     Happens after open_deal is executed
     formerly known as streaming updates

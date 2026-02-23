@@ -22,7 +22,7 @@ from exchange_apis.kucoin.futures.balance import KucoinFuturesBalance
 from bots.models import OrderModel
 
 
-class KucoinFuturesDeal(KucoinBaseBalance):
+class KucoinPositionDeal(KucoinBaseBalance):
     """
     Futures-only deal entry implementation (USDT-M).
 

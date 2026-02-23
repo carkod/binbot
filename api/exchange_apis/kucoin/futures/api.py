@@ -71,10 +71,8 @@ class KucoinFutures(KucoinRest):
 
     def __init__(self):
         self.config = Config()
-        self.DEFAULT_LEVERAGE = (
-            1.5  # assuming stop loss 3% by default, conservative risk
-        )
-        self.DEFAULT_MULTIPLIER = 1  # for USDT-M futures
+        self.DEFAULT_LEVERAGE = 3
+        self.DEFAULT_MULTIPLIER = 1
         super().__init__(
             key=self.config.kucoin_key,
             secret=self.config.kucoin_secret,
