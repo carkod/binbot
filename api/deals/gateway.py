@@ -7,7 +7,7 @@ from exchange_apis.kucoin.deals.short_deal import KucoinShortDeal
 from databases.crud.autotrade_crud import AutotradeCrud
 from exchange_apis.binance.deals.short import BinanceShortDeal
 from exchange_apis.binance.deals.long import BinanceLongDeal
-from exchange_apis.kucoin.futures.long_deal import FuturesLongDeal
+from exchange_apis.kucoin.futures.position_deal import PositionDeal
 
 
 class DealGateway:
@@ -29,18 +29,21 @@ class DealGateway:
             BinanceShortDeal,
             KucoinLongDeal,
             KucoinShortDeal,
-            FuturesLongDeal,
+            PositionDeal,
         ]
         if self.autotrade_settings.exchange_id == ExchangeId.KUCOIN:
-            if bot.strategy == Strategy.margin_short:
-                self.deal = KucoinShortDeal(bot, db_table=db_table)
+            if bot.market_type == MarketType.FUTURES:
+                self.deal = PositionDeal(bot, db_table=db_table)
             else:
-                if bot.market_type == MarketType.FUTURES:
-                    self.deal = FuturesLongDeal(bot, db_table=db_table)
+                if bot.strategy == Strategy.margin_short:
+                    self.deal = KucoinShortDeal(bot, db_table=db_table)
                 else:
-                    raise NotImplementedError(
-                        "Spot trading is not supported for Kucoin exchange"
-                    )
+                    if bot.market_type == MarketType.FUTURES:
+                        self.deal = PositionDeal(bot, db_table=db_table)
+                    else:
+                        raise NotImplementedError(
+                            "Spot trading is not supported for Kucoin exchange"
+                        )
         else:
             if bot.strategy == Strategy.margin_short:
                 self.deal = BinanceShortDeal(bot, db_table=db_table)

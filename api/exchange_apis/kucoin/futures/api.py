@@ -56,6 +56,9 @@ from kucoin_universal_sdk.generate.account.account import (
 from kucoin_universal_sdk.generate.futures.positions.model_get_isolated_margin_risk_limit_resp import (
     GetIsolatedMarginRiskLimitData,
 )
+from kucoin_universal_sdk.generate.futures.order.model_get_stop_order_list_resp import (
+    GetStopOrderListItems,
+)
 
 
 class KucoinFutures(KucoinRest):
@@ -68,10 +71,8 @@ class KucoinFutures(KucoinRest):
 
     def __init__(self):
         self.config = Config()
-        self.DEFAULT_LEVERAGE = (
-            1.5  # assuming stop loss 3% by default, conservative risk
-        )
-        self.DEFAULT_MULTIPLIER = 1  # for USDT-M futures
+        self.DEFAULT_LEVERAGE = 3
+        self.DEFAULT_MULTIPLIER = 1
         super().__init__(
             key=self.config.kucoin_key,
             secret=self.config.kucoin_secret,
@@ -259,6 +260,15 @@ class KucoinFutures(KucoinRest):
             time_in_force=order_details.time_in_force,
             deal_type=DealType.base_order,
         )
+
+    def get_all_stop_loss_orders(self, symbol: str) -> list[GetStopOrderListItems]:
+        """
+        Get all open stop loss orders for a symbol.
+        """
+        req = GetPartOrderBookReqBuilder().set_symbol(symbol).build()
+        book = self.futures_order_api.get_stop_order_list(req)
+
+        return book.items
 
     def cancel_all_futures_orders(self, symbol: str) -> List[str]:
         """Cancel all open futures orders, optionally filtered by symbol.
