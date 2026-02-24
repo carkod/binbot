@@ -279,10 +279,11 @@ class KucoinPositionDeal(KucoinBaseBalance):
             stop_orders = self.kucoin_futures_api.get_all_stop_loss_orders(
                 self.kucoin_symbol
             )
-            stop_order_ids = [order.id for order in stop_orders]
-            self.kucoin_futures_api.futures_order_api.batch_cancel_orders(
-                stop_order_ids
-            )
+            if len(stop_orders) > 0:
+                stop_order_ids = [order.id for order in stop_orders]
+                self.kucoin_futures_api.futures_order_api.batch_cancel_orders(
+                    stop_order_ids
+                )
 
             self.place_stop_loss()
 
