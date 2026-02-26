@@ -180,8 +180,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
 
-        # For system to work. Only Futures these 2 values are the same (we are not trading underlying asset)
-        self.active_bot.deal.base_order_size = self.active_bot.fiat_order_size
+        # For Futures, base_order_size is contracts
+        self.active_bot.deal.base_order_size = self.active_bot.fiat_order_size * self.kucoin_futures_api.DEFAULT_LEVERAGE
         self.active_bot.deal.opening_price = order.price
         self.active_bot.deal.opening_qty = order.qty
         self.active_bot.deal.opening_timestamp = order.timestamp
