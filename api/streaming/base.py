@@ -4,8 +4,6 @@ from databases.crud.bot_crud import BotTableCrud
 from databases.crud.candles_crud import CandlesCrud
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
-from dotenv import load_dotenv
-from exchange_apis.kucoin.futures.api import KucoinFutures
 from pybinbot import (
     BinanceApi,
     BinanceKlineIntervals,
@@ -14,12 +12,10 @@ from pybinbot import (
     KucoinKlineIntervals,
     Status,
     KucoinApi,
+    KucoinFutures,
 )
 from tools.config import Config
 from databases.utils import independent_session
-
-
-load_dotenv()
 
 
 class BaseStreaming:
@@ -39,7 +35,11 @@ class BaseStreaming:
             secret=self.config.kucoin_secret,
             passphrase=self.config.kucoin_passphrase,
         )
-        self.kucoin_futures_api = KucoinFutures()
+        self.kucoin_futures_api = KucoinFutures(
+            key=self.config.kucoin_key,
+            secret=self.config.kucoin_secret,
+            passphrase=self.config.kucoin_passphrase,
+        )
         self.bot_controller = BotTableCrud(session=self.session)
         self.paper_trading_controller = PaperTradingTableCrud()
         self.symbols_crud = SymbolsCrud()

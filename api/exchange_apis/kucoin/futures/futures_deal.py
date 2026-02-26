@@ -1,6 +1,7 @@
 from typing import Type, Union
 from time import time
 from pybinbot import (
+    OrderBase,
     Strategy,
     round_numbers,
     DealType,
@@ -8,18 +9,18 @@ from pybinbot import (
     Status,
     OrderType,
     OrderStatus,
+    BinbotErrors,
+    KucoinFutures,
 )
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.bot_crud import BotTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
 from bots.models import BotModel
+from bots.models import OrderModel
 from exchange_apis.kucoin.deals.base import KucoinBaseBalance
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
-from pybinbot import BinbotErrors
-from exchange_apis.kucoin.futures.api import KucoinFutures
 from exchange_apis.kucoin.futures.balance import KucoinFuturesBalance
-from bots.models import OrderModel
 
 
 class KucoinPositionDeal(KucoinBaseBalance):
@@ -40,7 +41,11 @@ class KucoinPositionDeal(KucoinBaseBalance):
         super().__init__()
         self.active_bot = bot
         self.db_table = db_table
-        self.kucoin_futures_api = KucoinFutures()
+        self.kucoin_futures_api = KucoinFutures(
+            key=self.config.kucoin_key,
+            secret=self.config.kucoin_secret,
+            passphrase=self.config.kucoin_passphrase,
+        )
         self.controller: Union[BotTableCrud, PaperTradingTableCrud]
 
         if db_table == PaperTradingTable:
@@ -159,7 +164,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             )
 
         if self.active_bot.strategy == Strategy.margin_short:
-            order: OrderModel = self.kucoin_futures_api.sell(
+            order: OrderBase = self.kucoin_futures_api.sell(
                 symbol=self.kucoin_symbol,
                 qty=contracts,
             )
@@ -170,12 +175,13 @@ class KucoinPositionDeal(KucoinBaseBalance):
             )
 
         order.deal_type = DealType.base_order
+        order = OrderModel(**order.model_dump())
         self.active_bot.orders.append(order)
 
         position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
 
-        # For system to work. Only Futures these 2 values are the same (we are not trading underlying asset)
-        self.active_bot.deal.base_order_size = self.active_bot.fiat_order_size
+        # For Futures, base_order_size is contracts
+        self.active_bot.deal.base_order_size = self.active_bot.fiat_order_size * self.kucoin_futures_api.DEFAULT_LEVERAGE
         self.active_bot.deal.opening_price = order.price
         self.active_bot.deal.opening_qty = order.qty
         self.active_bot.deal.opening_timestamp = order.timestamp
@@ -273,10 +279,11 @@ class KucoinPositionDeal(KucoinBaseBalance):
             stop_orders = self.kucoin_futures_api.get_all_stop_loss_orders(
                 self.kucoin_symbol
             )
-            stop_order_ids = [order.id for order in stop_orders]
-            self.kucoin_futures_api.futures_order_api.batch_cancel_orders(
-                stop_order_ids
-            )
+            if len(stop_orders) > 0:
+                stop_order_ids = [order.id for order in stop_orders]
+                self.kucoin_futures_api.futures_order_api.batch_cancel_orders(
+                    stop_order_ids
+                )
 
             self.place_stop_loss()
 

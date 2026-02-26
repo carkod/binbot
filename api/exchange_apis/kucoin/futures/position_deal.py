@@ -95,7 +95,7 @@ class PositionDeal(KucoinPositionDeal):
                     "Dispatching futures buy order for take profit...",
                     self.active_bot,
                 )
-                order = self.kucoin_futures_api.buy(
+                order_base = self.kucoin_futures_api.buy(
                     symbol=self.kucoin_symbol,
                     qty=qty,
                     reduce_only=True,
@@ -105,7 +105,7 @@ class PositionDeal(KucoinPositionDeal):
                     "Dispatching futures sell order for take profit...",
                     self.active_bot,
                 )
-                order = self.kucoin_futures_api.place_futures_order(
+                order_base = self.kucoin_futures_api.place_futures_order(
                     symbol=self.kucoin_symbol,
                     side=AddOrderReq.SideEnum.SELL,
                     size=qty,
@@ -113,20 +113,8 @@ class PositionDeal(KucoinPositionDeal):
                     reduce_only=True,
                 )
 
-            # We don't have full fee info here; focus on core fields
-            price = float(order.price) if getattr(order, "price", None) else 0.0
-            order_data = OrderModel(
-                timestamp=int(time() * 1000),
-                order_id=order.order_id,
-                deal_type=DealType.take_profit,
-                pair=self.kucoin_symbol,
-                order_side=close_side,
-                order_type="MARKET",
-                price=price,
-                qty=float(qty),
-                time_in_force="GTC",
-                status=OrderStatus.FILLED,
-            )
+            # Convert OrderBase to OrderModel using model_dump/model_construct
+            order_data = OrderModel.model_construct(**order_base.model_dump())
 
         self.active_bot.orders.append(order_data)
         self.active_bot.deal.closing_price = float(order_data.price)
@@ -180,17 +168,18 @@ class PositionDeal(KucoinPositionDeal):
             qty = self.active_bot.deal.opening_qty
             try:
                 if self.active_bot.strategy == Strategy.margin_short:
-                    stop_loss_order = self.kucoin_futures_api.buy(
+                    order_base = self.kucoin_futures_api.buy(
                         symbol=self.kucoin_symbol,
                         qty=qty,
                         reduce_only=True,
                     )
                 else:
-                    stop_loss_order = self.kucoin_futures_api.sell(
+                    order_base = self.kucoin_futures_api.sell(
                         symbol=self.kucoin_symbol,
                         qty=qty,
                         reduce_only=True,
                     )
+                stop_loss_order = OrderModel.model_construct(**order_base.model_dump())
             except RestError as e:
                 if float(e.response.code) == 300009:
                     self.controller.update_logs(
@@ -267,21 +256,19 @@ class PositionDeal(KucoinPositionDeal):
                 self.active_bot,
             )
             if self.active_bot.strategy == Strategy.margin_short:
-                order = self.kucoin_futures_api.buy(
+                order_base = self.kucoin_futures_api.buy(
                     symbol=self.kucoin_symbol,
                     qty=qty,
                     reduce_only=True,
                 )
             else:
-                order = self.kucoin_futures_api.sell(
+                order_base = self.kucoin_futures_api.sell(
                     symbol=self.kucoin_symbol,
                     qty=qty,
                     reduce_only=True,
                 )
 
-            price = float(order.price)
-            order.deal_type = DealType.trailling_profit
-            order_data = order
+            order_data = OrderModel.model_construct(**order_base.model_dump())
 
         self.active_bot.orders.append(order_data)
 
@@ -354,11 +341,13 @@ class PositionDeal(KucoinPositionDeal):
         bot = self.bot_crud.get_one(bot_id=str(bot.id))
         self.active_bot = BotModel(**bot.model_dump())
 
-        reverse_order: OrderModel = self.kucoin_futures_api.sell(
+        reverse_order_base = self.kucoin_futures_api.sell(
             symbol=self.kucoin_symbol,
             qty=self.active_bot.deal.opening_qty,
             reduce_only=False,
         )
+
+        reverse_order = OrderModel.model_construct(**reverse_order_base.model_dump())
 
         if reverse_order:
             reverse_order.deal_type = DealType.base_order

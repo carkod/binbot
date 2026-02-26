@@ -1,5 +1,13 @@
 import React, { type FC, useContext, useEffect, useState } from "react";
-import { Col, Container, Form, InputGroup, Row, Tab } from "react-bootstrap";
+import {
+  Col,
+  Container,
+  Form,
+  FormLabel,
+  InputGroup,
+  Row,
+  Tab,
+} from "react-bootstrap";
 import { type FieldValues, useForm } from "react-hook-form";
 import { useImmer } from "use-immer";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
@@ -22,6 +30,7 @@ import {
   setTestBotField,
   setTestBotToggle,
 } from "../../features/bots/paperTradingSlice";
+import InputGroupText from "react-bootstrap/esm/InputGroupText";
 
 interface ErrorsState {
   pair?: string;
@@ -242,7 +251,7 @@ const BaseOrderTab: FC<{
               <Col md="6" sm="12" className="my-6">
                 <InputTooltip
                   name="base_order_size"
-                  tooltip={"Amount of base asset to trade"}
+                  tooltip={"Notional size (position size * leverage)"}
                   label={
                     bot.market_type === MarketType.FUTURES
                       ? "Contract size"
@@ -261,21 +270,30 @@ const BaseOrderTab: FC<{
                 </InputTooltip>
               </Col>
               <Col md="6" sm="12" className="my-6">
-                <InputTooltip
-                  name="total_asset_amount"
-                  tooltip={"Amount of asset to trade"}
-                  label="Asset amount"
-                  errors={errors}
-                  secondaryText={baseAsset}
-                >
-                  <Form.Control
-                    type="number"
-                    name="total_asset_amount"
-                    autoComplete="off"
-                    disabled={true}
-                    value={bot.deal.base_order_size * currentPrice}
-                  />
-                </InputTooltip>
+                {bot.market_type === MarketType.FUTURES ? (
+                  <div>
+                    <FormLabel>Leverage:</FormLabel>
+                    <InputGroupText>3x (harcoded)</InputGroupText>
+                  </div>
+                ) : (
+                  <>
+                    <InputTooltip
+                      name="total_asset_amount"
+                      tooltip={"Amount of asset to trade"}
+                      label="Asset amount"
+                      errors={errors}
+                      secondaryText={baseAsset}
+                    >
+                      <Form.Control
+                        type="number"
+                        name="total_asset_amount"
+                        autoComplete="off"
+                        disabled={true}
+                        value={bot.deal.base_order_size * currentPrice}
+                      />
+                    </InputTooltip>
+                  </>
+                )}
               </Col>
             </Row>
           )}

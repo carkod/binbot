@@ -1,15 +1,21 @@
 from typing import Dict, Tuple
 from databases.crud.autotrade_crud import AutotradeCrud
 from databases.crud.bot_crud import BotTableCrud
-from exchange_apis.kucoin.futures.api import KucoinFutures
+from pybinbot import KucoinFutures
 from kucoin_universal_sdk.generate.account.account import (
     GetFuturesAccountReqBuilder,
 )
+from tools.config import Config
 
 
 class KucoinFuturesBalance:
     def __init__(self):
-        self.kucoin_api = KucoinFutures()
+        self.config = Config()
+        self.kucoin_futures_api = KucoinFutures(
+            key=self.config.kucoin_key,
+            secret=self.config.kucoin_secret,
+            passphrase=self.config.kucoin_passphrase,
+        )
         self.autotrade_settings = AutotradeCrud().get_settings()
         self.bot_crud = BotTableCrud()
         self.fiat = self.autotrade_settings.fiat
@@ -23,7 +29,7 @@ class KucoinFuturesBalance:
         synthetic "futures" account type.
         """
         futures_request = GetFuturesAccountReqBuilder().set_currency(self.fiat).build()
-        account = self.kucoin_api.futures_account_api.get_futures_account(
+        account = self.kucoin_futures_api.futures_account_api.get_futures_account(
             futures_request
         )
 
