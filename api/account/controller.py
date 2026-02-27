@@ -50,10 +50,13 @@ class ConsolidatedAccounts:
         estimated_total_fiat = 0.0
         fiat_available = 0.0
         if self.autotrade_settings.exchange_id == ExchangeId.KUCOIN:
-            kucoin_balance = KucoinBaseBalance()
-            total_balances, estimated_total_fiat, fiat_available = (
-                kucoin_balance.normalized_compute_balance()
-            )
+            kucoin_balance = self.get_kucoin_balances_by_type()
+            for _, balances in kucoin_balance.balances.items():
+                for asset, balance in balances.items():
+                    total_balances[asset] = total_balances.get(asset, 0) + balance
+
+            estimated_total_fiat = kucoin_balance.estimated_total_fiat
+            fiat_available = kucoin_balance.fiat_available
 
         else:
             binance_balances = self.binance_assets.get_raw_balance()
