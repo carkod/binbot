@@ -273,7 +273,7 @@ class PositionDeal(KucoinPositionDeal):
         self.active_bot.orders.append(order_data)
 
         self.active_bot.deal.trailling_profit_price = float(order_data.price)
-        deviation_pct = float(self.active_bot.trailling_deviation or 0) / 100
+        deviation_pct = self.active_bot.trailling_deviation / 100
         if self.active_bot.strategy == Strategy.margin_short:
             trailling_stop_loss_price = float(order_data.price) + (
                 float(order_data.price) * deviation_pct
