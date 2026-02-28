@@ -285,7 +285,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 stop_order_ids = [order.id for order in stop_orders]
                 self.kucoin_futures_api.batch_cancel_stop_loss_orders(stop_order_ids)
 
-            self.place_stop_loss()
+            # when autoswitch is enabled, stop loss placed in the market will reduce the position to 0
+            if not self.active_bot.margin_short_reversal:
+                self.place_stop_loss()
 
         if (
             self.active_bot.trailling
