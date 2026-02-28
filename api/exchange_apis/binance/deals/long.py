@@ -1,4 +1,4 @@
-from typing import Type, Union
+from typing import Type
 from databases.crud.autotrade_crud import AutotradeCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from bots.models import BotModel, OrderModel
@@ -23,7 +23,7 @@ class BinanceLongDeal(BinanceSpotDeal):
     """
 
     def __init__(
-        self, bot, db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable
+        self, bot, db_table: Type[BotTable] | Type[PaperTradingTable] = BotTable
     ) -> None:
         super().__init__(bot, db_table=db_table)
         self.autotrade_settings = AutotradeCrud().get_settings()

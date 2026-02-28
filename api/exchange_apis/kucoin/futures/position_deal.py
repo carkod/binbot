@@ -1,6 +1,5 @@
 from time import time
-from typing import Type, Union
-
+from typing import Union, Type
 from pybinbot import (
     BotBase,
     round_numbers,
@@ -11,7 +10,11 @@ from pybinbot import (
     OrderStatus,
     OrderType,
     Strategy,
+    convert_to_kucoin_symbol,
+    MarketType,
 )
+from streaming.futures_position import FuturesPosition
+from streaming.spot_position import SpotPosition
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from bots.models import BotModel, OrderModel
@@ -20,6 +23,7 @@ from kucoin_universal_sdk.generate.futures.order.model_add_order_req import (
     AddOrderReq,
 )
 from kucoin_universal_sdk.model.common import RestError
+from streaming.base import BaseStreaming
 
 
 class PositionDeal(KucoinPositionDeal):
@@ -35,10 +39,16 @@ class PositionDeal(KucoinPositionDeal):
     """
 
     def __init__(
-        self, bot: BotModel, db_table: Type[Union[BotTable, PaperTradingTable]]
+        self,
+        bot: BotModel,
+        db_table: Type[BotTable] | Type[PaperTradingTable] = BotTable,
     ) -> None:
         super().__init__(bot=bot, db_table=db_table)
+        self.base_streaming = BaseStreaming()
         self.active_bot = bot
+        self.price_precision = self.symbol_info.price_precision
+        self.qty_precision = self.symbol_info.qty_precision
+        self.kucoin_symbol = convert_to_kucoin_symbol(bot)
 
     def take_profit_order(self) -> BotModel:
         """
@@ -559,6 +569,10 @@ class PositionDeal(KucoinPositionDeal):
         if opening_price <= 0:
             return
 
+        if close_price > 0:
+            self.close_price = close_price
+            self.active_bot.deal.current_price = close_price
+
         take_profit_pct = float(self.active_bot.take_profit) / 100
         deviation_pct = float(self.active_bot.trailling_deviation) / 100
 
@@ -607,7 +621,49 @@ class PositionDeal(KucoinPositionDeal):
 
         self.controller.save(self.active_bot)
 
-    def deal_exit_orchestration(self, close_price: float, open_price: float):
+    def deal_exit_orchestration(
+        self, close_price: float, open_price: float
+    ) -> BotModel:
+        cls: Union[SpotPosition, FuturesPosition]
+        if self.active_bot.market_type == MarketType.FUTURES:
+            cls = FuturesPosition(
+                base_streaming=self.base_streaming,
+                bot=self.active_bot,
+                price_precision=self.price_precision,
+                qty_precision=self.qty_precision,
+                db_table=self.db_table,
+            )
+            cls.base_streaming.kucoin_benchmark_symbol = "ETHBTCUSDTM"
+        else:
+            cls = SpotPosition(
+                base_streaming=self.base_streaming,
+                bot=self.active_bot,
+                price_precision=self.price_precision,
+                qty_precision=self.qty_precision,
+                db_table=self.db_table,
+            )
+
+        klines, btc_klines = cls.dataframe_ops()
+        # returns raw klines
+        self.klines = klines
+        self.btc_klines = btc_klines
+
+        cls.order_updates()
+
+        # Use Kucoin ticker API to get the latest close price
+        self.api = self.base_streaming.kucoin_futures_api
+        symbol_info = self.api.get_symbol_info(self.active_bot.pair)
+        close_price = (
+            symbol_info.last_trade_price
+            if symbol_info and symbol_info.last_trade_price
+            else float(self.klines[-1][4])
+        )
+
+        open_price = float(self.klines[-1][1])
+
+        if self.active_bot.dynamic_trailling:
+            cls.market_trailing_analytics(current_price=close_price)
+
         if self.active_bot.strategy == Strategy.margin_short:
             return self.exit_short(close_price)
         return self.exit_long(close_price, open_price)

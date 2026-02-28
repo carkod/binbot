@@ -38,7 +38,7 @@ class KucoinSpotDeal(KucoinBaseBalance):
     def __init__(
         self,
         bot: BotModel,
-        db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable,
+        db_table: Type[BotTable] | Type[PaperTradingTable] = BotTable,
     ) -> None:
         super().__init__()
         self.active_bot = bot

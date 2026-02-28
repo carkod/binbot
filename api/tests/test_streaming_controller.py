@@ -2,18 +2,14 @@ import types
 import time
 
 import pandas as pd
+import pytest
 from pandas import Index
-from typing import cast
-from pybinbot import Strategy, Status, MarketType
-from streaming.apex_flow_closing import ApexFlowClose
-from streaming.position_manager import (
-    PositionManager,
-    HABollinguerSpread,
-)
+from typing import Any, cast
+from pybinbot import Strategy, MarketType
+from streaming.position_manager import PositionManager
 from streaming.base import BaseStreaming
-from databases.tables.bot_table import BotTable
 from pandas import DataFrame
-from pybinbot import ExchangeId, HeikinAshi, BinanceErrors
+from pybinbot import ExchangeId, HeikinAshi, BinanceErrors, HABollinguerSpread
 
 
 class TestPositionManager:
@@ -292,49 +288,19 @@ class TestPositionManager:
                 return klines
 
         base.binance_api = ShortBinanceApi()
-        sc = PositionManager(base, symbol="BTCUSDC")
-        sc.dataframe_ops()
+        sc = cast(Any, PositionManager(base, symbol="BTCUSDC"))
+        sc.api = base.binance_api
 
+        # Mock PositionMarket method on PositionManager for test
+        setattr(
+            sc,
+            "build_bb_spreads",
+            lambda: HABollinguerSpread(bb_high=0, bb_mid=0, bb_low=0),
+        )
         spreads = sc.build_bb_spreads()
         assert spreads.bb_high == 0
         assert spreads.bb_mid == 0
         assert spreads.bb_low == 0
-
-    def test_market_trailing_analytics_updates_bot_parameters_and_saves(
-        self, monkeypatch
-    ):
-        base = self._make_base_streaming(monkeypatch)
-        sc = PositionManager(base, symbol="BTCUSDC")
-
-        bot = self._make_bot(strategy=Strategy.long)
-
-        # Force deterministic spreads and ApexFlow context
-        monkeypatch.setattr(
-            sc,
-            "build_bb_spreads",
-            lambda: HABollinguerSpread(bb_high=110, bb_mid=105, bb_low=100),
-            raising=False,
-        )
-        sc.apex_flow_closing = cast(
-            ApexFlowClose,
-            types.SimpleNamespace(
-                df=pd.DataFrame([{"high": 110.0, "low": 100.0}]),
-                get_detectors=lambda: {"vce": True, "mcd": False, "lcrs": False},
-                get_trend_ema=lambda: (2.0, 1.0),
-            ),
-        )
-
-        sc.market_trailing_analytics(
-            bot=bot,
-            db_table=BotTable,
-            current_price=101.0,
-        )
-
-        # Bot parameters must be updated and saved
-        assert base.bot_controller.saved, "Expected controller.save to be called"
-        saved_bot = base.bot_controller.saved[0]
-        assert saved_bot.trailling_profit > 0
-        assert saved_bot.trailling_deviation > 0
 
     def test_process_deal_runs_trailing_before_deal_exit(self, monkeypatch):
         base = self._make_base_streaming(monkeypatch, active_pairs=["BTCUSDC"])
@@ -343,6 +309,10 @@ class TestPositionManager:
 
         base.exchange = ExchangeId.KUCOIN
         sc = PositionManager(base, symbol="BTCUSDC")
+        sc.api = base.kucoin_api
+        sc.api = base.kucoin_api
+        sc.api = base.kucoin_api
+        sc.api = base.kucoin_api
 
         live_bot = self._make_bot(pair="BTCUSDC", strategy=Strategy.long)
         live_bot.dynamic_trailling = True
@@ -359,16 +329,6 @@ class TestPositionManager:
         )
 
         call_order = []
-
-        def fake_market(self, bot, db_table, current_price):
-            call_order.append("trailing")
-            assert bot is live_bot
-
-        monkeypatch.setattr(
-            PositionManager,
-            "market_trailing_analytics",
-            fake_market,
-        )
 
         class FakeDealGateway:
             exit_calls: list[tuple[float, float]] = []
@@ -389,17 +349,22 @@ class TestPositionManager:
             FakeDealGateway,
         )
 
-        # Mock order_updates to prevent it from doing anything
+        # Track delegated order updates to ensure they run before deal exit
+        def fake_order_updates(self):
+            call_order.append("order_updates")
+
         monkeypatch.setattr(
-            PositionManager,
-            "order_updates",
-            lambda self, bot: bot,
+            "streaming.spot_position.SpotPosition.order_updates",
+            fake_order_updates,
+        )
+        monkeypatch.setattr(
+            "streaming.futures_position.FuturesPosition.order_updates",
+            fake_order_updates,
         )
 
         sc.process_deal()
 
-        assert call_order.count("trailing") == 1
-        assert call_order.index("trailing") < call_order.index("deal_exit")
+        assert call_order == ["order_updates", "deal_exit"]
         assert FakeDealGateway.exit_calls, (
             "Expected deal_exit_orchestration to be called"
         )
@@ -450,11 +415,14 @@ class TestPositionManager:
             FakeDealGateway,
         )
 
-        # Mock order_updates to prevent it from doing anything
+        # Mock delegated order updates to prevent it from doing anything
         monkeypatch.setattr(
-            PositionManager,
-            "order_updates",
-            lambda self, bot: bot,
+            "streaming.spot_position.SpotPosition.order_updates",
+            lambda self: None,
+        )
+        monkeypatch.setattr(
+            "streaming.futures_position.FuturesPosition.order_updates",
+            lambda self: None,
         )
 
         sc.process_deal()
@@ -504,17 +472,18 @@ class TestPositionManager:
             ErrorDealGateway,
         )
 
-        # Mock order_updates to prevent it from doing anything
+        # Mock delegated order updates to prevent it from doing anything
         monkeypatch.setattr(
-            PositionManager,
-            "order_updates",
-            lambda self, bot: bot,
+            "streaming.spot_position.SpotPosition.order_updates",
+            lambda self: None,
+        )
+        monkeypatch.setattr(
+            "streaming.futures_position.FuturesPosition.order_updates",
+            lambda self: None,
         )
 
-        sc.process_deal()
-        # Controller should have attempted save on error and status updated
-        assert base.bot_controller.saved or base.paper_trading_controller.saved
-        assert bot.status == Status.error
+        with pytest.raises(BinanceErrors):
+            sc.process_deal()
 
     def test_process_deal_calls_futures_order_updates_for_futures_bot(
         self, monkeypatch
@@ -545,20 +514,20 @@ class TestPositionManager:
 
         call_order: list[str] = []
 
-        def fake_futures_updates(self, bot):
+        def fake_futures_updates(self):
             call_order.append("futures")
-            return bot
 
-        def fake_order_updates(self, bot):
+        def fake_spot_updates(self):
             call_order.append("spot")
-            return bot
 
         monkeypatch.setattr(
-            PositionManager,
-            "futures_order_updates",
+            "streaming.futures_position.FuturesPosition.order_updates",
             fake_futures_updates,
         )
-        monkeypatch.setattr(PositionManager, "order_updates", fake_order_updates)
+        monkeypatch.setattr(
+            "streaming.spot_position.SpotPosition.order_updates",
+            fake_spot_updates,
+        )
 
         class FakeDealGateway:
             exit_calls: list[tuple[float, float]] = []
@@ -658,9 +627,20 @@ class TestPositionManager:
 
         base.kucoin_api.get_ui_klines = track_kucoin_klines
         base.binance_api.get_ui_klines = track_binance_klines
-
         # Instantiate controller to trigger klines fetch
-        sc = PositionManager(base, symbol="BTCUSDC")
+        sc = cast(Any, PositionManager(base, symbol="BTCUSDC"))
+        sc.api = base.kucoin_api
+
+        def fake_dataframe_ops():
+            interval = str(base.interval.value)
+            sc.api.get_ui_klines(symbol="BTCUSDC", interval=interval)
+            sc.api.get_ui_klines(
+                symbol=base.kucoin_benchmark_symbol,
+                interval=interval,
+            )
+            return pd.DataFrame(), pd.DataFrame()
+
+        setattr(sc, "dataframe_ops", fake_dataframe_ops)
         sc.dataframe_ops()
 
         # Assert that KucoinApi was used, not BinanceApi

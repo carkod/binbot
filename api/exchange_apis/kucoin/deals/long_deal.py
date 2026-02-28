@@ -1,4 +1,4 @@
-from typing import Type, Union
+from typing import Type
 from pybinbot import (
     round_numbers,
     round_timestamp,
@@ -27,7 +27,7 @@ class KucoinLongDeal(KucoinSpotDeal):
     """
 
     def __init__(
-        self, bot: BotModel, db_table: Type[Union[BotTable, PaperTradingTable]]
+        self, bot: BotModel, db_table: Type[BotTable] | Type[PaperTradingTable]
     ) -> None:
         super().__init__(bot=bot, db_table=db_table)
         self.active_bot: BotModel = bot
