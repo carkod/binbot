@@ -23,7 +23,6 @@ from kucoin_universal_sdk.generate.futures.order.model_add_order_req import (
     AddOrderReq,
 )
 from kucoin_universal_sdk.model.common import RestError
-from streaming.base import BaseStreaming
 
 
 class PositionDeal(KucoinPositionDeal):
@@ -44,7 +43,6 @@ class PositionDeal(KucoinPositionDeal):
         db_table: Type[BotTable] | Type[PaperTradingTable] = BotTable,
     ) -> None:
         super().__init__(bot=bot, db_table=db_table)
-        self.base_streaming = BaseStreaming()
         self.active_bot = bot
         self.price_precision = self.symbol_info.price_precision
         self.qty_precision = self.symbol_info.qty_precision
