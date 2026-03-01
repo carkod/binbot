@@ -1,4 +1,3 @@
-import logging
 from copy import deepcopy
 from typing import Type, Union
 from pandas import DataFrame
@@ -46,24 +45,13 @@ class PositionManager:
         self.apex_flow_closing: ApexFlowClose | None = None
 
     def load_current_bots(self) -> None:
-        try:
-            current_bot_payload = self.base_streaming.get_current_bot(self.symbol)
-            if current_bot_payload:
-                self.current_bot = BotModel.model_validate(current_bot_payload)
+        current_bot_payload = self.base_streaming.get_current_bot(self.symbol)
+        if current_bot_payload:
+            self.current_bot = BotModel.model_validate(current_bot_payload)
 
-            current_test_bot_payload = self.base_streaming.get_current_test_bot(
-                self.symbol
-            )
-            if current_test_bot_payload:
-                self.current_test_bot = BotModel.model_validate(
-                    current_test_bot_payload
-                )
-
-        except ValueError:
-            pass
-        except Exception as e:
-            logging.error(e)
-            pass
+        current_test_bot_payload = self.base_streaming.get_current_test_bot(self.symbol)
+        if current_test_bot_payload:
+            self.current_test_bot = BotModel.model_validate(current_test_bot_payload)
 
     def _default_api(self) -> Union[BinanceApi, KucoinApi, KucoinFutures]:
         if self.base_streaming.exchange == ExchangeId.KUCOIN:
@@ -81,7 +69,7 @@ class PositionManager:
         self, bot: BotModel, db_table: Type[BotTable] | Type[PaperTradingTable]
     ) -> Union[SpotPosition, FuturesPosition]:
         handler_cls: type[SpotPosition] | type[FuturesPosition]
-        if getattr(bot, "market_type", MarketType.SPOT) == MarketType.FUTURES:
+        if bot.market_type == MarketType.FUTURES:
             handler_cls = FuturesPosition
         else:
             handler_cls = SpotPosition

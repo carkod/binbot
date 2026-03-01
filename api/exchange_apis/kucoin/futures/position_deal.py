@@ -353,7 +353,7 @@ class PositionDeal(KucoinPositionDeal):
 
         reverse_order_base = self.kucoin_futures_api.sell(
             symbol=self.kucoin_symbol,
-            qty=self.active_bot.deal.opening_qty,
+            qty=self.active_bot.deal.base_order_size,
             reduce_only=False,
         )
 
@@ -664,6 +664,13 @@ class PositionDeal(KucoinPositionDeal):
         if self.active_bot.dynamic_trailling:
             cls.market_trailing_analytics(current_price=close_price)
 
-        if self.active_bot.strategy == Strategy.margin_short:
-            return self.exit_short(close_price)
-        return self.exit_long(close_price, open_price)
+        try:
+            if self.active_bot.strategy == Strategy.margin_short:
+                return self.exit_short(close_price)
+            return self.exit_long(close_price, open_price)
+        except RestError as kucoin_error:
+            msg = kucoin_error.response.message
+            self.controller.update_logs(
+                f"Error during deal exit orchestration. Message: {msg}", self.active_bot
+            )
+            return self.active_bot
