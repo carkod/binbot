@@ -181,7 +181,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
         position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
 
         # For Futures, base_order_size is contracts
-        self.active_bot.deal.base_order_size = self.active_bot.fiat_order_size * self.kucoin_futures_api.DEFAULT_LEVERAGE
+        self.active_bot.deal.base_order_size = (
+            self.active_bot.fiat_order_size * self.kucoin_futures_api.DEFAULT_LEVERAGE
+        )
         self.active_bot.deal.opening_price = order.price
         self.active_bot.deal.opening_qty = order.qty
         self.active_bot.deal.opening_timestamp = order.timestamp
@@ -281,11 +283,11 @@ class KucoinPositionDeal(KucoinBaseBalance):
             )
             if len(stop_orders) > 0:
                 stop_order_ids = [order.id for order in stop_orders]
-                self.kucoin_futures_api.futures_order_api.batch_cancel_orders(
-                    stop_order_ids
-                )
+                self.kucoin_futures_api.batch_cancel_stop_loss_orders(stop_order_ids)
 
-            self.place_stop_loss()
+            # when autoswitch is enabled, stop loss placed in the market will reduce the position to 0
+            if not self.active_bot.margin_short_reversal:
+                self.place_stop_loss()
 
         if (
             self.active_bot.trailling

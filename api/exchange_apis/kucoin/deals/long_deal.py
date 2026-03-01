@@ -315,7 +315,9 @@ class KucoinLongDeal(KucoinSpotDeal):
         self.active_bot.deal.current_price = current_price
         self.controller.save(self.active_bot)
 
+        # --------------------------------------------------
         # Stop loss
+        # --------------------------------------------------
         if (
             self.active_bot.stop_loss > 0
             # current_price below stop loss
@@ -332,7 +334,9 @@ class KucoinLongDeal(KucoinSpotDeal):
 
                 self.switch_to_margin_short()
 
+        # --------------------------------------------------
         # Trailling profit
+        # --------------------------------------------------
         if self.active_bot.trailling and self.active_bot.deal.opening_price > 0:
             # If current price didn't break take_profit_trail (first time hitting take_profit or trailling_deviation lower than base_order buy_price so trailling stop loss is not set at this point)
             if self.active_bot.deal.trailling_stop_loss_price == 0:

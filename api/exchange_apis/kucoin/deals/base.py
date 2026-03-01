@@ -77,46 +77,6 @@ class KucoinBaseBalance:
 
         return result_balances, estimated_total_fiat, fiat_available
 
-    def normalized_compute_balance(
-        self,
-    ) -> Tuple[Dict[str, float], float, float]:
-        """
-        compute_balance but backwards compatible with currently stored
-        balances structure.
-
-        Returns:
-            (total_balances, estimated_total_fiat, fiat_available)
-        """
-
-        result_balances: Dict[str, float] = {}
-        estimated_total_fiat = 0.0
-        fiat_available = 0.0
-
-        kucoin_balances = self.kucoin_api.get_account_balance_by_type()
-        for account_type, balances in kucoin_balances.items():
-            account_type_str = (
-                account_type.value if isinstance(account_type, Enum) else account_type
-            )
-            for key, value in balances.items():
-                if float(value["balance"]) > 0:
-                    if account_type_str == "main" and key == self.fiat:
-                        fiat_available += float(value["balance"])
-                    # we don't want to convert USDC, TUSD or USDT to itself
-                    if key not in [
-                        self.fiat,
-                        "USDC",
-                        "TUSD",
-                        "USDT",
-                    ]:
-                        rate = self.kucoin_api.get_ticker_price(f"{key}-{self.fiat}")
-                        estimated_total_fiat += float(value["balance"]) * float(rate)
-                    else:
-                        estimated_total_fiat += float(value["balance"])
-
-                    result_balances[key] = float(value["balance"])
-
-        return result_balances, estimated_total_fiat, fiat_available
-
     def get_single_balance(self, asset: str) -> float:
         """
         Get single asset balance from KuCoin account balances.
