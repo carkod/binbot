@@ -22,7 +22,7 @@
     "chart.js": "^4.5.1",
     "moment": "^2.29.1",
     "plotly": "^1.0.6",
-    "plotly.js": "^2.35.2",
+    "plotly.js": "^3.4.0",
     "react": "^18.3.1",
     "react-bootstrap": "^2.10.5",
     "react-bootstrap-typeahead": "^6.3.2",
