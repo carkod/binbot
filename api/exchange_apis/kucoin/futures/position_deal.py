@@ -349,35 +349,64 @@ class PositionDeal(KucoinPositionDeal):
         bot = self.bot_crud.get_one(bot_id=str(bot.id))
         self.active_bot = BotModel(**bot.model_dump())
 
-        reverse_order_base = self.kucoin_futures_api.sell(
-            symbol=self.kucoin_symbol,
-            qty=self.active_bot.deal.base_order_size,
-            reduce_only=False,
+        price = self.kucoin_futures_api.matching_engine(
+            symbol=self.kucoin_symbol, side=AddOrderReq.SideEnum.BUY, size=1
         )
+        contracts = self.calculate_contracts(price)
 
-        reverse_order = OrderModel.model_construct(**reverse_order_base.model_dump())
-
-        if reverse_order:
-            reverse_order.deal_type = DealType.base_order
-            self.active_bot.orders.append(reverse_order)
-            position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
-            self.active_bot.deal.opening_price = reverse_order.price
-            self.active_bot.deal.opening_qty = reverse_order.qty
-            self.active_bot.deal.opening_timestamp = reverse_order.timestamp
-            self.active_bot.deal.current_price = position.mark_price
-            self.active_bot.status = Status.active
+        if contracts <= 0:
             self.active_bot.add_log(
-                f"Futures SHORT opened @ {position.mark_price} with {reverse_order.qty} contracts"
-            )
-            self.controller.save(self.active_bot)
-            return self.active_bot
-        else:
-            self.active_bot.add_log(
-                "No base order found to transfer to the new short bot."
+                "Failed to reverse to short due to zero contracts calculated."
             )
             self.active_bot.status = Status.error
             self.controller.save(self.active_bot)
             return self.active_bot
+
+        try:
+            if self.active_bot.strategy == Strategy.margin_short:
+                order = self.kucoin_futures_api.sell(
+                    symbol=self.kucoin_symbol,
+                    qty=contracts,
+                    reduce_only=False,
+                )
+            else:
+                order = self.kucoin_futures_api.buy(
+                    symbol=self.kucoin_symbol,
+                    qty=contracts,
+                    reduce_only=False,
+                )
+        except RestError as kucoin_error:
+            msg = kucoin_error.response.message
+            self.active_bot.add_log(
+                f"Failed to open short position during reversal: {msg}"
+            )
+            self.active_bot.status = Status.error
+            self.controller.save(self.active_bot)
+            return self.active_bot
+
+        order.deal_type = DealType.base_order
+        order = OrderModel(**order.model_dump())
+        self.active_bot.orders.append(order)
+
+        position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
+
+        # For Futures, base_order_size is contracts
+        # Kucoin only operates with contracts, not underlying asset (qty)
+        # so in Binbot we only care about that
+        self.active_bot.deal.base_order_size = contracts
+        self.active_bot.deal.opening_price = order.price
+        self.active_bot.deal.opening_qty = contracts
+        self.active_bot.deal.opening_timestamp = order.timestamp
+        self.active_bot.deal.current_price = position.mark_price
+        self.active_bot.status = Status.active
+
+        self.controller.update_logs(
+            bot=self.active_bot,
+            log_message=f"Futures SHORT opened @ {position.mark_price} with {order.qty} contracts",
+        )
+
+        self.controller.save(self.active_bot)
+        return self.active_bot
 
     def exit_long(self, close_price: float, open_price: float) -> BotModel:
         """
@@ -632,6 +661,7 @@ class PositionDeal(KucoinPositionDeal):
                 db_table=self.db_table,
             )
             cls.base_streaming.kucoin_benchmark_symbol = "ETHBTCUSDTM"
+            self.api = self.base_streaming.kucoin_futures_api
         else:
             cls = SpotPosition(
                 base_streaming=self.base_streaming,
@@ -640,6 +670,8 @@ class PositionDeal(KucoinPositionDeal):
                 qty_precision=self.qty_precision,
                 db_table=self.db_table,
             )
+            cls.base_streaming.kucoin_benchmark_symbol = "BTC-USDT"
+            self.api = self.base_streaming.kucoin_api
 
         klines, btc_klines = cls.dataframe_ops()
         # returns raw klines
@@ -649,7 +681,6 @@ class PositionDeal(KucoinPositionDeal):
         cls.order_updates()
 
         # Use Kucoin ticker API to get the latest close price
-        self.api = self.base_streaming.kucoin_futures_api
         symbol_info = self.api.get_symbol_info(self.active_bot.pair)
         close_price = (
             symbol_info.last_trade_price
@@ -659,8 +690,13 @@ class PositionDeal(KucoinPositionDeal):
 
         open_price = float(self.klines[-1][1])
 
+        self.active_bot.deal.current_price = close_price
+        self.controller.save(self.active_bot)
+
         if self.active_bot.dynamic_trailling:
-            cls.market_trailing_analytics(current_price=close_price)
+            self.market_trailing_analytics(
+                position_market_cls=cls, current_price=close_price
+            )
 
         try:
             if self.active_bot.strategy == Strategy.margin_short:

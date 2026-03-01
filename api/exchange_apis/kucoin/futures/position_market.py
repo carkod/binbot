@@ -8,8 +8,6 @@ from pybinbot import (
     HeikinAshi,
     KucoinFutures,
 )
-from streaming.apex_flow_closing import ApexFlowClose
-from copy import deepcopy
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from streaming.base import BaseStreaming
 from bots.models import BotModel

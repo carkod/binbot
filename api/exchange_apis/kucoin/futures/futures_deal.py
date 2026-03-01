@@ -62,7 +62,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         self.price_precision = self.symbol_info.price_precision
         self.kucoin_symbol = convert_to_kucoin_symbol(bot)
 
-    def calculate_contracts(self, price: float) -> float:
+    def calculate_contracts(self, price: float) -> int:
         """
         Calculate the number of contracts based on balance, stop loss, risk per trade, price, and contract multiplier.
 
@@ -72,7 +72,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         price: Current price of FLOCK.
         multiplier: Size of one contract (default 1).
 
-        Returns: Number of contracts to buy (float).
+        Returns: Number of contracts to buy (int).
         """
         balance = self.active_bot.fiat_order_size
         stop_loss_percent = self.active_bot.stop_loss
@@ -91,7 +91,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             max_position_size / (price * float(multiplier)), self.price_precision
         )
 
-        return contracts
+        return int(contracts)
 
     def compute_available_balance(self):
         """Place a futures BUY order using available fiat balance.
@@ -411,6 +411,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
     def market_trailing_analytics(
         self,
+        position_market_cls: PositionMarket,
         current_price: float,
     ) -> None:
         """
@@ -422,21 +423,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
         - trailing_deviation = active stop after trailing
         - trailing_profit = trigger, never exit
         """
-        self.position_market = PositionMarket(
-            api=self.kucoin_futures_api,
-            base_streaming=self.base_streaming,
-            bot=self.active_bot,
-            symbol=self.kucoin_symbol,
-            db_table=self.db_table,
-        )
         self.apex_flow_closing = ApexFlowClose(
-            self.position_market.df, self.position_market.btc_df
-        )
-
-        controller = (
-            self.base_streaming.bot_controller
-            if self.db_table == BotTable
-            else self.base_streaming.paper_trading_controller
+            position_market_cls.df, position_market_cls.btc_df
         )
 
         original_bot = deepcopy(self.active_bot)
@@ -444,7 +432,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         # ─────────────────────────────
         # Bollinger spreads
         # ─────────────────────────────
-        bb_spreads = self.position_market.build_bb_spreads()
+        bb_spreads = position_market_cls.build_bb_spreads()
         if bb_spreads.bb_high == 0 or bb_spreads.bb_low == 0:
             return
 
@@ -511,7 +499,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         # ─────────────────────────────
         # Apply strategy-specific logic
         # ─────────────────────────────
-        self.position_market.set_trailing_params(
+        position_market_cls.set_trailing_params(
             top_spread=top_spread,
             bottom_spread=bottom_spread,
             bot_profit=bot_profit,
@@ -529,4 +517,5 @@ class KucoinPositionDeal(KucoinBaseBalance):
             or self.active_bot.trailling_deviation != original_bot.trailling_deviation
             or self.active_bot.stop_loss != original_bot.stop_loss
         ):
-            controller.save(self.active_bot)
+            self.active_bot = self.update_parameters()
+            self.controller.save(self.active_bot)

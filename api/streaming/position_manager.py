@@ -52,29 +52,6 @@ class PositionManager:
             return self.base_streaming.kucoin_api
         return self.base_streaming.binance_api
 
-    def _resolve_controller(self, db_table: Type[BotTable] | Type[PaperTradingTable]):
-        return (
-            self.base_streaming.bot_controller
-            if db_table == BotTable
-            else self.base_streaming.paper_trading_controller
-        )
-
-    def _create_position_handler(
-        self, bot: BotModel, db_table: Type[BotTable] | Type[PaperTradingTable]
-    ) -> Union[SpotPosition, FuturesPosition]:
-        handler_cls: type[SpotPosition] | type[FuturesPosition]
-        if bot.market_type == MarketType.FUTURES:
-            handler_cls = FuturesPosition
-        else:
-            handler_cls = SpotPosition
-        return handler_cls(
-            base_streaming=self.base_streaming,
-            bot=bot,
-            price_precision=self.price_precision,
-            qty_precision=self.qty_precision,
-            db_table=db_table,
-        )
-
     def process_deal(self) -> None:
         """
         Updates deals with klines websockets,
@@ -114,8 +91,5 @@ class PositionManager:
 
         if self.base_streaming.exchange != ExchangeId.KUCOIN:
             raise NotImplementedError("Order updates only implemented for Kucoin")
-
-        position_handler = self._create_position_handler(bot, db_table)
-        position_handler.order_updates()
 
         deal.deal_exit_orchestration(0, 0)
