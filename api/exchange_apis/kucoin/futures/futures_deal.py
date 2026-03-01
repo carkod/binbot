@@ -1,4 +1,4 @@
-from typing import Type, Union
+from typing import Union, Type
 from time import time
 from pybinbot import (
     OrderBase,
@@ -36,7 +36,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
     def __init__(
         self,
         bot: BotModel,
-        db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable,
+        db_table: Type[BotTable] | Type[PaperTradingTable] = BotTable,
     ) -> None:
         super().__init__()
         self.active_bot = bot
@@ -181,11 +181,11 @@ class KucoinPositionDeal(KucoinBaseBalance):
         position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
 
         # For Futures, base_order_size is contracts
-        self.active_bot.deal.base_order_size = (
-            self.active_bot.fiat_order_size * self.kucoin_futures_api.DEFAULT_LEVERAGE
-        )
+        # Kucoin only operates with contracts, not underlying asset (qty)
+        # so in Binbot we only care about that
+        self.active_bot.deal.base_order_size = contracts
         self.active_bot.deal.opening_price = order.price
-        self.active_bot.deal.opening_qty = order.qty
+        self.active_bot.deal.opening_qty = contracts
         self.active_bot.deal.opening_timestamp = order.timestamp
         self.active_bot.deal.current_price = position.mark_price
         self.active_bot.status = Status.active
@@ -285,7 +285,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 stop_order_ids = [order.id for order in stop_orders]
                 self.kucoin_futures_api.batch_cancel_stop_loss_orders(stop_order_ids)
 
-            # when autoswitch is enabled, stop loss placed in the market will reduce the position to 0
+            # stop loss placed in the market will reduce the position to 0
             if not self.active_bot.margin_short_reversal:
                 self.place_stop_loss()
 

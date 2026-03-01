@@ -1,3 +1,5 @@
+from datetime import datetime
+from typing import Union
 from bots.models import BotModel
 from databases.crud.autotrade_crud import AutotradeCrud
 from databases.crud.bot_crud import BotTableCrud
@@ -13,6 +15,7 @@ from pybinbot import (
     Status,
     KucoinApi,
     KucoinFutures,
+    round_numbers,
 )
 from tools.config import Config
 from databases.utils import independent_session
@@ -20,8 +23,7 @@ from databases.utils import independent_session
 
 class BaseStreaming:
     """
-    Static data that doesn't change often, loaded once on startup
-    and used across the application
+    Static data that doesn't change often, loaded once on startup and used across the application
     """
 
     def __init__(self) -> None:
@@ -47,22 +49,25 @@ class BaseStreaming:
         self.autotrade_crud = AutotradeCrud()
         self.autotrade_settings = self.autotrade_crud.get_settings()
         self.exchange = ExchangeId(self.autotrade_settings.exchange_id)
-        candlestick_interval = self.autotrade_settings.candlestick_interval
+        self.benchmark_symbol = "BTCUSDT"
+        self.kucoin_benchmark_symbol = "BTC-USDT"
+
+        binance_interval = BinanceKlineIntervals(
+            self.autotrade_settings.candlestick_interval
+        )
+        kucoin_interval = KucoinKlineIntervals(
+            BinanceKlineIntervals.to_kucoin_interval(binance_interval)
+        )
+        self.interval: Union[BinanceKlineIntervals, KucoinKlineIntervals]
+        self.api: Union[BinanceApi, None]
+        # Prepare interval based on exchange
         if self.exchange == ExchangeId.KUCOIN:
-            self.interval: KucoinKlineIntervals | BinanceKlineIntervals
-            if isinstance(candlestick_interval, BinanceKlineIntervals):
-                interval = BinanceKlineIntervals.to_kucoin_interval(
-                    candlestick_interval
-                )
-                self.interval = KucoinKlineIntervals(interval)
-            elif isinstance(candlestick_interval, KucoinKlineIntervals):
-                self.interval = candlestick_interval
-            else:
-                raise ValueError(
-                    f"Invalid interval type: {candlestick_interval}. Must be BinanceKlineIntervals or KucoinKlineIntervals."
-                )
+            self.interval = kucoin_interval
+            # To be set in child classes, because kucoin has different api for spot and futures
+            self.api = None
         else:
-            self.interval = candlestick_interval
+            self.interval = binance_interval
+            self.api = self.binance_api
 
         # Always have it active
         self.active_bot_pairs: list = self.get_all_active_pairs()
@@ -102,3 +107,65 @@ class BaseStreaming:
         except BinbotErrors:
             bot = None
             return bot
+
+    def get_interests_short_margin(self, bot: BotModel) -> tuple[float, float, float]:
+        close_timestamp = bot.deal.closing_timestamp
+        if close_timestamp == 0:
+            close_timestamp = int(datetime.now().timestamp() * 1000)
+
+        asset = bot.pair.split(bot.fiat)[0]
+        interest_details = self.binance_api.get_interest_history(
+            asset=asset, symbol=bot.pair
+        )
+
+        if len(interest_details["rows"]) > 0:
+            interests = float(interest_details["rows"][0]["interests"])
+        else:
+            interests = 0
+
+        close_total = bot.deal.closing_price
+        open_total = bot.deal.closing_price
+
+        return interests, open_total, close_total
+
+    def compute_single_bot_profit(self, bot: BotModel, current_price: float) -> float:
+        if bot.deal and bot.deal.base_order_size > 0:
+            price = (
+                bot.deal.closing_price if bot.deal.closing_price > 0 else current_price
+            )
+            if bot.deal.opening_price > 0:
+                buy_price = bot.deal.opening_price
+                profit_change = ((price - buy_price) / buy_price) * 100
+                if price == 0:
+                    profit_change = 0
+                return round_numbers(profit_change)
+            elif bot.deal.opening_price > 0:
+                # Completed margin short
+                if bot.deal.closing_price > 0:
+                    interests, open_total, close_total = (
+                        self.get_interests_short_margin(bot)
+                    )
+                    profit_change = (
+                        (open_total - close_total) / open_total - interests
+                    ) * 100
+                    return round(profit_change, 2)
+                else:
+                    # Not completed margin short
+                    close_price = (
+                        bot.deal.closing_price
+                        if bot.deal.closing_price > 0
+                        else current_price or bot.deal.current_price
+                    )
+                    if close_price == 0:
+                        return 0
+                    interests, open_total, close_total = (
+                        self.get_interests_short_margin(bot)
+                    )
+                    profit_change = (
+                        (open_total - close_price) / open_total - interests
+                    ) * 100
+                    return round(profit_change, 2)
+            else:
+                return 0
+        else:
+            return 0

@@ -1,4 +1,4 @@
-from typing import Type, Union
+from typing import Type
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from bots.models import BotModel, OrderModel
@@ -27,7 +27,7 @@ class BinanceShortDeal(BinanceMarginDeal):
     def __init__(
         self,
         bot: BotModel,
-        db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable,
+        db_table: Type[BotTable] | Type[PaperTradingTable] = BotTable,
     ):
         super().__init__(bot, db_table=db_table)
         self.active_bot = bot

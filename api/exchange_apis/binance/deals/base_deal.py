@@ -36,7 +36,7 @@ class BaseDeal(BinanceOrderController):
     def __init__(
         self,
         bot: BotModel,
-        db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable,
+        db_table: Type[BotTable] | Type[PaperTradingTable] = BotTable,
     ):
         super().__init__()
         self.controller: Union[PaperTradingTableCrud, BotTableCrud]

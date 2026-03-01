@@ -1,5 +1,5 @@
 import logging
-from typing import Type, Union
+from typing import Type
 from urllib.error import HTTPError
 from bots.models import BotModel, OrderModel
 from time import sleep
@@ -43,7 +43,7 @@ class BinanceMarginDeal(BinanceDeal):
     def __init__(
         self,
         bot: BotModel,
-        db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable,
+        db_table: Type[BotTable] | Type[PaperTradingTable] = BotTable,
     ):
         super().__init__(bot, db_table)
         self.active_bot = bot

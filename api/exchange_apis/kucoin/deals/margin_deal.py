@@ -1,5 +1,5 @@
 import logging
-from typing import Type, Union, Tuple
+from typing import Type, Tuple, Union
 from pybinbot import (
     round_numbers_floor,
     round_timestamp,
@@ -39,7 +39,7 @@ class KucoinMarginDeal(KucoinBaseBalance):
     def __init__(
         self,
         bot: BotModel,
-        db_table: Type[Union[PaperTradingTable, BotTable]] = BotTable,
+        db_table: Type[BotTable] | Type[PaperTradingTable] = BotTable,
     ) -> None:
         super().__init__()
         self.active_bot = bot

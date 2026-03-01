@@ -2,7 +2,7 @@ from exchange_apis.kucoin.deals.long_deal import KucoinLongDeal
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from pybinbot import ExchangeId, Strategy, MarketType
 from bots.models import BotModel
-from typing import Type, Union
+from typing import Union, Type
 from exchange_apis.kucoin.deals.short_deal import KucoinShortDeal
 from databases.crud.autotrade_crud import AutotradeCrud
 from exchange_apis.binance.deals.short import BinanceShortDeal
@@ -19,7 +19,7 @@ class DealGateway:
     """
 
     def __init__(
-        self, bot: BotModel, db_table: Type[Union[BotTable, PaperTradingTable]]
+        self, bot: BotModel, db_table: Type[BotTable] | Type[PaperTradingTable]
     ) -> None:
         self.autotrade_settings = AutotradeCrud().get_settings()
         self.bot = bot
@@ -58,9 +58,7 @@ class DealGateway:
         """
         return self.deal.open_deal()
 
-    def update_logs(
-        self, message: str | list[str]
-    ) -> Union[BotTable, PaperTradingTable]:
+    def update_logs(self, message: str | list[str]) -> BotTable | PaperTradingTable:
         """
         Abstract method for updating logs during bot runtime
         """
