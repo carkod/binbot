@@ -12,6 +12,7 @@ from pybinbot import (
     BinbotErrors,
     KucoinFutures,
 )
+from exchange_apis.kucoin.futures.position_market import PositionMarket
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.bot_crud import BotTableCrud
@@ -21,6 +22,9 @@ from bots.models import OrderModel
 from exchange_apis.kucoin.deals.base import KucoinBaseBalance
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
 from exchange_apis.kucoin.futures.balance import KucoinFuturesBalance
+from streaming.apex_flow_closing import ApexFlowClose
+from copy import deepcopy
+from streaming.base import BaseStreaming
 
 
 class KucoinPositionDeal(KucoinBaseBalance):
@@ -39,6 +43,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         db_table: Type[BotTable] | Type[PaperTradingTable] = BotTable,
     ) -> None:
         super().__init__()
+        self.base_streaming = BaseStreaming()
         self.active_bot = bot
         self.db_table = db_table
         self.kucoin_futures_api = KucoinFutures(
@@ -54,10 +59,13 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self.controller = BotTableCrud()
 
         self.symbol_info = SymbolsCrud().get_symbol(bot.pair)
-        self.price_precision = self.symbol_info.price_precision
         self.kucoin_symbol = convert_to_kucoin_symbol(bot)
+        self.kucoin_symbol_data = self.kucoin_futures_api.get_symbol_info(
+            self.kucoin_symbol
+        )
+        self.price_precision = self.symbol_info.price_precision
 
-    def calculate_contracts(self, price: float) -> float:
+    def calculate_contracts(self, price: float) -> int:
         """
         Calculate the number of contracts based on balance, stop loss, risk per trade, price, and contract multiplier.
 
@@ -67,7 +75,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         price: Current price of FLOCK.
         multiplier: Size of one contract (default 1).
 
-        Returns: Number of contracts to buy (float).
+        Returns: Number of contracts to buy (int).
         """
         balance = self.active_bot.fiat_order_size
         stop_loss_percent = self.active_bot.stop_loss
@@ -86,7 +94,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             max_position_size / (price * float(multiplier)), self.price_precision
         )
 
-        return contracts
+        return int(contracts)
 
     def compute_available_balance(self):
         """Place a futures BUY order using available fiat balance.
@@ -99,13 +107,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         Raises BinbotErrors if there is no fiat balance or if the
         configured base order size exceeds the available balance.
         """
-        futures_available = 0.0
-        try:
-            _, _, futures_available = KucoinFuturesBalance().compute_futures_balance()
-        except NotImplementedError:
-            futures_available = 0.0
-
-        available_balance = 0.0
+        _, _, futures_available = KucoinFuturesBalance().compute_futures_balance()
 
         if futures_available > 0:
             available_balance = futures_available
@@ -139,6 +141,24 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         return available_balance
 
+    def min_required_balance(self) -> float:
+        """
+        Calculate the minimum required balance to place a futures order based on stop loss and risk settings.
+        """
+        multiplier = self.kucoin_symbol_data.multiplier
+        min_qty = self.kucoin_symbol_data.lot_size
+        price = self.kucoin_symbol_data.mark_price
+        taker_fee_rate = self.kucoin_symbol_data.taker_fee_rate
+        self.kucoin_symbol_data
+        maintenance_margin = self.kucoin_symbol_data.maintain_margin
+        notional = price * min_qty * multiplier
+
+        initial_margin = notional / self.kucoin_futures_api.DEFAULT_LEVERAGE
+        fees = 2 * notional * taker_fee_rate
+
+        required_balance = initial_margin + maintenance_margin + fees
+        return required_balance
+
     def base_order(self) -> BotModel:
         """
         Futures have positions intrinsically built, the base order can be either LONG or SHORT, we don't need to deal with loans, we simply set the position as an order
@@ -148,10 +168,13 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         available_balance = self.compute_available_balance()
         if self.active_bot.fiat_order_size > available_balance:
-            raise BinbotErrors(
-                f"Requested base order size {self.active_bot.fiat_order_size} {self.fiat} "
-                f"exceeds available balance {available_balance} {self.fiat}."
-            )
+            required_balance = self.min_required_balance()
+
+            if required_balance > available_balance:
+                raise BinbotErrors(
+                    f"Requested base order size {self.active_bot.fiat_order_size} {self.fiat} "
+                    f"exceeds available balance {available_balance} {self.fiat}."
+                )
 
         price = self.kucoin_futures_api.matching_engine(
             symbol=self.kucoin_symbol, side=AddOrderReq.SideEnum.BUY, size=1
@@ -403,3 +426,114 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         self.controller.save(self.active_bot)
         return self.active_bot
+
+    def market_trailing_analytics(
+        self,
+        position_market_cls: PositionMarket,
+        current_price: float,
+    ) -> None:
+        """
+        ApexFlow-aware trailing manager.
+
+        Philosophy:
+        1. Initiates PositionMarket (abstraction layer to reduce complexity of KucoinPositionDeal)
+        - stop_loss = emergency only
+        - trailing_deviation = active stop after trailing
+        - trailing_profit = trigger, never exit
+        """
+        self.apex_flow_closing = ApexFlowClose(
+            position_market_cls.df, position_market_cls.btc_df
+        )
+
+        original_bot = deepcopy(self.active_bot)
+
+        # ─────────────────────────────
+        # Bollinger spreads
+        # ─────────────────────────────
+        bb_spreads = position_market_cls.build_bb_spreads()
+        if bb_spreads.bb_high == 0 or bb_spreads.bb_low == 0:
+            return
+
+        top_spread = (
+            abs((bb_spreads.bb_high - bb_spreads.bb_mid) / bb_spreads.bb_high) * 100
+        )
+        bottom_spread = (
+            abs((bb_spreads.bb_mid - bb_spreads.bb_low) / bb_spreads.bb_mid) * 100
+        )
+
+        top_spread = min(max(top_spread, 1.5), 6.0)
+        bottom_spread = min(max(bottom_spread, 1.0), 4.0)
+
+        # ─────────────────────────────
+        # Profit
+        # ─────────────────────────────
+        bot_profit = self.base_streaming.compute_single_bot_profit(
+            self.active_bot, current_price
+        )
+
+        # ─────────────────────────────
+        # ApexFlow detectors
+        # ─────────────────────────────
+        row = self.apex_flow_closing.df.iloc[-1]
+        detectors = self.apex_flow_closing.get_detectors()
+
+        vce_signal = detectors.get("vce", False)
+        mcd_signal = detectors.get("mcd", False)
+        lcrs_signal = detectors.get("lcrs", False)
+
+        expansion_range = row["high"] - row["low"]
+        is_aggressive_momo = self.active_bot.name.lower().find("aggressive momo") != -1
+
+        # ─────────────────────────────
+        # Trend filter (only for tightening)
+        # ─────────────────────────────
+        ema_fast, ema_slow = self.apex_flow_closing.get_trend_ema()
+        trend_up = ema_fast > ema_slow if ema_fast and ema_slow else True
+
+        # ─────────────────────────────
+        # Expansion multiplier
+        # ─────────────────────────────
+        expansion_multiplier = 1.0
+        if vce_signal:
+            expansion_multiplier += 0.2
+        if mcd_signal:
+            expansion_multiplier += 0.1
+        expansion_multiplier = min(expansion_multiplier, 1.5)
+
+        # ─────────────────────────────
+        # Trailing tightening schedule
+        # ─────────────────────────────
+        if bot_profit < 2:
+            trail_tighten_mult = 1.0
+        elif bot_profit < 5:
+            trail_tighten_mult = 0.7
+        else:
+            trail_tighten_mult = 0.45
+
+        # Do not tighten against trend while signals are alive
+        if (vce_signal or mcd_signal or lcrs_signal) and trend_up:
+            trail_tighten_mult = max(trail_tighten_mult, 0.7)
+
+        # ─────────────────────────────
+        # Apply strategy-specific logic
+        # ─────────────────────────────
+        position_market_cls.set_trailing_params(
+            top_spread=top_spread,
+            bottom_spread=bottom_spread,
+            bot_profit=bot_profit,
+            expansion_multiplier=expansion_multiplier,
+            is_aggressive_momo=is_aggressive_momo,
+            expansion_range=expansion_range,
+            trail_tighten_mult=trail_tighten_mult,
+        )
+
+        # ─────────────────────────────
+        # Persist only if changed
+        # ─────────────────────────────
+        if (
+            self.active_bot.trailling_profit != original_bot.trailling_profit
+            or self.active_bot.trailling_deviation != original_bot.trailling_deviation
+            or self.active_bot.stop_loss != original_bot.stop_loss
+        ):
+            self.active_bot = self.update_parameters()
+            self.controller.save(self.active_bot)

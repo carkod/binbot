@@ -1,5 +1,4 @@
 from pybinbot import (
-    Strategy,
     ExchangeId,
     round_numbers,
     BinanceApi,
@@ -9,8 +8,6 @@ from pybinbot import (
     HeikinAshi,
     KucoinFutures,
 )
-from streaming.apex_flow_closing import ApexFlowClose
-from copy import deepcopy
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from streaming.base import BaseStreaming
 from bots.models import BotModel
@@ -53,12 +50,11 @@ class PositionMarket:
 
         return bb_spreads
 
-    def set_long_trail_params(
+    def set_trailing_params(
         self,
         top_spread: float,
         bottom_spread: float,
         bot_profit: float,
-        bot: BotModel,
         expansion_multiplier: float,
         is_aggressive_momo: bool,
         expansion_range: float,
@@ -131,118 +127,3 @@ class PositionMarket:
         self.btc_df = HeikinAshi().post_process(self.btc_df)
 
         return self.klines, self.btc_klines
-
-    def market_trailing_analytics(
-        self,
-        current_price: float,
-    ) -> None:
-        """
-        ApexFlow-aware trailing manager.
-
-        Philosophy:
-        - stop_loss = emergency only
-        - trailing_deviation = active stop after trailing
-        - trailing_profit = trigger, never exit
-        """
-
-        self.apex_flow_closing = ApexFlowClose(self.df, self.btc_df)
-
-        controller = (
-            self.base_streaming.bot_controller
-            if self.db_table == BotTable
-            else self.base_streaming.paper_trading_controller
-        )
-
-        original_bot = deepcopy(self.active_bot)
-
-        # ─────────────────────────────
-        # Bollinger spreads
-        # ─────────────────────────────
-        bb_spreads = self.build_bb_spreads()
-        if bb_spreads.bb_high == 0 or bb_spreads.bb_low == 0:
-            return
-
-        top_spread = (
-            abs((bb_spreads.bb_high - bb_spreads.bb_mid) / bb_spreads.bb_high) * 100
-        )
-        bottom_spread = (
-            abs((bb_spreads.bb_mid - bb_spreads.bb_low) / bb_spreads.bb_mid) * 100
-        )
-
-        top_spread = min(max(top_spread, 1.5), 6.0)
-        bottom_spread = min(max(bottom_spread, 1.0), 4.0)
-
-        # ─────────────────────────────
-        # Profit
-        # ─────────────────────────────
-        bot_profit = self.base_streaming.compute_single_bot_profit(
-            self.active_bot, current_price
-        )
-
-        # ─────────────────────────────
-        # ApexFlow detectors
-        # ─────────────────────────────
-        row = self.apex_flow_closing.df.iloc[-1]
-        detectors = self.apex_flow_closing.get_detectors()
-
-        vce_signal = detectors.get("vce", False)
-        mcd_signal = detectors.get("mcd", False)
-        lcrs_signal = detectors.get("lcrs", False)
-
-        expansion_range = row["high"] - row["low"]
-        is_aggressive_momo = self.active_bot.name.lower().find("aggressive momo") != -1
-
-        # ─────────────────────────────
-        # Trend filter (only for tightening)
-        # ─────────────────────────────
-        ema_fast, ema_slow = self.apex_flow_closing.get_trend_ema()
-        trend_up = ema_fast > ema_slow if ema_fast and ema_slow else True
-
-        # ─────────────────────────────
-        # Expansion multiplier
-        # ─────────────────────────────
-        expansion_multiplier = 1.0
-        if vce_signal:
-            expansion_multiplier += 0.2
-        if mcd_signal:
-            expansion_multiplier += 0.1
-        expansion_multiplier = min(expansion_multiplier, 1.5)
-
-        # ─────────────────────────────
-        # Trailing tightening schedule
-        # ─────────────────────────────
-        if bot_profit < 2:
-            trail_tighten_mult = 1.0
-        elif bot_profit < 5:
-            trail_tighten_mult = 0.7
-        else:
-            trail_tighten_mult = 0.45
-
-        # Do not tighten against trend while signals are alive
-        if (vce_signal or mcd_signal or lcrs_signal) and trend_up:
-            trail_tighten_mult = max(trail_tighten_mult, 0.7)
-
-        # ─────────────────────────────
-        # Apply strategy-specific logic
-        # ─────────────────────────────
-        if self.active_bot.strategy == Strategy.long:
-            self.set_long_trail_params(
-                top_spread=top_spread,
-                bottom_spread=bottom_spread,
-                bot_profit=bot_profit,
-                bot=self.active_bot,
-                expansion_multiplier=expansion_multiplier,
-                is_aggressive_momo=is_aggressive_momo,
-                expansion_range=expansion_range,
-                trail_tighten_mult=trail_tighten_mult,
-            )
-
-        # ─────────────────────────────
-        # Persist only if changed
-        # ─────────────────────────────
-        if (
-            self.active_bot.trailling_profit != original_bot.trailling_profit
-            or self.active_bot.trailling_deviation != original_bot.trailling_deviation
-            or self.active_bot.stop_loss != original_bot.stop_loss
-        ):
-            controller.save(self.active_bot)

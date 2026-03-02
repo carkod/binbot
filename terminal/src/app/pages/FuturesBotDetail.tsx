@@ -1,6 +1,6 @@
 import React, { useContext, type FC, useEffect } from "react";
 import { Card, Col, Container, Row } from "react-bootstrap";
-import { useMatch, useParams } from "react-router";
+import { useParams } from "react-router";
 import { useGetSingleBotQuery } from "../../features/bots/botsApiSlice";
 import {
   selectBot,
@@ -21,7 +21,6 @@ import { MarketType } from "../../utils/enums";
 
 export const FuturesBotDetail: FC<{}> = () => {
   const { id } = useParams();
-  const matchNewRoute = useMatch("/bots/futures/new");
   const dispatch = useAppDispatch();
   const { bot } = useAppSelector(selectBot);
   const { data, isLoading: loadingBot } = useGetSingleBotQuery(id as string, {
@@ -33,8 +32,7 @@ export const FuturesBotDetail: FC<{}> = () => {
   const currentMarketType = bot?.market_type ?? MarketType.FUTURES;
 
   useEffect(() => {
-    if (data && !matchNewRoute && data.bot) {
-      // Force futures market type for this page
+    if (data?.bot) {
       dispatch(
         setBot({
           bot: { ...data.bot, market_type: MarketType.FUTURES },
@@ -53,7 +51,7 @@ export const FuturesBotDetail: FC<{}> = () => {
     } else {
       setSpinner(true);
     }
-  }, [data, matchNewRoute, dispatch, loadingBot, loadingEstimates, setSpinner]);
+  }, [data, dispatch, loadingBot, loadingEstimates, setSpinner]);
 
   return (
     <SymbolProvider marketType={currentMarketType}>
@@ -71,12 +69,10 @@ export const FuturesBotDetail: FC<{}> = () => {
           {bot && id && (
             <Row>
               <Col md="7" sm="12">
-                <BotInfo bot={bot} marketType={currentMarketType} />
+                <BotInfo bot={bot} />
               </Col>
               <Col md="5" sm="12">
-                {bot.logs?.length > 0 && (
-                  <LogsInfo events={bot.logs} marketType={currentMarketType} />
-                )}
+                {bot.logs?.length > 0 && <LogsInfo events={bot.logs} />}
               </Col>
             </Row>
           )}

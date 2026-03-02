@@ -23,7 +23,9 @@ const ChartContainer: FC<{
 }> = ({ bot, setCurrentPrice, marketType }) => {
   const dispatch: AppDispatch = useAppDispatch();
   const { quoteAsset } = useSymbolData();
-  const [currentChartPrice, setCurrentChartPrice] = useImmer<number>(0);
+  const [currentChartPrice, setCurrentChartPrice] = useImmer<number | null>(
+    null,
+  );
   const [currentOrderLines, setCurrentOrderLines] = useImmer<OrderLine[]>([]);
   const [exchangeSymbol, setExchangeSymbol] = useImmer<string>(bot.pair);
   const [botProfit, setBotProfit] = useState<number>(Number(0));
@@ -53,13 +55,7 @@ const ChartContainer: FC<{
   };
 
   useEffect(() => {
-    if (bot.id && bot.deal.opening_price > 0) {
-      setBotProfit(computeSingleBotProfit(bot));
-    }
-  }, [bot]);
-
-  useEffect(() => {
-    if (!currentChartPrice) {
+    if (currentChartPrice === null) {
       return;
     }
 
@@ -80,6 +76,9 @@ const ChartContainer: FC<{
   }, [bot, currentChartPrice, currentOrderLines, dispatch, setCurrentPrice]);
 
   useEffect(() => {
+    if (bot.id && bot.deal.opening_price > 0) {
+      setBotProfit(computeSingleBotProfit(bot));
+    }
     if (!bot?.pair) {
       return;
     }
