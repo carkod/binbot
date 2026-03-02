@@ -91,7 +91,7 @@ class KucoinBaseBalance:
             return float(kucoin_balances[asset]["balance"])
         return 0.0
 
-    def clean_assets(self, bypass: bool = False):
+    def clean_assets(self):
         """
         Move any assets from trade or margin accounts to main account that are below a certain threshold
         """

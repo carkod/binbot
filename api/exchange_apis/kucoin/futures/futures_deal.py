@@ -59,8 +59,11 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self.controller = BotTableCrud()
 
         self.symbol_info = SymbolsCrud().get_symbol(bot.pair)
-        self.price_precision = self.symbol_info.price_precision
         self.kucoin_symbol = convert_to_kucoin_symbol(bot)
+        self.kucoin_symbol_data = self.kucoin_futures_api.get_symbol_info(
+            self.kucoin_symbol
+        )
+        self.price_precision = self.symbol_info.price_precision
 
     def calculate_contracts(self, price: float) -> int:
         """
@@ -104,13 +107,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         Raises BinbotErrors if there is no fiat balance or if the
         configured base order size exceeds the available balance.
         """
-        futures_available = 0.0
-        try:
-            _, _, futures_available = KucoinFuturesBalance().compute_futures_balance()
-        except NotImplementedError:
-            futures_available = 0.0
-
-        available_balance = 0.0
+        _, _, futures_available = KucoinFuturesBalance().compute_futures_balance()
 
         if futures_available > 0:
             available_balance = futures_available
@@ -144,6 +141,24 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         return available_balance
 
+    def min_required_balance(self) -> float:
+        """
+        Calculate the minimum required balance to place a futures order based on stop loss and risk settings.
+        """
+        multiplier = self.kucoin_symbol_data.multiplier
+        min_qty = self.kucoin_symbol_data.lot_size
+        price = self.kucoin_symbol_data.mark_price
+        taker_fee_rate = self.kucoin_symbol_data.taker_fee_rate
+        self.kucoin_symbol_data
+        maintenance_margin = self.kucoin_symbol_data.maintain_margin
+        notional = price * min_qty * multiplier
+
+        initial_margin = notional / self.kucoin_futures_api.DEFAULT_LEVERAGE
+        fees = 2 * notional * taker_fee_rate
+
+        required_balance = initial_margin + maintenance_margin + fees
+        return required_balance
+
     def base_order(self) -> BotModel:
         """
         Futures have positions intrinsically built, the base order can be either LONG or SHORT, we don't need to deal with loans, we simply set the position as an order
@@ -153,10 +168,13 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         available_balance = self.compute_available_balance()
         if self.active_bot.fiat_order_size > available_balance:
-            raise BinbotErrors(
-                f"Requested base order size {self.active_bot.fiat_order_size} {self.fiat} "
-                f"exceeds available balance {available_balance} {self.fiat}."
-            )
+            required_balance = self.min_required_balance()
+
+            if required_balance > available_balance:
+                raise BinbotErrors(
+                    f"Requested base order size {self.active_bot.fiat_order_size} {self.fiat} "
+                    f"exceeds available balance {available_balance} {self.fiat}."
+                )
 
         price = self.kucoin_futures_api.matching_engine(
             symbol=self.kucoin_symbol, side=AddOrderReq.SideEnum.BUY, size=1

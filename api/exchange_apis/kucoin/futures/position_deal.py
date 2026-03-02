@@ -2,6 +2,8 @@ from time import time
 from typing import Union, Type
 from pybinbot import (
     BotBase,
+    KucoinFutures,
+    KucoinApi,
     round_numbers,
     round_timestamp,
     DealType,
@@ -47,6 +49,7 @@ class PositionDeal(KucoinPositionDeal):
         self.price_precision = self.symbol_info.price_precision
         self.qty_precision = self.symbol_info.qty_precision
         self.kucoin_symbol = convert_to_kucoin_symbol(bot)
+        self.api: KucoinApi | KucoinFutures
 
     def take_profit_order(self) -> BotModel:
         """
@@ -662,6 +665,10 @@ class PositionDeal(KucoinPositionDeal):
             )
             cls.base_streaming.kucoin_benchmark_symbol = "ETHBTCUSDTM"
             self.api = self.base_streaming.kucoin_futures_api
+            symbol_info = self.base_streaming.kucoin_futures_api.get_symbol_info(
+                self.active_bot.pair
+            )
+            close_price = symbol_info.last_trade_price
         else:
             cls = SpotPosition(
                 base_streaming=self.base_streaming,
@@ -672,6 +679,9 @@ class PositionDeal(KucoinPositionDeal):
             )
             cls.base_streaming.kucoin_benchmark_symbol = "BTC-USDT"
             self.api = self.base_streaming.kucoin_api
+            close_price = self.base_streaming.kucoin_api.get_ticker_price(
+                self.active_bot.pair
+            )
 
         klines, btc_klines = cls.dataframe_ops()
         # returns raw klines
@@ -680,15 +690,9 @@ class PositionDeal(KucoinPositionDeal):
 
         cls.order_updates()
 
-        # Use Kucoin ticker API to get the latest close price
-        symbol_info = self.api.get_symbol_info(self.active_bot.pair)
-        close_price = (
-            symbol_info.last_trade_price
-            if symbol_info and symbol_info.last_trade_price
-            else float(self.klines[-1][4])
-        )
-
         open_price = float(self.klines[-1][1])
+        if not close_price or close_price == 0:
+            close_price = self.klines[-1][4]
 
         self.active_bot.deal.current_price = close_price
         self.controller.save(self.active_bot)

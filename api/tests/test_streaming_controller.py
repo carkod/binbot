@@ -328,8 +328,6 @@ class TestPositionManager:
             lambda self, symbol: None,
         )
 
-        call_order = []
-
         class FakeDealGateway:
             exit_calls: list[tuple[float, float]] = []
 
@@ -338,7 +336,6 @@ class TestPositionManager:
                 self.db_table = db_table
 
             def deal_exit_orchestration(self, close_price, open_price):
-                call_order.append("deal_exit")
                 FakeDealGateway.exit_calls.append((close_price, open_price))
 
             def save(self, bot):
@@ -349,22 +346,8 @@ class TestPositionManager:
             FakeDealGateway,
         )
 
-        # Track delegated order updates to ensure they run before deal exit
-        def fake_order_updates(self):
-            call_order.append("order_updates")
-
-        monkeypatch.setattr(
-            "streaming.spot_position.SpotPosition.order_updates",
-            fake_order_updates,
-        )
-        monkeypatch.setattr(
-            "streaming.futures_position.FuturesPosition.order_updates",
-            fake_order_updates,
-        )
-
         sc.process_deal()
 
-        assert call_order == ["order_updates", "deal_exit"]
         assert FakeDealGateway.exit_calls, (
             "Expected deal_exit_orchestration to be called"
         )
@@ -484,75 +467,6 @@ class TestPositionManager:
 
         with pytest.raises(BinanceErrors):
             sc.process_deal()
-
-    def test_process_deal_calls_futures_order_updates_for_futures_bot(
-        self, monkeypatch
-    ):
-        base = self._make_base_streaming(monkeypatch, active_pairs=["BTCUSDC"])
-        from pybinbot import ExchangeId
-
-        base.exchange = ExchangeId.KUCOIN
-        sc = PositionManager(base, symbol="BTCUSDC")
-
-        futures_bot = self._make_bot(
-            pair="BTCUSDC",
-            strategy=Strategy.long,
-            market_type=MarketType.FUTURES,
-        )
-        futures_bot.dynamic_trailling = False
-
-        monkeypatch.setattr(
-            BaseStreaming,
-            "get_current_bot",
-            lambda self, symbol: futures_bot,
-        )
-        monkeypatch.setattr(
-            BaseStreaming,
-            "get_current_test_bot",
-            lambda self, symbol: None,
-        )
-
-        call_order: list[str] = []
-
-        def fake_futures_updates(self):
-            call_order.append("futures")
-
-        def fake_spot_updates(self):
-            call_order.append("spot")
-
-        monkeypatch.setattr(
-            "streaming.futures_position.FuturesPosition.order_updates",
-            fake_futures_updates,
-        )
-        monkeypatch.setattr(
-            "streaming.spot_position.SpotPosition.order_updates",
-            fake_spot_updates,
-        )
-
-        class FakeDealGateway:
-            exit_calls: list[tuple[float, float]] = []
-
-            def __init__(self, bot, db_table):
-                self.bot = bot
-                self.db_table = db_table
-
-            def deal_exit_orchestration(self, close_price, open_price):
-                FakeDealGateway.exit_calls.append((close_price, open_price))
-
-            def save(self, bot):
-                base.bot_controller.save(bot)
-
-        monkeypatch.setattr(
-            "streaming.position_manager.DealGateway",
-            FakeDealGateway,
-        )
-
-        sc.process_deal()
-
-        assert call_order == ["futures"]
-        assert FakeDealGateway.exit_calls, (
-            "Expected deal_exit_orchestration to be called for futures bots"
-        )
 
     def test_streaming_controller_uses_kucoin_api_for_kucoin_symbols(self, monkeypatch):
         """Test that PositionManager uses KucoinApi when exchange_id is KUCOIN"""

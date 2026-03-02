@@ -5,15 +5,12 @@ from bots.models import BotModel
 from databases.crud.autotrade_crud import AutotradeCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from pybinbot import (
-    MarketType,
     ExchangeId,
     BinanceApi,
     KucoinApi,
 )
 from streaming.apex_flow_closing import ApexFlowClose
 from streaming.base import BaseStreaming
-from streaming.futures_position import FuturesPosition
-from streaming.spot_position import SpotPosition
 from exchange_apis.kucoin.futures.futures_deal import KucoinFutures
 
 
@@ -75,16 +72,17 @@ class PositionManager:
             converted_symbol
         )
 
-        bot: BotModel | None
         db_table: Type[BotTable] | Type[PaperTradingTable]
+        bot: BotModel | None
 
-        if self.current_bot:
-            bot = self.current_bot
-            db_table = BotTable
-        elif self.current_test_bot:
+        if self.current_test_bot:
             bot = self.current_test_bot
             db_table = PaperTradingTable
         else:
+            bot = self.current_bot
+            db_table = BotTable
+
+        if bot is None:
             return
 
         deal = DealGateway(bot=bot, db_table=db_table)
