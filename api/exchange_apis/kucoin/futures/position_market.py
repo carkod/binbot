@@ -1,5 +1,6 @@
 from pybinbot import (
     ExchangeId,
+    convert_to_kucoin_symbol,
     round_numbers,
     BinanceApi,
     KucoinApi,
@@ -33,6 +34,7 @@ class PositionMarket:
         self.base_streaming = base_streaming
         self.db_table = db_table
         self.symbol_data = base_streaming.symbols_crud.get_symbol(symbol)
+        self.qty_precision = self.symbol_data.qty_precision
 
     def build_bb_spreads(self) -> HABollinguerSpread:
         """
@@ -127,3 +129,25 @@ class PositionMarket:
         self.btc_df = HeikinAshi().post_process(self.btc_df)
 
         return self.klines, self.btc_klines
+
+    def position_updates(self) -> BotModel:
+        """
+        Due to ADL, position size (number of contracts can change)
+        Therefore we need to keep base_order_size up to date at all times, so that exit execution can succeed with correct qty
+        """
+        if self.active_bot.deal.base_order_size > 0:
+            old_size = self.active_bot.deal.base_order_size
+            kucoin_symbol = convert_to_kucoin_symbol(self.active_bot)
+            position = self.base_streaming.kucoin_futures_api.get_futures_position(
+                kucoin_symbol
+            )
+            if position and int(position.current_qty) >= 0:
+                new_size = round_numbers(
+                    abs(int(position.current_qty)), self.qty_precision
+                )
+                self.active_bot.deal.base_order_size = new_size
+                if new_size != old_size:
+                    self.active_bot.add_log(f"Position size updated from system. Old size: {old_size}, new size: {new_size}. ADL might have happened")
+
+                self.active_bot.deal.total_commissions = float(position.current_comm)
+                self.base_streaming.bot_controller.save(data=self.active_bot)

@@ -689,6 +689,7 @@ class PositionDeal(KucoinPositionDeal):
         self.btc_klines = btc_klines
 
         cls.order_updates()
+        cls.position_updates()
 
         open_price = float(self.klines[-1][1])
         if not close_price or close_price == 0:
