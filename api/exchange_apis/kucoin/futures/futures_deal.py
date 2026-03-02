@@ -96,8 +96,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         return int(contracts)
 
-    def compute_available_balance(self):
-        """Place a futures BUY order using available fiat balance.
+    def compute_available_balance(self) -> float:
+        """
+        Compute the available balance for placing a futures BUY order.
 
         Balance lookup order:
         1. Futures account (available balance)
@@ -127,17 +128,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 and float(result_balances["trade"][self.fiat]) > 0
             ):
                 available_balance = float(result_balances["trade"][self.fiat])
-
-        if available_balance <= 0:
-            raise BinbotErrors(
-                f"Insufficient balances: no available {self.fiat} in futures, main, or trade accounts."
-            )
-
-        if self.active_bot.fiat_order_size > available_balance:
-            raise BinbotErrors(
-                f"Requested base order size {self.active_bot.fiat_order_size} {self.fiat} "
-                f"exceeds available balance {available_balance} {self.fiat}."
-            )
 
         return available_balance
 
