@@ -354,6 +354,67 @@ class KucoinPositionDeal(KucoinBaseBalance):
         self.controller.save(self.active_bot)
         return self.active_bot
 
+    def update_parameters_short(self) -> BotModel:
+        if self.active_bot.stop_loss > 0:
+            sell_price = self.active_bot.deal.opening_price
+            stop_loss_price = sell_price + (
+                sell_price * (self.active_bot.stop_loss / 100)
+            )
+            self.active_bot.deal.stop_loss_price = round_numbers(
+                stop_loss_price, self.price_precision
+            )
+            stop_orders = self.kucoin_futures_api.get_all_stop_loss_orders(
+                self.kucoin_symbol
+            )
+            if len(stop_orders) > 0:
+                stop_order_ids = [order.id for order in stop_orders]
+                self.kucoin_futures_api.batch_cancel_stop_loss_orders(stop_order_ids)
+
+            if not self.active_bot.margin_short_reversal:
+                self.place_stop_loss()
+
+        if (
+            self.active_bot.trailling
+            and self.active_bot.trailling_deviation > 0
+            and self.active_bot.trailling_profit > 0
+        ):
+            trailling_profit_price = float(self.active_bot.deal.opening_price) * (
+                1 - (float(self.active_bot.take_profit) / 100)
+            )
+            self.active_bot.deal.trailling_profit_price = round_numbers(
+                trailling_profit_price, self.price_precision
+            )
+
+            if self.active_bot.deal.trailling_stop_loss_price != 0:
+                self.active_bot.deal.trailling_stop_loss_price = 0
+
+        return self.active_bot
+
+    def update_parameters_with_activation_short(self) -> BotModel:
+        if self.active_bot.stop_loss > 0:
+            price = self.active_bot.deal.opening_price
+            self.active_bot.deal.stop_loss_price = price - (
+                price * (self.active_bot.stop_loss / 100)
+            )
+
+        if self.active_bot.trailling:
+            trailling_profit = float(self.active_bot.deal.opening_price) * (
+                1 - (float(self.active_bot.trailling_profit) / 100)
+            )
+            self.active_bot.deal.trailling_profit_price = trailling_profit
+            self.active_bot.deal.trailling_stop_loss_price = 0
+            self.active_bot.deal.take_profit_price = 0
+        else:
+            take_profit_price = float(self.active_bot.deal.opening_price) * (
+                1 - (float(self.active_bot.take_profit) / 100)
+            )
+            self.active_bot.deal.take_profit_price = take_profit_price
+
+        self.active_bot.status = Status.active
+        self.active_bot.add_log("Bot re-activated (short)")
+        self.controller.save(self.active_bot)
+        return self.active_bot
+
     def close_all(self) -> BotModel:
         """
         Closes all open positions and cancels all orders.
@@ -409,10 +470,16 @@ class KucoinPositionDeal(KucoinBaseBalance):
             or self.active_bot.deal.opening_price > 0
         ):
             # Update bot no activation required
-            self.active_bot = self.update_parameters()
+            if self.active_bot.strategy == Strategy.margin_short:
+                self.active_bot = self.update_parameters_short()
+            else:
+                self.active_bot = self.update_parameters()
         else:
             # Activation required
-            self.active_bot = self.update_parameters_with_activation()
+            if self.active_bot.strategy == Strategy.margin_short:
+                self.active_bot = self.update_parameters_with_activation_short()
+            else:
+                self.active_bot = self.update_parameters_with_activation()
 
         self.controller.save(self.active_bot)
         return self.active_bot
