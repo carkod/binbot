@@ -142,6 +142,7 @@ class PositionMarket:
         """
         if self.active_bot.deal.base_order_size > 0:
             old_size = self.active_bot.deal.base_order_size
+            old_commissions = self.active_bot.deal.total_commissions
             kucoin_symbol = convert_to_kucoin_symbol(self.active_bot)
             position = self.base_streaming.kucoin_futures_api.get_futures_position(
                 kucoin_symbol
@@ -156,9 +157,11 @@ class PositionMarket:
                     self.active_bot.add_log(
                         f"Position size updated from system. Old size: {old_size}, new size: {new_size}."
                     )
-                
-                if position.current_comm:
-                    self.active_bot.deal.total_commissions = float(position.current_comm)
+
+                if old_commissions != float(position.current_comm):
+                    self.active_bot.deal.total_commissions = float(
+                        position.current_comm
+                    )
                 self.base_streaming.bot_controller.save(data=self.active_bot)
             else:
                 self.active_bot.add_log(
@@ -199,3 +202,5 @@ class PositionMarket:
                     )
 
                 self.base_streaming.bot_controller.save(data=self.active_bot)
+
+        return self.active_bot
