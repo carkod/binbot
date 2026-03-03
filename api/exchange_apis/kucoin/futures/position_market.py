@@ -1,3 +1,4 @@
+from time import time
 from pybinbot import (
     ExchangeId,
     OrderStatus,
@@ -172,10 +173,18 @@ class PositionMarket:
                     if self.active_bot.strategy == Strategy.margin_short
                     else GetTradeHistoryReq.SideEnum.SELL
                 )
+
+                start_at = int(self.active_bot.deal.opening_timestamp)  # already ms
+                now_ms = int(time() * 1000)
+
                 fills = self.base_streaming.kucoin_futures_api.get_fills(
                     side=side,
                     symbol=kucoin_symbol,
-                    start_at=int(self.active_bot.deal.opening_timestamp * 1000),
+                    start_at=start_at,
+                    end_at=now_ms,
+                )
+                self.active_bot.add_log(
+                    f"Fetched fills history to check for position updates. Number of fills found: {len(fills.items)}."
                 )
                 if len(fills.items) > 0:
                     total_qty = sum(abs(float(fill.size)) for fill in fills.items)
@@ -184,7 +193,7 @@ class PositionMarket:
                         order_id=order_resp.order_id,
                         order_type=order_resp.order_type.value,
                         pair=order_resp.symbol,
-                        timestamp=order_resp.created_at / 1000,
+                        timestamp=order_resp.created_at,
                         order_side=order_resp.side.value,
                         qty=total_qty,
                         price=order_resp.price,
@@ -200,6 +209,11 @@ class PositionMarket:
                     self.active_bot.add_log(
                         f"Position size updated from fills history. New size: {total_qty}."
                     )
+                else:
+                    self.active_bot.add_log(
+                        "No fills found in history, cannot update position size. ADL might have happened, or position might have been closed without bot's knowledge."
+                    )
+                    self.active_bot.status = Status.error
 
                 self.base_streaming.bot_controller.save(data=self.active_bot)
 

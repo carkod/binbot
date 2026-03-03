@@ -2,6 +2,7 @@ import logging
 from sqlalchemy import text
 from sqlmodel import Session, select
 from databases.crud.symbols_crud import SymbolsCrud
+from databases.crud.autotrade_crud import AutotradeCrud
 from databases.crud.asset_index_crud import AssetIndexCrud
 from databases.tables.symbol_table import SymbolTable
 from databases.utils import get_db_session, independent_session
@@ -26,6 +27,8 @@ class SymbolDataEtl(SymbolsCrud):
             session = independent_session()
 
         super().__init__(session=session)
+        self.autotrade_settings = AutotradeCrud().get_settings()
+        self.fiat = self.autotrade_settings.fiat
 
     def binance_symbols_reingestion(self):
         exchange_info_data = self.binance_api.exchange_info()
@@ -53,89 +56,15 @@ class SymbolDataEtl(SymbolsCrud):
                     is_margin_trading_allowed=item.get("isMarginTradingAllowed", False),
                 )
 
-    def kucoin_symbols_reingestion(self):
-        exchange_info_data = self.kucoin_api.get_all_symbols()
-        for item in exchange_info_data.data:
-            symbol = item.symbol.replace("-", "")
-            if not item.enable_trading or item.symbol.startswith(
-                ("DOWN", "UP", "AUD", "EUR", "GBP")
-            ):
-                continue
-
-            if item.st:
-                # assets to be delisted
-                payload = SymbolRequestPayload(
-                    symbol=symbol,
-                    active=False,
-                    blacklist_reason="At risk to be delisted soon",
-                    exchange_id=ExchangeId.KUCOIN,
-                    min_notional=float(item.base_min_size),
-                    price_precision=self._convert_to_int(item.price_increment),
-                    qty_precision=self._convert_to_int(item.base_increment),
-                    is_margin_trading_allowed=item.is_margin_enabled,
-                    quote_asset=item.quote_currency,
-                    base_asset=item.base_currency,
-                )
-                try:
-                    self.edit_symbol_item(payload)
-                    continue
-
-                except Exception as e:
-                    self.session.rollback()
-                    logging.error(f"Error updating delisted symbol {symbol}: {e}")
-                    continue
-
-            active = True
-            if symbol in ("BTCUSDC", "ETHUSDC", "BNBUSDC"):
-                active = False
-
-            if item.quote_currency in list(QuoteAssets):
-                price_precision = self._convert_to_int(item.price_increment)
-                qty_precision = self._convert_to_int(item.base_increment)
-                min_notional = float(item.base_min_size)
-
-                statement = select(SymbolTable).where(SymbolTable.id == symbol)
-                result = self.session.exec(statement).first()
-                if result:
-                    with get_db_session() as s:
-                        self._add_exchange_link_if_not_exists(
-                            s,
-                            symbol=symbol,
-                            exchange_id=ExchangeId.KUCOIN,
-                            min_notional=min_notional,
-                            price_precision=price_precision,
-                            qty_precision=qty_precision,
-                            quote_asset=item.quote_currency,
-                            base_asset=item.base_currency,
-                            is_margin_trading_allowed=item.is_margin_enabled,
-                        )
-                else:
-                    self.add_symbol(
-                        symbol=symbol,
-                        quote_asset=item.quote_currency,
-                        base_asset=item.base_currency,
-                        exchange_id=ExchangeId.KUCOIN,
-                        active=active,
-                        price_precision=price_precision,
-                        qty_precision=qty_precision,
-                        min_notional=min_notional,
-                    )
-                    with get_db_session() as s:
-                        self._add_exchange_link_if_not_exists(
-                            s,
-                            symbol=symbol,
-                            exchange_id=ExchangeId.KUCOIN,
-                            min_notional=min_notional,
-                            price_precision=price_precision,
-                            qty_precision=qty_precision,
-                            quote_asset=item.quote_currency,
-                            base_asset=item.base_currency,
-                            is_margin_trading_allowed=item.is_margin_enabled,
-                        )
-
     def binance_symbols_ingestion(self):
         exchange_info_data = self.binance_api.exchange_info()
-        for item in exchange_info_data["symbols"]:
+        filtered_symbols = [
+            item
+            for item in exchange_info_data["symbols"]
+            if str(item["symbol"]).endswith(self.fiat)
+        ]
+
+        for item in filtered_symbols:
             if item["status"] != "TRADING" or item["symbol"].startswith(
                 ("DOWN", "UP", "AUD", "USDT", "EUR", "GBP")
             ):
@@ -159,11 +88,20 @@ class SymbolDataEtl(SymbolsCrud):
                 )
 
     def ingest_futures_data(self, all_raw_symbols: FuturesGetAllSymbolsResp):
+        """
+        - Ingest futures data as a data seed (empty local database)
+        - Reingests through cronjob
+        - Resets data (when delete_existing=True)
+        """
         for item in all_raw_symbols.data:
             symbol = item.symbol
 
+            futures_suffix = f"{self.fiat}M" if self.fiat == "USDT" else self.fiat
+            if futures_suffix and not symbol.endswith(futures_suffix):
+                continue
+
             active = True
-            if symbol in ("BTCUSDC", "ETHUSDC", "BNBUSDC"):
+            if symbol.startswith(("BTC", "ETH")):
                 active = False
 
             if item.quote_currency in list(QuoteAssets):
@@ -219,10 +157,35 @@ class SymbolDataEtl(SymbolsCrud):
         for item in all_raw_symbols.data:
             symbol = item.symbol.replace("-", "")
 
+            if not symbol.endswith(self.fiat):
+                continue
+
             if not item.enable_trading or item.symbol.startswith(
                 ("DOWN", "UP", "AUD", "EUR", "GBP")
             ):
                 continue
+
+            if item.st:
+                # assets to be delisted
+                payload = SymbolRequestPayload(
+                    symbol=symbol,
+                    active=False,
+                    blacklist_reason="At risk to be delisted soon",
+                    exchange_id=ExchangeId.KUCOIN,
+                    min_notional=float(item.base_min_size),
+                    price_precision=self._convert_to_int(item.price_increment),
+                    qty_precision=self._convert_to_int(item.base_increment),
+                    is_margin_trading_allowed=item.is_margin_enabled,
+                    quote_asset=item.quote_currency,
+                    base_asset=item.base_currency,
+                )
+                try:
+                    self.edit_symbol_item(payload)
+                    continue
+                except Exception as e:
+                    self.session.rollback()
+                    logging.error(f"Error updating delisted symbol {symbol}: {e}")
+                    continue
 
             active = True
             if symbol in ("BTCUSDC", "ETHUSDC", "BNBUSDC"):
@@ -291,9 +254,16 @@ class SymbolDataEtl(SymbolsCrud):
             asset_index_crud = AssetIndexCrud()
             asset_index_crud.delete_all()
 
-        # Run ingestions
-        self.binance_symbols_ingestion()
-        self.kucoin_symbols_ingestion()
+        exchange_id = self.autotrade_settings.exchange_id
 
-    def etl_symbols_updates(self):
-        self.kucoin_symbols_reingestion()
+        if exchange_id == ExchangeId.BINANCE:
+            self.binance_symbols_ingestion()
+            logging.info("Binance symbols ingestion completed.")
+        elif exchange_id == ExchangeId.KUCOIN:
+            self.kucoin_symbols_ingestion()
+            logging.info("Kucoin symbols ingestion completed.")
+        else:
+            logging.warning(
+                "Skipping symbols ingestion for unsupported exchange %s",
+                exchange_id,
+            )
