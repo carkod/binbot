@@ -1,5 +1,9 @@
 from pybinbot import (
     ExchangeId,
+    OrderStatus,
+    Status,
+    Strategy,
+    convert_to_kucoin_symbol,
     round_numbers,
     BinanceApi,
     KucoinApi,
@@ -7,11 +11,13 @@ from pybinbot import (
     Indicators,
     HeikinAshi,
     KucoinFutures,
+    DealType,
 )
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from streaming.base import BaseStreaming
-from bots.models import BotModel
+from bots.models import BotModel, OrderModel
 from typing import Union, Type
+from kucoin_universal_sdk.generate.futures.order import GetTradeHistoryReq
 
 
 class PositionMarket:
@@ -33,6 +39,7 @@ class PositionMarket:
         self.base_streaming = base_streaming
         self.db_table = db_table
         self.symbol_data = base_streaming.symbols_crud.get_symbol(symbol)
+        self.qty_precision = self.symbol_data.qty_precision
 
     def build_bb_spreads(self) -> HABollinguerSpread:
         """
@@ -127,3 +134,73 @@ class PositionMarket:
         self.btc_df = HeikinAshi().post_process(self.btc_df)
 
         return self.klines, self.btc_klines
+
+    def position_updates(self) -> BotModel:
+        """
+        Due to ADL, position size (number of contracts can change)
+        Therefore we need to keep base_order_size up to date at all times, so that exit execution can succeed with correct qty
+        """
+        if self.active_bot.deal.base_order_size > 0:
+            old_size = self.active_bot.deal.base_order_size
+            old_commissions = self.active_bot.deal.total_commissions
+            kucoin_symbol = convert_to_kucoin_symbol(self.active_bot)
+            position = self.base_streaming.kucoin_futures_api.get_futures_position(
+                kucoin_symbol
+            )
+            # position.current_qty can be positive or negative depending on the strategy
+            if position and abs(int(position.current_qty)) > 0:
+                new_size = round_numbers(
+                    abs(int(position.current_qty)), self.qty_precision
+                )
+                if new_size != old_size:
+                    self.active_bot.deal.base_order_size = new_size
+                    self.active_bot.add_log(
+                        f"Position size updated from system. Old size: {old_size}, new size: {new_size}."
+                    )
+
+                if old_commissions != float(position.current_comm):
+                    self.active_bot.deal.total_commissions = float(
+                        position.current_comm
+                    )
+                self.base_streaming.bot_controller.save(data=self.active_bot)
+            else:
+                self.active_bot.add_log(
+                    "Position not found in exchange, cannot update size. ADL might have happened, or position might have been closed without bot's knowledge."
+                )
+                side = (
+                    GetTradeHistoryReq.SideEnum.BUY
+                    if self.active_bot.strategy == Strategy.margin_short
+                    else GetTradeHistoryReq.SideEnum.SELL
+                )
+                fills = self.base_streaming.kucoin_futures_api.get_fills(
+                    side=side,
+                    symbol=kucoin_symbol,
+                    start_at=int(self.active_bot.deal.opening_timestamp * 1000),
+                )
+                if len(fills.items) > 0:
+                    total_qty = sum(abs(float(fill.size)) for fill in fills.items)
+                    order_resp = fills.items[0]
+                    exit_order = OrderModel(
+                        order_id=order_resp.order_id,
+                        order_type=order_resp.order_type.value,
+                        pair=order_resp.symbol,
+                        timestamp=order_resp.created_at / 1000,
+                        order_side=order_resp.side.value,
+                        qty=total_qty,
+                        price=order_resp.price,
+                        status=OrderStatus.FILLED,
+                        # no data, assumed
+                        time_in_force="GTC",
+                        # we don't know if take profit or stop loss
+                        deal_type=DealType.panic_close,
+                    )
+                    self.active_bot.orders.append(exit_order)
+                    self.active_bot.deal.total_commissions += float(order_resp.fee)
+                    self.active_bot.status = Status.completed
+                    self.active_bot.add_log(
+                        f"Position size updated from fills history. New size: {total_qty}."
+                    )
+
+                self.base_streaming.bot_controller.save(data=self.active_bot)
+
+        return self.active_bot
