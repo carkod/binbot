@@ -84,7 +84,7 @@ def reingest_symbols(
     Reingest all symbols from Binance and Kucoin (runs in background)
     """
     try:
-        background_tasks.add_task(SymbolDataEtl(session=session).etl_symbols_updates)
+        background_tasks.add_task(SymbolDataEtl(session=session).etl_symbols_ingestion)
         return GetOneSymbolResponse(
             message="Symbols reingestion started in background!"
         )

@@ -24,11 +24,11 @@ def main():
     # to avoid overloading RAM and also avoid hitting rate limits due to high weight
     # that's why they are placed at midnight
     scheduler.add_job(
-        func=symbols_crud.etl_symbols_updates,
+        func=symbols_crud.etl_symbols_ingestion,
         trigger="cron",
         timezone=config.timezone,
         day_of_week="sat",
-        hour=11,
+        hour=4,
         minute=0,
         id="update_symbols",
     )
