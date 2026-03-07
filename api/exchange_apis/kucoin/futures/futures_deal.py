@@ -228,7 +228,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         else:
             side = AddOrderReq.SideEnum.SELL
 
-        self.kucoin_futures_api.place_futures_order(
+        order_response = self.kucoin_futures_api.place_futures_order(
             symbol=self.kucoin_symbol,
             side=side,
             order_type=OrderType.market,
@@ -239,6 +239,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
             size=self.active_bot.deal.opening_qty,
         )
 
+        order_model = OrderModel(**order_response.model_dump())
+        self.active_bot.orders.append(order_model)
         self.active_bot.deal.stop_loss_price = stop_price
 
         self.controller.update_logs(
@@ -276,7 +278,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
             size=self.active_bot.deal.opening_qty,
             reduce_only=True,
         )
-        self.active_bot.orders.append(order)
+        order_model = OrderModel(**order.model_dump())
+        self.active_bot.orders.append(order_model)
 
         self.active_bot.deal.take_profit_price = price
 

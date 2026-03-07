@@ -4,6 +4,7 @@ from pybinbot import (
     BotBase,
     KucoinFutures,
     KucoinApi,
+    OrderBase,
     round_numbers,
     round_timestamp,
     DealType,
@@ -264,19 +265,27 @@ class PositionDeal(KucoinPositionDeal):
                 self.active_bot,
             )
             if self.active_bot.strategy == Strategy.margin_short:
-                order_base = self.kucoin_futures_api.buy(
+                order_base: OrderBase = self.kucoin_futures_api.place_futures_order(
+                    side=AddOrderReq.SideEnum.BUY,
                     symbol=self.kucoin_symbol,
-                    qty=qty,
+                    size=qty,
                     reduce_only=True,
+                    stop_price_type=AddOrderReq.StopPriceTypeEnum.MARK_PRICE,
+                    stop=AddOrderReq.StopEnum.UP,
+                    stop_price=self.active_bot.deal.trailling_stop_loss_price,
                 )
             else:
-                order_base = self.kucoin_futures_api.sell(
+                order_base = self.kucoin_futures_api.place_futures_order(
+                    side=AddOrderReq.SideEnum.SELL,
                     symbol=self.kucoin_symbol,
-                    qty=qty,
+                    size=qty,
                     reduce_only=True,
+                    stop_price_type=AddOrderReq.StopPriceTypeEnum.MARK_PRICE,
+                    stop=AddOrderReq.StopEnum.DOWN,
+                    stop_price=self.active_bot.deal.trailling_stop_loss_price,
                 )
 
-            order_data = OrderModel.model_construct(**order_base.model_dump())
+            order_data = OrderModel(**order_base.model_dump())
 
         self.active_bot.orders.append(order_data)
 
