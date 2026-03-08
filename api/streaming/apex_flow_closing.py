@@ -1,8 +1,9 @@
-from pandas import DataFrame, Series
+from pandas import Series
 import numpy as np
-from pybinbot import Indicators
+from pybinbot import Indicators, KlineSchema
 from bots.models import BotModel
 from databases.crud.autotrade_crud import AutotradeCrud
+from pandera.typing import DataFrame as TypedDataFrame
 
 
 class ApexFlowClose:
@@ -12,7 +13,9 @@ class ApexFlowClose:
     - Provides trend EMA bias
     """
 
-    def __init__(self, df: DataFrame, btc_df: DataFrame) -> None:
+    def __init__(
+        self, df: TypedDataFrame[KlineSchema], btc_df: TypedDataFrame[KlineSchema]
+    ) -> None:
         self.exchange = AutotradeCrud().get_settings().exchange_id
         self.df = df
         self.btc_df = btc_df
@@ -36,73 +39,71 @@ class ApexFlowClose:
         return float(window["high"].max() - window["low"].min())
 
     # ------------------ Detectors ------------------ #
-    def run_detectors(self) -> DataFrame:
+    def run_detectors(self) -> TypedDataFrame[KlineSchema]:
+        df = self.df.copy()
         # --- VCE detector ---
-        self.df["bb_width"] = (self.df["bb_upper"] - self.df["bb_lower"]) / (
-            self.df["bb_mid"].abs() + 1e-6
-        )
-        self.df = Indicators.atr(self.df, window=14, min_periods=14)
+        df = Indicators.atr(df, window=14, min_periods=14)
 
-        atr_threshold = self.df["ATR"].rolling(50, min_periods=50).quantile(0.25)
-        compression = (self.df["bb_width"] < 0.04) & (self.df["ATR"] < atr_threshold)
-        atr_mean = self.df["ATR"].rolling(20).mean()
-        vol_mean = self.df["volume"].rolling(20).mean()
-        expansion = (self.df["ATR"] > atr_mean * 1.5) & (
-            self.df["volume"] > vol_mean * 1.3
+        df["bb_width"] = (df["bb_upper"] - df["bb_lower"]) / (df["bb_mid"].abs() + 1e-6)
+
+        atr_threshold = df["ATR"].rolling(50, min_periods=50).quantile(0.25)
+        compression = (df["bb_width"] < 0.04) & (df["ATR"] < atr_threshold)
+        atr_mean = df["ATR"].rolling(20).mean()
+        vol_mean = df["volume"].rolling(20).mean()
+        expansion = (df["ATR"] > atr_mean * 1.5) & (df["volume"] > vol_mean * 1.3)
+        df["vce_signal"] = expansion & compression.shift(1).rolling(3).max().astype(
+            bool
         )
-        self.df["vce_signal"] = expansion & compression.shift(1).rolling(
-            3
-        ).max().astype(bool)
 
         # Direction (LONG/SHORT)
-        vce_dir = Series(index=self.df.index, dtype=object)
-        vce_dir[self.df["close"] > self.df["bb_upper"].shift(1)] = "LONG"
-        vce_dir[self.df["close"] < self.df["bb_lower"].shift(1)] = "SHORT"
-        self.df["vce_direction"] = vce_dir
-        self.df.loc[~self.df["vce_signal"], "vce_direction"] = None
+        vce_dir = Series(index=df.index, dtype=object)
+        vce_dir[df["close"] > df["bb_upper"].shift(1)] = "LONG"
+        vce_dir[df["close"] < df["bb_lower"].shift(1)] = "SHORT"
+        df["vce_direction"] = vce_dir
+        df.loc[~df["vce_signal"], "vce_direction"] = None
 
         # --- Momentum Continuation (MCD) ---
-        self.df = Indicators.trend_ema(self.df)
-        self.df = Indicators.rsi(self.df)
+        df = Indicators.trend_ema(df)
+        df = Indicators.rsi(df)
         momentum = (
-            (self.df["close"] > self.df["ema_fast"])
-            & (self.df["ema_fast"] > self.df["ema_slow"])
-            & (self.df["rsi"] > 55)
+            (df["close"] > df["ema_fast"])
+            & (df["ema_fast"] > df["ema_slow"])
+            & (df["rsi"] > 55)
         )
-        atr_ok = self.df["ATR"] > self.df["ATR"].rolling(20).mean() * 1.2
-        self.df["momentum_continue"] = momentum & atr_ok
-        self.df["mcd_direction"] = np.where(
-            self.df["ema_fast"] > self.df["ema_slow"], "LONG", "SHORT"
-        )
-        self.df.loc[~self.df["momentum_continue"], "mcd_direction"] = None
+        atr_ok = df["ATR"] > df["ATR"].rolling(20).mean() * 1.2
+        df["momentum_continue"] = momentum & atr_ok
+        df["mcd_direction"] = np.where(df["ema_fast"] > df["ema_slow"], "LONG", "SHORT")
+        df.loc[~df["momentum_continue"], "mcd_direction"] = None
 
         # --- LSR ---
-        prev_high = self.df["high"].rolling(20).max().shift(1)
-        prev_low = self.df["low"].rolling(20).min().shift(1)
-        vol_mean = self.df["volume"].rolling(20).mean()
-        sweep_high = (self.df["high"] > prev_high) & (self.df["close"] < prev_high)
-        sweep_low = (self.df["low"] < prev_low) & (self.df["close"] > prev_low)
-        volume_ok = self.df["volume"] > vol_mean * 1.8
-        self.df["lsr_signal"] = (sweep_high | sweep_low) & volume_ok
-        lsr_dir = Series(index=self.df.index, dtype=object)
+        prev_high = df["high"].rolling(20).max().shift(1)
+        prev_low = df["low"].rolling(20).min().shift(1)
+        vol_mean = df["volume"].rolling(20).mean()
+        sweep_high = (df["high"] > prev_high) & (df["close"] < prev_high)
+        sweep_low = (df["low"] < prev_low) & (df["close"] > prev_low)
+        volume_ok = df["volume"] > vol_mean * 1.8
+        df["lsr_signal"] = (sweep_high | sweep_low) & volume_ok
+        lsr_dir = Series(index=df.index, dtype=object)
         lsr_dir[sweep_low] = "LONG"
         lsr_dir[sweep_high] = "SHORT"
-        self.df["lsr_direction"] = lsr_dir
+        df["lsr_direction"] = lsr_dir
 
         # --- LCRS (Low-Cap Relative Strength) ---
         if not self.btc_df.empty:
-            asset_ret = self.df["close"].pct_change(20)
+            asset_ret = df["close"].pct_change(20)
             btc_ret = self.btc_df["close"].pct_change(20)
             rel_strength_ma = (asset_ret / (btc_ret + 1e-9)).rolling(5).mean()
-            self.df["lcrs_signal"] = rel_strength_ma > 1.02
+            df["lcrs_signal"] = rel_strength_ma > 1.02
         else:
-            self.df["lcrs_signal"] = False
+            df["lcrs_signal"] = False
 
-        return self.df
+        return df
 
     # ------------------ Public API for closing ------------------ #
     def get_detectors(self) -> dict:
         """Return latest detector signals (True/False)"""
+        self.run_detectors()
+
         if self.df.empty:
             return {"vce": False, "mcd": False, "lsr": False, "lcrs": False}
         last = self.df.iloc[-1]
