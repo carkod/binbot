@@ -39,6 +39,10 @@
       "request": "launch",
       "program": "${workspaceFolder}/api/market_updates.py",
       "console": "internalConsole",
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "LOG_LEVEL": "debug"
+      },
       "justMyCode": false
     },
     {

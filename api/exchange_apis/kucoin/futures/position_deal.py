@@ -121,6 +121,7 @@ class PositionDeal(KucoinPositionDeal):
                     reduce_only=True,
                 )
 
+            order_base.deal_type = DealType.take_profit
             # Convert OrderBase to OrderModel using model_dump/model_construct
             order_data = OrderModel.model_construct(**order_base.model_dump())
 
@@ -184,7 +185,7 @@ class PositionDeal(KucoinPositionDeal):
                         qty=qty,
                         reduce_only=True,
                     )
-                stop_loss_order = OrderModel.model_construct(**order_base.model_dump())
+
             except RestError as e:
                 if float(e.response.code) == 300009:
                     self.controller.update_logs(
@@ -194,6 +195,9 @@ class PositionDeal(KucoinPositionDeal):
                     self.active_bot.status = Status.completed
                     self.controller.save(self.active_bot)
                     return self.active_bot
+
+        order_base.deal_type = DealType.stop_loss
+        stop_loss_order = OrderModel.model_construct(**order_base.model_dump())
 
         self.active_bot.orders.append(stop_loss_order)
         self.active_bot.deal.closing_price = float(stop_loss_order.price)
@@ -289,6 +293,7 @@ class PositionDeal(KucoinPositionDeal):
                     price=self.active_bot.deal.trailling_stop_loss_price,
                 )
 
+            order_base.deal_type = DealType.trailling_profit
             order_data = OrderModel(**order_base.model_dump())
 
         self.active_bot.orders.append(order_data)
