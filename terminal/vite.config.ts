@@ -24,6 +24,11 @@ export default defineConfig({
   server: {
     open: true,
     proxy: {
+      "/kucoin-futures": {
+        target: "https://api-futures.kucoin.com",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/kucoin-futures/, ""),
+      },
       "/kucoin": {
         target: "https://api.kucoin.com",
         changeOrigin: true,

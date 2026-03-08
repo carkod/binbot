@@ -13,7 +13,11 @@
       "outFiles": [
         "${workspaceFolder}/terminal/**/*.js",
         "${workspaceFolder}/terminal/src/node_modules/**"
-      ]
+      ],
+      "skipFiles": [
+        "<node_internals>/**",
+        "!**/node_modules/**"
+      ],
     },
     {
       "name": "Python: FastAPI",
