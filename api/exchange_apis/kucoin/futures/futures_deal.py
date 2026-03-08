@@ -208,6 +208,23 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         return self.active_bot
 
+    def cancel_current_sl(self) -> None:
+        """
+        Find current stop loss orders in place and batch cancel them.
+        """
+        stop_orders = self.kucoin_futures_api.get_all_stop_loss_orders(
+            self.kucoin_symbol
+        )
+        if len(stop_orders) > 0:
+            stop_order_ids = [order.id for order in stop_orders]
+            self.kucoin_futures_api.batch_cancel_stop_loss_orders(stop_order_ids)
+            # pop out canceled orders from bot.orders
+            for order_id in stop_order_ids:
+                for index, existing_order in enumerate(self.active_bot.orders):
+                    if existing_order.order_id == order_id:
+                        existing_order.status = OrderStatus.CANCELED
+                        self.active_bot.orders[index] = existing_order
+
     def base_order(self) -> BotModel:
         """
         Futures have positions intrinsically built, the base order can be either LONG or SHORT, we don't need to deal with loans, we simply set the position as an order
@@ -358,12 +375,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self.active_bot.deal.stop_loss_price = round_numbers(
                 stop_loss_price, self.price_precision
             )
-            stop_orders = self.kucoin_futures_api.get_all_stop_loss_orders(
-                self.kucoin_symbol
-            )
-            if len(stop_orders) > 0:
-                stop_order_ids = [order.id for order in stop_orders]
-                self.kucoin_futures_api.batch_cancel_stop_loss_orders(stop_order_ids)
+            self.cancel_current_sl()
 
             # stop loss placed in the market will reduce the position to 0
             if not self.active_bot.margin_short_reversal:
