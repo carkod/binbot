@@ -213,7 +213,9 @@ class PositionDeal(KucoinPositionDeal):
 
         return self.active_bot
 
-    def trailing_profit(self, repurchase_multiplier: float = 1) -> BotModel | None:
+    def place_trailing_stop_loss(
+        self, repurchase_multiplier: float = 1
+    ) -> BotModel | None:
         """
         Close the position at the current take-profit trail level.
         """
@@ -258,24 +260,11 @@ class PositionDeal(KucoinPositionDeal):
                 self.active_bot,
             )
 
-            # check if there's stop loss order setup
-            stop_orders = (
-                self.base_streaming.kucoin_futures_api.get_all_stop_loss_orders(
-                    self.kucoin_symbol
-                )
-            )
-            if len(stop_orders) > 0:
-                for order in stop_orders:
-                    if (
-                        self.active_bot.deal.trailling_stop_loss_price
-                        == order.stop_price
-                    ):
-                        self.active_bot.add_log(
-                            "There's already a stop loss setup with the same price. Skipping."
-                        )
-                        return self.active_bot
-                    else:
-                        self.cancel_current_sl()
+            # since trailing_profit only runs when trail is broken
+            # we can assume stop loss needs to be replaced
+            # if it constantly runs, then we need to add conditional logic
+            # to avoid cancelling constantly
+            self.cancel_current_sl()
 
             if self.active_bot.strategy == Strategy.margin_short:
                 order_base: OrderBase = self.kucoin_futures_api.place_futures_order(
@@ -526,7 +515,7 @@ class PositionDeal(KucoinPositionDeal):
         self.controller.save(self.active_bot)
         return self.active_bot
 
-    def exit_long(self, close_price: float, open_price: float) -> BotModel:
+    def exit_long(self, close_price: float, _: float) -> BotModel:
         """
         Exist logic when strategy.long
         """
@@ -604,7 +593,7 @@ class PositionDeal(KucoinPositionDeal):
                     self.active_bot.deal.trailling_stop_loss_price = (
                         new_trailling_stop_loss
                     )
-                    self.trailing_profit()
+                    self.place_trailing_stop_loss()
 
                 if (
                     old_trailling_stop_loss
@@ -636,14 +625,19 @@ class PositionDeal(KucoinPositionDeal):
         return self.active_bot
 
     def exit_short(self, close_price: float) -> BotModel:
+        """
+        Exit logic when strategy.margin_short (short position)
+        Mirrors exit_long but with all conditions flipped for short logic.
+        """
         current_price = round_numbers(close_price, self.price_precision)
         self.active_bot.deal.current_price = current_price
         self.controller.save(self.active_bot)
 
+        # Stop loss (for short: price below stop loss triggers SL)
         if self.active_bot.deal.stop_loss_price == 0:
             self.active_bot.deal.stop_loss_price = (
                 self.active_bot.deal.opening_price
-                + (
+                - (
                     self.active_bot.deal.opening_price
                     * (self.active_bot.stop_loss / 100)
                 )
@@ -651,7 +645,7 @@ class PositionDeal(KucoinPositionDeal):
 
         if (
             self.active_bot.stop_loss > 0
-            and current_price > self.active_bot.deal.stop_loss_price
+            and current_price < self.active_bot.deal.stop_loss_price
         ):
             if self.active_bot.margin_short_reversal:
                 self.controller.update_logs(
@@ -659,49 +653,93 @@ class PositionDeal(KucoinPositionDeal):
                     self.active_bot,
                 )
                 self.active_bot = self.reverse_to_long()
-                return self.active_bot
-
-            self.controller.update_logs(
-                f"Executing futures short stop_loss after hitting {self.active_bot.deal.stop_loss_price}",
-                self.active_bot,
-            )
-            self.execute_stop_loss()
+            else:
+                self.controller.update_logs(
+                    f"Executing futures short stop_loss after hitting {self.active_bot.deal.stop_loss_price}",
+                    self.active_bot,
+                )
+                self.execute_stop_loss()
             self.controller.save(self.active_bot)
             return self.active_bot
 
-        if (
-            current_price > 0
-            and self.active_bot.trailling
-            and self.active_bot.trailling_profit > 0
-            and self.active_bot.trailling_deviation > 0
-        ):
-            if (
-                self.active_bot.deal.trailling_profit_price == 0
-                or current_price < self.active_bot.deal.trailling_profit_price
-            ):
-                self.update_short_trailing(current_price)
-
-            if (
-                self.active_bot.deal.trailling_stop_loss_price > 0
-                and current_price > self.active_bot.deal.trailling_stop_loss_price
-            ):
-                self.controller.update_logs(
-                    f"Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Buying {self.kucoin_symbol}",
-                    self.active_bot,
+        # Trailling profit (for short: price going down)
+        if self.active_bot.trailling and self.active_bot.deal.opening_price > 0:
+            # If current price didn't break take_profit_trail (first time hitting take_profit or trailling_deviation higher than base_order sell_price so trailling stop loss is not set at this point)
+            if self.active_bot.deal.trailling_stop_loss_price == 0:
+                trailing_price = float(self.active_bot.deal.opening_price) * (
+                    1 - (float(self.active_bot.trailling_profit) / 100)
                 )
-                self.trailing_profit()
-                return self.active_bot
+                trailing_price = round_numbers(trailing_price, self.price_precision)
+            else:
+                # new trail price = current trailling stop loss - trail profit
+                trailing_price = float(
+                    self.active_bot.deal.trailling_stop_loss_price
+                ) * (1 - (self.active_bot.trailling_profit / 100))
+                trailing_price = round_numbers(trailing_price, self.price_precision)
+
+            self.active_bot.deal.trailling_profit_price = round_numbers(
+                trailing_price, self.price_precision
+            )
+            # Direction 1 (downward): breaking the current trailling
+            if current_price <= trailing_price:
+                new_take_profit = current_price * (
+                    1 - ((self.active_bot.trailling_profit) / 100)
+                )
+                new_trailling_stop_loss: float = round_numbers(
+                    current_price
+                    + (current_price * ((self.active_bot.trailling_deviation) / 100)),
+                    self.price_precision,
+                )
+
+                # Avoid duplicate logs
+                old_trailling_profit_price = self.active_bot.deal.trailling_profit_price
+                old_trailling_stop_loss = self.active_bot.deal.trailling_stop_loss_price
+
+                # take_profit but for trailling, to avoid confusion
+                # trailling_profit_price always be < trailling_stop_loss_price for short
+                self.active_bot.deal.trailling_profit_price = round_numbers(
+                    new_take_profit, self.price_precision
+                )
+
+                if (
+                    new_trailling_stop_loss < self.active_bot.deal.opening_price
+                    and new_trailling_stop_loss
+                    < self.active_bot.deal.trailling_stop_loss_price
+                ):
+                    # Selling above sell_price will cause a loss
+                    # instead let it rise until it hits safety order or stop loss
+                    # Update trailling_stop_loss
+                    self.active_bot.deal.trailling_stop_loss_price = (
+                        new_trailling_stop_loss
+                    )
+                    self.place_trailing_stop_loss()
+
+                if (
+                    old_trailling_stop_loss
+                    != self.active_bot.deal.trailling_stop_loss_price
+                ):
+                    self.active_bot.add_log(
+                        f"Updated trailling_stop_loss_price to {self.active_bot.deal.trailling_stop_loss_price} and set trailing stop loss (stop loss in Kucoin)"
+                    )
+
+                if (
+                    old_trailling_profit_price
+                    != self.active_bot.deal.trailling_profit_price
+                ):
+                    self.active_bot.add_log(
+                        f"Updated trailling_profit_price to {round_numbers(self.active_bot.deal.trailling_profit_price, self.price_precision)} and set trailing profit (profit in Kucoin)"
+                    )
+
+                self.controller.save(self.active_bot)
 
         if (
-            not self.active_bot.trailling
+            self.active_bot.take_profit > 0
             and self.active_bot.deal.take_profit_price
-            and current_price <= self.active_bot.deal.take_profit_price
+            and self.active_bot.deal.opening_price > 0
         ):
-            self.controller.update_logs(
-                f"Executing futures short take_profit after hitting {self.active_bot.deal.take_profit_price}",
-                self.active_bot,
-            )
-            self.take_profit_order()
+            # Take profit (for short: price below take_profit triggers TP)
+            if current_price <= self.active_bot.deal.take_profit_price:
+                self.take_profit_order()
 
         return self.active_bot
 
