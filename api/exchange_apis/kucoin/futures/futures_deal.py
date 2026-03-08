@@ -25,6 +25,7 @@ from exchange_apis.kucoin.futures.balance import KucoinFuturesBalance
 from streaming.apex_flow_closing import ApexFlowClose
 from copy import deepcopy
 from streaming.base import BaseStreaming
+from kucoin_universal_sdk.generate.futures.order import GetTradeHistoryReq
 
 
 class KucoinPositionDeal(KucoinBaseBalance):
@@ -151,6 +152,61 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         required_balance = initial_margin + maintenance_margin + fees
         return required_balance
+
+    def backfill_position_from_fills(self) -> BotModel:
+        self.active_bot.add_log(
+            "Position not found in exchange, cannot update size. ADL might have happened, or position might have been closed without bot's knowledge."
+        )
+        side = (
+            GetTradeHistoryReq.SideEnum.BUY
+            if self.active_bot.strategy == Strategy.margin_short
+            else GetTradeHistoryReq.SideEnum.SELL
+        )
+
+        start_at = int(self.active_bot.deal.opening_timestamp)  # already ms
+        now_ms = int(time() * 1000)
+
+        fills = self.base_streaming.kucoin_futures_api.get_fills(
+            side=side,
+            symbol=self.kucoin_symbol,
+            start_at=start_at,
+            end_at=now_ms,
+        )
+        self.active_bot.add_log(
+            f"Fetched fills history to check for position updates. Number of fills found: {len(fills.items)}."
+        )
+        if len(fills.items) > 0:
+            total_qty = sum(abs(float(fill.size)) for fill in fills.items)
+            order_resp = fills.items[0]
+            exit_order = OrderModel(
+                order_id=order_resp.order_id,
+                order_type=order_resp.order_type.value,
+                pair=order_resp.symbol,
+                timestamp=order_resp.created_at,
+                order_side=order_resp.side.value,
+                qty=total_qty,
+                price=order_resp.price,
+                status=OrderStatus.FILLED,
+                # no data, assumed
+                time_in_force="GTC",
+                # we don't know if take profit or stop loss
+                deal_type=DealType.panic_close,
+            )
+            self.active_bot.orders.append(exit_order)
+            self.active_bot.deal.total_commissions += float(order_resp.fee)
+            self.active_bot.status = Status.completed
+            self.active_bot.add_log(
+                f"Position size updated from fills history. New size: {total_qty}."
+            )
+            return self.active_bot
+
+        else:
+            self.active_bot.add_log(
+                "No fills found in history, cannot update position size. ADL might have happened, or position might have been closed without bot's knowledge."
+            )
+            self.active_bot.status = Status.error
+
+        return self.active_bot
 
     def base_order(self) -> BotModel:
         """
@@ -370,27 +426,31 @@ class KucoinPositionDeal(KucoinBaseBalance):
         position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
 
         if position and float(position.current_qty) != 0:
-            side_enum = (
-                AddOrderReq.SideEnum.SELL
-                if float(position.current_qty) > 0
-                else AddOrderReq.SideEnum.BUY
+            if self.active_bot.strategy == Strategy.margin_short:
+                order_response = self.kucoin_futures_api.buy(
+                    symbol=self.kucoin_symbol,
+                    qty=abs(int(position.current_qty)),
+                    reduce_only=True,
+                )
+            else:
+                order_response = self.kucoin_futures_api.sell(
+                    symbol=self.kucoin_symbol,
+                    qty=abs(int(position.current_qty)),
+                    reduce_only=True,
+                )
+
+            order_model = OrderModel(**order_response.model_dump())
+            self.active_bot.orders.append(order_model)
+            self.active_bot.deal.closing_price = order_response.price
+            self.active_bot.deal.closing_qty = abs(int(position.current_qty))
+            self.active_bot.status = Status.completed
+            self.controller.update_logs(
+                bot=self.active_bot,
+                log_message="Futures position panic-closed successfully",
             )
 
-            self.kucoin_futures_api.place_futures_order(
-                symbol=self.kucoin_symbol,
-                side=side_enum,
-                order_type=OrderType.market,
-                size=abs(float(position.current_qty)),
-                reduce_only=True,
-            )
-
-        self.active_bot.status = Status.completed
-        self.active_bot.deal.closing_timestamp = int(time() * 1000)
-
-        self.controller.update_logs(
-            bot=self.active_bot,
-            log_message="Futures position closed",
-        )
+        else:
+            self.active_bot = self.backfill_position_from_fills()
 
         self.controller.save(self.active_bot)
         return self.active_bot

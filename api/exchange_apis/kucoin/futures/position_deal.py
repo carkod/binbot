@@ -95,11 +95,7 @@ class PositionDeal(KucoinPositionDeal):
             # Real futures: close current LONG position via reduce-only SELL
             position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
             if not position or float(position.current_qty) == 0:
-                self.controller.update_logs(
-                    bot=self.active_bot,
-                    log_message="No open futures position to take profit on.",
-                )
-                return self.active_bot
+                self.active_bot = self.backfill_position_from_fills()
 
             qty = round_numbers(abs(float(position.current_qty)), 8)
             if self.active_bot.strategy == Strategy.margin_short:

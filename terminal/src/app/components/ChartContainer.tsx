@@ -12,7 +12,7 @@ import { type ResolutionString } from "../../../charting_library/charting_librar
 import { type AppDispatch } from "../store";
 import { type Bot } from "../../features/bots/botInitialState";
 import { type PayloadActionCreator } from "@reduxjs/toolkit";
-import { BotStatus, type MarketType } from "../../utils/enums";
+import { BotStatus, MarketType } from "../../utils/enums";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 import { capitalizeFirst } from "../../utils/strings";
 
@@ -83,17 +83,18 @@ const ChartContainer: FC<{
       return;
     }
 
-    const kucoinPair = quoteAsset
-      ? bot.pair.replace(quoteAsset, "") + "-" + quoteAsset
-      : bot.pair;
-    const nextSymbol =
-      exchangeState === Exchange.KUCOIN ? kucoinPair : bot.pair;
-
     setExchangeSymbol((draft) => {
-      if (draft === nextSymbol) {
-        return;
+      if (exchangeState === Exchange.KUCOIN) {
+        const baseAsset = bot.pair.replace(quoteAsset, "");
+        let symbol = `${baseAsset}-${quoteAsset}`;
+        if (bot.market_type === MarketType.FUTURES) {
+          symbol = bot.pair;
+        }
+        if (symbol === draft) {
+          return;
+        }
+        return symbol;
       }
-      return nextSymbol;
     });
   }, [bot.pair, exchangeState, quoteAsset]);
 
