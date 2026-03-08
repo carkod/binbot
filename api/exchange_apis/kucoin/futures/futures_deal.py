@@ -382,9 +382,16 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 trailling_profit_price, self.price_precision
             )
 
+            # trailling_stop_loss_price and trailling_profit should be updated during streaming
+            # This resets it after "Update deal" because parameters have changed
+            if self.active_bot.trailling_profit != 0:
+                new_trailing_profit_price = self.active_bot.deal.opening_price * (
+                    1 + direction * (float(self.active_bot.trailling_profit) / 100)
+                )
+                self.active_bot.deal.trailling_profit_price = round_numbers(
+                    new_trailing_profit_price, self.price_precision
+                )
             if self.active_bot.deal.trailling_stop_loss_price != 0:
-                # trailling_stop_loss_price should be updated during streaming
-                # This resets it after "Update deal" because parameters have changed
                 self.active_bot.deal.trailling_stop_loss_price = 0
 
         return self.active_bot
