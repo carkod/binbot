@@ -224,6 +224,15 @@ class KucoinPositionDeal(KucoinBaseBalance):
                     if existing_order.order_id == order_id:
                         existing_order.status = OrderStatus.CANCELED
                         self.active_bot.orders[index] = existing_order
+                    else:
+                        if existing_order.status == OrderStatus.FILLED and (
+                            # only these deal types can have new orders
+                            existing_order.deal_type == DealType.trailling_profit
+                            or existing_order.deal_type == DealType.take_profit
+                            or existing_order.deal_type == DealType.stop_loss
+                        ):
+                            # delete unfilled order
+                            self.bot_crud.delete_order(str(existing_order.order_id))
 
     def base_order(self) -> BotModel:
         """
