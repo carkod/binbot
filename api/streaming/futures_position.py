@@ -110,10 +110,7 @@ class FuturesPosition(PositionMarket):
             if order.status == OrderStatus.FILLED:
                 continue
 
-            if (
-                self.base_streaming.exchange == ExchangeId.KUCOIN
-                and order.status != OrderStatus.FILLED
-            ):
+            if self.base_streaming.exchange == ExchangeId.KUCOIN:
                 kucoin_symbol = convert_to_kucoin_symbol(self.bot)
 
                 # Check if order is expired based on 15m interval

@@ -276,10 +276,10 @@ class PositionDeal(KucoinPositionDeal):
                     symbol=self.kucoin_symbol,
                     size=qty,
                     reduce_only=True,
+                    order_type=OrderType.market,
                     stop_price_type=AddOrderReq.StopPriceTypeEnum.MARK_PRICE,
                     stop=AddOrderReq.StopEnum.UP,
                     stop_price=self.active_bot.deal.trailling_stop_loss_price,
-                    price=self.active_bot.deal.trailling_profit_price,
                 )
             else:
                 order_base = self.kucoin_futures_api.place_futures_order(
@@ -287,10 +287,10 @@ class PositionDeal(KucoinPositionDeal):
                     symbol=self.kucoin_symbol,
                     size=qty,
                     reduce_only=True,
+                    order_type=OrderType.market,
                     stop_price_type=AddOrderReq.StopPriceTypeEnum.MARK_PRICE,
                     stop=AddOrderReq.StopEnum.DOWN,
                     stop_price=self.active_bot.deal.trailling_stop_loss_price,
-                    price=self.active_bot.deal.trailling_stop_loss_price,
                 )
 
             order_base.deal_type = DealType.trailling_profit
