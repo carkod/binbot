@@ -1,5 +1,6 @@
 import logging
 import os
+from databases.tables.inquiry_table import InquiryTable
 from databases.symbols_etl import SymbolDataEtl
 from databases.tables.autotrade_table import AutotradeTable, TestAutotradeTable
 from databases.tables.deal_table import DealTable
@@ -47,6 +48,7 @@ class ApiDb:
         self.init_symbols()
         # Depends on autotrade settings
         self.init_balances()
+        self.init_inquiries()
 
         logging.info("Finishing db operations")
 
@@ -424,4 +426,23 @@ class ApiDb:
             return
         assets = Assets(self.session)
         assets.store_balance()
+        pass
+
+    def init_inquiries(self):
+        statement = select(InquiryTable)
+        results = self.session.exec(statement)
+        if not results.first():
+            # No inquiries, create a dummy one
+            inquiry = InquiryTable(
+                full_name="John Doe",
+                email="example@gmail.com",
+                phone="+1234567890",
+                organisation="Example Inc",
+                reason="How to use the API?",
+                message="I want to know how to use the API",
+            )
+            self.session.add(inquiry)
+            self.session.commit()
+            self.session.refresh(inquiry)
+            logging.info(f"Created dummy inquiry with id {inquiry.id}")
         pass
