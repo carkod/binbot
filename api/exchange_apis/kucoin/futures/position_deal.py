@@ -1,4 +1,5 @@
 from time import time
+from time import sleep
 from typing import Union, Type
 from pybinbot import (
     BotBase,
@@ -367,6 +368,8 @@ class PositionDeal(KucoinPositionDeal):
             return self.active_bot
 
         try:
+            # This often errors because execution is too kick the system doesn't have time to process the close
+            sleep(10)
             if self.active_bot.strategy == Strategy.margin_short:
                 order = self.kucoin_futures_api.sell(
                     symbol=self.kucoin_symbol,
