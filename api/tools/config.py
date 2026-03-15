@@ -216,3 +216,15 @@ class Config:
     @property
     def telegram_user_id(self) -> str:
         return self._get_required("TELEGRAM_USER_ID")
+
+    @property
+    def service_password(self) -> str:
+        return self._get_optional("SERVICE_PASSWORD")
+
+    @property
+    def service_user(self) -> str:
+        return self._get_optional("SERVICE_USER")
+
+    @property
+    def service_email(self) -> str:
+        return self._get_optional("SERVICE_EMAIL")

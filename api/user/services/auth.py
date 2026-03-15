@@ -1,7 +1,6 @@
 import os
-from datetime import datetime, timedelta
-from typing import Annotated
-
+from datetime import datetime, timedelta, timezone
+from typing import Annotated, Any, Dict
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
@@ -21,7 +20,7 @@ class TokenData(BaseModel):
 
 credentials_exception = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
-    detail="Could not validate credentials",
+    detail="Credentials are invalid",
     headers={"WWW-Authenticate": "Bearer"},
 )
 
@@ -33,9 +32,9 @@ def get_password_hash(password):
 def create_access_token(email: str):
     expires_delta = timedelta(minutes=int(os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"]))
     if expires_delta:
-        expire = datetime.now() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now() + timedelta(minutes=15)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
 
     data = {
         "sub": email,
@@ -51,5 +50,15 @@ def decode_access_token(token: Auth):
         email: str = payload.get("sub")
         if email is None:
             raise credentials_exception
+        return payload
     except JWTError:
         raise credentials_exception
+
+
+def get_current_user(token: str = Depends(oauth2_scheme)) -> Dict[str, Any]:
+    """
+    FastAPI authentication dependency that decodes the JWT token and returns the payload.
+    If the token is invalid or expired, raises a 401 HTTPException internally.
+    """
+    payload = decode_access_token(token)
+    return payload

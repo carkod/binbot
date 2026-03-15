@@ -19,14 +19,15 @@ from pybinbot import (
     OrderStatus,
     BinbotErrors,
 )
-from alembic.config import Config
 from alembic import command
 from alembic.script import ScriptDirectory
+from alembic.config import Config
 from databases.utils import engine
 from exchange_apis.binance.assets import Assets
 from databases.crud.symbols_crud import SymbolsCrud
 from databases.crud.asset_index_crud import AssetIndexCrud
 from databases.db import setup_kafka_db
+from tools.config import Config as AppConfig
 
 
 class ApiDb:
@@ -37,6 +38,7 @@ class ApiDb:
     def __init__(self):
         self.session = Session(engine)
         self.kafka_db = setup_kafka_db()
+        self.config = AppConfig()
         pass
 
     def init_db(self):
@@ -232,20 +234,35 @@ class ApiDb:
 
         statement = select(UserTable).where(UserTable.username == username)
         results = self.session.exec(statement)
-        if results.first():
-            return
+        if not results.first():
+            user_data = UserTable(
+                username=username,
+                password=password,
+                email=email,
+                role=UserRoles.admin,
+                full_name="Admin",
+            )
+            self.session.add(user_data)
 
-        user_data = UserTable(
-            username=username,
-            password=password,
-            email=email,
-            role=UserRoles.admin,
-            full_name="Admin",
+        service_username = self.config.service_user
+        service_email = self.config.service_email
+        service_password = self.config.service_password
+        result = self.session.exec(
+            select(UserTable).where(UserTable.username == service_username)
         )
+        if not result.first():
+            service_user_data = UserTable(
+                username=service_username,
+                password=service_password,
+                email=service_email,
+                role=UserRoles.admin,
+                full_name="Service User",
+            )
+            self.session.add(service_user_data)
 
-        self.session.add(user_data)
         self.session.commit()
         self.session.refresh(user_data)
+        self.session.refresh(service_user_data)
         return user_data
 
     def create_dummy_bot(self):

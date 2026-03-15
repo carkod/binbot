@@ -51,7 +51,11 @@ class BinanceMarginDeal(BinanceDeal):
         self.symbols_crud = SymbolsCrud()
         self.config = Config()
         self.isolated_balance = self.get_isolated_balance(self.active_bot.pair)
-        self.binbot_api = BinbotApi(base_url=self.config.backend_domain)
+        self.binbot_api = BinbotApi(
+            base_url=self.config.backend_domain,
+            service_email=self.config.service_email,
+            service_password=self.config.service_password,
+        )
 
     """
     Reusable utility functions

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, BackgroundTasks
+from user.services.auth import get_current_user
 from databases.symbols_etl import SymbolDataEtl
 from databases.crud.symbols_crud import SymbolsCrud
 from symbols.models import GetOneSymbolResponse
@@ -19,6 +20,7 @@ def get_all_symbols(
     market_type: str | None = None,
     index: Optional[str] = None,
     session: Session = Depends(get_session),
+    _: dict = Depends(get_current_user),
 ):
     """
     Get all symbols/pairs
@@ -54,78 +56,13 @@ def get_all_symbols(
         )
 
 
-@symbols_blueprint.get("/symbol/store", tags=["Symbols"])
-def store_symbols(
-    background_tasks: BackgroundTasks,
-    session: Session = Depends(get_session),
-    delete_existing: bool = False,
-):
-    """
-    Store all symbols from Binance (runs in background)
-    """
-    try:
-        background_tasks.add_task(
-            SymbolDataEtl(session=session).etl_symbols_ingestion, delete_existing
-        )
-        return GetOneSymbolResponse(message="Symbols ingestion started in background!")
-    except (IntegrityError, DataError, SQLAlchemyError) as e:
-        session.rollback()
-        return StandardResponse(message=format_db_error(e), error=1)
-    except BinbotErrors as e:
-        return StandardResponse(message=str(e), error=1)
-
-
-@symbols_blueprint.get("/symbol/reingest", tags=["Symbols"])
-def reingest_symbols(
-    background_tasks: BackgroundTasks,
-    session: Session = Depends(get_session),
-):
-    """
-    Reingest all symbols from Binance and Kucoin (runs in background)
-    """
-    try:
-        background_tasks.add_task(SymbolDataEtl(session=session).etl_symbols_ingestion)
-        return GetOneSymbolResponse(
-            message="Symbols reingestion started in background!"
-        )
-    except (IntegrityError, DataError, SQLAlchemyError) as e:
-        session.rollback()
-        return StandardResponse(message=format_db_error(e), error=1)
-    except BinbotErrors as e:
-        return StandardResponse(message=str(e), error=1)
-
-
-@symbols_blueprint.put("/symbol/asset-index", tags=["Symbols"])
-def update_indexes(
-    data: SymbolRequestPayload,
-    session: Session = Depends(get_session),
-):
-    """
-    Modify a symbol's asset index
-
-    check commit 942c623 in binbot-notebooks
-    """
-    try:
-        data = SymbolsCrud(session=session).update_symbol_indexes(data)
-    except (IntegrityError, DataError, SQLAlchemyError) as e:
-        session.rollback()
-        return StandardResponse(message=format_db_error(e), error=1)
-    except BinbotErrors as e:
-        return StandardResponse(message=str(e), error=1)
-    except Exception as e:
-        return StandardResponse(
-            message=f"Unexpected error updating symbol indexes: {e}", error=1
-        )
-
-    return GetOneSymbolResponse(message="Symbol asset index updated", data=data)
-
-
 @symbols_blueprint.get(
     "/symbol/{pair}", response_model=GetOneSymbolResponse, tags=["Symbols"]
 )
 def get_one_symbol(
     pair: str,
     session: Session = Depends(get_session),
+    _: dict = Depends(get_current_user),
 ):
     """
     Get all symbols/pairs
@@ -154,6 +91,7 @@ def get_one_symbol(
 def add_symbol(
     data: SymbolRequestPayload,
     session: Session = Depends(get_session),
+    _: dict = Depends(get_current_user),
 ):
     """
     Create a new symbol/pair.
@@ -188,7 +126,10 @@ def add_symbol(
 @symbols_blueprint.delete(
     "/symbol/{pair}", response_model=GetOneSymbolResponse, tags=["Symbols"]
 )
-def delete_symbol(pair: str, session: Session = Depends(get_session)):
+def delete_symbol(
+    pair: str,
+    session: Session = Depends(get_session),
+):
     """
     Given symbol/pair, delete a symbol
 
@@ -218,6 +159,7 @@ def delete_symbol(pair: str, session: Session = Depends(get_session)):
 def edit_symbol(
     data: SymbolRequestPayload,
     session: Session = Depends(get_session),
+    _: dict = Depends(get_current_user),
 ):
     """
     Modify a blacklisted item
@@ -237,3 +179,72 @@ def edit_symbol(
         return StandardResponse(
             message=f"Unexpected error editing symbol: {e}", error=1
         )
+
+
+@symbols_blueprint.get("/symbol/store", tags=["Symbols"])
+def store_symbols(
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_session),
+    delete_existing: bool = False,
+    _: dict = Depends(get_current_user),
+):
+    """
+    Store all symbols from Binance (runs in background)
+    """
+    try:
+        background_tasks.add_task(
+            SymbolDataEtl(session=session).etl_symbols_ingestion, delete_existing
+        )
+        return GetOneSymbolResponse(message="Symbols ingestion started in background!")
+    except (IntegrityError, DataError, SQLAlchemyError) as e:
+        session.rollback()
+        return StandardResponse(message=format_db_error(e), error=1)
+    except BinbotErrors as e:
+        return StandardResponse(message=str(e), error=1)
+
+
+@symbols_blueprint.get("/symbol/reingest", tags=["Symbols"])
+def reingest_symbols(
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_session),
+    _: dict = Depends(get_current_user),
+):
+    """
+    Reingest all symbols from Binance and Kucoin (runs in background)
+    """
+    try:
+        background_tasks.add_task(SymbolDataEtl(session=session).etl_symbols_ingestion)
+        return GetOneSymbolResponse(
+            message="Symbols reingestion started in background!"
+        )
+    except (IntegrityError, DataError, SQLAlchemyError) as e:
+        session.rollback()
+        return StandardResponse(message=format_db_error(e), error=1)
+    except BinbotErrors as e:
+        return StandardResponse(message=str(e), error=1)
+
+
+@symbols_blueprint.put("/symbol/asset-index", tags=["Symbols"])
+def update_indexes(
+    data: SymbolRequestPayload,
+    session: Session = Depends(get_session),
+    _: dict = Depends(get_current_user),
+):
+    """
+    Modify a symbol's asset index
+
+    check commit 942c623 in binbot-notebooks
+    """
+    try:
+        data = SymbolsCrud(session=session).update_symbol_indexes(data)
+    except (IntegrityError, DataError, SQLAlchemyError) as e:
+        session.rollback()
+        return StandardResponse(message=format_db_error(e), error=1)
+    except BinbotErrors as e:
+        return StandardResponse(message=str(e), error=1)
+    except Exception as e:
+        return StandardResponse(
+            message=f"Unexpected error updating symbol indexes: {e}", error=1
+        )
+
+    return GetOneSymbolResponse(message="Symbol asset index updated", data=data)
