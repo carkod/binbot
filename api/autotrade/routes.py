@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from sqlmodel import Session
+from user.services.auth import get_current_user
 from databases.crud.autotrade_crud import AutotradeCrud
 from pybinbot import AutotradeSettingsDocument
 from databases.utils import get_session
@@ -19,7 +20,9 @@ SessionDep = Annotated[Session, Depends(get_session)]
 
 @autotrade_settings_blueprint.put("/bots", tags=["autotrade settings"])
 def edit_settings(
-    item: AutotradeSettingsSchema, session: Session = Depends(get_session)
+    item: AutotradeSettingsSchema,
+    session: Session = Depends(get_session),
+    _: dict = Depends(get_current_user),
 ):
     """
     Autotrade settings for bots
@@ -79,6 +82,7 @@ def get_test_autotrade_settings(
 def edit_test_autotrade_settings(
     item: TestAutotradeSettingsSchema,
     session: Session = Depends(get_session),
+    _: dict = Depends(get_current_user),
 ):
     try:
         data = AutotradeCrud(

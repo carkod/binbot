@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, BackgroundTasks
+from user.models.user import UserTokenData
 from user.services.auth import get_current_user
 from databases.symbols_etl import SymbolDataEtl
 from databases.crud.symbols_crud import SymbolsCrud
@@ -20,7 +21,7 @@ def get_all_symbols(
     market_type: str | None = None,
     index: Optional[str] = None,
     session: Session = Depends(get_session),
-    _: dict = Depends(get_current_user),
+    _: UserTokenData = Depends(get_current_user),
 ):
     """
     Get all symbols/pairs
@@ -62,7 +63,7 @@ def get_all_symbols(
 def get_one_symbol(
     pair: str,
     session: Session = Depends(get_session),
-    _: dict = Depends(get_current_user),
+    _: UserTokenData = Depends(get_current_user),
 ):
     """
     Get all symbols/pairs
@@ -91,7 +92,7 @@ def get_one_symbol(
 def add_symbol(
     data: SymbolRequestPayload,
     session: Session = Depends(get_session),
-    _: dict = Depends(get_current_user),
+    _: UserTokenData = Depends(get_current_user),
 ):
     """
     Create a new symbol/pair.
@@ -159,7 +160,7 @@ def delete_symbol(
 def edit_symbol(
     data: SymbolRequestPayload,
     session: Session = Depends(get_session),
-    _: dict = Depends(get_current_user),
+    _: UserTokenData = Depends(get_current_user),
 ):
     """
     Modify a blacklisted item
@@ -186,7 +187,7 @@ def store_symbols(
     background_tasks: BackgroundTasks,
     session: Session = Depends(get_session),
     delete_existing: bool = False,
-    _: dict = Depends(get_current_user),
+    _: UserTokenData = Depends(get_current_user),
 ):
     """
     Store all symbols from Binance (runs in background)
@@ -207,7 +208,7 @@ def store_symbols(
 def reingest_symbols(
     background_tasks: BackgroundTasks,
     session: Session = Depends(get_session),
-    _: dict = Depends(get_current_user),
+    _: UserTokenData = Depends(get_current_user),
 ):
     """
     Reingest all symbols from Binance and Kucoin (runs in background)
@@ -228,7 +229,7 @@ def reingest_symbols(
 def update_indexes(
     data: SymbolRequestPayload,
     session: Session = Depends(get_session),
-    _: dict = Depends(get_current_user),
+    _: UserTokenData = Depends(get_current_user),
 ):
     """
     Modify a symbol's asset index

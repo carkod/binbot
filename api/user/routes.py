@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends
 from fastapi.exceptions import ResponseValidationError
-from user.models.user import UserDetails
-from pybinbot import StandardResponse, BinbotErrors
+from user.models.user import UserDetails, UserTokenData
+from pybinbot import StandardResponse, BinbotErrors, UserRoles
 from user.models.user import UserResponse, GetOneUser, LoginResponse
-from user.services.auth import decode_access_token, FormData
+from user.services.auth import decode_access_token, FormData, get_current_user
 from databases.crud.user_crud import UserTableCrud
 from sqlmodel import Session
 from databases.utils import get_session
@@ -82,23 +82,36 @@ def add(data: UserDetails, session: Session = Depends(get_session)):
 @user_blueprint.put(
     "/user", response_model=GetOneUser | StandardResponse, tags=["users"]
 )
-def edit(user: UserDetails, session: Session = Depends(get_session)):
+def edit(
+    user_details: UserDetails,
+    session: Session = Depends(get_session),
+    user: UserTokenData = Depends(get_current_user),
+):
     """
     Modify details of a user that already exists.
     If the user does not exist, it will return a JSON error message
     """
     try:
-        edited_user = UserTableCrud(session).edit(user)
+        if user.role != UserRoles.admin:
+            raise BinbotErrors("Only admins can edit users.")
+
+        edited_user = UserTableCrud(session).edit(user_details)
         return GetOneUser(message=f"Edited user {edited_user.email}!", data=edited_user)
     except ResponseValidationError as e:
         return StandardResponse(message=str(e), error=1)
 
 
 @user_blueprint.delete("/user/{email}", tags=["users"])
-def delete(email: str, session: Session = Depends(get_session)):
+def delete(
+    email: str,
+    session: Session = Depends(get_session),
+    user: UserTokenData = Depends(get_current_user),
+):
     """
     Delete a user by email
     """
+    if user.role != UserRoles.admin:
+        raise BinbotErrors("Only admins can delete users.")
     try:
         UserTableCrud(session).delete(email)
         return StandardResponse(message="Deleted user!")

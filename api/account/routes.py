@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime, timedelta
 from account.controller import ConsolidatedAccounts
+from user.models.user import UserTokenData
+from user.services.auth import get_current_user
 from exchange_apis.binance.assets import Assets
 from account.schemas import (
     BalanceResponse,
@@ -27,7 +29,10 @@ config = Config()
 
 
 @account_blueprint.get("/balance", response_model=BalanceResponse, tags=["account"])
-def get_balance(session: Session = Depends(get_session)):
+def get_balance(
+    session: Session = Depends(get_session),
+    _: UserTokenData = Depends(get_current_user),
+):
     accounts = ConsolidatedAccounts(session=session)
     data = accounts.get_balance()
     return {
@@ -39,7 +44,10 @@ def get_balance(session: Session = Depends(get_session)):
 @account_blueprint.get(
     "/kucoin-balance", response_model=KucoinBalanceResponse, tags=["account"]
 )
-def get_balance_by_type(session: Session = Depends(get_session)):
+def get_balance_by_type(
+    session: Session = Depends(get_session),
+    _: UserTokenData = Depends(get_current_user),
+):
     accounts = ConsolidatedAccounts(session=session)
     data = accounts.get_kucoin_balances_by_type()
     return {
@@ -49,7 +57,11 @@ def get_balance_by_type(session: Session = Depends(get_session)):
 
 
 @account_blueprint.get("/pnl", tags=["assets"])
-def get_pnl(days: int = 7, session: Session = Depends(get_session)):
+def get_pnl(
+    days: int = 7,
+    session: Session = Depends(get_session),
+    _: UserTokenData = Depends(get_current_user),
+):
     """
     PnL data is the same across exchanges, because the moment we switch exchange,
     we stop tracking previous exchange's PnL.
@@ -66,6 +78,11 @@ def get_pnl(days: int = 7, session: Session = Depends(get_session)):
 
 @account_blueprint.get("/store-balance", tags=["assets"])
 def store_balance(session: Session = Depends(get_session)):
+    """
+    Internally used to store balance data,
+    no need for authentication, as it also needs
+    API keys for third party exchange APIs
+    """
     accounts = ConsolidatedAccounts(session=session)
     data = accounts.store_balance()
     return {
@@ -129,6 +146,7 @@ def one_click_liquidation(
     asset: str,
     bot_strategy: Literal["margin", "spot"],
     session: Session = Depends(get_session),
+    _: UserTokenData = Depends(get_current_user),
 ):
     try:
         liquidated = Assets(session=session).one_click_liquidation(
@@ -152,7 +170,7 @@ def one_click_liquidation(
 
 
 @account_blueprint.get("/kucoin/balance/{asset}", tags=["account"])
-def get_single_balance(asset: str):
+def get_single_balance(asset: str, _: UserTokenData = Depends(get_current_user)):
     data = KucoinApi(
         key=config.kucoin_key,
         secret=config.kucoin_secret,

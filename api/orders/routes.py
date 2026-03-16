@@ -1,5 +1,7 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pybinbot import KucoinApi, BinanceErrors
+from user.models.user import UserTokenData
+from user.services.auth import get_current_user
 from tools.handle_error import json_response, json_response_error
 from exchange_apis.binance.orders import BinanceOrderController
 from orders.schemas import OrderParams
@@ -10,17 +12,17 @@ order_blueprint = APIRouter()
 
 
 @order_blueprint.post("/buy", tags=["orders"])
-def create_buy_order(item: OrderParams):
+def create_buy_order(item: OrderParams, _: UserTokenData = Depends(get_current_user)):
     return BinanceOrderController().buy_order(symbol=item.pair, qty=item.qty)
 
 
 @order_blueprint.post("/sell", tags=["orders"])
-def create_sell_order(item: OrderParams):
+def create_sell_order(item: OrderParams, _: UserTokenData = Depends(get_current_user)):
     return BinanceOrderController().sell_order(symbol=item.pair, qty=item.qty)
 
 
 @order_blueprint.delete("/close/{symbol}/{orderid}", tags=["orders"])
-def delete_order(symbol, orderid):
+def delete_order(symbol, orderid, _: UserTokenData = Depends(get_current_user)):
     try:
         data = BinanceOrderController().delete_order(symbol, orderid)
         resp = json_response({"message": "Order deleted!", "data": data})
@@ -32,12 +34,17 @@ def delete_order(symbol, orderid):
 
 
 @order_blueprint.get("/margin/sell/{symbol}/{qty}", tags=["orders"])
-def margin_sell(symbol, qty):
+def margin_sell(symbol, qty, _: UserTokenData = Depends(get_current_user)):
     return BinanceOrderController().sell_margin_order(symbol, qty)
 
 
 @order_blueprint.get("/all-orders", tags=["orders"])
-def get_all_orders(symbol, order_id: str | None = None, start_time=None):
+def get_all_orders(
+    symbol,
+    order_id: str | None = None,
+    start_time=None,
+    _: UserTokenData = Depends(get_current_user),
+):
     try:
         data = BinanceOrderController().get_all_orders(
             symbol, order_id=order_id, start_time=start_time
@@ -50,7 +57,9 @@ def get_all_orders(symbol, order_id: str | None = None, start_time=None):
 
 
 @order_blueprint.get("/kucoin/{symbol}/{order_id}", tags=["orders"])
-def get_order_by_id(symbol: str, order_id: str):
+def get_order_by_id(
+    symbol: str, order_id: str, _: UserTokenData = Depends(get_current_user)
+):
     try:
         data = KucoinApi(
             key=config.kucoin_key,

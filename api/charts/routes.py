@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
-
+from user.models.user import UserTokenData
+from user.services.auth import get_current_user
 from databases.utils import get_session
 from tools.handle_error import (
     json_response,
@@ -32,7 +33,10 @@ def top_gainers(session: Session = Depends(get_session)):
 
 
 @charts_blueprint.get("/top-losers", tags=["charts"])
-def top_losers(session: Session = Depends(get_session)):
+def top_losers(
+    session: Session = Depends(get_session),
+    _: UserTokenData = Depends(get_current_user),
+):
     try:
         gainers, losers = MarketDominationController().gainers_losers()
         if losers:

@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+from pybinbot import UserRoles
 import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch, Mock
@@ -6,6 +7,7 @@ from uuid import UUID
 from contextlib import contextmanager
 from sqlmodel import SQLModel, create_engine, Session
 from sqlalchemy.pool import StaticPool
+from user.models.user import UserTokenData
 from user.services.auth import get_current_user
 from databases.utils import get_session
 from databases.tables.autotrade_table import AutotradeTable
@@ -497,7 +499,9 @@ def mock_lifespan():
 
 
 def override_get_current_user():
-    return {"user_id": "test"}
+    return UserTokenData(
+        email="test@example.com", role=UserRoles.admin, expires_in=1732388868477
+    )
 
 
 @pytest.fixture()
