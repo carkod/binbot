@@ -1,6 +1,5 @@
 from unittest.mock import patch
 from fastapi.testclient import TestClient
-from main import app
 from pytest import fixture
 from tests.fixtures.mock_bot_table import (
     mock_bot_data,
@@ -10,12 +9,6 @@ from tests.fixtures.mock_bot_table import (
     make_mock_bot_superusdt_model,
 )
 from uuid import UUID
-
-
-@fixture()
-def client() -> TestClient:
-    client = TestClient(app)
-    return client
 
 
 @fixture()

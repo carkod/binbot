@@ -15,6 +15,7 @@ from databases.utils import get_session
 from deals.gateway import DealGateway
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from kucoin_universal_sdk.model.common import RestError
+from user.services.auth import get_current_user
 
 bot_blueprint = APIRouter()
 
@@ -27,6 +28,7 @@ def get_bots(
     limit: int = 200,
     offset: int = 0,
     session: Session = Depends(get_session),
+    _: dict = Depends(get_current_user),
 ):
     crud = BotTableCrud(session)
     try:
@@ -44,7 +46,9 @@ def get_bots(
 
 
 @bot_blueprint.get("/bot/active-pairs", response_model=BotListResponse, tags=["bots"])
-def get_active_pairs(session: Session = Depends(get_session)):
+def get_active_pairs(
+    session: Session = Depends(get_session), _: dict = Depends(get_current_user)
+):
     crud = BotTableCrud(session)
     try:
         pairs = crud.get_active_pairs()
@@ -57,6 +61,7 @@ def get_active_pairs(session: Session = Depends(get_session)):
 def get_one_by_id(
     bot_id: str,
     session: Session = Depends(get_session),
+    _: dict = Depends(get_current_user),
 ):
     crud = BotTableCrud(session)
     try:
@@ -71,6 +76,7 @@ def get_one_by_id(
 def get_one_by_symbol(
     symbol: str,
     session: Session = Depends(get_session),
+    _: dict = Depends(get_current_user),
 ):
     crud = BotTableCrud(session)
     try:
@@ -85,6 +91,7 @@ def get_one_by_symbol(
 def create_bot(
     bot_item: BotBase,
     session: Session = Depends(get_session),
+    _: dict = Depends(get_current_user),
 ):
     crud = BotTableCrud(session)
     bot_row = crud.create(bot_item)
@@ -97,6 +104,7 @@ def edit_bot(
     bot_id: str,
     bot_item: BotBase,
     session: Session = Depends(get_session),
+    _: dict = Depends(get_current_user),
 ):
     crud = BotTableCrud(session)
     bot_row = crud.get_one(bot_id=bot_id)
@@ -110,6 +118,7 @@ def edit_bot(
 def delete_bots(
     payload: BulkDeleteRequest,
     session: Session = Depends(get_session),
+    _: dict = Depends(get_current_user),
 ):
     crud = BotTableCrud(session)
     crud.delete(bot_ids=payload.ids)
@@ -120,6 +129,7 @@ def delete_bots(
 def activate_bot(
     bot_id: str,
     session: Session = Depends(get_session),
+    _: dict = Depends(get_current_user),
 ):
     crud = BotTableCrud(session)
     bot_row = crud.get_one(bot_id=bot_id)
@@ -144,6 +154,7 @@ def activate_bot(
 def deactivate_bot(
     bot_id: str,
     session: Session = Depends(get_session),
+    _: dict = Depends(get_current_user),
 ):
     crud = BotTableCrud(session)
     bot_row = crud.get_one(bot_id=bot_id)
@@ -169,6 +180,7 @@ def post_bot_errors(
     bot_id: str,
     bot_errors: ErrorsRequestBody,
     session: Session = Depends(get_session),
+    _: dict = Depends(get_current_user),
 ):
     crud = BotTableCrud(session)
     bot_row = crud.get_one(bot_id=bot_id)
