@@ -85,14 +85,11 @@ class UserTableCrud:
             raise BinbotErrors("Email and password are required")
 
         user = self.get_one(email=email)
-        if not user:
-            raise BinbotErrors("User not found")
+        if user.password != password:
+            raise BinbotErrors("Invalid password")
         else:
-            if user.password != password:
-                raise BinbotErrors("Invalid password")
-            else:
-                access_token, expire = create_access_token(email)
-                return access_token, expire
+            access_token, expire = create_access_token(email)
+            return access_token, expire
 
     def add(self, data: UserDetails):
         try:

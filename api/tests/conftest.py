@@ -1,11 +1,12 @@
+from fastapi.testclient import TestClient
 import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch, Mock
 from uuid import UUID
 from contextlib import contextmanager
-
 from sqlmodel import SQLModel, create_engine, Session
 from sqlalchemy.pool import StaticPool
+from user.services.auth import get_current_user
 from databases.utils import get_session
 from databases.tables.autotrade_table import AutotradeTable
 from databases.tables.bot_table import BotTable
@@ -493,3 +494,14 @@ def paper_trading_table_fixture(create_test_tables):
 def mock_lifespan():
     with patch("main.lifespan") as mock_lifespan:
         yield mock_lifespan
+
+
+def override_get_current_user():
+    return {"user_id": "test"}
+
+
+@pytest.fixture()
+def client() -> TestClient:
+    client = TestClient(app)
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    return client

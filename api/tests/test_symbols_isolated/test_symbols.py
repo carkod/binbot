@@ -1,6 +1,5 @@
 import pytest
 from fastapi.testclient import TestClient
-from main import app
 
 
 @pytest.fixture(autouse=True)
@@ -10,12 +9,6 @@ def _patch_symbol_crud_apis(monkeypatch):
             pass
 
     monkeypatch.setattr("databases.crud.symbols_crud.KucoinFutures", DummyKucoinFutures)
-
-
-@pytest.fixture()
-def client() -> TestClient:
-    client = TestClient(app)
-    return client
 
 
 test_symbol = "GASBTC"

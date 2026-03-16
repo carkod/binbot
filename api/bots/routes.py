@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
 from typing import Optional
-
 from pybinbot import Status, BinbotErrors, BinanceErrors
 from bots.models import (
     BotBase,
@@ -16,6 +15,7 @@ from databases.utils import get_session
 from deals.gateway import DealGateway
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from kucoin_universal_sdk.model.common import RestError
+from user.services.auth import get_current_user
 
 bot_blueprint = APIRouter()
 
@@ -28,6 +28,7 @@ def get_bots(
     limit: int = 200,
     offset: int = 0,
     session: Session = Depends(get_session),
+    _: dict = Depends(get_current_user),
 ):
     crud = BotTableCrud(session)
     try:
@@ -45,7 +46,9 @@ def get_bots(
 
 
 @bot_blueprint.get("/bot/active-pairs", response_model=BotListResponse, tags=["bots"])
-def get_active_pairs(session: Session = Depends(get_session)):
+def get_active_pairs(
+    session: Session = Depends(get_session), _: dict = Depends(get_current_user)
+):
     crud = BotTableCrud(session)
     try:
         pairs = crud.get_active_pairs()
@@ -55,7 +58,11 @@ def get_active_pairs(session: Session = Depends(get_session)):
 
 
 @bot_blueprint.get("/bot/{bot_id}", response_model=BotResponse, tags=["bots"])
-def get_one_by_id(bot_id: str, session: Session = Depends(get_session)):
+def get_one_by_id(
+    bot_id: str,
+    session: Session = Depends(get_session),
+    _: dict = Depends(get_current_user),
+):
     crud = BotTableCrud(session)
     try:
         bot_row = crud.get_one(bot_id=bot_id)
@@ -66,7 +73,11 @@ def get_one_by_id(bot_id: str, session: Session = Depends(get_session)):
 
 
 @bot_blueprint.get("/bot/symbol/{symbol}", response_model=BotResponse, tags=["bots"])
-def get_one_by_symbol(symbol: str, session: Session = Depends(get_session)):
+def get_one_by_symbol(
+    symbol: str,
+    session: Session = Depends(get_session),
+    _: dict = Depends(get_current_user),
+):
     crud = BotTableCrud(session)
     try:
         bot_row = crud.get_one(symbol=symbol)
@@ -77,7 +88,11 @@ def get_one_by_symbol(symbol: str, session: Session = Depends(get_session)):
 
 
 @bot_blueprint.post("/bot", response_model=BotResponse, tags=["bots"])
-def create_bot(bot_item: BotBase, session: Session = Depends(get_session)):
+def create_bot(
+    bot_item: BotBase,
+    session: Session = Depends(get_session),
+    _: dict = Depends(get_current_user),
+):
     crud = BotTableCrud(session)
     bot_row = crud.create(bot_item)
     bot_model = BotModel.dump_from_table(bot_row)
@@ -85,7 +100,12 @@ def create_bot(bot_item: BotBase, session: Session = Depends(get_session)):
 
 
 @bot_blueprint.put("/bot/{bot_id}", response_model=BotResponse, tags=["bots"])
-def edit_bot(bot_id: str, bot_item: BotBase, session: Session = Depends(get_session)):
+def edit_bot(
+    bot_id: str,
+    bot_item: BotBase,
+    session: Session = Depends(get_session),
+    _: dict = Depends(get_current_user),
+):
     crud = BotTableCrud(session)
     bot_row = crud.get_one(bot_id=bot_id)
     bot_row.sqlmodel_update(bot_item.model_dump())
@@ -95,14 +115,22 @@ def edit_bot(bot_id: str, bot_item: BotBase, session: Session = Depends(get_sess
 
 
 @bot_blueprint.delete("/bot", response_model=BotResponse, tags=["bots"])
-def delete_bots(payload: BulkDeleteRequest, session: Session = Depends(get_session)):
+def delete_bots(
+    payload: BulkDeleteRequest,
+    session: Session = Depends(get_session),
+    _: dict = Depends(get_current_user),
+):
     crud = BotTableCrud(session)
     crud.delete(bot_ids=payload.ids)
     return BotResponse(message="Successfully deleted bots.")
 
 
 @bot_blueprint.get("/bot/activate/{bot_id}", response_model=BotResponse, tags=["bots"])
-def activate_bot(bot_id: str, session: Session = Depends(get_session)):
+def activate_bot(
+    bot_id: str,
+    session: Session = Depends(get_session),
+    _: dict = Depends(get_current_user),
+):
     crud = BotTableCrud(session)
     bot_row = crud.get_one(bot_id=bot_id)
     bot_model = BotModel.dump_from_table(bot_row)
@@ -123,7 +151,11 @@ def activate_bot(bot_id: str, session: Session = Depends(get_session)):
 @bot_blueprint.delete(
     "/bot/deactivate/{bot_id}", response_model=BotResponse, tags=["bots"]
 )
-def deactivate_bot(bot_id: str, session: Session = Depends(get_session)):
+def deactivate_bot(
+    bot_id: str,
+    session: Session = Depends(get_session),
+    _: dict = Depends(get_current_user),
+):
     crud = BotTableCrud(session)
     bot_row = crud.get_one(bot_id=bot_id)
     if not isinstance(bot_row, (BotTable, PaperTradingTable)):
@@ -145,7 +177,10 @@ def deactivate_bot(bot_id: str, session: Session = Depends(get_session)):
 
 @bot_blueprint.post("/bot/errors/{bot_id}", response_model=BotResponse, tags=["bots"])
 def post_bot_errors(
-    bot_id: str, bot_errors: ErrorsRequestBody, session: Session = Depends(get_session)
+    bot_id: str,
+    bot_errors: ErrorsRequestBody,
+    session: Session = Depends(get_session),
+    _: dict = Depends(get_current_user),
 ):
     crud = BotTableCrud(session)
     bot_row = crud.get_one(bot_id=bot_id)
