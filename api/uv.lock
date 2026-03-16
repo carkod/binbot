@@ -344,7 +344,7 @@ requires-dist = [
     { name = "psycopg2", specifier = ">=2.9.11" },
     { name = "py3cw", specifier = ">=0.0.39" },
     { name = "py4j", specifier = ">=0.10.9" },
-    { name = "pybinbot", specifier = ">=0.7.25" },
+    { name = "pybinbot", specifier = ">=0.7.29" },
     { name = "pydantic-settings", specifier = ">=2.10.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0.2" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=1.2.0" },
@@ -1958,7 +1958,7 @@ wheels = [
 
 [[package]]
 name = "pybinbot"
-version = "0.7.25"
+version = "0.7.29"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -1973,9 +1973,9 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/84/d9/b0ca1909f555d91bd5a602468c80a6a9d6f9b63ea4172c018d8240eccbed/pybinbot-0.7.25.tar.gz", hash = "sha256:eedcb85219a59a8fe6610e3426bb7e5d5719ba73738bdd7bca4e323d33698d0c", size = 54047, upload-time = "2026-03-16T01:22:16.542Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e1/5d/966ce53f827334e89254464b2c3fc5c71f058c27ee821a6ec644f41772c5/pybinbot-0.7.29.tar.gz", hash = "sha256:1cfca1b217c05df8f89beff3df92cac6f5a13a059820cb1877fb21f806c8b7c8", size = 54146, upload-time = "2026-03-16T14:01:47.542Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/26/25/9fe67f7508bac2dffa40772c16529308c7c728dfe21c4455edbfc9700088/pybinbot-0.7.25-py3-none-any.whl", hash = "sha256:aee0e603a6a59a5ad3403dd00e98e25fd77a5dc1a71c5d6920ed888827730480", size = 57020, upload-time = "2026-03-16T01:22:14.915Z" },
+    { url = "https://files.pythonhosted.org/packages/23/5a/f6fcc83ff9c6af2661c482e8b9471311019969502b20cfdcb6ba79f44709/pybinbot-0.7.29-py3-none-any.whl", hash = "sha256:cd762417abac201e41a1c69fbc773b5c3e0e48133bf61251bee9deecd6f09583", size = 57089, upload-time = "2026-03-16T14:01:46.36Z" },
 ]
 
 [[package]]
@@ -2127,15 +2127,15 @@ wheels = [
 
 [[package]]
 name = "pydantic-extra-types"
-version = "2.11.0"
+version = "2.11.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fd/35/2fee58b1316a73e025728583d3b1447218a97e621933fc776fb8c0f2ebdd/pydantic_extra_types-2.11.0.tar.gz", hash = "sha256:4e9991959d045b75feb775683437a97991d02c138e00b59176571db9ce634f0e", size = 157226, upload-time = "2025-12-31T16:18:27.944Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/66/71/dba38ee2651f84f7842206adbd2233d8bbdb59fb85e9fa14232486a8c471/pydantic_extra_types-2.11.1.tar.gz", hash = "sha256:46792d2307383859e923d8fcefa82108b1a141f8a9c0198982b3832ab5ef1049", size = 172002, upload-time = "2026-03-16T08:08:03.92Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fe/17/fabd56da47096d240dd45ba627bead0333b0cf0ee8ada9bec579287dadf3/pydantic_extra_types-2.11.0-py3-none-any.whl", hash = "sha256:84b864d250a0fc62535b7ec591e36f2c5b4d1325fa0017eb8cda9aeb63b374a6", size = 74296, upload-time = "2025-12-31T16:18:26.38Z" },
+    { url = "https://files.pythonhosted.org/packages/17/c1/3226e6d7f5a4f736f38ac11a6fbb262d701889802595cdb0f53a885ac2e0/pydantic_extra_types-2.11.1-py3-none-any.whl", hash = "sha256:1722ea2bddae5628ace25f2aa685b69978ef533123e5638cfbddb999e0100ec1", size = 79526, upload-time = "2026-03-16T08:08:02.533Z" },
 ]
 
 [[package]]
@@ -2851,15 +2851,15 @@ wheels = [
 
 [[package]]
 name = "uvicorn"
-version = "0.41.0"
+version = "0.42.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
     { name = "h11" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/32/ce/eeb58ae4ac36fe09e3842eb02e0eb676bf2c53ae062b98f1b2531673efdd/uvicorn-0.41.0.tar.gz", hash = "sha256:09d11cf7008da33113824ee5a1c6422d89fbc2ff476540d69a34c87fab8b571a", size = 82633, upload-time = "2026-02-16T23:07:24.1Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e3/ad/4a96c425be6fb67e0621e62d86c402b4a17ab2be7f7c055d9bd2f638b9e2/uvicorn-0.42.0.tar.gz", hash = "sha256:9b1f190ce15a2dd22e7758651d9b6d12df09a13d51ba5bf4fc33c383a48e1775", size = 85393, upload-time = "2026-03-16T06:19:50.077Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/83/e4/d04a086285c20886c0daad0e026f250869201013d18f81d9ff5eada73a88/uvicorn-0.41.0-py3-none-any.whl", hash = "sha256:29e35b1d2c36a04b9e180d4007ede3bcb32a85fbdfd6c6aeb3f26839de088187", size = 68783, upload-time = "2026-02-16T23:07:22.357Z" },
+    { url = "https://files.pythonhosted.org/packages/0a/89/f8827ccff89c1586027a105e5630ff6139a64da2515e24dafe860bd9ae4d/uvicorn-0.42.0-py3-none-any.whl", hash = "sha256:96c30f5c7abe6f74ae8900a70e92b85ad6613b745d4879eb9b16ccad15645359", size = 68830, upload-time = "2026-03-16T06:19:48.325Z" },
 ]
 
 [package.optional-dependencies]

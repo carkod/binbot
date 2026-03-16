@@ -1,6 +1,6 @@
 import { fetchBaseQuery } from "@reduxjs/toolkit/query";
 import { Bounce, toast } from "react-toastify";
-import { getToken } from "./login";
+import { getToken, removeToken } from "./login";
 
 export function buildBackUrl() {
   let base = window.location.hostname.split(".");
@@ -13,17 +13,26 @@ export function buildBackUrl() {
   return backUrl;
 }
 
-export const binbotBaseQuery = fetchBaseQuery({
-  baseUrl: buildBackUrl(),
-  prepareHeaders: (headers) => {
-    const token = getToken();
+export const binbotBaseQuery = async (args: any, api: any, extraOptions: any) => {
+  const baseQuery = fetchBaseQuery({
+    baseUrl: buildBackUrl(),
+    prepareHeaders: (headers) => {
+      const token = getToken();
 
-    if (token) {
-      headers.set("Authorization", `Bearer ${token}`);
-    }
-    return headers;
-  },
-});
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
+      return headers;
+    },
+  });
+
+  const result = await baseQuery(args, api, extraOptions);
+
+  if (result?.error?.status === 401) {
+    removeToken();
+  }
+  return result;
+};
 
 export const binanceBaseQuery = fetchBaseQuery({
   baseUrl: "https://api.binance.com/api/v3",
