@@ -1,13 +1,12 @@
 import React, { type FC } from "react";
-import { Card, Col, Row, Badge } from "react-bootstrap";
+import { Card, Col, Row } from "react-bootstrap";
 import { type BalanceData } from "../../features/features.types";
 import { type MarketType } from "../../utils/enums";
-import { capitalizeFirst } from "../../utils/strings";
 
 const BalanceAnalysis: FC<{
   accountData: BalanceData;
   marketType: MarketType;
-}> = ({ accountData, marketType }) => {
+}> = ({ accountData }) => {
   return (
     <Card>
       <Card.Header className="d-flex justify-content-between align-items-center">
@@ -18,7 +17,7 @@ const BalanceAnalysis: FC<{
           <Col md="8" sm="12">
             Total fiat value
             <br />
-            (USDC)
+            {accountData.fiat_currency}
           </Col>
           <Col md="4" sm="12">
             <div className="u-primary-color">
@@ -26,7 +25,7 @@ const BalanceAnalysis: FC<{
                 accountData?.estimated_total_fiat > 0
                   ? accountData.estimated_total_fiat.toFixed(2)
                   : 0
-              } USDC`}</strong>
+              } ${accountData.fiat_currency}`}</strong>
             </div>
           </Col>
         </Row>
@@ -55,7 +54,7 @@ const BalanceAnalysis: FC<{
                 accountData.fiat_available > 0
                   ? accountData.fiat_available.toFixed(8)
                   : 0
-              } USDC`}</strong>
+              } ${accountData.fiat_currency}`}</strong>
             </div>
           </Col>
         </Row>
