@@ -418,6 +418,11 @@ class KucoinPositionDeal(KucoinBaseBalance):
         return self.active_bot
 
     def update_parameters_with_activation(self) -> BotModel:
+        """
+        update_parameters with some additional logic for activation:
+        - If the bot is already active, it means we are updating parameters without changing the position, so we just call update_parameters.
+        - If the bot is not active, it means we are activating the bot, so we need to set the parameters and then activate it. This is used for example when we open a new deal and we want to set the SL and TP at the same time, so we update parameters with activation right after opening the deal.
+        """
         direction = self._direction_multiplier()
 
         if self.active_bot.stop_loss > 0:

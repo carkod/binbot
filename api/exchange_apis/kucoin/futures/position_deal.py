@@ -328,11 +328,7 @@ class PositionDeal(KucoinPositionDeal):
         - Return the updated bot model
         """
         # Strategy toggle
-        target_strategy = (
-            Strategy.margin_short
-            if self.active_bot.strategy == Strategy.long
-            else Strategy.long
-        )
+        target_strategy = self.active_bot.strategy
 
         # Pre-close current bot
         previous_bot = deepcopy(self.active_bot)
@@ -341,7 +337,7 @@ class PositionDeal(KucoinPositionDeal):
         self.active_bot.deal.closing_timestamp = int(time() * 1000)
         self.active_bot.status = Status.completed
         self.active_bot.add_log(
-            f"Skipped stop loss and reversing to {target_strategy.name} in a new bot."
+            f"Skipped stop loss and reversing to {target_strategy.value} in a new bot."
         )
         self.controller.save(self.active_bot)
 
@@ -364,14 +360,13 @@ class PositionDeal(KucoinPositionDeal):
 
         if contracts <= 0:
             self.active_bot.add_log(
-                f"Failed to reverse to {target_strategy.name} due to zero contracts calculated."
+                f"Failed to reverse to {target_strategy.value} due to zero contracts calculated."
             )
             self.active_bot.status = Status.error
             self.controller.save(self.active_bot)
             return self.active_bot
 
         try:
-            sleep(10)  # Allow system to process the close
             if self.active_bot.strategy == Strategy.margin_short:
                 order = self.kucoin_futures_api.sell(
                     symbol=self.kucoin_symbol,
@@ -384,28 +379,36 @@ class PositionDeal(KucoinPositionDeal):
                     qty=contracts,
                     reduce_only=False,
                 )
+            # If successful, allow system to process order
+            sleep(10)
         except RestError as kucoin_error:
             msg = kucoin_error.response.message
             self.active_bot.add_log(
-                f"Failed to open {target_strategy.name} position during reversal: {msg}"
+                f"Failed to open {target_strategy.value} position during reversal: {msg}"
             )
             self.active_bot.status = Status.error
             self.controller.save(self.active_bot)
             return self.active_bot
 
-        order.deal_type = DealType.base_order
         order = OrderModel(**order.model_dump())
-        self.active_bot.orders.append(order)
 
         # full close previous bot
-        previous_bot.orders.append(order)
-        previous_bot.deal.closing_price = order.price
-        previous_bot.deal.closing_qty = order.qty
-        previous_bot.deal.closing_timestamp = order.timestamp
-        previous_bot.add_log("Updated closing order.")
+        # we do this first to avoid half-closed bot if anything fails before
+        closing_order = deepcopy(order)
+        closing_order.deal_type = DealType.margin_short
+        previous_bot.orders.append(closing_order)
+        previous_bot.deal.closing_price = closing_order.price
+        previous_bot.deal.closing_qty = closing_order.qty
+        previous_bot.deal.closing_timestamp = closing_order.timestamp
+        previous_bot.add_log("Updated closing deal")
         self.controller.save(previous_bot)
 
         # Continue new bot logic
+        order.deal_type = DealType.base_order
+        self.active_bot.orders.append(order)
+
+        # Allow system to process, sometimes position can be empty immediately
+        # after order execution
         position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
         self.active_bot.deal.base_order_size = contracts
         self.active_bot.deal.opening_price = order.price
@@ -413,13 +416,12 @@ class PositionDeal(KucoinPositionDeal):
         self.active_bot.deal.opening_timestamp = order.timestamp
         self.active_bot.deal.current_price = position.mark_price
         self.active_bot.status = Status.active
-
-        self.controller.update_logs(
-            bot=self.active_bot,
-            log_message=f"Futures bot opened @ {position.mark_price} with {order.qty} contracts",
+        self.active_bot.add_log(
+            f"Futures bot opened @ {position.mark_price} with {order.qty} contracts"
         )
-
         self.controller.save(self.active_bot)
+        self.update_parameters()
+
         return self.active_bot
 
     def exit_long(self, close_price: float, _: float) -> BotModel:
