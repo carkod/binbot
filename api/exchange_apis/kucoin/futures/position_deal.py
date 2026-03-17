@@ -18,6 +18,7 @@ from pybinbot import (
     convert_to_kucoin_symbol,
     MarketType,
 )
+from databases.crud.bot_crud import BotTableCrud
 from streaming.futures_position import FuturesPosition
 from streaming.spot_position import SpotPosition
 from databases.tables.bot_table import BotTable, PaperTradingTable
@@ -52,7 +53,19 @@ class PositionDeal(KucoinPositionDeal):
         self.price_precision = self.symbol_info.price_precision
         self.qty_precision = self.symbol_info.qty_precision
         self.kucoin_symbol = convert_to_kucoin_symbol(bot)
+        # Inherited variables for mypy
         self.api: KucoinApi | KucoinFutures
+        self.controller: BotTableCrud | PaperTradingTableCrud
+
+    def _create_controller(self) -> PaperTradingTableCrud | BotTableCrud:
+        """
+        Separate sessions to avoid locking database
+        when continuously saving (self.controller.save)
+        """
+        if isinstance(self.controller, PaperTradingTableCrud):
+            return PaperTradingTableCrud()
+        else:
+            return BotTableCrud()
 
     def take_profit_order(self) -> BotModel:
         """
@@ -321,6 +334,9 @@ class PositionDeal(KucoinPositionDeal):
     def reverse_position(self) -> BotModel:
         """
         After hitting stop loss, open a new position (long or short) with a new bot/deal.
+        Instead of doing open_deal, we do this because we don't want to close current
+        Future position
+
         - store base order
         - Create a new bot with the given strategy and status.inactive
         - Activate the new bot (open a deal)
@@ -328,7 +344,11 @@ class PositionDeal(KucoinPositionDeal):
         - Return the updated bot model
         """
         # Strategy toggle
-        target_strategy = self.active_bot.strategy
+        target_strategy = (
+            Strategy.margin_short
+            if self.active_bot.strategy == Strategy.long
+            else Strategy.long
+        )
 
         # Pre-close current bot
         previous_bot = deepcopy(self.active_bot)
@@ -342,15 +362,19 @@ class PositionDeal(KucoinPositionDeal):
         self.controller.save(self.active_bot)
 
         # Construct new bot
-        new_bot_data = self.active_bot.model_dump()
+        new_bot_data = self.active_bot.model_dump(
+            exclude={"id", "created_at", "updated_at", "deal", "orders", "logs"}
+        )
         new_bot = BotBase.model_construct(**new_bot_data)
         new_bot.strategy = target_strategy
         new_bot.status = Status.inactive
         new_bot.logs = []
-        bot = self.bot_crud.create(new_bot)
+        bot = self.controller.create(new_bot)
 
-        # Activate
-        bot = self.bot_crud.get_one(bot_id=str(bot.id))
+        # Activate with separate instance to make sure we have latest data
+        independent_controller = self._create_controller()
+        self.controller = independent_controller
+        bot = self.controller.get_one(bot_id=str(bot.id))
         self.active_bot = BotModel(**bot.model_dump())
 
         price = self.kucoin_futures_api.matching_engine(
@@ -400,6 +424,7 @@ class PositionDeal(KucoinPositionDeal):
         previous_bot.deal.closing_price = closing_order.price
         previous_bot.deal.closing_qty = closing_order.qty
         previous_bot.deal.closing_timestamp = closing_order.timestamp
+        previous_bot.status = Status.completed
         previous_bot.add_log("Updated closing deal")
         self.controller.save(previous_bot)
 
