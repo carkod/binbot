@@ -7,6 +7,7 @@ from pybinbot import BinbotErrors
 from user.models.user import UserDetails
 from user.services.auth import create_access_token, FormData
 from typing import Optional
+from tools.config import Config
 
 
 class UserTableCrud:
@@ -28,6 +29,7 @@ class UserTableCrud:
         if session is None:
             session = independent_session()
         self.session = session
+        self.config = Config()
 
     def get(self, limit: int = 200, offset: int = 0) -> Sequence[UserTable]:
         """
@@ -88,7 +90,7 @@ class UserTableCrud:
         if user.password != password:
             raise BinbotErrors("Invalid password")
         else:
-            access_token, expire = create_access_token(email)
+            access_token, expire = create_access_token(email, user.role)
             return access_token, expire
 
     def add(self, data: UserDetails):

@@ -2,7 +2,10 @@ from fastapi.testclient import TestClient
 from typing import Generator
 from unittest.mock import MagicMock
 
+from pybinbot import UserRoles
 from pytest import fixture
+from user.models.user import UserTokenData
+from user.services.auth import get_current_user
 from databases.utils import get_session
 from databases.tables.autotrade_table import AutotradeTable
 from main import app
@@ -27,6 +30,12 @@ mocked_db_data = AutotradeTable(
 )
 
 
+def override_get_current_user():
+    return UserTokenData(
+        email="test@example.com", role=UserRoles.admin, expires_in=1732388868477
+    )
+
+
 @fixture()
 def client() -> Generator[TestClient, None, None]:
     session_mock = MagicMock()
@@ -36,6 +45,7 @@ def client() -> Generator[TestClient, None, None]:
     session_mock.commit.return_value = MagicMock(return_value=None)
     # Store the original override
     original_override = app.dependency_overrides.get(get_session)
+    app.dependency_overrides[get_current_user] = override_get_current_user
     # Set the mock for this test
     app.dependency_overrides[get_session] = lambda: session_mock
     client = TestClient(app)

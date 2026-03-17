@@ -1,5 +1,4 @@
 import logging
-import os
 from databases.tables.inquiry_table import InquiryTable
 from databases.symbols_etl import SymbolDataEtl
 from databases.tables.autotrade_table import AutotradeTable, TestAutotradeTable
@@ -15,7 +14,6 @@ from pybinbot import (
     ExchangeId,
     Status,
     Strategy,
-    UserRoles,
     OrderStatus,
     BinbotErrors,
 )
@@ -228,9 +226,10 @@ class ApiDb:
         """
         Dummy data for testing users table
         """
-        username = os.getenv("USER", "admin")
-        email = os.getenv("EMAIL", "admin@example.com")
-        password = os.getenv("PASSWORD", "admin")
+        username = self.config.user
+        email = self.config.email
+        password = self.config.password
+        role = self.config.role
 
         statement = select(UserTable).where(UserTable.username == username)
         results = self.session.exec(statement)
@@ -239,7 +238,7 @@ class ApiDb:
                 username=username,
                 password=password,
                 email=email,
-                role=UserRoles.admin,
+                role=role,
                 full_name="Admin",
             )
             self.session.add(user_data)
@@ -247,6 +246,8 @@ class ApiDb:
         service_username = self.config.service_user
         service_email = self.config.service_email
         service_password = self.config.service_password
+        service_role = self.config.service_role
+
         result = self.session.exec(
             select(UserTable).where(UserTable.username == service_username)
         )
@@ -255,7 +256,7 @@ class ApiDb:
                 username=service_username,
                 password=service_password,
                 email=service_email,
-                role=UserRoles.admin,
+                role=service_role,
                 full_name="Service User",
             )
             self.session.add(service_user_data)

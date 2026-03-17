@@ -74,3 +74,9 @@ class LoginResponse(StandardResponse):
 
 class GetOneUser(StandardResponse):
     data: Optional[UserTable]
+
+
+class UserTokenData(BaseModel):
+    email: str
+    expires_in: int
+    role: UserRoles

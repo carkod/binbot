@@ -1,10 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import ValidationError
 from sqlmodel import Session
+from user.models.user import UserTokenData
+from user.services.auth import get_current_user
 from databases.utils import get_session
 from databases.crud.inquiry_crud import InquiryCrud
 from inquiries.models import InquiryBase, InquiryResponse, InquiryListResponse
 from uuid import UUID
+from fastapi.responses import Response
 
 inquiries_router = APIRouter(tags=["inquiries"])
 
@@ -24,7 +27,11 @@ def create_inquiry(payload: InquiryBase, session: Session = Depends(get_session)
 
 
 @inquiries_router.get("/inquiries/{id}", response_model=InquiryResponse)
-def get_inquiry(id: str, session: Session = Depends(get_session)):
+def get_inquiry(
+    id: str,
+    session: Session = Depends(get_session),
+    _: UserTokenData = Depends(get_current_user),
+):
     try:
         sanitized_id = UUID(id)
     except Exception:
@@ -46,6 +53,7 @@ def get_inquiries(
     limit: int = 100,
     reason: str | None = Query(default=None, description="Filter inquiries by reason"),
     session: Session = Depends(get_session),
+    _: UserTokenData = Depends(get_current_user),
 ):
     crud = InquiryCrud(session)
     response = crud.get_inquiries(offset=offset, limit=limit, reason=reason)
@@ -57,8 +65,12 @@ def get_inquiries(
     }
 
 
-@inquiries_router.delete("/inquiries/{id}", response_model=InquiryResponse)
-def delete_inquiry(id: str, session: Session = Depends(get_session)):
+@inquiries_router.delete("/inquiries/{id}")
+def delete_inquiry(
+    id: str,
+    session: Session = Depends(get_session),
+    _: UserTokenData = Depends(get_current_user),
+):
     try:
         sanitized_id = UUID(id)
     except Exception:
@@ -68,8 +80,4 @@ def delete_inquiry(id: str, session: Session = Depends(get_session)):
     if not inquiry:
         raise HTTPException(status_code=404, detail="Inquiry not found")
     crud.delete_inquiry(sanitized_id)
-    return {
-        "message": "Inquiry deleted successfully",
-        "data": inquiry,  # Return the full inquiry object
-        "error": 0,
-    }
+    return Response(status_code=204)

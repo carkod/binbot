@@ -334,7 +334,6 @@ class BotTableCrud:
                 raise BinbotErrors("Order not found")
 
             s.delete(order)
-            s.refresh(order)
             s.commit()
 
         return str(order.order_id)

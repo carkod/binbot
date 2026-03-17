@@ -186,6 +186,13 @@ class Config:
     def email(self) -> str:
         return self._get_required("EMAIL")
 
+    @property
+    def role(self) -> str:
+        """
+        Default to user role for safety, can be overridden by env variable
+        """
+        return self._get_optional("ROLE", "user")
+
     # Binance settings
     @property
     def binance_key(self) -> str:
@@ -228,3 +235,8 @@ class Config:
     @property
     def service_email(self) -> str:
         return self._get_optional("SERVICE_EMAIL")
+
+    @property
+    def service_role(self) -> str:
+        # Keep lowest privilege by default, for security
+        return self._get_optional("SERVICE_ROLE", "user")

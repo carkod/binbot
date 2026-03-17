@@ -77,10 +77,9 @@ class TestDeleteInquiry:
         assert response.status_code == 200
         inquiry_id = response.json()["data"]["id"]
         del_response = client.delete(f"/inquiries/{inquiry_id}")
-        assert del_response.status_code == 200
-        content = del_response.json()
-        assert content["error"] == 0
-        assert content["data"]["id"] == inquiry_id  # Updated assertion
+        assert del_response.status_code == 204
+        # For 204 No Content, response body should be empty
+        assert del_response.content in (b"", None)
         get_response = client.get(f"/inquiries/{inquiry_id}")
         assert get_response.status_code == 404
 
