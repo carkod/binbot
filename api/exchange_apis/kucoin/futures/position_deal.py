@@ -1,3 +1,4 @@
+from copy import deepcopy
 from time import time
 from time import sleep
 from typing import Union, Type
@@ -317,35 +318,33 @@ class PositionDeal(KucoinPositionDeal):
         self.controller.save(self.active_bot)
         return self.active_bot
 
-    def reverse_to_short(self) -> BotModel:
+    def reverse_position(self) -> BotModel:
         """
-        After hitting stop loss, open a short position with a new bot/deal.
+        After hitting stop loss, open a new position (long or short) with a new bot/deal.
         - store base order
-        - Create a new bot with the same parameters but strategy.short and status.inactive
-        - Activate the new bot (open a short deal)
+        - Create a new bot with the given strategy and status.inactive
+        - Activate the new bot (open a deal)
         - Save changes to the database
-        - Return the updated short bot model
-
-        Notes
-        - This function assumes that the current active bot is a long position that just hit its stop loss.
-        - because stop loss always executes starting from base order, we can assume this is the same for short bots
-        - No base_order in theory should never happen, because if bot doesn't have one, it shouldn't open, so we are just covering edge cases where original long bot didn't open properly (e.g. unfilled base orders)
-
+        - Return the updated bot model
         """
-        # Close current bot
+        # Strategy toggle
+        target_strategy = self.active_bot.strategy
+
+        # Pre-close current bot
+        previous_bot = deepcopy(self.active_bot)
         self.active_bot.deal.closing_price = self.active_bot.deal.stop_loss_price
         self.active_bot.deal.closing_qty = self.active_bot.deal.opening_qty
         self.active_bot.deal.closing_timestamp = int(time() * 1000)
         self.active_bot.status = Status.completed
         self.active_bot.add_log(
-            "Skipped stop loss and reversing to short in a new bot."
+            f"Skipped stop loss and reversing to {target_strategy.value} in a new bot."
         )
         self.controller.save(self.active_bot)
 
-        # Step 2: Construct new short bot
+        # Construct new bot
         new_bot_data = self.active_bot.model_dump()
         new_bot = BotBase.model_construct(**new_bot_data)
-        new_bot.strategy = Strategy.margin_short
+        new_bot.strategy = target_strategy
         new_bot.status = Status.inactive
         new_bot.logs = []
         bot = self.bot_crud.create(new_bot)
@@ -361,152 +360,68 @@ class PositionDeal(KucoinPositionDeal):
 
         if contracts <= 0:
             self.active_bot.add_log(
-                "Failed to reverse to short due to zero contracts calculated."
+                f"Failed to reverse to {target_strategy.value} due to zero contracts calculated."
             )
             self.active_bot.status = Status.error
             self.controller.save(self.active_bot)
             return self.active_bot
 
         try:
-            # This often errors because execution is too kick the system doesn't have time to process the close
+            if self.active_bot.strategy == Strategy.margin_short:
+                order = self.kucoin_futures_api.sell(
+                    symbol=self.kucoin_symbol,
+                    qty=contracts,
+                    reduce_only=False,
+                )
+            else:
+                order = self.kucoin_futures_api.buy(
+                    symbol=self.kucoin_symbol,
+                    qty=contracts,
+                    reduce_only=False,
+                )
+            # If successful, allow system to process order
             sleep(10)
-            if self.active_bot.strategy == Strategy.margin_short:
-                order = self.kucoin_futures_api.sell(
-                    symbol=self.kucoin_symbol,
-                    qty=contracts,
-                    reduce_only=False,
-                )
-            else:
-                order = self.kucoin_futures_api.buy(
-                    symbol=self.kucoin_symbol,
-                    qty=contracts,
-                    reduce_only=False,
-                )
         except RestError as kucoin_error:
             msg = kucoin_error.response.message
             self.active_bot.add_log(
-                f"Failed to open short position during reversal: {msg}"
+                f"Failed to open {target_strategy.value} position during reversal: {msg}"
             )
             self.active_bot.status = Status.error
             self.controller.save(self.active_bot)
             return self.active_bot
 
-        order.deal_type = DealType.base_order
         order = OrderModel(**order.model_dump())
+
+        # full close previous bot
+        # we do this first to avoid half-closed bot if anything fails before
+        closing_order = deepcopy(order)
+        closing_order.deal_type = DealType.margin_short
+        previous_bot.orders.append(closing_order)
+        previous_bot.deal.closing_price = closing_order.price
+        previous_bot.deal.closing_qty = closing_order.qty
+        previous_bot.deal.closing_timestamp = closing_order.timestamp
+        previous_bot.add_log("Updated closing deal")
+        self.controller.save(previous_bot)
+
+        # Continue new bot logic
+        order.deal_type = DealType.base_order
         self.active_bot.orders.append(order)
 
+        # Allow system to process, sometimes position can be empty immediately
+        # after order execution
         position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
-
-        # For Futures, base_order_size is contracts
-        # Kucoin only operates with contracts, not underlying asset (qty)
-        # so in Binbot we only care about that
         self.active_bot.deal.base_order_size = contracts
         self.active_bot.deal.opening_price = order.price
         self.active_bot.deal.opening_qty = contracts
         self.active_bot.deal.opening_timestamp = order.timestamp
         self.active_bot.deal.current_price = position.mark_price
         self.active_bot.status = Status.active
-
-        self.controller.update_logs(
-            bot=self.active_bot,
-            log_message=f"Futures SHORT opened @ {position.mark_price} with {order.qty} contracts",
+        self.active_bot.add_log(
+            f"Futures bot opened @ {position.mark_price} with {order.qty} contracts"
         )
-
         self.controller.save(self.active_bot)
-        return self.active_bot
+        self.update_parameters()
 
-    def reverse_to_long(self) -> BotModel:
-        """
-        After hitting stop loss, open a long position with a new bot/deal.
-        - store base order
-        - Create a new bot with the same parameters but strategy.long and status.inactive
-        - Activate the new bot (open a long deal)
-        - Save changes to the database
-        - Return the updated long bot model
-
-        Notes
-        - This function assumes that the current active bot is a short position that just hit its stop loss.
-        - because stop loss always executes starting from base order, we can assume this is the same for long bots
-        - No base_order in theory should never happen, because if bot doesn't have one, it shouldn't open, so we are just covering edge cases where original short bot didn't open properly (e.g. unfilled base orders)
-
-        """
-        # Close current bot
-        self.active_bot.deal.closing_price = self.active_bot.deal.stop_loss_price
-        self.active_bot.deal.closing_qty = self.active_bot.deal.opening_qty
-        self.active_bot.deal.closing_timestamp = int(time() * 1000)
-        self.active_bot.status = Status.completed
-        self.active_bot.add_log("Skipped stop loss and reversing to long in a new bot.")
-        self.controller.save(self.active_bot)
-
-        # Step 2: Construct new long bot
-        new_bot_data = self.active_bot.model_dump()
-        new_bot = BotBase.model_construct(**new_bot_data)
-        new_bot.strategy = Strategy.long
-        new_bot.status = Status.inactive
-        new_bot.logs = []
-        bot = self.bot_crud.create(new_bot)
-
-        # Activate
-        bot = self.bot_crud.get_one(bot_id=str(bot.id))
-        self.active_bot = BotModel(**bot.model_dump())
-
-        price = self.kucoin_futures_api.matching_engine(
-            symbol=self.kucoin_symbol, side=AddOrderReq.SideEnum.BUY, size=1
-        )
-        contracts = self.calculate_contracts(price)
-
-        if contracts <= 0:
-            self.active_bot.add_log(
-                "Failed to reverse to long due to zero contracts calculated."
-            )
-            self.active_bot.status = Status.error
-            self.controller.save(self.active_bot)
-            return self.active_bot
-
-        try:
-            if self.active_bot.strategy == Strategy.margin_short:
-                order = self.kucoin_futures_api.sell(
-                    symbol=self.kucoin_symbol,
-                    qty=contracts,
-                    reduce_only=False,
-                )
-            else:
-                order = self.kucoin_futures_api.buy(
-                    symbol=self.kucoin_symbol,
-                    qty=contracts,
-                    reduce_only=False,
-                )
-        except RestError as kucoin_error:
-            msg = kucoin_error.response.message
-            self.active_bot.add_log(
-                f"Failed to open long position during reversal: {msg}"
-            )
-            self.active_bot.status = Status.error
-            self.controller.save(self.active_bot)
-            return self.active_bot
-
-        order.deal_type = DealType.base_order
-        order = OrderModel(**order.model_dump())
-        self.active_bot.orders.append(order)
-
-        position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
-
-        # For Futures, base_order_size is contracts
-        # Kucoin only operates with contracts, not underlying asset (qty)
-        # so in Binbot we only care about that
-        self.active_bot.deal.base_order_size = contracts
-        self.active_bot.deal.opening_price = order.price
-        self.active_bot.deal.opening_qty = contracts
-        self.active_bot.deal.opening_timestamp = order.timestamp
-        self.active_bot.deal.current_price = position.mark_price
-        self.active_bot.status = Status.active
-
-        self.controller.update_logs(
-            bot=self.active_bot,
-            log_message=f"Futures LONG opened @ {position.mark_price} with {order.qty} contracts",
-        )
-
-        self.controller.save(self.active_bot)
         return self.active_bot
 
     def exit_long(self, close_price: float, _: float) -> BotModel:
@@ -520,16 +435,14 @@ class PositionDeal(KucoinPositionDeal):
         # Stop loss
         if (
             self.active_bot.stop_loss > 0
-            # current_price below stop loss
             and self.active_bot.deal.stop_loss_price > current_price
         ):
             if self.active_bot.margin_short_reversal:
-                # If margin short reversal is enabled, we want to open a short position after stop loss is hit
                 self.controller.update_logs(
                     "Margin short reversal enabled, opening short position after stop loss...",
                     self.active_bot,
                 )
-                self.active_bot = self.reverse_to_short()
+                self.active_bot = self.reverse_position()
             else:
                 self.controller.update_logs(
                     f"Executing futures long stop_loss after hitting {self.active_bot.deal.stop_loss_price}",
@@ -646,7 +559,7 @@ class PositionDeal(KucoinPositionDeal):
                     "Margin short reversal enabled, opening long position after stop loss...",
                     self.active_bot,
                 )
-                self.active_bot = self.reverse_to_long()
+                self.active_bot = self.reverse_position()
             else:
                 self.controller.update_logs(
                     f"Executing futures short stop_loss after hitting {self.active_bot.deal.stop_loss_price}",
