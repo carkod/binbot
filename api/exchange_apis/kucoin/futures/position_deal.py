@@ -344,7 +344,11 @@ class PositionDeal(KucoinPositionDeal):
         - Return the updated bot model
         """
         # Strategy toggle
-        target_strategy = self.active_bot.strategy
+        target_strategy = (
+            Strategy.margin_short
+            if self.active_bot.strategy == Strategy.long
+            else Strategy.long
+        )
 
         # Pre-close current bot
         previous_bot = deepcopy(self.active_bot)

@@ -344,7 +344,7 @@ requires-dist = [
     { name = "psycopg2", specifier = ">=2.9.11" },
     { name = "py3cw", specifier = ">=0.0.39" },
     { name = "py4j", specifier = ">=0.10.9" },
-    { name = "pybinbot", specifier = ">=0.7.32" },
+    { name = "pybinbot", specifier = ">=0.7.36" },
     { name = "pydantic-settings", specifier = ">=2.10.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0.2" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=1.2.0" },
@@ -1755,7 +1755,7 @@ wheels = [
 
 [[package]]
 name = "pandera"
-version = "0.30.0"
+version = "0.30.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "packaging" },
@@ -1764,9 +1764,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "typing-inspect" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9c/72/9fbfb464918b8813613f565db991fe1e0cb8538b2db39faaf0de04e5b12b/pandera-0.30.0.tar.gz", hash = "sha256:4a19611812270c5ed782ec3775276fc92ac69c0ead3124c4bad77b7297fcfb0d", size = 592279, upload-time = "2026-03-16T20:46:23.562Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/09/82/e5c312159bba3220e0ba2a3f30d2f89c44ab611d5b4d2655f952caad22f0/pandera-0.30.1.tar.gz", hash = "sha256:84af217d96dd6541026b75e273c06c5ce70bb54f3a63c8b0a1f371935e24460d", size = 592585, upload-time = "2026-03-18T00:58:58.277Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7c/cb/91cff3432c898bc1da6ffddf85d2e05fd6bd58771c836fb366e503a9f542/pandera-0.30.0-py3-none-any.whl", hash = "sha256:19df5fedeb94fd227f337432bbd23ff39897ef6b8f197fe95a09f1659cfbe6b0", size = 303452, upload-time = "2026-03-16T20:46:22.298Z" },
+    { url = "https://files.pythonhosted.org/packages/37/17/4c89d26ba4f6fb7fc5d3c7f3558aaf4b1e4d843b855e01300a86876987cf/pandera-0.30.1-py3-none-any.whl", hash = "sha256:910656a8c1e10a9759b57dd58ac9dd16298e64baaaae476f1c2c40ee326fb263", size = 303587, upload-time = "2026-03-18T00:58:56.993Z" },
 ]
 
 [[package]]
@@ -1958,7 +1958,7 @@ wheels = [
 
 [[package]]
 name = "pybinbot"
-version = "0.7.32"
+version = "0.7.36"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -1973,9 +1973,9 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ae/81/a1a2f34d436e024c75b9ae4581146556bef4433ec2db0b9a865b278b9c89/pybinbot-0.7.32.tar.gz", hash = "sha256:bc6a856ff0505154a3106ba20aa57901f98123c12ecf83fd201d480dd3386842", size = 54155, upload-time = "2026-03-16T18:58:41.017Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d0/c5/5ded9d5ef4fc89fbd03eb165df956e416c435ffe4fded76ba560f884c950/pybinbot-0.7.36.tar.gz", hash = "sha256:477fbd37e85a6a63f0d49b13039bf50cab7ed862492d75ad642abc6f3b6211c2", size = 54323, upload-time = "2026-03-19T00:31:42.415Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a9/9b/c7872c605be37b6000f5b558e56f97d47aba49be9278bfa53984e400d8ca/pybinbot-0.7.32-py3-none-any.whl", hash = "sha256:db494e62b6c91ab2f332b00cccea07382b229a6cc12a17ea11750bcf34ee87e1", size = 57086, upload-time = "2026-03-16T18:58:39.517Z" },
+    { url = "https://files.pythonhosted.org/packages/d2/b7/c36c8ca7bc09c15b9248bf80965b801bf3777009af6c1acf13926e8af468/pybinbot-0.7.36-py3-none-any.whl", hash = "sha256:b8a44ddf9160b24d6daa1aaef1ae012c10d8f02a1598f97f7a7ebb7ae0dee454", size = 57323, upload-time = "2026-03-19T00:31:40.831Z" },
 ]
 
 [[package]]
@@ -2596,15 +2596,15 @@ wheels = [
 
 [[package]]
 name = "sentry-sdk"
-version = "2.54.0"
+version = "2.55.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c8/e9/2e3a46c304e7fa21eaa70612f60354e32699c7102eb961f67448e222ad7c/sentry_sdk-2.54.0.tar.gz", hash = "sha256:2620c2575128d009b11b20f7feb81e4e4e8ae08ec1d36cbc845705060b45cc1b", size = 413813, upload-time = "2026-03-02T15:12:41.355Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e9/b8/285293dc60fc198fffc3fcdbc7c6d4e646e0f74e61461c355d40faa64ceb/sentry_sdk-2.55.0.tar.gz", hash = "sha256:3774c4d8820720ca4101548131b9c162f4c9426eb7f4d24aca453012a7470f69", size = 424505, upload-time = "2026-03-17T14:15:51.707Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/53/39/be412cc86bc6247b8f69e9383d7950711bd86f8d0a4a4b0fe8fad685bc21/sentry_sdk-2.54.0-py2.py3-none-any.whl", hash = "sha256:fd74e0e281dcda63afff095d23ebcd6e97006102cdc8e78a29f19ecdf796a0de", size = 439198, upload-time = "2026-03-02T15:12:39.546Z" },
+    { url = "https://files.pythonhosted.org/packages/9a/66/20465097782d7e1e742d846407ea7262d338c6e876ddddad38ca8907b38f/sentry_sdk-2.55.0-py2.py3-none-any.whl", hash = "sha256:97026981cb15699394474a196b88503a393cbc58d182ece0d3abe12b9bd978d4", size = 449284, upload-time = "2026-03-17T14:15:49.604Z" },
 ]
 
 [[package]]
