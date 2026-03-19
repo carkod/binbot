@@ -149,6 +149,7 @@ const ChartContainer: FC<{
             getLatestBar={(bar) => handleInitialPrice(parseFloat(bar[3]))}
             exchange={exchangeState}
             supportedExchanges={[Exchange.BINANCE, Exchange.KUCOIN]}
+            height=""
           />
         )}
       </Card.Body>

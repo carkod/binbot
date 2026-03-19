@@ -372,9 +372,6 @@ class PositionDeal(KucoinPositionDeal):
         bot = self.controller.create(new_bot)
 
         # Activate with separate instance to make sure we have latest data
-        independent_controller = self._create_controller()
-        self.controller = independent_controller
-        bot = self.controller.get_one(bot_id=str(bot.id))
         self.active_bot = BotModel(**bot.model_dump())
 
         price = self.kucoin_futures_api.matching_engine(
@@ -429,7 +426,6 @@ class PositionDeal(KucoinPositionDeal):
         self.controller.save(previous_bot)
 
         # Continue new bot logic
-        order.deal_type = DealType.base_order
         self.active_bot.orders.append(order)
 
         # Allow system to process, sometimes position can be empty immediately
@@ -444,9 +440,10 @@ class PositionDeal(KucoinPositionDeal):
         self.active_bot.add_log(
             f"Futures bot opened @ {position.mark_price} with {order.qty} contracts"
         )
+        # testing, make sure self.active_bot.orders.append(order) does save in the DB
         self.controller.save(self.active_bot)
         self.update_parameters()
-
+        # testing. make sure trailing_stop loss has been reset after reversal
         return self.active_bot
 
     def exit_long(self, close_price: float, _: float) -> BotModel:
