@@ -99,7 +99,9 @@ const ChartContainer: FC<{
   }, [bot.pair, exchangeState, quoteAsset]);
 
   return (
-    <Card style={{ display: "flex", flexDirection: "column", minHeight: "580px" }}>
+    <Card
+      style={{ display: "flex", flexDirection: "column", minHeight: "580px" }}
+    >
       <Card.Header>
         <Row style={{ alignItems: "baseline" }}>
           <Col md="8">
@@ -148,8 +150,7 @@ const ChartContainer: FC<{
             onTick={(tick) => updatedPrice(parseFloat(tick.close))}
             getLatestBar={(bar) => handleInitialPrice(parseFloat(bar[3]))}
             exchange={exchangeState}
-            supportedExchanges={[Exchange.BINANCE, Exchange.KUCOIN]}
-            style={{ flex: 1 }}
+            style={{ minHeight: "100%", height: "600px", width: "100%" }}
           />
         )}
       </Card.Body>
