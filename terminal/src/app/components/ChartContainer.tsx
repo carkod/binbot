@@ -99,7 +99,7 @@ const ChartContainer: FC<{
   }, [bot.pair, exchangeState, quoteAsset]);
 
   return (
-    <Card style={{ minHeight: "650px" }}>
+    <Card style={{ display: "flex", flexDirection: "column", minHeight: "580px" }}>
       <Card.Header>
         <Row style={{ alignItems: "baseline" }}>
           <Col md="8">
@@ -137,7 +137,7 @@ const ChartContainer: FC<{
           </Col>
         </Row>
       </Card.Header>
-      <Card.Body>
+      <Card.Body style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         {bot?.pair && (
           <TVChartContainer
             symbol={exchangeSymbol}
@@ -149,7 +149,7 @@ const ChartContainer: FC<{
             getLatestBar={(bar) => handleInitialPrice(parseFloat(bar[3]))}
             exchange={exchangeState}
             supportedExchanges={[Exchange.BINANCE, Exchange.KUCOIN]}
-            height=""
+            style={{ flex: 1 }}
           />
         )}
       </Card.Body>

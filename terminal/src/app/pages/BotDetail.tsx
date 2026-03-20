@@ -54,7 +54,7 @@ export const BotDetail: FC<{}> = () => {
   return (
     <SymbolProvider marketType={currentMarketType}>
       <div className="content">
-        <Container fluid>
+        <Container>
           <Row>
             <Col md="12" sm="12">
               <ChartContainer
