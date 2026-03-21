@@ -180,9 +180,7 @@ class PositionMarket(KucoinPositionDeal):
         - trailing_deviation = active stop after trailing
         - trailing_profit = trigger, never exit
         """
-        self.apex_flow_closing = ApexFlowClose(
-            self.df, self.btc_df
-        )
+        self.apex_flow_closing = ApexFlowClose(self.df, self.btc_df)
 
         original_bot = deepcopy(self.active_bot)
 

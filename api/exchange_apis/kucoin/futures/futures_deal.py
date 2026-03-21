@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Type
+from typing import Type
 from time import time
 from pybinbot import (
     OrderBase,
@@ -207,7 +207,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
     def cancel_current_sl(self) -> None:
         """
-        Find current stop loss orders in place and batch cancel them.
+        Find current stop loss orders in exchange in place and batch cancel them.
+        this works for both trailing and stop loss, long and short
         """
         stop_orders = self.kucoin_futures_api.get_all_stop_loss_orders(
             self.kucoin_symbol
@@ -333,19 +334,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
     def place_take_profit(self, price: float) -> None:
         price = round_numbers(price, self.price_precision)
 
-        cancelled_ids = self.kucoin_futures_api.cancel_all_futures_orders(
-            self.kucoin_symbol
-        )
-        if len(cancelled_ids) > 0:
-            self.controller.update_logs(
-                bot=self.active_bot,
-                log_message=f"Cancelled existing TP orders: {', '.join(cancelled_ids)}",
-            )
-            for order_id in cancelled_ids:
-                for index, existing_order in enumerate(self.active_bot.orders):
-                    if existing_order.order_id == order_id:
-                        existing_order.status = OrderStatus.CANCELED
-                        self.active_bot.orders[index] = existing_order
+        self.cancel_current_sl()
 
         if self.active_bot.strategy == Strategy.margin_short:
             side = AddOrderReq.SideEnum.BUY

@@ -537,7 +537,7 @@ class PositionDeal(KucoinPositionDeal):
                     != self.active_bot.deal.trailling_profit_price
                 ):
                     self.active_bot.add_log(
-                        f"Updated trailling_profit_price to {round_numbers(self.active_bot.deal.trailling_profit_price, self.price_precision)} and set trailing profit (profit in Kucoin)"
+                        f"Updated trailling_profit_price to {round_numbers(self.active_bot.deal.trailling_profit_price, self.price_precision)} and set trailing stop loss (stop loss in Kucoin)"
                     )
 
                 self.controller.save(self.active_bot)
