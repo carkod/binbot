@@ -158,7 +158,7 @@ class FuturesPosition(PositionMarket):
                             system_order.price, self.price_precision
                         )
 
-                    if order.status == status and order.qty == 0 and order.price == 0:
+                    if order.status == status and system_order.price == 0:
                         continue
 
                     order.qty = round_numbers(filled_size, self.qty_precision)

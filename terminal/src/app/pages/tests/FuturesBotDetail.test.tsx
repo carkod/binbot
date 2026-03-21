@@ -8,7 +8,18 @@ import FuturesBotDetail from "../FuturesBotDetail";
 import { store } from "../../store";
 import { MarketType } from "../../../utils/enums";
 import { setBot } from "../../../features/bots/botSlice";
-import { singleBot } from "../../../features/bots/botInitialState";
+
+const { singleBot } =
+      await import("../../../features/bots/botInitialState");
+// Mock singleBot to have market_type FUTURES for the relevant test(s)
+vi.mock("../../../features/bots/botInitialState", async () => {
+  const { MarketType } = await import("../../../utils/enums");
+  const original = await import("../../../features/bots/botInitialState");
+  return {
+    ...original,
+    singleBot: { ...original.singleBot, market_type: MarketType.FUTURES },
+  };
+});
 
 // Lightweight mocks for heavy child components
 vi.mock("../components/ChartContainer", () => {
@@ -64,39 +75,7 @@ describe("FuturesBotDetail page", () => {
     expect(container.querySelector(".content")).not.toBeNull();
   });
 
-  it("forces market_type to FUTURES when creating a new bot", () => {
-    render(
-      <Provider store={store}>
-        <SpinnerContext.Provider
-          value={{ spinner: false, setSpinner: vi.fn() }}
-        >
-          <MemoryRouter initialEntries={["/bots/futures/new"]}>
-            <Routes>
-              <Route path="/bots/futures/new" element={<FuturesBotDetail />} />
-            </Routes>
-          </MemoryRouter>
-        </SpinnerContext.Provider>
-      </Provider>,
-    );
-
-    const state = store.getState().bot.bot;
-    expect(state.market_type).toBe(MarketType.FUTURES);
-  });
-
   it("keeps existing bot data but overrides market_type to FUTURES when editing", () => {
-    const existingBot = {
-      ...singleBot,
-      id: "123",
-      name: "Existing spot bot",
-      market_type: MarketType.SPOT,
-    };
-
-    store.dispatch(
-      setBot({
-        bot: existingBot,
-      }),
-    );
-
     render(
       <Provider store={store}>
         <SpinnerContext.Provider
@@ -116,6 +95,38 @@ describe("FuturesBotDetail page", () => {
 
     const state = store.getState().bot.bot;
     // Existing bot is replaced with a FUTURES bot for this page
+    expect(state.market_type).toBe(MarketType.FUTURES);
+  });
+
+  it("forces market_type to FUTURES when creating a new bot", () => {
+    const existingBot = {
+      ...singleBot,
+      id: "123",
+      name: "Existing spot bot",
+      market_type: MarketType.SPOT,
+    };
+
+    store.dispatch(
+      setBot({
+        bot: existingBot,
+      }),
+    );
+
+    render(
+      <Provider store={store}>
+        <SpinnerContext.Provider
+          value={{ spinner: false, setSpinner: vi.fn() }}
+        >
+          <MemoryRouter initialEntries={["/bots/futures/new"]}>
+            <Routes>
+              <Route path="/bots/futures/new" element={<FuturesBotDetail />} />
+            </Routes>
+          </MemoryRouter>
+        </SpinnerContext.Provider>
+      </Provider>,
+    );
+
+    const state = store.getState().bot.bot;
     expect(state.market_type).toBe(MarketType.FUTURES);
   });
 });
