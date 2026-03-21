@@ -1,3 +1,4 @@
+from time import time
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
 from typing import Optional
@@ -55,6 +56,63 @@ def get_active_pairs(
     try:
         pairs = crud.get_active_pairs()
         return BotListResponse(message="Successfully found active pairs.", data=pairs)
+    except BinbotErrors as e:
+        return BotResponse(message=e.message, error=1)
+
+
+@bot_blueprint.get("/bot/public", response_model=BotListResponse, tags=["bots"])
+def get_public_bots(
+    status: Status = Status.all,
+    limit: int = 200,
+    offset: int = 0,
+    session: Session = Depends(get_session),
+):
+    """
+    Public endpoint replica of get_bots
+    No auth required
+    """
+    crud = BotTableCrud(session)
+    end_date = time() * 1000
+    start_date = end_date - 7 * 24 * 60 * 60 * 1000
+    try:
+        bots = crud.get(
+            status=status,
+            limit=limit,
+            offset=offset,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        bot_profit_list = []
+        for bot in bots:
+            opening = bot.deal.opening_price
+            closing = (
+                bot.deal.closing_price
+                if bot.deal.closing_price
+                else bot.deal.current_price
+            )
+            if opening and opening != 0:
+                profit_pct = (closing - opening) / opening
+            else:
+                continue
+
+            bot_profit_list.append((bot, profit_pct))
+
+        # Sort by profit percentage descending and take top 4
+        top_bots = [
+            bp[0]
+            for bp in sorted(bot_profit_list, key=lambda x: x[1], reverse=True)[:4]
+        ]
+
+        data = []
+        for bot in top_bots:
+            bot_model = BotModel.dump_from_table(bot)
+            # Clear confidential data
+            bot_model.logs = []
+            bot_model.orders = []
+            bot_model.id = "redacted"
+            data.append(bot_model)
+
+        return BotListResponse(message="Successfully found bots!", data=data)
     except BinbotErrors as e:
         return BotResponse(message=e.message, error=1)
 

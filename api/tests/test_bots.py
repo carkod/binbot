@@ -183,3 +183,26 @@ def test_post_bot_errors_list(client: TestClient):
     assert response.status_code == 200
     content = response.json()
     assert content["message"] == "Errors posted successfully."
+
+
+def test_get_public_bots(client: TestClient):
+    """
+    Test the /bot/public endpoint returns top 4 bots by net profit percentage,
+    redacts confidential fields, and has the correct response structure.
+    """
+    response = client.get("/bot/public")
+    assert response.status_code == 200
+    content = response.json()
+    assert "data" in content
+    assert isinstance(content["data"], list)
+    # Should return at most 4 bots
+    assert len(content["data"]) <= 4
+    for bot in content["data"]:
+        # Confidential fields should be redacted
+        assert bot["id"] == "redacted"
+        assert bot["logs"] == []
+        assert bot["orders"] == []
+        # Should have profit-related fields
+        assert "deal" in bot
+        assert "opening_price" in bot["deal"]
+        assert "closing_price" in bot["deal"] or "current_price" in bot["deal"]

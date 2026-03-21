@@ -149,6 +149,14 @@ const BaseOrderTab: FC<{
       setSpinner(false);
     }
 
+    if (quoteAsset && bot.quote_asset !== quoteAsset) {
+      dispatch(setField({ name: "quote_asset", value: quoteAsset }));
+    }
+
+    if (autotradeSettings?.fiat && bot.fiat !== autotradeSettings.fiat) {
+      dispatch(setField({ name: "fiat", value: autotradeSettings.fiat }));
+    }
+
     return () => unsubscribe();
   }, [
     quoteAsset,

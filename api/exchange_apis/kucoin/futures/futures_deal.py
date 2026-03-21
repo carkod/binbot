@@ -1,4 +1,4 @@
-from typing import Union, Type
+from typing import Type
 from time import time
 from pybinbot import (
     OrderBase,
@@ -52,7 +52,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             secret=self.config.kucoin_secret,
             passphrase=self.config.kucoin_passphrase,
         )
-        self.controller: Union[BotTableCrud, PaperTradingTableCrud]
+        self.controller: BotTableCrud | PaperTradingTableCrud
 
         if db_table == PaperTradingTable:
             self.controller = PaperTradingTableCrud()
@@ -252,8 +252,11 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 )
 
         price = self.kucoin_futures_api.matching_engine(
-            symbol=self.kucoin_symbol, side=AddOrderReq.SideEnum.BUY, size=1
+            symbol=self.kucoin_symbol,
+            side=AddOrderReq.SideEnum.BUY,
+            size=available_balance,
         )
+
         contracts = self.calculate_contracts(price)
 
         if contracts <= 0:

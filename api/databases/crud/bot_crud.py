@@ -247,7 +247,7 @@ class BotTableCrud:
                     )
 
             # Sync orders
-            for order_data in getattr(data_table, "orders", []):
+            for order_data in data_table.orders:
                 existing = s.exec(
                     select(ExchangeOrderTable).where(
                         ExchangeOrderTable.order_id == str(order_data.order_id)
