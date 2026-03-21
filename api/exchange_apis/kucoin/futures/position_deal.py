@@ -778,9 +778,7 @@ class PositionDeal(KucoinPositionDeal):
         self.controller.save(self.active_bot)
 
         if self.active_bot.dynamic_trailling:
-            self.market_trailing_analytics(
-                position_market_cls=cls, current_price=close_price
-            )
+            cls.market_trailing_analytics(current_price=close_price)
 
         try:
             if self.active_bot.strategy == Strategy.margin_short:

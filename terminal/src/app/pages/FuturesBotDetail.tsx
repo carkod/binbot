@@ -41,7 +41,7 @@ export const FuturesBotDetail: FC<{}> = () => {
     if (data?.bot) {
       dispatch(
         setBot({
-          bot: { ...data.bot, market_type: MarketType.FUTURES },
+          bot: { ...data.bot },
         }),
       );
     } else {

@@ -14,6 +14,7 @@ import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 import {
   resetBot,
   selectBot,
+  setBot,
   setField,
   setToggle,
 } from "../../features/bots/botSlice";
@@ -129,13 +130,6 @@ const BaseOrderTab: FC<{
       } else {
         dispatch(setField({ name: "pair", value: symbol }));
       }
-    }
-
-    if (id && !symbol) {
-      dispatch(resetBot());
-      reset({
-        ...bot,
-      });
     }
 
     if (
