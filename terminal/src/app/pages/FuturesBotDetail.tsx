@@ -1,8 +1,9 @@
 import React, { useContext, type FC, useEffect } from "react";
 import { Card, Col, Container, Row } from "react-bootstrap";
-import { useParams } from "react-router";
+import { useMatch, useParams } from "react-router";
 import { useGetSingleBotQuery } from "../../features/bots/botsApiSlice";
 import {
+  resetBot,
   selectBot,
   setBot,
   setCurrentPrice,
@@ -21,6 +22,7 @@ import { MarketType } from "../../utils/enums";
 
 export const FuturesBotDetail: FC<{}> = () => {
   const { id } = useParams();
+  const matchNewRoute = useMatch("/bots/futures/new");
   const dispatch = useAppDispatch();
   const { bot } = useAppSelector(selectBot);
   const { data, isLoading: loadingBot } = useGetSingleBotQuery(id as string, {
@@ -32,6 +34,10 @@ export const FuturesBotDetail: FC<{}> = () => {
   const currentMarketType = bot?.market_type ?? MarketType.FUTURES;
 
   useEffect(() => {
+    if (matchNewRoute) {
+      dispatch(resetBot());
+      return;
+    }
     if (data?.bot) {
       dispatch(
         setBot({
@@ -51,7 +57,7 @@ export const FuturesBotDetail: FC<{}> = () => {
     } else {
       setSpinner(true);
     }
-  }, [data, dispatch, loadingBot, loadingEstimates, setSpinner]);
+  }, [data, matchNewRoute, dispatch, loadingBot, loadingEstimates, setSpinner]);
 
   return (
     <SymbolProvider marketType={currentMarketType}>

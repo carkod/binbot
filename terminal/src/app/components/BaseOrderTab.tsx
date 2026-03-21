@@ -11,7 +11,12 @@ import {
 import { type FieldValues, useForm } from "react-hook-form";
 import { useImmer } from "use-immer";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
-import { selectBot, setField, setToggle } from "../../features/bots/botSlice";
+import {
+  resetBot,
+  selectBot,
+  setField,
+  setToggle,
+} from "../../features/bots/botSlice";
 import {
   BotStatus,
   BotStrategy,
@@ -63,6 +68,7 @@ const BaseOrderTab: FC<{
     mode: "onTouched",
     reValidateMode: "onBlur",
     defaultValues: {
+      pair: bot.pair,
       name: bot.name,
       fiat_order_size: bot.fiat_order_size,
       strategy: bot.strategy,
@@ -113,13 +119,11 @@ const BaseOrderTab: FC<{
 
     if (symbol && !id) {
       reset({
-        name: bot.name,
-        fiat_order_size: bot.fiat_order_size,
-        strategy: bot.strategy,
+        ...bot,
         pair: symbol,
-        quote_asset: bot.quote_asset,
-        market_type: bot.market_type,
       });
+      dispatch(resetBot());
+
       if (botType === BotType.PAPER_TRADING) {
         dispatch(setTestBotField({ name: "pair", value: symbol }));
       } else {
@@ -128,13 +132,9 @@ const BaseOrderTab: FC<{
     }
 
     if (id && !symbol) {
+      dispatch(resetBot());
       reset({
-        name: bot.name,
-        fiat_order_size: bot.fiat_order_size,
-        strategy: bot.strategy,
-        pair: id,
-        quote_asset: bot.quote_asset,
-        market_type: bot.market_type,
+        ...bot,
       });
     }
 
@@ -266,7 +266,11 @@ const BaseOrderTab: FC<{
                       : "Base order size"
                   }
                   errors={errors}
-                  secondaryText={quoteAsset}
+                  secondaryText={
+                    bot.market_type === MarketType.FUTURES
+                      ? baseAsset
+                      : quoteAsset
+                  }
                 >
                   <Form.Control
                     type="number"

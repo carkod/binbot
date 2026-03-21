@@ -35,6 +35,9 @@ export const botSlice = createAppSlice({
         state.bot.deal.current_price = payload;
       },
     ),
+    resetBot: create.reducer((state) => {
+      state.bot = singleBot;
+    }),
   }),
   selectors: {
     selectBot: (state) => {
@@ -43,6 +46,6 @@ export const botSlice = createAppSlice({
   },
 });
 
-export const { setField, setBot, setToggle, setCurrentPrice } =
+export const { setField, setBot, setToggle, setCurrentPrice, resetBot } =
   botSlice.actions;
 export const { selectBot } = botSlice.selectors;
