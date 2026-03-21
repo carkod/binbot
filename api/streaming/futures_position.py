@@ -172,7 +172,7 @@ class FuturesPosition(PositionMarket):
                     if (
                         order.deal_type == DealType.base_order
                         and self.bot.deal.opening_price == 0
-                        and order.price > 0
+                        and system_order.price > 0
                     ):
                         self.bot.deal.opening_price = order.price
                         self.bot.deal.opening_qty = order.qty
@@ -187,7 +187,7 @@ class FuturesPosition(PositionMarket):
                             or order.deal_type == DealType.trailling_profit
                         )
                         and self.bot.deal.closing_price == 0
-                        and order.price > 0
+                        and system_order.price > 0
                     ):
                         self.bot.deal.closing_price = order.price
                         self.bot.deal.closing_qty = order.qty

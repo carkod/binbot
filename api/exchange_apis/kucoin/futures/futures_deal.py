@@ -331,34 +331,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
             log_message=f"Stop loss set @ {stop_price}",
         )
 
-    def place_take_profit(self, price: float) -> None:
-        price = round_numbers(price, self.price_precision)
-
-        self.cancel_current_sl()
-
-        if self.active_bot.strategy == Strategy.margin_short:
-            side = AddOrderReq.SideEnum.BUY
-        else:
-            side = AddOrderReq.SideEnum.SELL
-
-        order = self.kucoin_futures_api.place_futures_order(
-            symbol=self.kucoin_symbol,
-            side=side,
-            order_type=OrderType.limit,
-            price=price,
-            size=self.active_bot.deal.opening_qty,
-            reduce_only=True,
-        )
-        order_model = OrderModel(**order.model_dump())
-        self.active_bot.orders.append(order_model)
-
-        self.active_bot.deal.take_profit_price = price
-
-        self.controller.update_logs(
-            bot=self.active_bot,
-            log_message=f"Take profit set @ {price}",
-        )
-
     def update_parameters(self) -> BotModel:
         """
         Updates stop loss and take profit orders based on the current bot parameters.
