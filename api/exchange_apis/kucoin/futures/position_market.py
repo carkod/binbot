@@ -1,9 +1,5 @@
-from time import time
 from pybinbot import (
     ExchangeId,
-    OrderStatus,
-    Status,
-    Strategy,
     convert_to_kucoin_symbol,
     round_numbers,
     BinanceApi,
@@ -12,13 +8,12 @@ from pybinbot import (
     Indicators,
     HeikinAshi,
     KucoinFutures,
-    DealType,
 )
+from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from streaming.base import BaseStreaming
-from bots.models import BotModel, OrderModel
+from bots.models import BotModel
 from typing import Union, Type
-from kucoin_universal_sdk.generate.futures.order import GetTradeHistoryReq
 
 
 class PositionMarket:
@@ -41,6 +36,10 @@ class PositionMarket:
         self.db_table = db_table
         self.symbol_data = base_streaming.symbols_crud.get_symbol(symbol)
         self.qty_precision = self.symbol_data.qty_precision
+        self.position_deal = KucoinPositionDeal(
+            bot=self.active_bot,
+            db_table=self.db_table,
+        )
 
     def build_bb_spreads(self) -> HABollinguerSpread:
         """
@@ -165,56 +164,6 @@ class PositionMarket:
                     )
                 self.base_streaming.bot_controller.save(data=self.active_bot)
             else:
-                self.active_bot.add_log(
-                    "Position not found in exchange, cannot update size. ADL might have happened, or position might have been closed without bot's knowledge."
-                )
-                side = (
-                    GetTradeHistoryReq.SideEnum.BUY
-                    if self.active_bot.strategy == Strategy.margin_short
-                    else GetTradeHistoryReq.SideEnum.SELL
-                )
-
-                start_at = int(self.active_bot.deal.opening_timestamp)  # already ms
-                now_ms = int(time() * 1000)
-
-                fills = self.base_streaming.kucoin_futures_api.get_fills(
-                    side=side,
-                    symbol=kucoin_symbol,
-                    start_at=start_at,
-                    end_at=now_ms,
-                )
-                self.active_bot.add_log(
-                    f"Fetched fills history to check for position updates. Number of fills found: {len(fills.items)}."
-                )
-                if len(fills.items) > 0:
-                    total_qty = sum(abs(float(fill.size)) for fill in fills.items)
-                    order_resp = fills.items[0]
-                    exit_order = OrderModel(
-                        order_id=order_resp.order_id,
-                        order_type=order_resp.order_type.value,
-                        pair=order_resp.symbol,
-                        timestamp=order_resp.created_at,
-                        order_side=order_resp.side.value,
-                        qty=total_qty,
-                        price=order_resp.price,
-                        status=OrderStatus.FILLED,
-                        # no data, assumed
-                        time_in_force="GTC",
-                        # we don't know if take profit or stop loss
-                        deal_type=DealType.panic_close,
-                    )
-                    self.active_bot.orders.append(exit_order)
-                    self.active_bot.deal.total_commissions += float(order_resp.fee)
-                    self.active_bot.status = Status.completed
-                    self.active_bot.add_log(
-                        f"Position size updated from fills history. New size: {total_qty}."
-                    )
-                else:
-                    self.active_bot.add_log(
-                        "No fills found in history, cannot update position size. ADL might have happened, or position might have been closed without bot's knowledge."
-                    )
-                    self.active_bot.status = Status.error
-
-                self.base_streaming.bot_controller.save(data=self.active_bot)
+                self.position_deal.backfill_position_from_fills()
 
         return self.active_bot

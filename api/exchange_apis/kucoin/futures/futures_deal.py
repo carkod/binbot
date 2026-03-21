@@ -1,4 +1,4 @@
-from typing import Type
+from typing import TYPE_CHECKING, Type
 from time import time
 from pybinbot import (
     OrderBase,
@@ -12,7 +12,6 @@ from pybinbot import (
     BinbotErrors,
     KucoinFutures,
 )
-from exchange_apis.kucoin.futures.position_market import PositionMarket
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.bot_crud import BotTableCrud
@@ -26,6 +25,9 @@ from streaming.apex_flow_closing import ApexFlowClose
 from copy import deepcopy
 from streaming.base import BaseStreaming
 from kucoin_universal_sdk.generate.futures.order import GetTradeHistoryReq
+
+if TYPE_CHECKING:
+    from exchange_apis.kucoin.futures.position_market import PositionMarket
 
 
 class KucoinPositionDeal(KucoinBaseBalance):
@@ -523,7 +525,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
     def market_trailing_analytics(
         self,
-        position_market_cls: PositionMarket,
+        position_market_cls: "PositionMarket",
         current_price: float,
     ) -> None:
         """
