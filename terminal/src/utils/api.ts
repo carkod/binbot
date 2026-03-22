@@ -13,7 +13,11 @@ export function buildBackUrl() {
   return backUrl;
 }
 
-export const binbotBaseQuery = async (args: any, api: any, extraOptions: any) => {
+export const binbotBaseQuery = async (
+  args: any,
+  api: any,
+  extraOptions: any,
+) => {
   const baseQuery = fetchBaseQuery({
     baseUrl: buildBackUrl(),
     prepareHeaders: (headers) => {

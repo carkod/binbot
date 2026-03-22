@@ -9,8 +9,7 @@ import { store } from "../../store";
 import { MarketType } from "../../../utils/enums";
 import { setBot } from "../../../features/bots/botSlice";
 
-const { singleBot } =
-      await import("../../../features/bots/botInitialState");
+const { singleBot } = await import("../../../features/bots/botInitialState");
 // Mock singleBot to have market_type FUTURES for the relevant test(s)
 vi.mock("../../../features/bots/botInitialState", async () => {
   const { MarketType } = await import("../../../utils/enums");

@@ -123,7 +123,7 @@ const BaseOrderTab: FC<{
         ...bot,
         pair: symbol,
       });
-      dispatch(resetBot());
+      dispatch(resetBot({}));
 
       if (botType === BotType.PAPER_TRADING) {
         dispatch(setTestBotField({ name: "pair", value: symbol }));

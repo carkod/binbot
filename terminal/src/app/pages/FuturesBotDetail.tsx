@@ -7,6 +7,7 @@ import {
   selectBot,
   setBot,
   setCurrentPrice,
+  setField,
 } from "../../features/bots/botSlice";
 import BotDetailTabs from "../components/BotDetailTabs";
 import BotInfo from "../components/BotInfo";
@@ -19,6 +20,7 @@ import { useGetBalanceQuery } from "../../features/balanceApiSlice";
 import BalanceAnalysis from "../components/BalanceAnalysis";
 import { SymbolProvider } from "../providers/SymbolProvider";
 import { MarketType } from "../../utils/enums";
+import { set } from "react-hook-form";
 
 export const FuturesBotDetail: FC<{}> = () => {
   const { id } = useParams();
@@ -35,13 +37,17 @@ export const FuturesBotDetail: FC<{}> = () => {
 
   useEffect(() => {
     if (matchNewRoute) {
-      dispatch(resetBot());
+      dispatch(
+        resetBot({
+          market_type: MarketType.FUTURES,
+        }),
+      );
       return;
     }
     if (data?.bot) {
       dispatch(
         setBot({
-          bot: { ...data.bot },
+          bot: { ...data.bot, market_type: MarketType.FUTURES },
         }),
       );
     } else {
