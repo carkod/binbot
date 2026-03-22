@@ -7,7 +7,7 @@ import {
   useEditBotMutation,
   useLazyActivateBotQuery,
 } from "../../features/bots/botsApiSlice";
-import { selectBot } from "../../features/bots/botSlice";
+import { selectBot, setBot } from "../../features/bots/botSlice";
 import { BotStatus, MarketType, TabsKeys } from "../../utils/enums";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import BaseOrderTab from "./BaseOrderTab";
@@ -26,8 +26,10 @@ const BotDetailTabs: FC<{
 
   const [updateBot] = useEditBotMutation();
   const [createBot] = useCreateBotMutation();
-  const [trigger, { isLoading: isActivating, isError, data, error }] =
-    useLazyActivateBotQuery();
+  const [
+    trigger,
+    { isLoading: isActivating, isError, data: activatedBot, error },
+  ] = useLazyActivateBotQuery();
 
   const [enableActivation, setEnableActivation] = useState(id ? true : false);
   const getEditPath = (botId: string) =>
@@ -64,9 +66,12 @@ const BotDetailTabs: FC<{
     if (isActivating) {
       dispatch(setSpinner(true));
     } else {
+      if (activatedBot) {
+        dispatch(setBot({ bot: activatedBot.bot }));
+      }
       dispatch(setSpinner(false));
     }
-  }, [isActivating, dispatch]);
+  }, [isActivating, dispatch, activatedBot]);
 
   return (
     <Tab.Container defaultActiveKey={TabsKeys.MAIN}>
