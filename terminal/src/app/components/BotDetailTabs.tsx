@@ -15,7 +15,10 @@ import StopLossTab from "./StopLossTab";
 import TakeProfit from "./TakeProfitTab";
 import { setSpinner } from "../../features/layoutSlice";
 
-const BotDetailTabs: FC<{ marketType: MarketType }> = ({ marketType }) => {
+const BotDetailTabs: FC<{
+  marketType: MarketType;
+  fiatAvailable?: number | null;
+}> = ({ marketType, fiatAvailable }) => {
   const { bot } = useAppSelector(selectBot);
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -83,7 +86,7 @@ const BotDetailTabs: FC<{ marketType: MarketType }> = ({ marketType }) => {
         </Col>
         <Col sm={12}>
           <Tab.Content>
-            <BaseOrderTab />
+            <BaseOrderTab fiatAvailable={fiatAvailable ?? undefined} />
             <StopLossTab />
             <TakeProfit />
           </Tab.Content>

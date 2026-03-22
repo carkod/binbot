@@ -65,7 +65,7 @@ export const singleBot: Bot = {
   id: "",
   status: BotStatus.INACTIVE,
   balance_available: 0,
-  fiat_order_size: 50,
+  fiat_order_size: 0,
   fiat: "USDC",
   quote_asset: QuoteAsset.USDC,
   logs: [],

@@ -287,7 +287,6 @@ class BotTableCrud:
     # --------------------------------------------------
     # Orders
     # --------------------------------------------------
-
     def get_order(self, order_id: str) -> ExchangeOrderTable:
         with self._get_session() as s:
             order = s.exec(
