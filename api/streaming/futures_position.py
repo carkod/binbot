@@ -1,18 +1,19 @@
 from datetime import datetime
 from typing import Type
+
+from bots.models import BotModel
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from exchange_apis.kucoin.futures.position_market import PositionMarket
-from streaming.base import BaseStreaming
-from bots.models import BotModel
+from kucoin_universal_sdk.model.common import RestError
 from pybinbot import (
     DealType,
+    ExchangeId,
     OrderStatus,
     Status,
-    ExchangeId,
-    round_numbers,
     convert_to_kucoin_symbol,
+    round_numbers,
 )
-from kucoin_universal_sdk.model.common import RestError
+from streaming.base import BaseStreaming
 
 
 class FuturesPosition(PositionMarket):
@@ -153,12 +154,12 @@ class FuturesPosition(PositionMarket):
                     price_used = float(system_order.avg_deal_price)
                     timestamp = system_order.created_at
 
-                    if float(system_order.price) > 0:
+                    if float(float(system_order.price)) > 0:
                         order.price = round_numbers(
-                            system_order.price, self.price_precision
+                            float(system_order.price), self.price_precision
                         )
 
-                    if order.status == status and system_order.price == 0:
+                    if order.status == status and float(system_order.price) == 0:
                         continue
 
                     order.qty = round_numbers(filled_size, self.qty_precision)
@@ -172,7 +173,7 @@ class FuturesPosition(PositionMarket):
                     if (
                         order.deal_type == DealType.base_order
                         and self.bot.deal.opening_price == 0
-                        and system_order.price > 0
+                        and float(system_order.price) > 0
                     ):
                         self.bot.deal.opening_price = order.price
                         self.bot.deal.opening_qty = order.qty
@@ -187,7 +188,7 @@ class FuturesPosition(PositionMarket):
                             or order.deal_type == DealType.trailling_profit
                         )
                         and self.bot.deal.closing_price == 0
-                        and system_order.price > 0
+                        and float(system_order.price) > 0
                     ):
                         self.bot.deal.closing_price = order.price
                         self.bot.deal.closing_qty = order.qty
