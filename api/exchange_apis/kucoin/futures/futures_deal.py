@@ -1,28 +1,28 @@
-from typing import Type
 from time import time
-from pybinbot import (
-    OrderBase,
-    Strategy,
-    round_numbers,
-    DealType,
-    convert_to_kucoin_symbol,
-    Status,
-    OrderType,
-    OrderStatus,
-    BinbotErrors,
-    KucoinFutures,
-)
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from databases.crud.paper_trading_crud import PaperTradingTableCrud
+from typing import Type
+
+from bots.models import BotModel, OrderModel
 from databases.crud.bot_crud import BotTableCrud
+from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
-from bots.models import BotModel
-from bots.models import OrderModel
+from databases.tables.bot_table import BotTable, PaperTradingTable
 from exchange_apis.kucoin.deals.base import KucoinBaseBalance
-from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
 from exchange_apis.kucoin.futures.balance import KucoinFuturesBalance
-from streaming.base import BaseStreaming
 from kucoin_universal_sdk.generate.futures.order import GetTradeHistoryReq
+from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
+from pybinbot import (
+    BinbotErrors,
+    DealType,
+    KucoinFutures,
+    OrderBase,
+    OrderStatus,
+    OrderType,
+    Status,
+    Strategy,
+    convert_to_kucoin_symbol,
+    round_numbers,
+)
+from streaming.base import BaseStreaming
 
 
 class KucoinPositionDeal(KucoinBaseBalance):
@@ -229,8 +229,11 @@ class KucoinPositionDeal(KucoinBaseBalance):
                             or existing_order.deal_type == DealType.take_profit
                             or existing_order.deal_type == DealType.stop_loss
                         ):
-                            # delete unfilled order
-                            self.bot_crud.delete_order(str(existing_order.order_id))
+                            try:
+                                # delete unfilled order
+                                self.bot_crud.delete_order(str(existing_order.order_id))
+                            except BinbotErrors:
+                                pass
 
     def base_order(self) -> BotModel:
         """
