@@ -236,7 +236,10 @@ class PositionDeal(KucoinPositionDeal):
         self, repurchase_multiplier: float = 1
     ) -> BotModel | None:
         """
-        Close the position at the current take-profit trail level.
+        Place the closing position (stop loss in Kucoin) when the bot (long or short) is
+        in a profitable position
+
+        This only places the stop loss order at the exchange, the actual bot status and deal parameters will be updated when the order is filled and the system receives the update via websocket (handled in futures_position.order_updates)
         """
 
         if isinstance(self.controller, PaperTradingTableCrud):
@@ -313,11 +316,6 @@ class PositionDeal(KucoinPositionDeal):
 
         self.active_bot.orders.append(order_data)
 
-        # new deal parameters to replace previous
-        self.active_bot.deal.closing_price = float(order_data.price)
-        self.active_bot.deal.closing_qty = float(order_data.qty)
-        self.active_bot.deal.closing_timestamp = round_timestamp(order_data.timestamp)
-
         if order_data.status != OrderStatus.FILLED:
             self.active_bot.add_log(
                 f"Trailing profit order not filled immediately, got status {order_data.status}"
@@ -326,7 +324,6 @@ class PositionDeal(KucoinPositionDeal):
             self.active_bot.add_log(
                 "Completed futures take profit after failing to break trailing"
             )
-            self.active_bot.status = Status.completed
 
         self.controller.save(self.active_bot)
         return self.active_bot
@@ -537,7 +534,7 @@ class PositionDeal(KucoinPositionDeal):
                     != self.active_bot.deal.trailling_profit_price
                 ):
                     self.active_bot.add_log(
-                        f"Updated trailling_profit_price to {round_numbers(self.active_bot.deal.trailling_profit_price, self.price_precision)} and set trailing profit (profit in Kucoin)"
+                        f"Updated trailling_profit_price to {round_numbers(self.active_bot.deal.trailling_profit_price, self.price_precision)} and set trailing stop loss (stop loss in Kucoin)"
                     )
 
                 self.controller.save(self.active_bot)
@@ -778,9 +775,7 @@ class PositionDeal(KucoinPositionDeal):
         self.controller.save(self.active_bot)
 
         if self.active_bot.dynamic_trailling:
-            self.market_trailing_analytics(
-                position_market_cls=cls, current_price=close_price
-            )
+            cls.market_trailing_analytics(current_price=close_price)
 
         try:
             if self.active_bot.strategy == Strategy.margin_short:

@@ -11,7 +11,12 @@ import {
 import { type FieldValues, useForm } from "react-hook-form";
 import { useImmer } from "use-immer";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
-import { selectBot, setField, setToggle } from "../../features/bots/botSlice";
+import {
+  resetBot,
+  selectBot,
+  setField,
+  setToggle,
+} from "../../features/bots/botSlice";
 import {
   BotStatus,
   BotStrategy,
@@ -38,7 +43,8 @@ interface ErrorsState {
 
 const BaseOrderTab: FC<{
   botType?: BotType;
-}> = ({ botType = BotType.BOTS }) => {
+  fiatAvailable?: number | undefined;
+}> = ({ botType = BotType.BOTS, fiatAvailable = undefined }) => {
   const { symbol, id } = useParams();
   const dispatch: AppDispatch = useAppDispatch();
   const { symbolsList, quoteAsset, baseAsset, updateQuoteBaseState } =
@@ -58,13 +64,13 @@ const BaseOrderTab: FC<{
     register,
     watch,
     reset,
-    formState: { errors },
+    formState: { errors, touchedFields },
   } = useForm<FieldValues>({
     mode: "onTouched",
     reValidateMode: "onBlur",
     defaultValues: {
+      pair: bot.pair,
       name: bot.name,
-      fiat_order_size: bot.fiat_order_size,
       strategy: bot.strategy,
     },
   });
@@ -113,29 +119,16 @@ const BaseOrderTab: FC<{
 
     if (symbol && !id) {
       reset({
-        name: bot.name,
-        fiat_order_size: bot.fiat_order_size,
-        strategy: bot.strategy,
+        ...bot,
         pair: symbol,
-        quote_asset: bot.quote_asset,
-        market_type: bot.market_type,
       });
+      dispatch(resetBot({}));
+
       if (botType === BotType.PAPER_TRADING) {
         dispatch(setTestBotField({ name: "pair", value: symbol }));
       } else {
         dispatch(setField({ name: "pair", value: symbol }));
       }
-    }
-
-    if (id && !symbol) {
-      reset({
-        name: bot.name,
-        fiat_order_size: bot.fiat_order_size,
-        strategy: bot.strategy,
-        pair: id,
-        quote_asset: bot.quote_asset,
-        market_type: bot.market_type,
-      });
     }
 
     if (
@@ -157,6 +150,14 @@ const BaseOrderTab: FC<{
       dispatch(setField({ name: "fiat", value: autotradeSettings.fiat }));
     }
 
+    if (
+      fiatAvailable &&
+      !touchedFields.fiat_order_size &&
+      bot.fiat_order_size === 0
+    ) {
+      dispatch(setField({ name: "fiat_order_size", value: fiatAvailable }));
+    }
+
     return () => unsubscribe();
   }, [
     quoteAsset,
@@ -167,6 +168,10 @@ const BaseOrderTab: FC<{
     bot.pair,
     bot.quote_asset,
     bot.market_type,
+    touchedFields,
+    fiatAvailable,
+    autotradeSettings,
+    loadingSettings,
   ]);
 
   return (
@@ -214,11 +219,8 @@ const BaseOrderTab: FC<{
                   {...register("fiat_order_size", {
                     required: "Fiat order size is required",
                     valueAsNumber: true,
-                    min: {
-                      value: 15,
-                      message: "Minimum fiat order size is 15",
-                    },
                   })}
+                  value={bot.fiat_order_size === 0 ? autotradeSettings?.base_order_size : bot.fiat_order_size}
                 />
                 {errors.fiat_order_size && (
                   <Form.Control.Feedback type="invalid">
@@ -266,7 +268,11 @@ const BaseOrderTab: FC<{
                       : "Base order size"
                   }
                   errors={errors}
-                  secondaryText={quoteAsset}
+                  secondaryText={
+                    bot.market_type === MarketType.FUTURES
+                      ? baseAsset
+                      : quoteAsset
+                  }
                 >
                   <Form.Control
                     type="number"

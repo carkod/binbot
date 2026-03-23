@@ -1,4 +1,3 @@
-import logging
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
@@ -65,9 +64,6 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> UserTokenData:
     If the token is invalid or expired, raises a 401 HTTPException internally.
     """
     payload = decode_access_token(token)
-    logging.info(
-        f"Decoded JWT payload: {payload.get('sub')} with role {payload.get('role')}"
-    )
     user_data = UserTokenData(
         email=payload.get("sub"),
         role=UserRoles(payload.get("role")),

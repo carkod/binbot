@@ -107,6 +107,17 @@ class FuturesPosition(PositionMarket):
         and fetch order details from exchange
         """
         for order in self.bot.orders:
+            # Temporarily dedup excessive trailling_profit order lines
+            # we only need NEW ones that have not executed
+            # executed trailling_profit orders should have price and qty
+            if (
+                order.deal_type == DealType.trailling_profit
+                and order.status == OrderStatus.FILLED
+                and (order.price == 0 and order.qty == 0)
+            ):
+                self.base_streaming.bot_controller.delete_order(str(order.order_id))
+                continue
+
             if order.status == OrderStatus.FILLED:
                 continue
 
@@ -147,17 +158,21 @@ class FuturesPosition(PositionMarket):
                             system_order.price, self.price_precision
                         )
 
+                    if order.status == status and system_order.price == 0:
+                        continue
+
                     order.qty = round_numbers(filled_size, self.qty_precision)
                     order.status = status
                     order.timestamp = timestamp
                     order.price = round_numbers(price_used, self.price_precision)
+
                     self.base_streaming.bot_controller.update_order(order)
                     self.bot.add_log(f"Order {order.order_id} updated from system")
 
                     if (
                         order.deal_type == DealType.base_order
                         and self.bot.deal.opening_price == 0
-                        and order.price > 0
+                        and system_order.price > 0
                     ):
                         self.bot.deal.opening_price = order.price
                         self.bot.deal.opening_qty = order.qty
@@ -172,7 +187,7 @@ class FuturesPosition(PositionMarket):
                             or order.deal_type == DealType.trailling_profit
                         )
                         and self.bot.deal.closing_price == 0
-                        and order.price > 0
+                        and system_order.price > 0
                     ):
                         self.bot.deal.closing_price = order.price
                         self.bot.deal.closing_qty = order.qty
@@ -184,9 +199,7 @@ class FuturesPosition(PositionMarket):
                 except RestError as e:
                     if float(e.response.code) == 100001:
                         try:
-                            self.base_streaming.kucoin_futures_api.cancel_all_futures_orders(
-                                kucoin_symbol
-                            )
+                            self.cancel_current_sl()
                             if order.deal_type == DealType.base_order:
                                 self.bot.status = Status.inactive
                                 self.bot.add_log(

@@ -79,7 +79,10 @@ export const BotDetail: FC<{}> = () => {
             <Col md="7" sm="12">
               <Card>
                 <Card.Body>
-                  <BotDetailTabs marketType={currentMarketType} />
+                  <BotDetailTabs
+                    marketType={currentMarketType}
+                    fiatAvailable={accountData?.fiat_available}
+                  />
                 </Card.Body>
               </Card>
             </Col>

@@ -7,7 +7,7 @@ import {
   useEditBotMutation,
   useLazyActivateBotQuery,
 } from "../../features/bots/botsApiSlice";
-import { selectBot } from "../../features/bots/botSlice";
+import { selectBot, setBot } from "../../features/bots/botSlice";
 import { BotStatus, MarketType, TabsKeys } from "../../utils/enums";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import BaseOrderTab from "./BaseOrderTab";
@@ -15,7 +15,10 @@ import StopLossTab from "./StopLossTab";
 import TakeProfit from "./TakeProfitTab";
 import { setSpinner } from "../../features/layoutSlice";
 
-const BotDetailTabs: FC<{ marketType: MarketType }> = ({ marketType }) => {
+const BotDetailTabs: FC<{
+  marketType: MarketType;
+  fiatAvailable?: number | null;
+}> = ({ marketType, fiatAvailable }) => {
   const { bot } = useAppSelector(selectBot);
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -23,8 +26,10 @@ const BotDetailTabs: FC<{ marketType: MarketType }> = ({ marketType }) => {
 
   const [updateBot] = useEditBotMutation();
   const [createBot] = useCreateBotMutation();
-  const [trigger, { isLoading: isActivating, isError, data, error }] =
-    useLazyActivateBotQuery();
+  const [
+    trigger,
+    { isLoading: isActivating, isError, data: activatedBot, error },
+  ] = useLazyActivateBotQuery();
 
   const [enableActivation, setEnableActivation] = useState(id ? true : false);
   const getEditPath = (botId: string) =>
@@ -61,9 +66,12 @@ const BotDetailTabs: FC<{ marketType: MarketType }> = ({ marketType }) => {
     if (isActivating) {
       dispatch(setSpinner(true));
     } else {
+      if (activatedBot) {
+        dispatch(setBot({ bot: activatedBot.bot }));
+      }
       dispatch(setSpinner(false));
     }
-  }, [isActivating, dispatch]);
+  }, [isActivating, dispatch, activatedBot]);
 
   return (
     <Tab.Container defaultActiveKey={TabsKeys.MAIN}>
@@ -83,7 +91,7 @@ const BotDetailTabs: FC<{ marketType: MarketType }> = ({ marketType }) => {
         </Col>
         <Col sm={12}>
           <Tab.Content>
-            <BaseOrderTab />
+            <BaseOrderTab fiatAvailable={fiatAvailable ?? undefined} />
             <StopLossTab />
             <TakeProfit />
           </Tab.Content>

@@ -12,7 +12,6 @@ from pybinbot import (
     BinbotErrors,
     KucoinFutures,
 )
-from exchange_apis.kucoin.futures.position_market import PositionMarket
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.bot_crud import BotTableCrud
@@ -22,8 +21,6 @@ from bots.models import OrderModel
 from exchange_apis.kucoin.deals.base import KucoinBaseBalance
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
 from exchange_apis.kucoin.futures.balance import KucoinFuturesBalance
-from streaming.apex_flow_closing import ApexFlowClose
-from copy import deepcopy
 from streaming.base import BaseStreaming
 from kucoin_universal_sdk.generate.futures.order import GetTradeHistoryReq
 
@@ -210,7 +207,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
     def cancel_current_sl(self) -> None:
         """
-        Find current stop loss orders in place and batch cancel them.
+        Find current stop loss orders in exchange in place and batch cancel them.
+        this works for both trailing and stop loss, long and short
         """
         stop_orders = self.kucoin_futures_api.get_all_stop_loss_orders(
             self.kucoin_symbol
@@ -331,46 +329,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
         self.controller.update_logs(
             bot=self.active_bot,
             log_message=f"Stop loss set @ {stop_price}",
-        )
-
-    def place_take_profit(self, price: float) -> None:
-        price = round_numbers(price, self.price_precision)
-
-        cancelled_ids = self.kucoin_futures_api.cancel_all_futures_orders(
-            self.kucoin_symbol
-        )
-        if len(cancelled_ids) > 0:
-            self.controller.update_logs(
-                bot=self.active_bot,
-                log_message=f"Cancelled existing TP orders: {', '.join(cancelled_ids)}",
-            )
-            for order_id in cancelled_ids:
-                for index, existing_order in enumerate(self.active_bot.orders):
-                    if existing_order.order_id == order_id:
-                        existing_order.status = OrderStatus.CANCELED
-                        self.active_bot.orders[index] = existing_order
-
-        if self.active_bot.strategy == Strategy.margin_short:
-            side = AddOrderReq.SideEnum.BUY
-        else:
-            side = AddOrderReq.SideEnum.SELL
-
-        order = self.kucoin_futures_api.place_futures_order(
-            symbol=self.kucoin_symbol,
-            side=side,
-            order_type=OrderType.limit,
-            price=price,
-            size=self.active_bot.deal.opening_qty,
-            reduce_only=True,
-        )
-        order_model = OrderModel(**order.model_dump())
-        self.active_bot.orders.append(order_model)
-
-        self.active_bot.deal.take_profit_price = price
-
-        self.controller.update_logs(
-            bot=self.active_bot,
-            log_message=f"Take profit set @ {price}",
         )
 
     def update_parameters(self) -> BotModel:
@@ -520,114 +478,3 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         self.controller.save(self.active_bot)
         return self.active_bot
-
-    def market_trailing_analytics(
-        self,
-        position_market_cls: PositionMarket,
-        current_price: float,
-    ) -> None:
-        """
-        ApexFlow-aware trailing manager.
-
-        Philosophy:
-        1. Initiates PositionMarket (abstraction layer to reduce complexity of KucoinPositionDeal)
-        - stop_loss = emergency only
-        - trailing_deviation = active stop after trailing
-        - trailing_profit = trigger, never exit
-        """
-        self.apex_flow_closing = ApexFlowClose(
-            position_market_cls.df, position_market_cls.btc_df
-        )
-
-        original_bot = deepcopy(self.active_bot)
-
-        # ─────────────────────────────
-        # Bollinger spreads
-        # ─────────────────────────────
-        bb_spreads = position_market_cls.build_bb_spreads()
-        if bb_spreads.bb_high == 0 or bb_spreads.bb_low == 0:
-            return
-
-        top_spread = (
-            abs((bb_spreads.bb_high - bb_spreads.bb_mid) / bb_spreads.bb_high) * 100
-        )
-        bottom_spread = (
-            abs((bb_spreads.bb_mid - bb_spreads.bb_low) / bb_spreads.bb_mid) * 100
-        )
-
-        top_spread = min(max(top_spread, 1.5), 6.0)
-        bottom_spread = min(max(bottom_spread, 1.0), 4.0)
-
-        # ─────────────────────────────
-        # Profit
-        # ─────────────────────────────
-        bot_profit = self.base_streaming.compute_single_bot_profit(
-            self.active_bot, current_price
-        )
-
-        # ─────────────────────────────
-        # ApexFlow detectors
-        # ─────────────────────────────
-        row = self.apex_flow_closing.df.iloc[-1]
-        detectors = self.apex_flow_closing.get_detectors()
-
-        vce_signal = detectors.get("vce", False)
-        mcd_signal = detectors.get("mcd", False)
-        lcrs_signal = detectors.get("lcrs", False)
-
-        expansion_range = row["high"] - row["low"]
-        is_aggressive_momo = self.active_bot.name.lower().find("aggressive momo") != -1
-
-        # ─────────────────────────────
-        # Trend filter (only for tightening)
-        # ─────────────────────────────
-        ema_fast, ema_slow = self.apex_flow_closing.get_trend_ema()
-        trend_up = ema_fast > ema_slow if ema_fast and ema_slow else True
-
-        # ─────────────────────────────
-        # Expansion multiplier
-        # ─────────────────────────────
-        expansion_multiplier = 1.0
-        if vce_signal:
-            expansion_multiplier += 0.2
-        if mcd_signal:
-            expansion_multiplier += 0.1
-        expansion_multiplier = min(expansion_multiplier, 1.5)
-
-        # ─────────────────────────────
-        # Trailing tightening schedule
-        # ─────────────────────────────
-        if bot_profit < 2:
-            trail_tighten_mult = 1.0
-        elif bot_profit < 5:
-            trail_tighten_mult = 0.7
-        else:
-            trail_tighten_mult = 0.45
-
-        # Do not tighten against trend while signals are alive
-        if (vce_signal or mcd_signal or lcrs_signal) and trend_up:
-            trail_tighten_mult = max(trail_tighten_mult, 0.7)
-
-        # ─────────────────────────────
-        # Apply strategy-specific logic
-        # ─────────────────────────────
-        position_market_cls.set_trailing_params(
-            top_spread=top_spread,
-            bottom_spread=bottom_spread,
-            bot_profit=bot_profit,
-            expansion_multiplier=expansion_multiplier,
-            is_aggressive_momo=is_aggressive_momo,
-            expansion_range=expansion_range,
-            trail_tighten_mult=trail_tighten_mult,
-        )
-
-        # ─────────────────────────────
-        # Persist only if changed
-        # ─────────────────────────────
-        if (
-            self.active_bot.trailling_profit != original_bot.trailling_profit
-            or self.active_bot.trailling_deviation != original_bot.trailling_deviation
-            or self.active_bot.stop_loss != original_bot.stop_loss
-        ):
-            self.active_bot = self.update_parameters()
-            self.controller.save(self.active_bot)
