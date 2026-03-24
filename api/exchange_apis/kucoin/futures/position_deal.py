@@ -349,14 +349,10 @@ class PositionDeal(KucoinPositionDeal):
 
         # Pre-close current bot
         previous_bot = deepcopy(self.active_bot)
-        self.active_bot.deal.closing_price = self.active_bot.deal.stop_loss_price
-        self.active_bot.deal.closing_qty = self.active_bot.deal.opening_qty
-        self.active_bot.deal.closing_timestamp = int(time() * 1000)
-        self.active_bot.status = Status.completed
-        self.active_bot.add_log(
+        previous_bot.add_log(
             f"Skipped stop loss and reversing to {target_strategy.value} in a new bot."
         )
-        self.controller.save(self.active_bot)
+        self.controller.save(previous_bot)
 
         # Construct new bot
         new_bot_data = self.active_bot.model_dump(
@@ -377,9 +373,10 @@ class PositionDeal(KucoinPositionDeal):
         contracts = self.calculate_contracts(price)
 
         if contracts <= 0:
-            self.active_bot.add_log(
-                f"Failed to reverse to {target_strategy.value} due to zero contracts calculated."
-            )
+            msg = f"Calculated zero contracts for reversal at price {price}, skipping reversal."
+            previous_bot.add_log(msg)
+            self.controller.save(previous_bot)
+            self.active_bot.add_log(msg)
             self.active_bot.status = Status.error
             self.controller.save(self.active_bot)
             return self.active_bot
@@ -408,34 +405,35 @@ class PositionDeal(KucoinPositionDeal):
             self.controller.save(self.active_bot)
             return self.active_bot
 
-        order = OrderModel(**order.model_dump())
+        order_model = OrderModel(**order.model_dump())
 
         # full close previous bot
         # we do this first to avoid half-closed bot if anything fails before
-        closing_order = deepcopy(order)
+        # in which case we keep previous_bot active
+        closing_order = deepcopy(order_model)
         closing_order.deal_type = DealType.margin_short
         previous_bot.orders.append(closing_order)
         previous_bot.deal.closing_price = closing_order.price
         previous_bot.deal.closing_qty = closing_order.qty
         previous_bot.deal.closing_timestamp = closing_order.timestamp
-        previous_bot.status = Status.completed
         previous_bot.add_log("Updated closing deal")
+        previous_bot.status = Status.completed
         self.controller.save(previous_bot)
 
         # Continue new bot logic
-        self.active_bot.orders.append(order)
+        self.active_bot.orders.append(order_model)
 
         # Allow system to process, sometimes position can be empty immediately
         # after order execution
         position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
         self.active_bot.deal.base_order_size = contracts
-        self.active_bot.deal.opening_price = order.price
+        self.active_bot.deal.opening_price = order_model.price
         self.active_bot.deal.opening_qty = contracts
-        self.active_bot.deal.opening_timestamp = order.timestamp
+        self.active_bot.deal.opening_timestamp = order_model.timestamp
         self.active_bot.deal.current_price = position.mark_price
         self.active_bot.status = Status.active
         self.active_bot.add_log(
-            f"Futures bot opened @ {position.mark_price} with {order.qty} contracts"
+            f"Futures bot opened @ {position.mark_price} with {order_model.qty} contracts"
         )
         # testing, make sure self.active_bot.orders.append(order) does save in the DB
         self.controller.save(self.active_bot)
