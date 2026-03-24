@@ -6,14 +6,20 @@ import {
 } from "../../features/balanceApiSlice";
 import { useGetBotsQuery } from "../../features/bots/botsApiSlice";
 import { useAdSeriesQuery } from "../../features/marketApiSlice";
-import { calculateTotalRevenue } from "../../utils/dashboard-computations";
+import {
+  calculateTotalRevenue,
+  computeWinnerLoserProportions,
+} from "../../utils/dashboard-computations";
 import { BotStatus } from "../../utils/enums";
 import { roundDecimals } from "../../utils/math";
 import GainersLosers from "../components/GainersLosers";
 import PortfolioBenchmarkChart from "../components/PortfolioBenchmark";
 import { SpinnerContext } from "../Layout";
 import AdrCard from "../components/AdrCard";
-import { useFilteredGainerLosers } from "../filter-gainers-losers";
+import {
+  useFilteredFuturesRankings,
+  useFilteredGainerLosers,
+} from "../filter-gainers-losers";
 
 export const DashboardPage: FC<{}> = () => {
   const { data: accountData, isLoading: loadingEstimates } =
@@ -31,6 +37,11 @@ export const DashboardPage: FC<{}> = () => {
 
   const { combined: combinedGainersLosers, isLoading: loadingCombined } =
     useFilteredGainerLosers();
+
+  const {
+    combined: combinedFuturesRankings,
+    isLoading: loadingFuturesRankings,
+  } = useFilteredFuturesRankings();
 
   const { data: adpSeries, isLoading: loadingAdpSeries } = useAdSeriesQuery();
 
@@ -63,6 +74,7 @@ export const DashboardPage: FC<{}> = () => {
       !loadingEstimates &&
       !loadingErrorBots &&
       !loadingCombined &&
+      !loadingFuturesRankings &&
       !loadingAdpSeries
     ) {
       setSpinner(false);
@@ -75,13 +87,18 @@ export const DashboardPage: FC<{}> = () => {
     errorBotEntities,
     benchmark,
     combinedGainersLosers,
+    combinedFuturesRankings,
     loadingActiveBots,
     loadingBenchmark,
     loadingEstimates,
     loadingErrorBots,
     loadingCombined,
     loadingAdpSeries,
+    loadingFuturesRankings,
   ]);
+
+  const { gainerCount, gainerAccumulator, loserAccumulator, loserCount } =
+    computeWinnerLoserProportions(combinedGainersLosers);
 
   return (
     <div className="content">
@@ -235,6 +252,13 @@ export const DashboardPage: FC<{}> = () => {
           )}
         </Col>
         <Col lg="6" md="12">
+          {combinedFuturesRankings?.length > 0 && (
+            <GainersLosers data={combinedFuturesRankings} />
+          )}
+        </Col>
+      </Row>
+      <Row>
+        <Col>
           {adpSeries?.adp && (
             <AdrCard
               adr={adpSeries.adp}

@@ -341,6 +341,16 @@ class KucoinPositionDeal(KucoinBaseBalance):
         direction is determined by the strategy (long or short) and is used to calculate the correct stop loss price.
         """
         direction = self._direction_multiplier()
+
+        # edge case, should be set from base_order
+        if self.active_bot.deal.opening_price == 0:
+            for order in self.active_bot.orders:
+                if order.deal_type == DealType.base_order:
+                    self.active_bot.deal.opening_price = order.price
+                    self.active_bot.deal.opening_qty = order.qty
+                    self.active_bot.deal.opening_timestamp = order.timestamp
+                    break
+        
         if self.active_bot.stop_loss > 0:
             entry_price = float(self.active_bot.deal.opening_price)
             delta = entry_price * (self.active_bot.stop_loss / 100)

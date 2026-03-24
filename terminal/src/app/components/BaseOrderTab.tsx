@@ -220,7 +220,11 @@ const BaseOrderTab: FC<{
                     required: "Fiat order size is required",
                     valueAsNumber: true,
                   })}
-                  value={bot.fiat_order_size === 0 ? autotradeSettings?.base_order_size : bot.fiat_order_size}
+                  value={
+                    bot.fiat_order_size === 0
+                      ? autotradeSettings?.base_order_size
+                      : bot.fiat_order_size
+                  }
                 />
                 {errors.fiat_order_size && (
                   <Form.Control.Feedback type="invalid">

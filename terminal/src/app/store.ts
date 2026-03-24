@@ -8,12 +8,14 @@ import { binanceApiSlice } from "../features/binanceApiSlice";
 import { autotradeSettingsSlice } from "../features/autotradeSlice";
 import { testAutotradeSettingsSlice } from "../features/testAutotradeSlice";
 import { paperTradingSlice } from "../features/bots/paperTradingSlice";
+import { kucoinApiSlice } from "../features/kucoinApiSlice";
 
 export const rootReducer = combineSlices(
   userApiSlice,
   layoutSlice,
   botSlice,
   binanceApiSlice,
+  kucoinApiSlice,
   autotradeSettingsSlice,
   testAutotradeSettingsSlice,
   paperTradingSlice,
@@ -31,7 +33,8 @@ export const makeStore = (preloadedState?: Partial<RootState>) => {
     middleware: (getDefaultMiddleware) => {
       return getDefaultMiddleware()
         .concat(userApiSlice.middleware)
-        .concat(binanceApiSlice.middleware);
+        .concat(binanceApiSlice.middleware)
+        .concat(kucoinApiSlice.middleware);
     },
     preloadedState,
     devTools: process.env.NODE_ENV !== "production",

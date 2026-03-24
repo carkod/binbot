@@ -3,12 +3,12 @@ import Card from "react-bootstrap/Card";
 import Col from "react-bootstrap/Col";
 import Row from "react-bootstrap/Row";
 import { computeWinnerLoserProportions } from "../../utils/dashboard-computations";
+import { type DashboardTicker } from "../../utils/gainers-losers";
 import { roundDecimals } from "../../utils/math";
 import GainersLosersCard from "./GainersLosersCard";
-import { type BinanceTicker24 } from "../../features/binanceApiSlice";
 
 export interface GainersLosersProps {
-  data: BinanceTicker24[];
+  data: DashboardTicker[];
 }
 
 export default function GainersLosers({ data }: GainersLosersProps) {
