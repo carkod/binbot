@@ -1,5 +1,6 @@
-import React, { type FC, useContext, useEffect, useState } from "react";
+import React, { type FC, useContext, useEffect, useRef, useState } from "react";
 import {
+  Button,
   Col,
   Container,
   Form,
@@ -28,7 +29,7 @@ import { useAppDispatch, useAppSelector, useSymbolData } from "../hooks";
 import { type AppDispatch } from "../store";
 import { InputTooltip } from "./InputTooltip";
 import SymbolSearch from "./SymbolSearch";
-import { useParams } from "react-router";
+import { matchPath, useLocation, useMatch, useParams } from "react-router";
 import { SpinnerContext } from "../Layout";
 import {
   selectTestBot,
@@ -36,6 +37,7 @@ import {
   setTestBotToggle,
 } from "../../features/bots/paperTradingSlice";
 import InputGroupText from "react-bootstrap/esm/InputGroupText";
+import { matchNewRoutes } from "../../utils/validations";
 
 interface ErrorsState {
   pair?: string;
@@ -46,6 +48,8 @@ const BaseOrderTab: FC<{
   fiatAvailable?: number | undefined;
 }> = ({ botType = BotType.BOTS, fiatAvailable = undefined }) => {
   const { symbol, id } = useParams();
+  const { pathname } = useLocation();
+  const isNewRoute = matchNewRoutes(pathname);
   const dispatch: AppDispatch = useAppDispatch();
   const { symbolsList, quoteAsset, baseAsset, updateQuoteBaseState } =
     useSymbolData();
@@ -55,13 +59,18 @@ const BaseOrderTab: FC<{
     bot = testBot.paperTrading;
   }
 
+  const isBusyBot =
+    bot.status === BotStatus.ACTIVE || bot.status === BotStatus.COMPLETED;
+
   const { data: autotradeSettings, isLoading: loadingSettings } =
     useGetSettingsQuery();
 
   const [currentPrice, setCurrentPrice] = useState<number>(0);
   const [errorsState, setErrorsState] = useImmer<ErrorsState>({});
+  const initializedSymbolRef = useRef<string | null>(null);
   const {
     register,
+    setValue,
     watch,
     reset,
     formState: { errors, touchedFields },
@@ -72,6 +81,7 @@ const BaseOrderTab: FC<{
       pair: bot.pair,
       name: bot.name,
       strategy: bot.strategy,
+      fiat_order_size: bot.fiat_order_size,
     },
   });
   const { spinner, setSpinner } = useContext(SpinnerContext);
@@ -97,7 +107,18 @@ const BaseOrderTab: FC<{
     }
   };
 
-  // Data
+  const addAvailableFiat = () => {
+    if (fiatAvailable) {
+      if (botType === BotType.PAPER_TRADING) {
+        dispatch(
+          setTestBotField({ name: "fiat_order_size", value: fiatAvailable }),
+        );
+      } else {
+        dispatch(setField({ name: "fiat_order_size", value: fiatAvailable }));
+      }
+    }
+  };
+
   useEffect(() => {
     const { unsubscribe } = watch((v, { name }) => {
       if (v && v?.[name]) {
@@ -117,20 +138,44 @@ const BaseOrderTab: FC<{
       }
     });
 
-    if (symbol && !id) {
-      reset({
-        ...bot,
-        pair: symbol,
-      });
-      dispatch(resetBot({}));
+    return () => unsubscribe();
+  }, [botType, dispatch, watch]);
 
-      if (botType === BotType.PAPER_TRADING) {
-        dispatch(setTestBotField({ name: "pair", value: symbol }));
-      } else {
-        dispatch(setField({ name: "pair", value: symbol }));
-      }
+  useEffect(() => {
+    if (!touchedFields.fiat_order_size) {
+      setValue("fiat_order_size", bot.fiat_order_size);
+    }
+  }, [bot.fiat_order_size, setValue, touchedFields.fiat_order_size]);
+
+  useEffect(() => {
+    if (!symbol || id) {
+      initializedSymbolRef.current = null;
+      return;
     }
 
+    if (initializedSymbolRef.current === symbol) {
+      return;
+    }
+
+    initializedSymbolRef.current = symbol;
+
+    if (botType === BotType.PAPER_TRADING) {
+      dispatch(resetBot({}));
+    }
+
+    reset({
+      ...bot,
+      pair: symbol,
+    });
+
+    if (botType === BotType.PAPER_TRADING) {
+      dispatch(setTestBotField({ name: "pair", value: symbol }));
+    } else {
+      dispatch(setField({ name: "pair", value: symbol }));
+    }
+  }, [bot, botType, dispatch, id, reset, symbol]);
+
+  useEffect(() => {
     if (
       bot.deal?.current_price !== currentPrice &&
       bot.deal?.closing_price === 0
@@ -146,32 +191,48 @@ const BaseOrderTab: FC<{
       dispatch(setField({ name: "quote_asset", value: quoteAsset }));
     }
 
+    if (
+      !touchedFields.fiat_order_size &&
+      bot.fiat_order_size === 0 &&
+      bot.status === BotStatus.INACTIVE &&
+      isNewRoute
+    ) {
+      const defaultFiatOrderSize =
+        fiatAvailable && fiatAvailable > 0
+          ? fiatAvailable
+          : autotradeSettings?.base_order_size;
+
+      if (!defaultFiatOrderSize) {
+        return;
+      }
+
+      dispatch(
+        setField({
+          name: "fiat_order_size",
+          value: defaultFiatOrderSize,
+        }),
+      );
+    }
+
     if (autotradeSettings?.fiat && bot.fiat !== autotradeSettings.fiat) {
       dispatch(setField({ name: "fiat", value: autotradeSettings.fiat }));
     }
-
-    if (
-      fiatAvailable &&
-      !touchedFields.fiat_order_size &&
-      bot.fiat_order_size === 0
-    ) {
-      dispatch(setField({ name: "fiat_order_size", value: fiatAvailable }));
-    }
-
-    return () => unsubscribe();
   }, [
-    quoteAsset,
-    baseAsset,
-    reset,
-    dispatch,
-    watch,
-    bot.pair,
-    bot.quote_asset,
-    bot.market_type,
-    touchedFields,
-    fiatAvailable,
     autotradeSettings,
+    bot.deal?.closing_price,
+    bot.deal?.current_price,
+    bot.fiat,
+    bot.fiat_order_size,
+    bot.quote_asset,
+    bot.status,
+    currentPrice,
+    dispatch,
+    fiatAvailable,
+    isNewRoute,
     loadingSettings,
+    quoteAsset,
+    setSpinner,
+    touchedFields.fiat_order_size,
   ]);
 
   return (
@@ -212,24 +273,25 @@ const BaseOrderTab: FC<{
                   name="fiat_order_size"
                   autoComplete="off"
                   required
-                  disabled={
-                    bot.status === BotStatus.ACTIVE ||
-                    bot.status === BotStatus.COMPLETED
-                  }
+                  disabled={isBusyBot}
                   {...register("fiat_order_size", {
                     required: "Fiat order size is required",
                     valueAsNumber: true,
                   })}
-                  value={
-                    bot.fiat_order_size === 0
-                      ? autotradeSettings?.base_order_size
-                      : bot.fiat_order_size
-                  }
                 />
                 {errors.fiat_order_size && (
                   <Form.Control.Feedback type="invalid">
                     {errors.fiat_order_size.message as string}
                   </Form.Control.Feedback>
+                )}
+                {fiatAvailable && fiatAvailable > 0 && !isBusyBot && (
+                  <Button
+                    name="max-fiat-available"
+                    variant="outline-primary"
+                    onClick={addAvailableFiat}
+                  >
+                    Max
+                  </Button>
                 )}
               </InputTooltip>
             </InputGroup>

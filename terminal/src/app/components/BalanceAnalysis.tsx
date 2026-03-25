@@ -2,6 +2,7 @@ import React, { type FC } from "react";
 import { Card, Col, Row } from "react-bootstrap";
 import { type BalanceData } from "../../features/features.types";
 import { type MarketType } from "../../utils/enums";
+import { roundDecimals } from "../../utils/math";
 
 const BalanceAnalysis: FC<{
   accountData: BalanceData;
@@ -15,9 +16,21 @@ const BalanceAnalysis: FC<{
       <Card.Body>
         <Row className="u-margin-bottom">
           <Col md="8" sm="12">
+            Available fiat
+          </Col>
+          <Col md="4" sm="12">
+            <div className="u-primary-color">
+              <strong>{`${
+                accountData.fiat_available > 0
+                  ? roundDecimals(accountData.fiat_available, 6)
+                  : 0
+              } ${accountData.fiat_currency}`}</strong>
+            </div>
+          </Col>
+        </Row>
+        <Row className="u-margin-bottom">
+          <Col md="8" sm="12">
             Total fiat value
-            <br />
-            {accountData.fiat_currency}
           </Col>
           <Col md="4" sm="12">
             <div className="u-primary-color">
