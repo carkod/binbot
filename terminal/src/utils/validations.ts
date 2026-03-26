@@ -1,3 +1,5 @@
+import { matchPath } from "react-router-dom";
+
 const dataHeaders = [
   "Date",
   "Symbol",
@@ -37,4 +39,13 @@ const intervalOptions = [
   "1w",
 ];
 
-export { dataHeaders, intervalOptions, listCssColors };
+const matchNewRoutes = (pathname: string) => {
+  const pathnames = [
+    "/bots/futures/new",
+    "/bots/paper-trading/new",
+    "/bots/new",
+  ];
+  return pathnames.some((path) => matchPath(pathname, path));
+};
+
+export { dataHeaders, intervalOptions, listCssColors, matchNewRoutes };

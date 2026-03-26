@@ -63,6 +63,12 @@ const roundDecimals = (num: number, decimals: number = 2): number => {
   return parseFloat(rounding.toFixed(decimals));
 };
 
+const floatSafe = (value: unknown): number => {
+  return typeof value === "string" || typeof value === "number"
+    ? parseFloat(String(value))
+    : 0;
+};
+
 export {
   checkValue,
   checkMinValue,
@@ -72,4 +78,5 @@ export {
   percentageToFloat,
   replaceZeros,
   roundDecimals,
+  floatSafe,
 };

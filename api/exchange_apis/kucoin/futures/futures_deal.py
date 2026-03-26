@@ -1,28 +1,28 @@
-from typing import Type
 from time import time
-from pybinbot import (
-    OrderBase,
-    Strategy,
-    round_numbers,
-    DealType,
-    convert_to_kucoin_symbol,
-    Status,
-    OrderType,
-    OrderStatus,
-    BinbotErrors,
-    KucoinFutures,
-)
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from databases.crud.paper_trading_crud import PaperTradingTableCrud
+from typing import Type
+
+from bots.models import BotModel, OrderModel
 from databases.crud.bot_crud import BotTableCrud
+from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
-from bots.models import BotModel
-from bots.models import OrderModel
+from databases.tables.bot_table import BotTable, PaperTradingTable
 from exchange_apis.kucoin.deals.base import KucoinBaseBalance
-from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
 from exchange_apis.kucoin.futures.balance import KucoinFuturesBalance
-from streaming.base import BaseStreaming
 from kucoin_universal_sdk.generate.futures.order import GetTradeHistoryReq
+from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
+from pybinbot import (
+    BinbotErrors,
+    DealType,
+    KucoinFutures,
+    OrderBase,
+    OrderStatus,
+    OrderType,
+    Status,
+    Strategy,
+    convert_to_kucoin_symbol,
+    round_numbers,
+)
+from streaming.base import BaseStreaming
 
 
 class KucoinPositionDeal(KucoinBaseBalance):
@@ -229,8 +229,11 @@ class KucoinPositionDeal(KucoinBaseBalance):
                             or existing_order.deal_type == DealType.take_profit
                             or existing_order.deal_type == DealType.stop_loss
                         ):
-                            # delete unfilled order
-                            self.bot_crud.delete_order(str(existing_order.order_id))
+                            try:
+                                # delete unfilled order
+                                self.bot_crud.delete_order(str(existing_order.order_id))
+                            except BinbotErrors:
+                                pass
 
     def base_order(self) -> BotModel:
         """
@@ -338,6 +341,16 @@ class KucoinPositionDeal(KucoinBaseBalance):
         direction is determined by the strategy (long or short) and is used to calculate the correct stop loss price.
         """
         direction = self._direction_multiplier()
+
+        # edge case, should be set from base_order
+        if self.active_bot.deal.opening_price == 0:
+            for order in self.active_bot.orders:
+                if order.deal_type == DealType.base_order:
+                    self.active_bot.deal.opening_price = order.price
+                    self.active_bot.deal.opening_qty = order.qty
+                    self.active_bot.deal.opening_timestamp = order.timestamp
+                    break
+        
         if self.active_bot.stop_loss > 0:
             entry_price = float(self.active_bot.deal.opening_price)
             delta = entry_price * (self.active_bot.stop_loss / 100)

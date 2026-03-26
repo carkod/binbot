@@ -24,22 +24,6 @@ export interface AdData {
   strength_index: number[];
 }
 
-function computerPercent(data) {
-  const gainers = [];
-  const losers = [];
-
-  for (let i = 0; i < data.gainers_percent.length; i++) {
-    const totalCount = data.gainers_count[i] + data.losers_count[i];
-    const gainersCount =
-      ((data.gainers_count[i] / totalCount) * 100).toFixed(2) + "%";
-    const losersCount =
-      ((data.losers_count[i] / totalCount) * 100).toFixed(2) + "%";
-    gainers.push(gainersCount);
-    losers.push(losersCount);
-  }
-  return { gainers, losers };
-}
-
 /**
  * Difference between balanceApiSlice and marketApiSlice
  * is one comes from market the other comes from binance account.

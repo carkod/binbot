@@ -91,7 +91,7 @@ const BotDetailTabs: FC<{
         </Col>
         <Col sm={12}>
           <Tab.Content>
-            <BaseOrderTab fiatAvailable={fiatAvailable ?? undefined} />
+            <BaseOrderTab fiatAvailable={fiatAvailable} />
             <StopLossTab />
             <TakeProfit />
           </Tab.Content>

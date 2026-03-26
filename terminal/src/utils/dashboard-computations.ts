@@ -1,3 +1,7 @@
+import {
+  type DashboardTicker,
+  normalizePriceChangePercent,
+} from "./gainers-losers";
 import { roundDecimals } from "./math";
 
 export const calculateTotalRevenue = (assets) => {
@@ -16,7 +20,7 @@ export const calculateTotalRevenue = (assets) => {
   return { revenue, percentage };
 };
 
-export const computeWinnerLoserProportions = (data) => {
+export const computeWinnerLoserProportions = (data: DashboardTicker[] = []) => {
   let total = {
     gainerCount: 0,
     gainerAccumulator: 0,
@@ -24,14 +28,14 @@ export const computeWinnerLoserProportions = (data) => {
     loserCount: 0,
   };
   data.reduce((c, a) => {
-    if (parseFloat(a.priceChangePercent) > 0) {
-      total.gainerAccumulator =
-        c.gainerAccumulator + parseFloat(a.priceChangePercent);
+    const aPcp = parseFloat(normalizePriceChangePercent(a));
+
+    if (aPcp > 0) {
+      total.gainerAccumulator = c.gainerAccumulator + aPcp;
       total.gainerCount++;
       return total;
     } else {
-      total.loserAccumulator =
-        c.loserAccumulator + parseFloat(a.priceChangePercent);
+      total.loserAccumulator = c.loserAccumulator + aPcp;
       total.loserCount++;
       return total;
     }
