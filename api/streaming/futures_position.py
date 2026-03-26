@@ -108,17 +108,6 @@ class FuturesPosition(PositionMarket):
         and fetch order details from exchange
         """
         for order in self.bot.orders:
-            # Temporarily dedup excessive trailling_profit order lines
-            # we only need NEW ones that have not executed
-            # executed trailling_profit orders should have price and qty
-            if (
-                order.deal_type == DealType.trailling_profit
-                and order.status == OrderStatus.FILLED
-                and (order.price == 0 and order.qty == 0)
-            ):
-                self.base_streaming.bot_controller.delete_order(str(order.order_id))
-                continue
-
             if order.status == OrderStatus.FILLED:
                 continue
 
