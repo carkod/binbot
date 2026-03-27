@@ -233,7 +233,22 @@ class KucoinPositionDeal(KucoinBaseBalance):
                                 # delete unfilled order
                                 self.bot_crud.delete_order(str(existing_order.order_id))
                             except BinbotErrors:
+                                # we don't want failure to delete to stop execution
                                 pass
+        else:
+            stop_loss_orders = [
+                order
+                for order in self.active_bot.orders
+                if order.deal_type == DealType.stop_loss
+                or order.deal_type == DealType.trailling_profit
+            ]
+            if len(stop_loss_orders) > 0:
+                for order in stop_loss_orders:
+                    try:
+                        self.bot_crud.delete_order(str(order.order_id))
+                    except BinbotErrors:
+                        # we don't want failure to delete to stop execution
+                        pass
 
     def base_order(self) -> BotModel:
         """
@@ -350,7 +365,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                     self.active_bot.deal.opening_qty = order.qty
                     self.active_bot.deal.opening_timestamp = order.timestamp
                     break
-        
+
         if self.active_bot.stop_loss > 0:
             entry_price = float(self.active_bot.deal.opening_price)
             delta = entry_price * (self.active_bot.stop_loss / 100)
