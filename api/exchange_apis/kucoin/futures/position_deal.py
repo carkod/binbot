@@ -358,6 +358,7 @@ class PositionDeal(KucoinPositionDeal):
         new_bot = BotBase(
             pair=self.active_bot.pair,
             fiat=self.active_bot.fiat,
+            fiat_order_size=self.active_bot.fiat_order_size,
             quote_asset=self.active_bot.quote_asset,
             candlestick_interval=self.active_bot.candlestick_interval,
             market_type=self.active_bot.market_type,
@@ -445,7 +446,7 @@ class PositionDeal(KucoinPositionDeal):
         self.active_bot.deal.opening_timestamp = order_model.timestamp
         self.active_bot.deal.current_price = position.mark_price
         self.active_bot.status = Status.active
-        self.active_bot.margin_short_reversal = False
+        # self.active_bot.margin_short_reversal = False
         self.active_bot.add_log(
             f"Futures bot opened @ {position.mark_price} with {order_model.qty} contracts"
         )

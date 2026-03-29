@@ -39,69 +39,6 @@ class FuturesPosition(PositionMarket):
         self.kucoin_benchmark_symbol = "ETHBTCUSDTM"
         self.api = self.base_streaming.kucoin_futures_api
 
-    def futures_stop_loss_updates(self) -> BotModel:
-        """
-        Take stop loss order id from list of bot.orders
-        and fetch order details from exchange
-        """
-        kucoin_symbol = convert_to_kucoin_symbol(self.bot)
-        stop_orders = self.base_streaming.kucoin_futures_api.get_all_stop_loss_orders(
-            kucoin_symbol
-        )
-        # assuming there can only be one
-        if len(stop_orders) > 1:
-            self.bot.add_log(
-                f"Warning: More than one stop loss order found for bot {self.bot.id}. Check system orders for discrepancies."
-            )
-
-        if len(stop_orders) == 0:
-            self.bot.add_log(
-                "No stop loss orders found, this indicates stop loss has been executed. Retrieving order details from system to update bot accordingly."
-            )
-
-        for order in self.bot.orders:
-            if (
-                order.deal_type == DealType.stop_loss
-                and order.status != OrderStatus.FILLED
-            ):
-                system_order = self.base_streaming.kucoin_futures_api.retrieve_order(
-                    str(order.order_id)
-                )
-
-                if system_order and float(system_order.filled_size) > 0:
-                    if float(system_order.avg_deal_price) > 0:
-                        order.price = round_numbers(
-                            system_order.avg_deal_price, self.price_precision
-                        )
-
-                    order.qty = round_numbers(
-                        float(system_order.filled_size), self.qty_precision
-                    )
-                    order.status = OrderStatus.map_from_kucoin_status(
-                        system_order.status.value
-                    )
-                    order.timestamp = system_order.created_at
-                    self.base_streaming.bot_controller.update_order(order)
-                    self.bot.add_log(
-                        f"Stop loss order {order.order_id} updated from system"
-                    )
-                else:
-                    self.bot.add_log(
-                        f"Stop loss order {order.order_id} not found in system, marking as filled based on absence and updating bot status to completed."
-                    )
-                    order.status = OrderStatus.FILLED
-                    order.price = self.bot.deal.closing_price
-                    order.qty = self.bot.deal.opening_qty
-                    order.timestamp = int(datetime.now().timestamp() * 1000)
-                    self.base_streaming.bot_controller.update_order(order)
-                    self.bot.deal.closing_price = order.price
-                    self.bot.deal.closing_qty = order.qty
-                    self.bot.deal.closing_timestamp = order.timestamp
-                    self.bot.status = Status.completed
-
-        self.base_streaming.bot_controller.save(data=self.bot)
-        return self.bot
-
     def order_updates(self) -> BotModel:
         """
         Take order id from list of bot.orders
