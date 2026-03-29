@@ -355,13 +355,26 @@ class PositionDeal(KucoinPositionDeal):
         self.controller.save(previous_bot)
 
         # Construct new bot
-        new_bot_data = self.active_bot.model_dump(
-            exclude={"id", "created_at", "updated_at", "deal", "orders", "logs"}
+        new_bot = BotBase(
+            pair=self.active_bot.pair,
+            fiat=self.active_bot.fiat,
+            quote_asset=self.active_bot.quote_asset,
+            candlestick_interval=self.active_bot.candlestick_interval,
+            market_type=self.active_bot.market_type,
+            close_condition=self.active_bot.close_condition,
+            cooldown=self.active_bot.cooldown,
+            dynamic_trailling=self.active_bot.dynamic_trailling,
+            margin_short_reversal=False,
+            name=self.active_bot.name,
+            strategy=target_strategy,
+            mode=self.active_bot.mode,
+            status=Status.inactive,
+            stop_loss=self.active_bot.stop_loss,
+            take_profit=self.active_bot.take_profit,
+            trailling=self.active_bot.trailling,
+            trailling_deviation=self.active_bot.trailling_deviation,
+            trailling_profit=self.active_bot.trailling_profit,
         )
-        new_bot = BotBase.model_construct(**new_bot_data)
-        new_bot.strategy = target_strategy
-        new_bot.status = Status.inactive
-        new_bot.logs = []
         bot = self.controller.create(new_bot)
 
         # Activate with separate instance to make sure we have latest data
@@ -453,6 +466,26 @@ class PositionDeal(KucoinPositionDeal):
         direction = self._direction_multiplier()
         position_name = self.active_bot.strategy.value
 
+        # panic close low activity assets
+        bot_profit = (
+            abs(current_price - float(self.active_bot.deal.opening_price))
+            / current_price
+            * 100
+        )
+        is_3_days = (
+            self.active_bot.deal.opening_timestamp
+            and (int(time() * 1000) - self.active_bot.deal.opening_timestamp)
+            >= 3 * 24 * 60 * 60 * 1000
+        )
+        # bot_profit should consider both long and short i.e 0.5 or -0.5 means not much movement
+        if -1 < bot_profit < 1 and is_3_days:
+            self.controller.update_logs(
+                f"Panic close triggered for {position_name} due to {'3 days elapsed' if is_3_days else 'unprofitable position'} with profit {bot_profit}. Closing position immediately.",
+                self.active_bot,
+            )
+            self.close_all()
+            return self.active_bot
+
         if self.active_bot.deal.stop_loss_price == 0:
             entry_price = float(self.active_bot.deal.opening_price)
             delta = entry_price * (self.active_bot.stop_loss / 100)
@@ -463,7 +496,7 @@ class PositionDeal(KucoinPositionDeal):
 
         if (
             self.active_bot.stop_loss > 0
-            and (current_price - self.active_bot.deal.stop_loss_price) * direction < 0
+            and ((current_price - self.active_bot.deal.stop_loss_price) * direction) < 0
         ):
             if self.active_bot.margin_short_reversal:
                 self.controller.update_logs(
