@@ -16,6 +16,7 @@ from databases.crud.bot_crud import BotTableCrud
 from databases.utils import get_session
 from deals.gateway import DealGateway
 from databases.tables.bot_table import BotTable, PaperTradingTable
+from exchange_apis.kucoin.futures.position_deal import PositionDeal
 from kucoin_universal_sdk.model.common import RestError
 from user.services.auth import get_current_user
 
@@ -195,6 +196,14 @@ def activate_bot(
     bot_row = crud.get_one(bot_id=bot_id)
     bot_model = BotModel.dump_from_table(bot_row)
     deal_gateway = DealGateway(bot_model, db_table=BotTable)
+    if isinstance(deal_gateway.deal, PositionDeal) and bot_model.margin_short_reversal:
+        can_reverse, msg = deal_gateway.deal.estimate_reversal_possible_for_new_bot()
+        if not can_reverse:
+            bot_model.margin_short_reversal = False
+            bot_model.add_log(
+                f"{msg} margin_short_reversal has been automatically deactivated due to lack of funds."
+            )
+            deal_gateway.save(bot_model)
     try:
         activated_bot = deal_gateway.open_deal()
         bot_model = BotModel.dump_from_table(activated_bot)

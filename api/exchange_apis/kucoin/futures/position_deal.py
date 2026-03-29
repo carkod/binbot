@@ -67,6 +67,82 @@ class PositionDeal(KucoinPositionDeal):
         else:
             return BotTableCrud()
 
+    def _is_reversal_possible(
+        self, mark_price, current_contracts, flip_contracts
+    ) -> tuple[bool, str]:
+        multiplier = float(
+            self.kucoin_symbol_data.multiplier
+            or self.kucoin_futures_api.DEFAULT_MULTIPLIER
+        )
+        taker_fee_rate = float(self.kucoin_symbol_data.taker_fee_rate or 0)
+        maintenance_margin = float(self.kucoin_symbol_data.maintain_margin or 0)
+        available_balance = float(self.compute_available_balance())
+        leverage = float(self.kucoin_futures_api.DEFAULT_LEVERAGE)
+
+        current_notional = current_contracts * mark_price * multiplier
+        flip_notional = flip_contracts * mark_price * multiplier
+        reusable_initial_margin = current_notional / leverage
+        estimated_flip_fees = flip_notional * taker_fee_rate
+        estimated_required_buffer = (
+            current_notional / leverage + maintenance_margin + estimated_flip_fees
+        )
+        estimated_available_buffer = available_balance + reusable_initial_margin
+
+        msg = (
+            "Pre-check failed: insufficient estimated margin for reversal. "
+            f"Current position: {current_contracts} contracts, flip order: {flip_contracts} contracts, "
+            f"available balance: {round_numbers(available_balance, 4)}, "
+            f"reusable margin estimate: {round_numbers(reusable_initial_margin, 4)}, "
+            f"required buffer estimate: {round_numbers(estimated_required_buffer, 4)}."
+        )
+
+        can_reverse = estimated_available_buffer >= estimated_required_buffer
+        return can_reverse, msg
+
+    def estimate_reversal_possible_for_new_bot(self) -> tuple[bool, str]:
+        """
+        Estimate whether a newly activated futures bot is likely to support a
+        same-size one-order reversal later.
+
+        This is weaker than the live reversal pre-check because there is no
+        current exchange position yet; it estimates contracts from the current
+        market and then reuses the internal affordability logic.
+        """
+        if not self.active_bot.margin_short_reversal or self.active_bot.stop_loss <= 0:
+            return True, ""
+
+        side = (
+            AddOrderReq.SideEnum.SELL
+            if self.active_bot.strategy == Strategy.margin_short
+            else AddOrderReq.SideEnum.BUY
+        )
+        estimated_price = self.kucoin_futures_api.matching_engine(
+            symbol=self.kucoin_symbol,
+            side=side,
+            size=1,
+        )
+        estimated_contracts = self.calculate_contracts(estimated_price)
+
+        if estimated_contracts <= 0:
+            return (
+                False,
+                "Pre-check estimate failed: bot could not estimate a valid futures position size for reversal support.",
+            )
+
+        flip_contracts = round_numbers(estimated_contracts * 2, self.qty_precision)
+        can_reverse, msg = self._is_reversal_possible(
+            estimated_price, estimated_contracts, flip_contracts
+        )
+        if can_reverse:
+            return True, ""
+
+        msg = msg.replace("Pre-check failed", "Pre-check estimate failed", 1)
+        msg = (
+            f"{msg} Estimated entry price: {round_numbers(estimated_price, self.price_precision)}, "
+            f"estimated position: {estimated_contracts} contracts, estimated flip order: {flip_contracts} contracts."
+        )
+        return False, msg
+
     def take_profit_order(self) -> BotModel:
         """
         Futures take profit:
@@ -354,6 +430,41 @@ class PositionDeal(KucoinPositionDeal):
         )
         self.controller.save(previous_bot)
 
+        current_position = self.kucoin_futures_api.get_futures_position(
+            self.kucoin_symbol
+        )
+        current_contracts = (
+            round_numbers(abs(float(current_position.current_qty)), self.qty_precision)
+            if current_position and float(current_position.current_qty) != 0
+            else 0
+        )
+
+        if current_contracts <= 0:
+            msg = "No open futures position found to reverse, skipping reversal."
+            previous_bot.add_log(msg)
+            self.controller.save(previous_bot)
+            self.active_bot.add_log(msg)
+            self.active_bot.status = Status.error
+            self.controller.save(self.active_bot)
+            return self.active_bot
+
+        # One KuCoin futures order can flip the net position.
+        # To preserve size, submit the current position size twice:
+        # one leg closes the existing side, the second leg becomes the new side.
+        flip_contracts = round_numbers(current_contracts * 2, self.qty_precision)
+
+        can_reverse, msg = self._is_reversal_possible(
+            current_position.mark_price, current_contracts, flip_contracts
+        )
+
+        if not can_reverse:
+            previous_bot.add_log(msg)
+            self.controller.save(previous_bot)
+            self.active_bot.add_log(msg)
+            self.active_bot.status = Status.error
+            self.controller.save(self.active_bot)
+            return self.active_bot
+
         # Construct new bot
         new_bot = BotBase(
             pair=self.active_bot.pair,
@@ -382,31 +493,17 @@ class PositionDeal(KucoinPositionDeal):
         # Activate with separate instance to make sure we have latest data
         self.active_bot = BotModel(**bot.model_dump())
 
-        price = self.kucoin_futures_api.matching_engine(
-            symbol=self.kucoin_symbol, side=AddOrderReq.SideEnum.BUY, size=1
-        )
-        contracts = self.calculate_contracts(price)
-
-        if contracts <= 0:
-            msg = f"Calculated zero contracts for reversal at price {price}, skipping reversal."
-            previous_bot.add_log(msg)
-            self.controller.save(previous_bot)
-            self.active_bot.add_log(msg)
-            self.active_bot.status = Status.error
-            self.controller.save(self.active_bot)
-            return self.active_bot
-
         try:
             if self.active_bot.strategy == Strategy.margin_short:
                 order = self.kucoin_futures_api.sell(
                     symbol=self.kucoin_symbol,
-                    qty=contracts,
+                    qty=flip_contracts,
                     reduce_only=False,
                 )
             else:
                 order = self.kucoin_futures_api.buy(
                     symbol=self.kucoin_symbol,
-                    qty=contracts,
+                    qty=flip_contracts,
                     reduce_only=False,
                 )
             # If successful, allow system to process order
@@ -429,7 +526,7 @@ class PositionDeal(KucoinPositionDeal):
         closing_order.deal_type = DealType.margin_short
         previous_bot.orders.append(closing_order)
         previous_bot.deal.closing_price = closing_order.price
-        previous_bot.deal.closing_qty = closing_order.qty
+        previous_bot.deal.closing_qty = current_contracts
         previous_bot.deal.closing_timestamp = closing_order.timestamp
         previous_bot.add_log("Updated closing deal")
         previous_bot.status = Status.completed
@@ -441,19 +538,26 @@ class PositionDeal(KucoinPositionDeal):
         # Allow system to process, sometimes position can be empty immediately
         # after order execution
         position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
-        self.active_bot.deal.base_order_size = contracts
+        new_position_contracts = round_numbers(
+            abs(float(position.current_qty)), self.qty_precision
+        )
+
+        self.active_bot.deal.base_order_size = new_position_contracts
         self.active_bot.deal.opening_price = order_model.price
-        self.active_bot.deal.opening_qty = contracts
+        self.active_bot.deal.opening_qty = new_position_contracts
         self.active_bot.deal.opening_timestamp = order_model.timestamp
-        self.active_bot.deal.current_price = position.mark_price
-        self.active_bot.status = Status.active
+        self.active_bot.deal.current_price = position.mark_price if position else 0
+        self.active_bot.status = (
+            Status.active if new_position_contracts > 0 else Status.error
+        )
         # self.active_bot.margin_short_reversal = False
         self.active_bot.add_log(
-            f"Futures bot opened @ {position.mark_price} with {order_model.qty} contracts"
+            f"Futures bot opened @ {self.active_bot.deal.current_price} with {new_position_contracts} contracts"
         )
         # testing, make sure self.active_bot.orders.append(order) does save in the DB
         self.controller.save(self.active_bot)
-        self.update_parameters()
+        if self.active_bot.status == Status.active:
+            self.update_parameters()
         # testing. make sure trailing_stop loss has been reset after reversal
         return self.active_bot
 
@@ -513,7 +617,7 @@ class PositionDeal(KucoinPositionDeal):
                 )
                 self.execute_stop_loss()
 
-        # Trailling profit
+        # Trailling profit (price going down)
         if self.active_bot.trailling and self.active_bot.deal.opening_price > 0:
             # First activation: derive the next trailing trigger from entry or the last trailing stop.
             if self.active_bot.deal.trailling_stop_loss_price == 0:
