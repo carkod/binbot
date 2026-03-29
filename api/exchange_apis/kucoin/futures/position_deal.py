@@ -375,6 +375,7 @@ class PositionDeal(KucoinPositionDeal):
             trailling=self.active_bot.trailling,
             trailling_deviation=self.active_bot.trailling_deviation,
             trailling_profit=self.active_bot.trailling_profit,
+            logs=[],
         )
         bot = self.controller.create(new_bot)
 
