@@ -37,7 +37,7 @@ class BotModel(BotBase):
 
     id: UUID = Field(default_factory=uuid4)
     deal: DealModel = Field(default_factory=DealModel)
-    orders: List[OrderModel] = Field(default=[])
+    orders: List[OrderModel] = Field(default_factory=list)
 
     model_config = {
         "from_attributes": True,
@@ -131,7 +131,7 @@ class BotResponse(IResponseBase):
 
 
 class BotPairsList(IResponseBase):
-    data: list = Field(default=[])
+    data: list = Field(default_factory=list)
 
 
 class BotListResponse(IResponseBase):
@@ -143,7 +143,7 @@ class BotListResponse(IResponseBase):
     serialize nested table objects (deal, orders)
     """
 
-    data: list = Field(default=[])
+    data: list = Field(default_factory=list)
 
 
 class ErrorsRequestBody(BaseModel):
