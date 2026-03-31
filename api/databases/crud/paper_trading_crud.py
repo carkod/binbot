@@ -219,6 +219,19 @@ class PaperTradingTableCrud:
         self.session.close()
         return True
 
+    def delete_order(self, order_id: str, bot_id: str | None = None) -> str:
+        statement = select(FakeOrderTable).where(FakeOrderTable.order_id == order_id)
+        if bot_id:
+            statement = statement.where(FakeOrderTable.paper_trading_id == UUID(bot_id))
+
+        order = self.session.exec(statement).first()
+        if not order:
+            raise BinbotErrors("Order not found")
+
+        self.session.delete(order)
+        self.session.commit()
+        return str(order_id)
+
     def update_status(self, paper_trading: BotModel, status: Status) -> BotModel:
         """
         Activate a paper trading account

@@ -116,12 +116,12 @@ class PositionMarket(KucoinPositionDeal):
             interval=str(self.base_streaming.interval.value),
         )
         candles = self.klines.copy()
-        df, _, _ = HeikinAshi().pre_process(
+        df, df_15m, df_4h, _ = HeikinAshi().pre_process(
             exchange=self.base_streaming.exchange, candles=candles
         )
         self.df = df
         btc_candles = self.btc_klines.copy()
-        btc_df, _, _ = HeikinAshi().pre_process(
+        btc_df, btc_df_15m, _, _ = HeikinAshi().pre_process(
             exchange=self.base_streaming.exchange, candles=btc_candles
         )
         self.btc_df = btc_df

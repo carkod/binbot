@@ -321,13 +321,14 @@ class BotTableCrud:
 
             return existing
 
-    def delete_order(self, order_id: str) -> str:
+    def delete_order(self, order_id: str, bot_id: str | None = None) -> str:
         with self._get_session() as s:
-            order = s.exec(
-                select(ExchangeOrderTable).where(
-                    ExchangeOrderTable.order_id == order_id
-                )
-            ).first()
+            stmt = select(ExchangeOrderTable).where(
+                ExchangeOrderTable.order_id == order_id
+            )
+            if bot_id:
+                stmt = stmt.where(ExchangeOrderTable.bot_id == UUID(str(bot_id)))
+            order = s.exec(stmt).first()
 
             if not order:
                 raise BinbotErrors("Order not found")
@@ -335,7 +336,7 @@ class BotTableCrud:
             s.delete(order)
             s.commit()
 
-        return str(order.order_id)
+        return str(order_id)
 
     # --------------------------------------------------
     # Utility

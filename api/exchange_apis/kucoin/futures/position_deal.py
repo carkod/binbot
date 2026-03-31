@@ -187,6 +187,7 @@ class PositionDeal(KucoinPositionDeal):
             position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
             if not position or float(position.current_qty) == 0:
                 self.active_bot = self.backfill_position_from_fills()
+                return self.active_bot
 
             qty = round_numbers(abs(float(position.current_qty)), 8)
             if self.active_bot.strategy == Strategy.margin_short:
@@ -285,6 +286,13 @@ class PositionDeal(KucoinPositionDeal):
                     )
                     self.active_bot.status = Status.completed
                     self.controller.save(self.active_bot)
+                    return self.active_bot
+                else:
+                    self.controller.update_logs(
+                        bot=self.active_bot,
+                        log_message=f"Failed to execute stop loss order: {str(e.response.message)}",
+                    )
+                    self.active_bot.status = Status.error
                     return self.active_bot
 
         order_base.deal_type = DealType.stop_loss
@@ -390,6 +398,7 @@ class PositionDeal(KucoinPositionDeal):
             order_base.deal_type = DealType.trailling_profit
             order_data = OrderModel(**order_base.model_dump())
 
+        self.remove_stale_orders()
         self.active_bot.orders.append(order_data)
 
         if order_data.status != OrderStatus.FILLED:
@@ -538,6 +547,9 @@ class PositionDeal(KucoinPositionDeal):
         # Allow system to process, sometimes position can be empty immediately
         # after order execution
         position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
+        if not position or float(position.current_qty) == 0:
+            self.active_bot = self.backfill_position_from_fills()
+            return self.active_bot
         new_position_contracts = round_numbers(
             abs(float(position.current_qty)), self.qty_precision
         )
@@ -573,18 +585,19 @@ class PositionDeal(KucoinPositionDeal):
         position_name = self.active_bot.strategy.value
 
         # panic close low activity assets
+        opening_price = float(self.active_bot.deal.opening_price)
         bot_profit = (
-            abs(current_price - float(self.active_bot.deal.opening_price))
-            / current_price
-            * 100
+            ((current_price - opening_price) / opening_price) * 100 * direction
+            if opening_price > 0
+            else 0
         )
         is_3_days = (
             self.active_bot.deal.opening_timestamp
             and (int(time() * 1000) - self.active_bot.deal.opening_timestamp)
             >= 3 * 24 * 60 * 60 * 1000
         )
-        # bot_profit should consider both long and short i.e 0.5 or -0.5 means not much movement
-        if -1 < bot_profit < 1 and is_3_days:
+        # Panic close only low-profit positions after 3 days.
+        if 0 < bot_profit < 1 and is_3_days:
             self.controller.update_logs(
                 f"Panic close triggered for {position_name} due to {'3 days elapsed' if is_3_days else 'unprofitable position'} with profit {bot_profit}. Closing position immediately.",
                 self.active_bot,
@@ -797,8 +810,16 @@ class PositionDeal(KucoinPositionDeal):
         self.klines = klines
         self.btc_klines = btc_klines
 
-        cls.order_updates()
-        cls.position_updates()
+        self.active_bot = cls.order_updates()
+        if hasattr(cls, "sync_bot_reference"):
+            cls.sync_bot_reference(self.active_bot)
+        else:
+            cls.active_bot = self.active_bot
+        self.active_bot = cls.position_updates()
+        if hasattr(cls, "sync_bot_reference"):
+            cls.sync_bot_reference(self.active_bot)
+        else:
+            cls.active_bot = self.active_bot
 
         open_price = float(self.klines[-1][1])
         if not close_price or close_price == 0:

@@ -39,23 +39,35 @@ class FuturesPosition(PositionMarket):
         self.kucoin_benchmark_symbol = "ETHBTCUSDTM"
         self.api = self.base_streaming.kucoin_futures_api
 
+    def sync_bot_reference(self, bot: BotModel) -> None:
+        self.bot = bot
+        self.active_bot = bot
+
+    def confirm_close_from_position(self, filled_size: float) -> bool:
+        kucoin_symbol = convert_to_kucoin_symbol(self.bot)
+        position = self.base_streaming.kucoin_futures_api.get_futures_position(
+            kucoin_symbol
+        )
+
+        if position:
+            current_qty = abs(float(position.current_qty))
+            if current_qty > 0:
+                return False
+
+        elif filled_size > 0:
+            backfilled_bot = self.backfill_position_from_fills()
+            self.sync_bot_reference(backfilled_bot)
+            self.base_streaming.bot_controller.save(data=self.bot)
+            return True
+
+        return True
+
     def order_updates(self) -> BotModel:
         """
         Take order id from list of bot.orders
         and fetch order details from exchange
         """
-        for order in self.bot.orders:
-            # Temporarily dedup excessive trailling_profit order lines
-            # we only need NEW ones that have not executed
-            # executed trailling_profit orders should have price and qty
-            if (
-                order.deal_type == DealType.trailling_profit
-                and order.status == OrderStatus.FILLED
-                and (order.price == 0 and order.qty == 0)
-            ):
-                self.base_streaming.bot_controller.delete_order(str(order.order_id))
-                continue
-
+        for order in list(self.bot.orders):
             if order.status == OrderStatus.FILLED:
                 continue
 
@@ -66,7 +78,7 @@ class FuturesPosition(PositionMarket):
                 # this should be a good measure, because candles have closed
                 interval_ms = self.base_streaming.interval.get_ms()
                 now_ms = int(datetime.now().timestamp() * 1000)
-                order_ms = int(order.timestamp * 1000)
+                order_ms = int(order.timestamp)
                 is_expired = (now_ms - order_ms) > interval_ms
 
                 try:
@@ -78,11 +90,12 @@ class FuturesPosition(PositionMarket):
                     )
                     if is_expired:
                         raise RestError(
+                            msg=f"Order {order.order_id} is expired based on time threshold. Marking as expired.",
                             response=type(
                                 "obj",
                                 (object,),
                                 {"code": 100001, "message": "Order expired"},
-                            )()
+                            )(),
                         )
                     status = OrderStatus.map_from_kucoin_status(
                         system_order.status.value
@@ -96,7 +109,8 @@ class FuturesPosition(PositionMarket):
                             float(system_order.price), self.price_precision
                         )
 
-                    if order.status == status and float(system_order.price) == 0:
+                    previous_qty = float(order.qty)
+                    if order.status == status and previous_qty == filled_size:
                         continue
 
                     order.qty = round_numbers(filled_size, self.qty_precision)
@@ -125,7 +139,8 @@ class FuturesPosition(PositionMarket):
                             or order.deal_type == DealType.trailling_profit
                         )
                         and self.bot.deal.closing_price == 0
-                        and float(system_order.price) > 0
+                        and filled_size > 0
+                        and self.confirm_close_from_position(filled_size)
                     ):
                         self.bot.deal.closing_price = order.price
                         self.bot.deal.closing_qty = order.qty

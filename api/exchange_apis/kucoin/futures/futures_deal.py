@@ -175,6 +175,27 @@ class KucoinPositionDeal(KucoinBaseBalance):
         if len(fills.items) > 0:
             total_qty = sum(abs(float(fill.size)) for fill in fills.items)
             order_resp = fills.items[0]
+            total_notional = sum(
+                abs(float(fill.size)) * float(fill.price) for fill in fills.items
+            )
+            closing_price = (
+                round_numbers(total_notional / total_qty, self.price_precision)
+                if total_qty > 0
+                else float(order_resp.price)
+            )
+            if self.active_bot.strategy == Strategy.margin_short:
+                deal_type = (
+                    DealType.take_profit
+                    if (closing_price < self.active_bot.deal.opening_price)
+                    else DealType.stop_loss
+                )
+            else:
+                deal_type = (
+                    DealType.take_profit
+                    if (closing_price > self.active_bot.deal.opening_price)
+                    else DealType.stop_loss
+                )
+
             exit_order = OrderModel(
                 order_id=order_resp.order_id,
                 order_type=order_resp.order_type.value,
@@ -182,14 +203,16 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 timestamp=order_resp.created_at,
                 order_side=order_resp.side.value,
                 qty=total_qty,
-                price=order_resp.price,
+                price=closing_price,
                 status=OrderStatus.FILLED,
                 # no data, assumed
                 time_in_force="GTC",
-                # we don't know if take profit or stop loss
-                deal_type=DealType.panic_close,
+                deal_type=deal_type,
             )
             self.active_bot.orders.append(exit_order)
+            self.active_bot.deal.closing_price = closing_price
+            self.active_bot.deal.closing_qty = total_qty
+            self.active_bot.deal.closing_timestamp = order_resp.created_at
             self.active_bot.deal.total_commissions += float(order_resp.fee)
             self.active_bot.status = Status.completed
             self.active_bot.add_log(
@@ -205,6 +228,34 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         return self.active_bot
 
+    def remove_stale_orders(self) -> None:
+        stale_orders = [
+            order
+            for order in self.active_bot.orders
+            if order.deal_type == DealType.trailling_profit
+            and order.status == OrderStatus.FILLED
+            and order.price == 0
+            and order.qty == 0
+        ]
+        for stale_order in stale_orders:
+            try:
+                self.controller.delete_order(
+                    str(stale_order.order_id), str(self.active_bot.id)
+                )
+            except BinbotErrors:
+                pass
+
+        self.active_bot.orders = [
+            order
+            for order in self.active_bot.orders
+            if not (
+                order.deal_type == DealType.trailling_profit
+                and order.status == OrderStatus.FILLED
+                and order.price == 0
+                and order.qty == 0
+            )
+        ]
+
     def cancel_current_sl(self) -> None:
         """
         Find current stop loss orders in exchange in place and batch cancel them.
@@ -216,39 +267,12 @@ class KucoinPositionDeal(KucoinBaseBalance):
         if len(stop_orders) > 0:
             stop_order_ids = [order.id for order in stop_orders]
             self.kucoin_futures_api.batch_cancel_stop_loss_orders(stop_order_ids)
-            # pop out canceled orders from bot.orders
-            for order_id in stop_order_ids:
-                for index, existing_order in enumerate(self.active_bot.orders):
-                    if existing_order.order_id == order_id:
-                        existing_order.status = OrderStatus.CANCELED
-                        self.active_bot.orders[index] = existing_order
-                    else:
-                        if existing_order.status == OrderStatus.FILLED and (
-                            # only these deal types can have new orders
-                            existing_order.deal_type == DealType.trailling_profit
-                            or existing_order.deal_type == DealType.take_profit
-                            or existing_order.deal_type == DealType.stop_loss
-                        ):
-                            try:
-                                # delete unfilled order
-                                self.bot_crud.delete_order(str(existing_order.order_id))
-                            except BinbotErrors:
-                                # we don't want failure to delete to stop execution
-                                pass
+            for index, existing_order in enumerate(self.active_bot.orders):
+                if existing_order.order_id in stop_order_ids:
+                    existing_order.status = OrderStatus.CANCELED
+                    self.active_bot.orders[index] = existing_order
         else:
-            stop_loss_orders = [
-                order
-                for order in self.active_bot.orders
-                if order.deal_type == DealType.stop_loss
-                or order.deal_type == DealType.trailling_profit
-            ]
-            if len(stop_loss_orders) > 0:
-                for order in stop_loss_orders:
-                    try:
-                        self.bot_crud.delete_order(str(order.order_id))
-                    except BinbotErrors:
-                        # we don't want failure to delete to stop execution
-                        pass
+            self.remove_stale_orders()
 
     def base_order(self) -> BotModel:
         """
@@ -309,7 +333,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         self.controller.update_logs(
             bot=self.active_bot,
-            log_message=f"Futures LONG opened @ {position.mark_price} with {order.qty} contracts",
+            log_message=f"Futures {self.active_bot.strategy.name} opened @ {position.mark_price} with {order.qty} contracts",
         )
 
         self.controller.save(self.active_bot)
@@ -326,14 +350,16 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         if self.active_bot.strategy == Strategy.margin_short:
             side = AddOrderReq.SideEnum.BUY
+            stop = AddOrderReq.StopEnum.UP
         else:
             side = AddOrderReq.SideEnum.SELL
+            stop = AddOrderReq.StopEnum.DOWN
 
         order_response = self.kucoin_futures_api.place_futures_order(
             symbol=self.kucoin_symbol,
             side=side,
             order_type=OrderType.market,
-            stop=AddOrderReq.StopEnum.DOWN,
+            stop=stop,
             stop_price=stop_price,
             stop_price_type=AddOrderReq.StopPriceTypeEnum.MARK_PRICE,
             reduce_only=True,
@@ -417,7 +443,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         if self.active_bot.stop_loss > 0:
             price = float(self.active_bot.deal.opening_price)
             delta = price * (self.active_bot.stop_loss / 100)
-            self.active_bot.deal.stop_loss_price = price + (delta * direction)
+            self.active_bot.deal.stop_loss_price = price - (delta * direction)
 
         if self.active_bot.trailling:
             trailling_profit = float(self.active_bot.deal.opening_price) * (
