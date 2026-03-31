@@ -3,6 +3,7 @@ from time import time
 from time import sleep
 from typing import Union, Type
 from pybinbot import (
+    BinbotErrors,
     BotBase,
     KucoinFutures,
     KucoinApi,
@@ -142,6 +143,34 @@ class PositionDeal(KucoinPositionDeal):
             f"estimated position: {estimated_contracts} contracts, estimated flip order: {flip_contracts} contracts."
         )
         return False, msg
+
+    def remove_stale_orders(self) -> None:
+        stale_orders = [
+            order
+            for order in self.active_bot.orders
+            if order.deal_type == DealType.trailling_profit
+            and order.status == OrderStatus.FILLED
+            and order.price == 0
+            and order.qty == 0
+        ]
+        for stale_order in stale_orders:
+            try:
+                self.controller.delete_order(
+                    str(stale_order.order_id), str(self.active_bot.id)
+                )
+            except BinbotErrors:
+                pass
+
+        self.active_bot.orders = [
+            order
+            for order in self.active_bot.orders
+            if not (
+                order.deal_type == DealType.trailling_profit
+                and order.status == OrderStatus.FILLED
+                and order.price == 0
+                and order.qty == 0
+            )
+        ]
 
     def take_profit_order(self) -> BotModel:
         """
@@ -390,6 +419,7 @@ class PositionDeal(KucoinPositionDeal):
             order_base.deal_type = DealType.trailling_profit
             order_data = OrderModel(**order_base.model_dump())
 
+        self.remove_stale_orders()
         self.active_bot.orders.append(order_data)
 
         if order_data.status != OrderStatus.FILLED:
