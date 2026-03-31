@@ -3,13 +3,23 @@ import time
 
 import pandas as pd
 import pytest
+from bots.models import OrderModel
 from pandas import Index
 from typing import Any, cast
 from pybinbot import Strategy, MarketType
 from streaming.position_manager import PositionManager
 from streaming.base import BaseStreaming
 from pandas import DataFrame
-from pybinbot import ExchangeId, HeikinAshi, BinanceErrors, HABollinguerSpread
+from pybinbot import (
+    ExchangeId,
+    HeikinAshi,
+    BinanceErrors,
+    HABollinguerSpread,
+    DealType,
+    OrderStatus,
+    Status,
+)
+from streaming.futures_position import FuturesPosition
 
 
 class TestPositionManager:
@@ -562,3 +572,188 @@ class TestPositionManager:
         assert len(binance_called) == 0, (
             "BinanceApi.get_ui_klines should not have been called"
         )
+
+    def test_process_deal_futures_does_not_complete_while_position_is_open(
+        self, monkeypatch
+    ):
+        base = self._make_base_streaming(monkeypatch, active_pairs=["BTCUSDT"])
+        base.exchange = ExchangeId.KUCOIN
+        sc = PositionManager(base, symbol="BTCUSDT")
+
+        bot = self._make_bot(
+            pair="BTCUSDT",
+            strategy=Strategy.long,
+            market_type=MarketType.FUTURES,
+        )
+        bot.orders = [
+            OrderModel(
+                order_id="tp-order-1",
+                order_type="market",
+                pair="BTCUSDTM",
+                timestamp=int(time.time() * 1000),
+                order_side="sell",
+                qty=0,
+                price=0,
+                status=OrderStatus.NEW,
+                time_in_force="GTC",
+                deal_type=DealType.take_profit,
+            )
+        ]
+
+        monkeypatch.setattr(
+            BaseStreaming,
+            "get_current_bot",
+            lambda self, symbol: bot,
+        )
+        monkeypatch.setattr(
+            BaseStreaming,
+            "get_current_test_bot",
+            lambda self, symbol: None,
+        )
+        monkeypatch.setattr(
+            OrderStatus,
+            "map_from_kucoin_status",
+            staticmethod(lambda _: OrderStatus.FILLED),
+        )
+        monkeypatch.setattr(
+            "streaming.futures_position.convert_to_kucoin_symbol",
+            lambda _bot: "BTCUSDTM",
+        )
+
+        base.bot_controller.update_order = lambda order: order
+        base.bot_controller.save = lambda *args, **kwargs: (
+            base.bot_controller.saved.append(
+                kwargs.get("data") if "data" in kwargs else args[0]
+            )
+        )
+        base.kucoin_futures_api.retrieve_order = lambda order_id: types.SimpleNamespace(
+            status=types.SimpleNamespace(value="done"),
+            filled_size=70,
+            avg_deal_price=1.267,
+            created_at=int(time.time() * 1000),
+            price=1.267,
+        )
+        base.kucoin_futures_api.get_futures_position = lambda symbol: (
+            types.SimpleNamespace(current_qty=2)
+        )
+
+        class FakeDealGateway:
+            def __init__(self, bot, db_table):
+                self.bot = bot
+                self.db_table = db_table
+
+            def deal_exit_orchestration(self, close_price, open_price):
+                fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
+                fp.base_streaming = base
+                fp.bot = self.bot
+                fp.active_bot = self.bot
+                fp.price_precision = 4
+                fp.qty_precision = 4
+                fp.cancel_current_sl = lambda: None
+                fp.backfill_position_from_fills = lambda: self.bot
+                return FuturesPosition.order_updates(fp)
+
+        monkeypatch.setattr("streaming.position_manager.DealGateway", FakeDealGateway)
+
+        sc.process_deal()
+
+        assert bot.deal.closing_price == 0
+        assert bot.status != Status.completed
+
+    def test_process_deal_futures_uses_backfill_when_position_missing(
+        self, monkeypatch
+    ):
+        base = self._make_base_streaming(monkeypatch, active_pairs=["BTCUSDT"])
+        base.exchange = ExchangeId.KUCOIN
+        sc = PositionManager(base, symbol="BTCUSDT")
+
+        bot = self._make_bot(
+            pair="BTCUSDT",
+            strategy=Strategy.long,
+            market_type=MarketType.FUTURES,
+        )
+        bot.orders = [
+            OrderModel(
+                order_id="tp-order-2",
+                order_type="market",
+                pair="BTCUSDTM",
+                timestamp=int(time.time() * 1000),
+                order_side="sell",
+                qty=0,
+                price=0,
+                status=OrderStatus.NEW,
+                time_in_force="GTC",
+                deal_type=DealType.take_profit,
+            )
+        ]
+
+        monkeypatch.setattr(
+            BaseStreaming,
+            "get_current_bot",
+            lambda self, symbol: bot,
+        )
+        monkeypatch.setattr(
+            BaseStreaming,
+            "get_current_test_bot",
+            lambda self, symbol: None,
+        )
+        monkeypatch.setattr(
+            OrderStatus,
+            "map_from_kucoin_status",
+            staticmethod(lambda _: OrderStatus.FILLED),
+        )
+        monkeypatch.setattr(
+            "streaming.futures_position.convert_to_kucoin_symbol",
+            lambda _bot: "BTCUSDTM",
+        )
+
+        base.bot_controller.update_order = lambda order: order
+        base.bot_controller.save = lambda *args, **kwargs: (
+            base.bot_controller.saved.append(
+                kwargs.get("data") if "data" in kwargs else args[0]
+            )
+        )
+        base.kucoin_futures_api.retrieve_order = lambda order_id: types.SimpleNamespace(
+            status=types.SimpleNamespace(value="done"),
+            filled_size=70,
+            avg_deal_price=1.267,
+            created_at=int(time.time() * 1000),
+            price=1.267,
+        )
+        base.kucoin_futures_api.get_futures_position = lambda symbol: None
+
+        backfill_called = {"value": False}
+
+        class FakeDealGateway:
+            def __init__(self, bot, db_table):
+                self.bot = bot
+                self.db_table = db_table
+
+            def deal_exit_orchestration(self, close_price, open_price):
+                fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
+                fp.base_streaming = base
+                fp.bot = self.bot
+                fp.active_bot = self.bot
+                fp.price_precision = 4
+                fp.qty_precision = 4
+                fp.cancel_current_sl = lambda: None
+
+                def backfill():
+                    backfill_called["value"] = True
+                    self.bot.deal.closing_price = 1.267
+                    self.bot.deal.closing_qty = 70
+                    self.bot.deal.closing_timestamp = int(time.time() * 1000)
+                    self.bot.status = Status.completed
+                    return self.bot
+
+                fp.backfill_position_from_fills = backfill
+                return FuturesPosition.order_updates(fp)
+
+        monkeypatch.setattr("streaming.position_manager.DealGateway", FakeDealGateway)
+
+        sc.process_deal()
+
+        assert backfill_called["value"] is True
+        assert bot.status == Status.completed
+        assert bot.deal.closing_price > 0
+        assert bot.deal.closing_qty == 70
