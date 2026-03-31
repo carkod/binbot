@@ -425,15 +425,17 @@ class PositionDeal(KucoinPositionDeal):
         - Save changes to the database
         - Return the updated bot model
         """
+        source_bot = self.active_bot
+
         # Strategy toggle
         target_strategy = (
             Strategy.margin_short
-            if self.active_bot.strategy == Strategy.long
+            if source_bot.strategy == Strategy.long
             else Strategy.long
         )
 
         # Pre-close current bot
-        previous_bot = deepcopy(self.active_bot)
+        previous_bot = deepcopy(source_bot)
         previous_bot.add_log(
             f"Skipped stop loss and reversing to {target_strategy.value} in a new bot."
         )
@@ -452,10 +454,11 @@ class PositionDeal(KucoinPositionDeal):
             msg = "No open futures position found to reverse, skipping reversal."
             previous_bot.add_log(msg)
             self.controller.save(previous_bot)
-            self.active_bot.add_log(msg)
-            self.active_bot.status = Status.error
-            self.controller.save(self.active_bot)
-            return self.active_bot
+            source_bot.add_log(msg)
+            source_bot.status = Status.error
+            self.controller.save(source_bot)
+            self.active_bot = source_bot
+            return source_bot
 
         # One KuCoin futures order can flip the net position.
         # To preserve size, submit the current position size twice:
@@ -469,41 +472,40 @@ class PositionDeal(KucoinPositionDeal):
         if not can_reverse:
             previous_bot.add_log(msg)
             self.controller.save(previous_bot)
-            self.active_bot.add_log(msg)
-            self.active_bot.status = Status.error
-            self.controller.save(self.active_bot)
-            return self.active_bot
+            source_bot.add_log(msg)
+            source_bot.status = Status.error
+            self.controller.save(source_bot)
+            self.active_bot = source_bot
+            return source_bot
 
         # Construct new bot
         new_bot = BotBase(
-            pair=self.active_bot.pair,
-            fiat=self.active_bot.fiat,
-            fiat_order_size=self.active_bot.fiat_order_size,
-            quote_asset=self.active_bot.quote_asset,
-            candlestick_interval=self.active_bot.candlestick_interval,
-            market_type=self.active_bot.market_type,
-            close_condition=self.active_bot.close_condition,
-            cooldown=self.active_bot.cooldown,
-            dynamic_trailling=self.active_bot.dynamic_trailling,
+            pair=source_bot.pair,
+            fiat=source_bot.fiat,
+            fiat_order_size=source_bot.fiat_order_size,
+            quote_asset=source_bot.quote_asset,
+            candlestick_interval=source_bot.candlestick_interval,
+            market_type=source_bot.market_type,
+            close_condition=source_bot.close_condition,
+            cooldown=source_bot.cooldown,
+            dynamic_trailling=source_bot.dynamic_trailling,
             margin_short_reversal=False,
-            name=self.active_bot.name,
+            name=source_bot.name,
             strategy=target_strategy,
-            mode=self.active_bot.mode,
+            mode=source_bot.mode,
             status=Status.inactive,
-            stop_loss=self.active_bot.stop_loss,
-            take_profit=self.active_bot.take_profit,
-            trailling=self.active_bot.trailling,
-            trailling_deviation=self.active_bot.trailling_deviation,
-            trailling_profit=self.active_bot.trailling_profit,
+            stop_loss=source_bot.stop_loss,
+            take_profit=source_bot.take_profit,
+            trailling=source_bot.trailling,
+            trailling_deviation=source_bot.trailling_deviation,
+            trailling_profit=source_bot.trailling_profit,
             logs=[],
         )
-        bot = self.controller.create(new_bot)
-
-        # Activate with separate instance to make sure we have latest data
-        self.active_bot = BotModel(**bot.model_dump())
+        created_bot = self.controller.create(new_bot)
+        reversed_bot = BotModel(**created_bot.model_dump())
 
         try:
-            if self.active_bot.strategy == Strategy.margin_short:
+            if reversed_bot.strategy == Strategy.margin_short:
                 order = self.kucoin_futures_api.sell(
                     symbol=self.kucoin_symbol,
                     qty=flip_contracts,
@@ -519,12 +521,13 @@ class PositionDeal(KucoinPositionDeal):
             sleep(10)
         except RestError as kucoin_error:
             msg = kucoin_error.response.message
-            self.active_bot.add_log(
+            reversed_bot.add_log(
                 f"Failed to open {target_strategy.value} position during reversal: {msg}"
             )
-            self.active_bot.status = Status.error
-            self.controller.save(self.active_bot)
-            return self.active_bot
+            reversed_bot.status = Status.error
+            self.controller.save(reversed_bot)
+            self.active_bot = reversed_bot
+            return reversed_bot
 
         order_model = OrderModel(**order.model_dump())
 
@@ -542,11 +545,12 @@ class PositionDeal(KucoinPositionDeal):
         self.controller.save(previous_bot)
 
         # Continue new bot logic
-        self.active_bot.orders.append(order_model)
+        reversed_bot.orders.append(order_model)
 
         # Allow system to process, sometimes position can be empty immediately
         # after order execution
         position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
+        self.active_bot = reversed_bot
         if not position or float(position.current_qty) == 0:
             self.active_bot = self.backfill_position_from_fills()
             return self.active_bot
@@ -554,24 +558,23 @@ class PositionDeal(KucoinPositionDeal):
             abs(float(position.current_qty)), self.qty_precision
         )
 
-        self.active_bot.deal.base_order_size = new_position_contracts
-        self.active_bot.deal.opening_price = order_model.price
-        self.active_bot.deal.opening_qty = new_position_contracts
-        self.active_bot.deal.opening_timestamp = order_model.timestamp
-        self.active_bot.deal.current_price = position.mark_price if position else 0
-        self.active_bot.status = (
+        reversed_bot.deal.base_order_size = new_position_contracts
+        reversed_bot.deal.opening_price = order_model.price
+        reversed_bot.deal.opening_qty = new_position_contracts
+        reversed_bot.deal.opening_timestamp = order_model.timestamp
+        reversed_bot.deal.current_price = position.mark_price if position else 0
+        reversed_bot.status = (
             Status.active if new_position_contracts > 0 else Status.error
         )
-        # self.active_bot.margin_short_reversal = False
-        self.active_bot.add_log(
-            f"Futures bot opened @ {self.active_bot.deal.current_price} with {new_position_contracts} contracts"
+        reversed_bot.add_log(
+            f"Futures bot opened @ {reversed_bot.deal.current_price} with {new_position_contracts} contracts"
         )
-        # testing, make sure self.active_bot.orders.append(order) does save in the DB
-        self.controller.save(self.active_bot)
-        if self.active_bot.status == Status.active:
+        self.controller.save(reversed_bot)
+        self.active_bot = reversed_bot
+        if reversed_bot.status == Status.active:
             self.update_parameters()
         # testing. make sure trailing_stop loss has been reset after reversal
-        return self.active_bot
+        return reversed_bot
 
     def exit(self, close_price: float, _: float | None = None) -> BotModel:
         """
