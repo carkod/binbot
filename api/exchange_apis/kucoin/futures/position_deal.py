@@ -811,15 +811,9 @@ class PositionDeal(KucoinPositionDeal):
         self.btc_klines = btc_klines
 
         self.active_bot = cls.order_updates()
-        if hasattr(cls, "sync_bot_reference"):
-            cls.sync_bot_reference(self.active_bot)
-        else:
-            cls.active_bot = self.active_bot
+        cls.active_bot = self.active_bot
         self.active_bot = cls.position_updates()
-        if hasattr(cls, "sync_bot_reference"):
-            cls.sync_bot_reference(self.active_bot)
-        else:
-            cls.active_bot = self.active_bot
+        cls.active_bot = self.active_bot
 
         open_price = float(self.klines[-1][1])
         if not close_price or close_price == 0:

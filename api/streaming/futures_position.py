@@ -33,18 +33,13 @@ class FuturesPosition(PositionMarket):
             db_table=db_table,
         )
         self.base_streaming = base_streaming
-        self.bot = bot
         self.price_precision = price_precision
         self.qty_precision = qty_precision
         self.kucoin_benchmark_symbol = "ETHBTCUSDTM"
         self.api = self.base_streaming.kucoin_futures_api
 
-    def sync_bot_reference(self, bot: BotModel) -> None:
-        self.bot = bot
-        self.active_bot = bot
-
     def confirm_close_from_position(self, filled_size: float) -> bool:
-        kucoin_symbol = convert_to_kucoin_symbol(self.bot)
+        kucoin_symbol = convert_to_kucoin_symbol(self.active_bot)
         position = self.base_streaming.kucoin_futures_api.get_futures_position(
             kucoin_symbol
         )
@@ -55,9 +50,8 @@ class FuturesPosition(PositionMarket):
                 return False
 
         elif filled_size > 0:
-            backfilled_bot = self.backfill_position_from_fills()
-            self.sync_bot_reference(backfilled_bot)
-            self.base_streaming.bot_controller.save(data=self.bot)
+            self.active_bot = self.backfill_position_from_fills()
+            self.base_streaming.bot_controller.save(data=self.active_bot)
             return True
 
         return True
@@ -67,12 +61,12 @@ class FuturesPosition(PositionMarket):
         Take order id from list of bot.orders
         and fetch order details from exchange
         """
-        for order in list(self.bot.orders):
+        for order in list(self.active_bot.orders):
             if order.status == OrderStatus.FILLED:
                 continue
 
             if self.base_streaming.exchange == ExchangeId.KUCOIN:
-                kucoin_symbol = convert_to_kucoin_symbol(self.bot)
+                kucoin_symbol = convert_to_kucoin_symbol(self.active_bot)
 
                 # Check if order is expired based on 15m interval
                 # this should be a good measure, because candles have closed
@@ -119,17 +113,19 @@ class FuturesPosition(PositionMarket):
                     order.price = round_numbers(price_used, self.price_precision)
 
                     self.base_streaming.bot_controller.update_order(order)
-                    self.bot.add_log(f"Order {order.order_id} updated from system")
+                    self.active_bot.add_log(
+                        f"Order {order.order_id} updated from system"
+                    )
 
                     if (
                         order.deal_type == DealType.base_order
-                        and self.bot.deal.opening_price == 0
+                        and self.active_bot.deal.opening_price == 0
                         and float(system_order.price) > 0
                     ):
-                        self.bot.deal.opening_price = order.price
-                        self.bot.deal.opening_qty = order.qty
-                        self.bot.deal.opening_timestamp = order.timestamp
-                        self.bot.status = Status.active
+                        self.active_bot.deal.opening_price = order.price
+                        self.active_bot.deal.opening_qty = order.qty
+                        self.active_bot.deal.opening_timestamp = order.timestamp
+                        self.active_bot.status = Status.active
 
                     if (
                         (
@@ -138,38 +134,44 @@ class FuturesPosition(PositionMarket):
                             or order.deal_type == DealType.panic_close
                             or order.deal_type == DealType.trailling_profit
                         )
-                        and self.bot.deal.closing_price == 0
+                        and self.active_bot.deal.closing_price == 0
                         and filled_size > 0
                         and self.confirm_close_from_position(filled_size)
                     ):
-                        self.bot.deal.closing_price = order.price
-                        self.bot.deal.closing_qty = order.qty
-                        self.bot.deal.closing_timestamp = order.timestamp
-                        self.bot.status = Status.completed
+                        self.active_bot.deal.closing_price = order.price
+                        self.active_bot.deal.closing_qty = order.qty
+                        self.active_bot.deal.closing_timestamp = order.timestamp
+                        self.active_bot.status = Status.completed
 
-                    self.base_streaming.bot_controller.save(data=self.bot)
+                    self.base_streaming.bot_controller.save(data=self.active_bot)
 
                 except RestError as e:
                     if float(e.response.code) == 100001:
                         try:
                             self.cancel_current_sl()
                             if order.deal_type == DealType.base_order:
-                                self.bot.status = Status.inactive
-                                self.bot.add_log(
+                                self.active_bot.status = Status.inactive
+                                self.active_bot.add_log(
                                     f"Order {order.order_id} expired and cancelled. Bot set to inactive.",
                                 )
-                                self.base_streaming.bot_controller.save(data=self.bot)
+                                self.base_streaming.bot_controller.save(
+                                    data=self.active_bot
+                                )
                             else:
-                                self.bot.add_log(
+                                self.active_bot.add_log(
                                     f"Order {order.order_id} expired and cancelled.",
                                 )
-                                self.base_streaming.bot_controller.save(data=self.bot)
+                                self.base_streaming.bot_controller.save(
+                                    data=self.active_bot
+                                )
                         except Exception as cancel_e:
-                            self.bot.add_log(
+                            self.active_bot.add_log(
                                 f"Failed to cancel all futures orders for {kucoin_symbol}: {str(cancel_e)}"
                             )
-                            self.base_streaming.bot_controller.save(data=self.bot)
+                            self.base_streaming.bot_controller.save(
+                                data=self.active_bot
+                            )
                     else:
                         raise e
 
-        return self.bot
+        return self.active_bot
