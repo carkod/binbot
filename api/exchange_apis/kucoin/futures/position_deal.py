@@ -573,7 +573,7 @@ class PositionDeal(KucoinPositionDeal):
         self.active_bot = reversed_bot
         if reversed_bot.status == Status.active:
             self.update_parameters()
-        # testing. make sure trailing_stop loss has been reset after reversal
+
         return reversed_bot
 
     def exit(self, close_price: float, _: float | None = None) -> BotModel:

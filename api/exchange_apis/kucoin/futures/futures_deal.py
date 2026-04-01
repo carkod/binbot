@@ -343,10 +343,18 @@ class KucoinPositionDeal(KucoinBaseBalance):
         if self.active_bot.stop_loss <= 0:
             return
 
-        stop_price = round_numbers(
-            self.active_bot.deal.opening_price * (1 - self.active_bot.stop_loss / 100),
-            self.price_precision,
-        )
+        direction = self._direction_multiplier()
+        stop_price = float(self.active_bot.deal.stop_loss_price)
+        if stop_price <= 0:
+            stop_price = round_numbers(
+                self.active_bot.deal.opening_price
+                - (
+                    self.active_bot.deal.opening_price
+                    * (self.active_bot.stop_loss / 100)
+                    * direction
+                ),
+                self.price_precision,
+            )
 
         if self.active_bot.strategy == Strategy.margin_short:
             side = AddOrderReq.SideEnum.BUY
