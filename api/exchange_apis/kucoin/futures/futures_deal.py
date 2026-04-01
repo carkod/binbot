@@ -97,6 +97,30 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         return int(contracts)
 
+    def contracts_to_fiat_order_size(self, contracts: float, price: float) -> float:
+        """
+        Invert calculate_contracts() so fiat_order_size reflects the actual
+        risk budget used to open an existing futures position.
+        """
+        if contracts <= 0 or price <= 0:
+            return 0.0
+
+        stop_loss_percent = float(self.active_bot.stop_loss or 0)
+        if stop_loss_percent <= 0:
+            return 0.0
+
+        symbol_data = getattr(self, "kucoin_symbol_data", None)
+        multiplier = float(
+            getattr(symbol_data, "multiplier", 0)
+            or getattr(self.kucoin_futures_api, "DEFAULT_MULTIPLIER", 1)
+        )
+        leverage = float(getattr(self.kucoin_futures_api, "DEFAULT_LEVERAGE", 100))
+
+        return round_numbers(
+            contracts * price * multiplier * stop_loss_percent / leverage,
+            8,
+        )
+
     def compute_available_balance(self) -> float:
         """
         Compute the available balance for placing a futures BUY order.
