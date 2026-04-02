@@ -6,7 +6,6 @@ from databases.crud.autotrade_crud import AutotradeCrud
 from databases.crud.asset_index_crud import AssetIndexCrud
 from databases.tables.symbol_table import SymbolTable
 from databases.utils import get_db_session, independent_session
-from symbols.models import SymbolRequestPayload
 from pybinbot import QuoteAssets, ExchangeId, BinbotErrors
 from kucoin_universal_sdk.generate.spot.market.model_get_all_symbols_resp import (
     GetAllSymbolsResp,
@@ -156,6 +155,9 @@ class SymbolDataEtl(SymbolsCrud):
     def ingest_spot_data(self, all_raw_symbols: GetAllSymbolsResp):
         for item in all_raw_symbols.data:
             symbol = item.symbol.replace("-", "")
+            price_precision = self._convert_to_int(item.price_increment)
+            qty_precision = self._convert_to_int(item.base_increment)
+            min_notional = float(item.min_funds or item.quote_min_size or 0)
 
             if not symbol.endswith(self.fiat):
                 continue
@@ -167,23 +169,30 @@ class SymbolDataEtl(SymbolsCrud):
 
             if item.st:
                 # assets to be delisted
-                payload = SymbolRequestPayload(
-                    symbol=symbol,
-                    active=False,
-                    blacklist_reason="At risk to be delisted soon",
-                    exchange_id=ExchangeId.KUCOIN,
-                    min_notional=float(item.base_min_size),
-                    price_precision=self._convert_to_int(item.price_increment),
-                    qty_precision=self._convert_to_int(item.base_increment),
-                    is_margin_trading_allowed=item.is_margin_enabled,
-                    quote_asset=item.quote_currency,
-                    base_asset=item.base_currency,
-                )
                 try:
-                    self.edit_symbol_item(payload)
+                    with get_db_session() as s:
+                        result = s.exec(
+                            select(SymbolTable).where(SymbolTable.id == symbol)
+                        ).first()
+                        if result:
+                            result.active = False
+                            result.blacklist_reason = "At risk to be delisted soon"
+                            s.add(result)
+                            s.flush()
+                            s.refresh(result)
+                            self._add_exchange_link_if_not_exists(
+                                s,
+                                symbol=symbol,
+                                exchange_id=ExchangeId.KUCOIN,
+                                min_notional=min_notional,
+                                price_precision=price_precision,
+                                qty_precision=qty_precision,
+                                quote_asset=item.quote_currency,
+                                base_asset=item.base_currency,
+                                is_margin_trading_allowed=item.is_margin_enabled,
+                            )
                     continue
                 except Exception as e:
-                    self.session.rollback()
                     logging.error(f"Error updating delisted symbol {symbol}: {e}")
                     continue
 
@@ -192,10 +201,6 @@ class SymbolDataEtl(SymbolsCrud):
                 active = False
 
             if item.quote_currency in list(QuoteAssets):
-                price_precision = self._convert_to_int(item.price_increment)
-                qty_precision = self._convert_to_int(item.base_increment)
-                min_notional = float(item.base_min_size)
-
                 with get_db_session() as s:
                     result = s.exec(
                         select(SymbolTable).where(SymbolTable.id == symbol)
