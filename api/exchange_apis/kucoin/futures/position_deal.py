@@ -73,6 +73,7 @@ class PositionDeal(KucoinPositionDeal):
             self.kucoin_symbol_data.multiplier
             or self.kucoin_futures_api.DEFAULT_MULTIPLIER
         )
+        min_contract_step = float(self.kucoin_symbol_data.lot_size or 1)
         taker_fee_rate = float(self.kucoin_symbol_data.taker_fee_rate or 0)
         available_balance = float(self.compute_available_balance())
         leverage = float(self.kucoin_futures_api.DEFAULT_LEVERAGE)
@@ -86,13 +87,15 @@ class PositionDeal(KucoinPositionDeal):
         if estimated_available_buffer <= 0 or per_contract_buffer <= 0:
             return float(current_contracts)
 
-        additional_contracts = estimated_available_buffer / per_contract_buffer
-        available_contracts = round_numbers(
-            float(current_contracts) + max(0.0, additional_contracts),
+        minimum_flip_contracts = round_numbers(
+            float(current_contracts) + min_contract_step,
             self.qty_precision,
         )
 
-        return max(float(current_contracts), float(available_contracts))
+        if estimated_available_buffer < (min_contract_step * per_contract_buffer):
+            return float(current_contracts)
+
+        return max(float(current_contracts), float(minimum_flip_contracts))
 
     def estimate_reversal_possible_for_new_bot(self) -> bool:
         """
@@ -566,7 +569,7 @@ class PositionDeal(KucoinPositionDeal):
             Status.active if new_position_contracts > 0 else Status.error
         )
         reversed_bot.add_log(
-            f"Futures bot opened @ {reversed_bot.deal.current_price} with {new_position_contracts} contracts"
+            f"Futures bot updated @ {reversed_bot.deal.current_price} with {remaining_contracts} additional contracts"
         )
         self.controller.save(reversed_bot)
         self.active_bot = reversed_bot
