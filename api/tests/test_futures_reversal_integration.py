@@ -26,8 +26,10 @@ class DummyFuturesApi:
     def __init__(self):
         self._positions = [
             type("pos", (object,), {"current_qty": 68, "mark_price": 1.27})(),
+            type("pos", (object,), {"current_qty": -12, "mark_price": 1.267})(),
             type("pos", (object,), {"current_qty": -68, "mark_price": 1.267})(),
         ]
+        self.sell_calls: list[float] = []
 
     def get_futures_position(self, symbol):
         if self._positions:
@@ -35,8 +37,9 @@ class DummyFuturesApi:
         return None
 
     def sell(self, symbol, qty, reduce_only):
+        self.sell_calls.append(qty)
         return OrderModel(
-            order_id="flip-order-1",
+            order_id=f"flip-order-{len(self.sell_calls)}",
             order_type="market",
             pair=symbol,
             timestamp=1774770587226,
@@ -76,7 +79,7 @@ def test_reverse_position_closes_previous_and_opens_new_bot(monkeypatch):
     position_deal.kucoin_symbol = "BTCUSDTM"
     position_deal.price_precision = 4
     position_deal.qty_precision = 0
-    position_deal._is_reversal_possible = lambda mark, current, flip: (True, "")
+    position_deal._is_reversal_possible = lambda mark, current: 80
     position_deal.backfill_position_from_fills = lambda: position_deal.active_bot
     position_deal.update_parameters = lambda: position_deal.active_bot
 
@@ -90,8 +93,11 @@ def test_reverse_position_closes_previous_and_opens_new_bot(monkeypatch):
     assert reversed_bot.status == Status.active
     assert reversed_bot.deal.base_order_size == 68
     assert reversed_bot.deal.opening_qty == 68
-    assert len(reversed_bot.orders) == 1
-    assert reversed_bot.orders[0].qty == 136
+    assert reversed_bot.fiat_order_size == 2.58467999
+    assert len(reversed_bot.orders) == 2
+    assert reversed_bot.orders[0].qty == 80
+    assert reversed_bot.orders[1].qty == 56
+    assert futures_api.sell_calls == [80, 56]
 
     completed_previous = [
         saved

@@ -44,19 +44,26 @@ export const BotsPage: FC<{}> = () => {
   const {
     refetch: refetchBots,
     data: botsData,
-    error: botsError,
     isFetching: isFetchingBots,
-  } = useGetBotsQuery({
-    status: filterStatus,
-    startDate,
-    endDate,
-  });
+  } = useGetBotsQuery(
+    {
+      status: filterStatus,
+      startDate,
+      endDate,
+    },
+    {
+      refetchOnFocus: true,
+    },
+  );
 
   const {
     refetch: refetchSymbol,
     data: symbolData,
     isFetching: isFetchingSymbol,
-  } = useGetOneBySymbolQuery(symbolState, { skip: !symbolState });
+  } = useGetOneBySymbolQuery(symbolState, {
+    skip: !symbolState,
+    refetchOnFocus: true,
+  });
 
   // Unified data and refetch
   const data = symbolState
