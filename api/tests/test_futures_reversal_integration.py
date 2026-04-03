@@ -54,6 +54,24 @@ class DummyFuturesApi:
     def buy(self, symbol, qty, reduce_only):
         return self.sell(symbol=symbol, qty=qty, reduce_only=reduce_only)
 
+    def retrieve_order(self, order_id):
+        return type(
+            "order",
+            (object,),
+            {
+                "filled_size": 56,
+                "avg_deal_price": 1.267,
+                "created_at": 1774770587227,
+                "type": "market",
+                "time_in_force": "GTC",
+                "side": "sell",
+                "symbol": "BTCUSDTM",
+            },
+        )()
+
+    def get_fills(self, symbol, start_at, end_at):
+        return type("fills", (object,), {"items": []})()
+
 
 def test_reverse_position_closes_previous_and_opens_new_bot(monkeypatch):
     bot = make_mock_bot_active_model()
@@ -94,9 +112,9 @@ def test_reverse_position_closes_previous_and_opens_new_bot(monkeypatch):
     assert reversed_bot.deal.base_order_size == 68
     assert reversed_bot.deal.opening_qty == 68
     assert reversed_bot.fiat_order_size == 2.58467999
-    assert len(reversed_bot.orders) == 2
-    assert reversed_bot.orders[0].qty == 80
-    assert reversed_bot.orders[1].qty == 56
+    assert len(reversed_bot.orders) == 1
+    assert reversed_bot.orders[0].qty == 56
+    assert reversed_bot.orders[0].deal_type == DealType.base_order
     assert futures_api.sell_calls == [80, 56]
 
     completed_previous = [

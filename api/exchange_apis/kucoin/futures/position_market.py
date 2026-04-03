@@ -39,6 +39,7 @@ class PositionMarket(KucoinPositionDeal):
         self.db_table = db_table
         self.symbol_data = base_streaming.symbols_crud.get_symbol(symbol)
         self.qty_precision = self.symbol_data.qty_precision
+        self.controller = base_streaming.bot_controller
 
     def build_bb_spreads(self) -> HABollinguerSpread:
         """
@@ -161,9 +162,10 @@ class PositionMarket(KucoinPositionDeal):
                     self.active_bot.deal.total_commissions = float(
                         position.current_comm
                     )
-                self.base_streaming.bot_controller.save(data=self.active_bot)
+                self.controller.save(data=self.active_bot)
             else:
-                self.backfill_position_from_fills()
+                self.active_bot = self.backfill_position_from_fills()
+                self.controller.save(data=self.active_bot)
 
         return self.active_bot
 
@@ -273,4 +275,4 @@ class PositionMarket(KucoinPositionDeal):
             or self.active_bot.stop_loss != original_bot.stop_loss
         ):
             self.active_bot = self.update_parameters()
-            self.controller.save(self.active_bot)
+            self.controller.save(data=self.active_bot)

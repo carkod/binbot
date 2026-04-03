@@ -37,6 +37,7 @@ class FuturesPosition(PositionMarket):
         self.qty_precision = qty_precision
         self.kucoin_benchmark_symbol = "ETHBTCUSDTM"
         self.api = self.base_streaming.kucoin_futures_api
+        self.active_bot: BotModel = bot
 
     def confirm_close_from_position(self, filled_size: float) -> bool:
         kucoin_symbol = convert_to_kucoin_symbol(self.active_bot)

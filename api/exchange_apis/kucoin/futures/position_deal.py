@@ -338,7 +338,7 @@ class PositionDeal(KucoinPositionDeal):
             if not position or float(position.current_qty) == 0:
                 # If position doesn't exist, there's no point in trailing anymore
                 # so we backfill orders and finish
-                self.backfill_position_from_fills()
+                self.active_bot = self.backfill_position_from_fills()
                 return self.active_bot
 
             qty = round_numbers(
@@ -543,14 +543,90 @@ class PositionDeal(KucoinPositionDeal):
                         qty=remaining_contracts,
                         reduce_only=False,
                     )
-                reversed_bot.orders.append(OrderModel(**second_order.model_dump()))
+
                 sleep(10)
+                second_order_details = self.kucoin_futures_api.retrieve_order(
+                    str(second_order.order_id)
+                )
                 second_position = self.kucoin_futures_api.get_futures_position(
                     self.kucoin_symbol
                 )
                 if second_position and float(second_position.current_qty) != 0:
                     position = second_position
                     new_position_contracts = abs(float(second_position.current_qty))
+                filled_qty = float(
+                    getattr(second_order_details, "filled_size", 0)
+                    or second_order.qty
+                    or 0
+                )
+                filled_price = float(
+                    getattr(second_order_details, "avg_deal_price", 0)
+                    or second_order.price
+                    or 0
+                )
+                timestamp = int(
+                    getattr(second_order_details, "created_at", 0)
+                    or second_order.timestamp
+                    or 0
+                )
+
+                if filled_qty <= 0 and position and float(position.current_qty) != 0:
+                    filled_qty = abs(float(position.current_qty))
+                if filled_price <= 0 and position:
+                    filled_price = float(position.mark_price or 0)
+
+                if filled_qty <= 0 or filled_price <= 0:
+                    fills = self.kucoin_futures_api.get_fills(
+                        symbol=self.kucoin_symbol,
+                        start_at=int(second_order.timestamp),
+                        end_at=int(time() * 1000),
+                    )
+                    matching_fills = [
+                        fill
+                        for fill in fills.items
+                        if str(fill.order_id) == str(second_order.order_id)
+                    ]
+                    if matching_fills:
+                        total_qty = sum(
+                            abs(float(fill.size)) for fill in matching_fills
+                        )
+                        total_notional = sum(
+                            abs(float(fill.size)) * float(fill.price)
+                            for fill in matching_fills
+                        )
+                        if filled_qty <= 0:
+                            filled_qty = total_qty
+                        if filled_price <= 0 and total_qty > 0:
+                            filled_price = total_notional / total_qty
+                        if timestamp <= 0:
+                            timestamp = int(matching_fills[0].created_at)
+
+                second_order_model = OrderModel(
+                    order_type=str(
+                        getattr(second_order_details, "type", None)
+                        or second_order.order_type
+                    ),
+                    time_in_force=str(
+                        getattr(second_order_details, "time_in_force", None)
+                        or second_order.time_in_force
+                    ),
+                    timestamp=timestamp or int(second_order.timestamp),
+                    order_id=str(second_order.order_id),
+                    order_side=str(
+                        getattr(second_order_details, "side", None)
+                        or second_order.order_side
+                    ),
+                    pair=str(
+                        getattr(second_order_details, "symbol", None)
+                        or second_order.pair
+                    ),
+                    qty=float(filled_qty or second_order.qty or 0),
+                    status=second_order.status,
+                    price=float(filled_price or second_order.price or 0),
+                    deal_type=DealType.base_order,
+                )
+                order_model = second_order_model
+                reversed_bot.orders = [second_order_model]
             except RestError:
                 pass
 
