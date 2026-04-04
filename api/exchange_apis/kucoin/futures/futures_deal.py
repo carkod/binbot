@@ -398,6 +398,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             size=self.active_bot.deal.opening_qty,
         )
 
+        order_response.deal_type = DealType.stop_loss
         order_model = OrderModel(**order_response.model_dump())
         self.active_bot.orders.append(order_model)
         self.active_bot.deal.stop_loss_price = stop_price
@@ -520,6 +521,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 )
 
             order_model = OrderModel(**order_response.model_dump())
+            order_model.deal_type = DealType.panic_close
             self.active_bot.orders.append(order_model)
             self.active_bot.deal.closing_price = order_response.price
             self.active_bot.deal.closing_qty = abs(int(position.current_qty))
