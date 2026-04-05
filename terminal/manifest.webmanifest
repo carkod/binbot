@@ -8,13 +8,13 @@
   "theme_color": "#111827",
   "icons": [
     {
-      "src": "/binbot-icon-512.png",
+      "src": "/charting_library/binbot-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/binbot-icon.svg",
+      "src": "/charting_library/binbot-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
