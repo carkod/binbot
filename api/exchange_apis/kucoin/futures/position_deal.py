@@ -484,14 +484,13 @@ class PositionDeal(KucoinPositionDeal):
             close_condition=source_bot.close_condition,
             cooldown=source_bot.cooldown,
             dynamic_trailling=source_bot.dynamic_trailling,
+            # Temporarily disable to avoid closing and opening constantly when reversal still has bugs
             margin_short_reversal=False,
             name=source_bot.name,
             strategy=target_strategy,
             mode=source_bot.mode,
             status=Status.inactive,
-            # stop_loss=source_bot.stop_loss,
-            # temporary set to test if it closes immediately
-            stop_loss=3,
+            stop_loss=source_bot.stop_loss,
             take_profit=source_bot.take_profit,
             trailling=source_bot.trailling,
             trailling_deviation=source_bot.trailling_deviation,
@@ -530,14 +529,10 @@ class PositionDeal(KucoinPositionDeal):
             order_id=str(order.order_id),
             deal_type=DealType.base_order,
             pair=self.kucoin_symbol,
-            order_side=(
-                OrderSide.sell
-                if reversed_bot.strategy == Strategy.margin_short
-                else OrderSide.buy
-            ),
+            order_side=order.order_side,
             order_type=order.order_type,
-            price=float(order.price or 0),
-            qty=float(order.qty or 0),
+            price=order.price,
+            qty=order.qty,
             time_in_force=order.time_in_force,
             status=order.status,
         )

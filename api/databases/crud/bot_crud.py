@@ -1,4 +1,4 @@
-from typing import Any, List, Sequence, Union, Generator, cast
+from typing import Any, List, Sequence, Generator, cast
 from uuid import UUID
 from contextlib import contextmanager, AbstractContextManager
 
@@ -60,7 +60,39 @@ class BotTableCrud:
 
         return get_session()
 
-    def update_table(self, bot: Union[BotModel, BotTable]) -> BotTable:
+    @staticmethod
+    def _order_field_names() -> list[str]:
+        return [
+            field_name
+            for field_name in ExchangeOrderTable.model_fields.keys()
+            if field_name not in {"id", "bot", "bot_id"}
+        ]
+
+    def _sync_order_fields(
+        self, target: ExchangeOrderTable, source: OrderModel | ExchangeOrderTable
+    ) -> None:
+        for field_name in self._order_field_names():
+            if hasattr(source, field_name):
+                setattr(target, field_name, getattr(source, field_name))
+
+    def _build_order_row(
+        self, order: OrderModel | ExchangeOrderTable, bot_id: UUID | None = None
+    ) -> ExchangeOrderTable:
+        return ExchangeOrderTable(
+            order_type=order.order_type,
+            time_in_force=order.time_in_force,
+            order_id=str(order.order_id),
+            order_side=order.order_side,
+            pair=order.pair,
+            qty=order.qty,
+            status=order.status,
+            price=order.price,
+            deal_type=order.deal_type,
+            timestamp=order.timestamp,
+            bot_id=bot_id,
+        )
+
+    def update_table(self, bot: BotModel | BotTable) -> BotTable:
         """
         Convert a BotModel to BotTable (or return BotTable as-is),
         fully populating deal and orders in a detached manner.
@@ -87,13 +119,12 @@ class BotTableCrud:
         # Step 3: Copy Orders
         bot_table.orders = []
         for order in getattr(bot, "orders", []):
-            order_row = ExchangeOrderTable(**order.model_dump())
-            bot_table.orders.append(order_row)
+            bot_table.orders.append(self._build_order_row(order))
 
         return bot_table
 
     def update_logs(
-        self, log_message: str | list[str], bot: Union[BotModel, BotTable]
+        self, log_message: str | list[str], bot: BotModel | BotTable
     ) -> BotTable:
         if not bot:
             raise BinbotErrors("Bot not found")
@@ -217,7 +248,7 @@ class BotTableCrud:
 
         return new_bot
 
-    def save(self, data: Union[BotModel, BotTable]) -> BotTable:
+    def save(self, data: BotModel | BotTable) -> BotTable:
         with self._get_session() as s:
             # Fetch the existing bot from DB (already attached to session)
             bot_row = s.get(BotTable, UUID(str(data.id)))
@@ -255,16 +286,9 @@ class BotTableCrud:
                 ).first()
 
                 if existing:
-                    for field_name in ExchangeOrderTable.model_fields.keys():
-                        if field_name in {"id", "bot", "bot_id"}:
-                            continue
-                        if hasattr(order_data, field_name):
-                            setattr(
-                                existing, field_name, getattr(order_data, field_name)
-                            )
+                    self._sync_order_fields(existing, order_data)
                 else:
-                    new_order = ExchangeOrderTable(**order_data.model_dump())
-                    new_order.bot_id = bot_row.id
+                    new_order = self._build_order_row(order_data, bot_id=bot_row.id)
                     s.add(new_order)
 
             s.add(bot_row)
@@ -312,7 +336,7 @@ class BotTableCrud:
             if not existing:
                 raise BinbotErrors("Order not found")
 
-            existing.sqlmodel_update(order.model_dump())
+            self._sync_order_fields(existing, order)
 
             s.add(existing)
             s.commit()
