@@ -19,6 +19,7 @@ from databases.tables.bot_table import BotTable, PaperTradingTable
 from exchange_apis.kucoin.futures.position_deal import PositionDeal
 from kucoin_universal_sdk.model.common import RestError
 from user.services.auth import get_current_user
+from uuid import UUID
 
 bot_blueprint = APIRouter()
 
@@ -110,7 +111,7 @@ def get_public_bots(
             # Clear confidential data
             bot_model.logs = []
             bot_model.orders = []
-            bot_model.id = "redacted"
+            bot_model.id = UUID(int=0)
             data.append(bot_model)
 
         return BotListResponse(message="Successfully found bots!", data=data)
@@ -203,7 +204,7 @@ def activate_bot(
             deal_gateway.save(bot_model)
     try:
         activated_bot = deal_gateway.open_deal()
-        bot_model = BotModel.dump_from_table(activated_bot)
+        bot_model = activated_bot
         message = "Successfully activated bot."
         if bot_row.status == Status.active:
             message = "Successfully updated bot."
@@ -231,7 +232,7 @@ def deactivate_bot(
     deal_gateway = DealGateway(bot_model, db_table=BotTable)
     try:
         deactivated_bot = deal_gateway.deactivation()
-        bot_model = BotModel.dump_from_table(deactivated_bot)
+        bot_model = deactivated_bot
         return BotResponse(
             message="Successfully triggered panic sell! Bot deactivated.",
             data=bot_model,

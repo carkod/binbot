@@ -83,24 +83,21 @@ class BotModel(BotBase):
         return v
 
     @classmethod
-    def dump_from_table(cls, bot):
+    def dump_from_table(cls, bot: BotTable | PaperTradingTable) -> "BotModel":
         """
         Same as model_dump() but from
         BotTable
         """
-        if isinstance(bot, BotTable) or isinstance(bot, PaperTradingTable):
-            model = BotModel.model_construct(**bot.model_dump())
-            if not bot.deal.base_order_size:
-                bot.deal.base_order_size = 0
-            deal_model = DealModel.model_validate(bot.deal.model_dump())
-            order_models = [
-                OrderModel.model_construct(**order.model_dump()) for order in bot.orders
-            ]
-            model.deal = deal_model
-            model.orders = order_models
-            return model
-        else:
-            return bot
+        model = BotModel.model_construct(**bot.model_dump())
+        if not bot.deal.base_order_size:
+            bot.deal.base_order_size = 0
+        deal_model = DealModel.model_validate(bot.deal.model_dump())
+        order_models = [
+            OrderModel.model_construct(**order.model_dump()) for order in bot.orders
+        ]
+        model.deal = deal_model
+        model.orders = order_models
+        return model
 
     @classmethod
     def model_to_table(cls, bot) -> BotTable:
