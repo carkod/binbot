@@ -84,6 +84,9 @@ class FuturesPosition(PositionMarket):
                         )
                     )
                     if is_expired:
+                        self.bot_crud.delete_order(
+                            order_id=str(order.order_id), bot_id=str(self.active_bot.id)
+                        )
                         raise RestError(
                             msg=f"Order {order.order_id} is expired based on time threshold. Marking as expired.",
                             response=type(

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "start": "vite",
-    "build": "vite build && cp -r ./node_modules/binbot-charts/public/charting_library ./dist/charting_library",
+    "build": "vite build && cp -r ./node_modules/binbot-charts/public/charting_library ./dist/charting_library && cp ./charting_library/manifest.webmanifest ./dist/charting_library/manifest.webmanifest && cp ./charting_library/favicon.ico ./dist/charting_library/favicon.ico && cp ./charting_library/binbot-icon.svg ./dist/charting_library/binbot-icon.svg && cp ./charting_library/binbot-icon-512.png ./dist/charting_library/binbot-icon-512.png && cp ./charting_library/apple-touch-icon.png ./dist/charting_library/apple-touch-icon.png",
     "preview": "vite preview",
     "test": "vitest run",
     "format": "prettier --write . && eslint --fix .",

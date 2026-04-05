@@ -1,0 +1,23 @@
+{
+  "name": "Binbot Terminal",
+  "short_name": "Binbot",
+  "description": "Trading terminal for managing bots and monitoring market activity.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#111827",
+  "icons": [
+    {
+      "src": "/charting_library/binbot-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/charting_library/binbot-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
