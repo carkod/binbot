@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router";
 import {
   botsApiSlice,
   useCreateBotMutation,
+  useDeactivateBotMutation,
   useEditBotMutation,
   useLazyActivateBotQuery,
 } from "../../features/bots/botsApiSlice";
@@ -30,6 +31,8 @@ const BotDetailTabs: FC<{
     trigger,
     { isLoading: isActivating, isError, data: activatedBot, error },
   ] = useLazyActivateBotQuery();
+  const [deactivateBot, { isLoading: isDeactivating, data: deactivatedBot }] =
+    useDeactivateBotMutation();
 
   const [enableActivation, setEnableActivation] = useState(id ? true : false);
   const getEditPath = (botId: string) =>
@@ -41,13 +44,13 @@ const BotDetailTabs: FC<{
   // Deals and orders information need to come from the server
   const handleActivation = async (id: string) => {
     const { data } = await updateBot({ body: bot, id });
-    const result = await trigger(id);
+    await trigger(id);
     if (id && data) {
       navigate(getEditPath(id));
     }
   };
   const handlePanicSell = async (id: string) => {
-    await dispatch(botsApiSlice.endpoints.deactivateBot.initiate(id));
+    await deactivateBot(id).unwrap();
   };
 
   const onSubmit = async () => {
@@ -63,15 +66,20 @@ const BotDetailTabs: FC<{
   };
 
   useEffect(() => {
-    if (isActivating) {
+    if (isActivating || isDeactivating) {
       dispatch(setSpinner(true));
     } else {
       if (activatedBot) {
         dispatch(setBot({ bot: activatedBot.bot }));
       }
+
+      if (deactivatedBot) {
+        dispatch(setBot({ bot: deactivatedBot.bot }));
+      }
+
       dispatch(setSpinner(false));
     }
-  }, [isActivating, dispatch, activatedBot]);
+  }, [isActivating, isDeactivating, dispatch, activatedBot, deactivatedBot]);
 
   return (
     <Tab.Container defaultActiveKey={TabsKeys.MAIN}>

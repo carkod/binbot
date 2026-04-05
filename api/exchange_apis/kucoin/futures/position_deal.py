@@ -525,20 +525,43 @@ class PositionDeal(KucoinPositionDeal):
             self.active_bot = reversed_bot
             return reversed_bot
 
-        order_model = OrderModel(**order.model_dump())
+        order_model = OrderModel(
+            timestamp=int(time() * 1000),
+            order_id=str(order.order_id),
+            deal_type=DealType.base_order,
+            pair=self.kucoin_symbol,
+            order_side=(
+                OrderSide.sell
+                if reversed_bot.strategy == Strategy.margin_short
+                else OrderSide.buy
+            ),
+            order_type=order.order_type,
+            price=float(order.price or 0),
+            qty=float(order.qty or 0),
+            time_in_force=order.time_in_force,
+            status=order.status,
+        )
 
         # full close previous bot
         closing_order = deepcopy(order_model)
         closing_order.deal_type = DealType.margin_short
+        previous_bot.add_log(
+            f"Updated closing deal with {closing_order.deal_type} order from reversal"
+        )
         previous_bot.orders.append(closing_order)
         previous_bot.deal.closing_price = closing_order.price
         previous_bot.deal.closing_qty = current_contracts
         previous_bot.deal.closing_timestamp = closing_order.timestamp
-        previous_bot.add_log("Updated closing deal")
+        previous_bot.add_log("Fully closed previous_bot")
         previous_bot.status = Status.completed
         self.controller.save(previous_bot)
 
+        order_model.deal_type = DealType.base_order
+        reversed_bot.add_log(
+            f"Placed first flip order for reversal, updating deal with {order_model.deal_type} order details"
+        )
         reversed_bot.orders.append(order_model)
+        self.controller.save(reversed_bot)
 
         position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
         self.active_bot = reversed_bot

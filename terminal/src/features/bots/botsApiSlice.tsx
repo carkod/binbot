@@ -181,7 +181,9 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         } else {
           notifification("success", message);
         }
-        return data;
+        return {
+          bot: data,
+        };
       },
     }),
   }),
