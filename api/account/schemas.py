@@ -104,6 +104,10 @@ class EstimatedBalancesResponse(StandardResponse):
 
 
 class BalanceSeries(BaseModel):
+    """
+    Deprecated use BenchmarkSeries instead
+    """
+
     usdc: list
     btc: list
     dates: list

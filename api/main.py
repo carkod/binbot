@@ -17,6 +17,7 @@ from symbols.routes import symbols_blueprint
 from user.routes import user_blueprint
 from asset_index.routes import asset_index_blueprint
 from inquiries.routes import inquiries_router
+from portfolio.routes import portfolio_blueprint
 from pybinbot import configure_logging
 from databases.tables import *  # noqa
 
@@ -65,6 +66,7 @@ app.include_router(symbols_blueprint)
 app.include_router(autotrade_settings_blueprint, prefix="/autotrade-settings")
 app.include_router(asset_index_blueprint, prefix="/asset-index")
 app.include_router(inquiries_router)
+app.include_router(portfolio_blueprint)
 
 
 @app.exception_handler(RequestValidationError)

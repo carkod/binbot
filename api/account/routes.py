@@ -20,7 +20,6 @@ from pybinbot import (
 from tools.handle_error import json_response_error, json_response_message
 from sqlmodel import Session
 from databases.utils import get_session
-from databases.crud.balances_crud import BalancesCrud
 from typing import Literal
 from tools.config import Config
 
@@ -54,26 +53,6 @@ def get_balance_by_type(
         "data": data,
         "message": f"Successfully retrieved {accounts.autotrade_settings.exchange_id.name} balance.",
     }
-
-
-@account_blueprint.get("/pnl", tags=["assets"])
-def get_pnl(
-    days: int = 7,
-    session: Session = Depends(get_session),
-    _: UserTokenData = Depends(get_current_user),
-):
-    """
-    PnL data is the same across exchanges, because the moment we switch exchange,
-    we stop tracking previous exchange's PnL.
-    """
-
-    current_time = datetime.now()
-    start = current_time - timedelta(days=days)
-    ts = int(start.timestamp())
-    end_ts = int(current_time.timestamp())
-    data = BalancesCrud(session=session).query_balance_series(ts, end_ts)
-
-    return {"data": data, "message": "Successfully retrieved PnL data."}
 
 
 @account_blueprint.get("/store-balance", tags=["assets"])
