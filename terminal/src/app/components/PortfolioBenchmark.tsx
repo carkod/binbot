@@ -10,7 +10,7 @@ import {
 } from "chart.js";
 import React, { type FC } from "react";
 import { Card, Col, Row } from "react-bootstrap";
-import { type BenchmarkSeriesData } from "../../features/balanceApiSlice";
+import { type BenchmarkSeriesData } from "../../features/features.types";
 import { listCssColors } from "../../utils/validations";
 import { useBreakpoint } from "../hooks";
 import { formatTimestamp } from "../../utils/time";
@@ -35,21 +35,21 @@ const PortfolioBenchmarkChart: FC<{ chartData: BenchmarkSeriesData }> = ({
   if (breakpoint === "xs") {
     // Show only the last 5 data points due to size of the screen
     processData.datesSeries = chartData.datesSeries?.slice(-5);
-    processData.usdcSeries = chartData.usdcSeries?.slice(-5);
+    processData.fiatSeries = chartData.fiatSeries?.slice(-5);
     processData.btcSeries = chartData.btcSeries?.slice(-5);
   }
 
-  const lastUsdt = processData.usdcSeries?.[processData.usdcSeries.length - 1];
+  const lastUsdt = processData.fiatSeries?.[processData.fiatSeries.length - 1];
   const lastBtc = processData.btcSeries?.[processData.btcSeries.length - 1];
 
   // Prepare Plotly data and layout for line plot
   const plotlyData = [
     {
       x: processData.datesSeries,
-      y: processData.usdcSeries,
+      y: processData.fiatSeries,
       type: "scatter",
       mode: "lines+markers",
-      name: "Portfolio in USDCSeries",
+      name: "Portfolio value",
       line: { color: listCssColors[0] },
     },
     {

@@ -146,7 +146,8 @@ class PortfolioController:
 
         pnl = 0.0
         if len(balances) >= 2:
-            pnl = round_numbers(balances[-1] - balances[0], 4)
+            returns = (balances[-1] - balances[-2]) / balances[-1]
+            pnl = round_numbers(returns, 4)
 
         stats = Stats(
             pnl=pnl,

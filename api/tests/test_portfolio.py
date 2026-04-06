@@ -49,5 +49,5 @@ def test_get_benchmark_series(client: TestClient, create_test_tables) -> None:
         "btc": [95000.0, 96000.0, 97000.0],
         "dates": [balance_points[0][0], balance_points[1][0], balance_points[2][0]],
     }
-    assert content["data"]["stats"]["pnl"] == 5.0
+    assert content["data"]["stats"]["pnl"] == -0.0477
     assert content["data"]["stats"]["sharpe"] == 7.1643

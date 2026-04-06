@@ -10,14 +10,23 @@ export interface BalanceData {
 }
 
 // Benchmark of portfolio (in USDC at time of writing) against BTC
-export interface BenchmarkData {
-  usdc: number[];
+export interface BenchmarkSeries {
+  fiat: number[];
   btc: number[];
   dates: string[];
 }
 
+interface BenchmarkStats {
+  sharpe: number;
+  pnl: number;
+}
+
+interface BenchmarkData {
+  series: BenchmarkSeries;
+}
+
 export interface BenchmarkSeriesData {
-  usdcSeries: number[];
+  fiatSeries: number[];
   btcSeries: number[];
   datesSeries: string[];
 }
@@ -25,4 +34,5 @@ export interface BenchmarkSeriesData {
 export interface BenchmarkCollection {
   benchmarkData: BenchmarkData;
   percentageSeries: BenchmarkSeriesData;
+  portfolioStats: BenchmarkStats;
 }
