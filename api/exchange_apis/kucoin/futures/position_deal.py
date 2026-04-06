@@ -57,77 +57,61 @@ class PositionDeal(KucoinPositionDeal):
         self.api: KucoinApi | KucoinFutures
         self.controller: BotTableCrud | PaperTradingTableCrud
 
-    def _create_controller(self) -> PaperTradingTableCrud | BotTableCrud:
+    def place_reversal_reentry_order(
+        self,
+        contracts: float,
+        repurchase_multiplier: float = 1,
+    ) -> OrderBase | None:
         """
-        Separate sessions to avoid locking database
-        when continuously saving (self.controller.save)
+        Second order for reverse_position,
+        if first order succeeds, we want to use as much balance as possible
+        in the case we can't fulfill fiat_order_size with original number of contracts
+        before reversal
         """
-        if isinstance(self.controller, PaperTradingTableCrud):
-            return PaperTradingTableCrud()
-        else:
-            return BotTableCrud()
-
-    def _is_reversal_possible(self, mark_price, current_contracts) -> float:
-        reversal_buffer = 1.40
-        multiplier = float(
-            self.kucoin_symbol_data.multiplier
-            or self.kucoin_futures_api.DEFAULT_MULTIPLIER
-        )
-        min_contract_step = float(self.kucoin_symbol_data.lot_size or 1)
-        taker_fee_rate = float(self.kucoin_symbol_data.taker_fee_rate or 0)
-        available_balance = float(self.compute_available_balance())
-        leverage = float(self.kucoin_futures_api.DEFAULT_LEVERAGE)
-
-        per_contract_notional = mark_price * multiplier
-        per_contract_buffer = (per_contract_notional / leverage) + (
-            per_contract_notional * taker_fee_rate
-        )
-        estimated_available_buffer = available_balance - reversal_buffer
-
-        if estimated_available_buffer <= 0 or per_contract_buffer <= 0:
-            return float(current_contracts)
-
-        minimum_flip_contracts = round_numbers(
-            float(current_contracts) + min_contract_step,
+        adjusted_contracts = round_numbers(
+            float(contracts) * float(repurchase_multiplier),
             self.qty_precision,
         )
 
-        if estimated_available_buffer < (min_contract_step * per_contract_buffer):
-            return float(current_contracts)
+        if adjusted_contracts <= 0:
+            self.active_bot.add_log(
+                "Failed to place repurchase order during reversal. Repurchase size reached 0 contracts."
+            )
+            return None
 
-        return max(float(current_contracts), float(minimum_flip_contracts))
+        try:
+            if self.active_bot.strategy == Strategy.margin_short:
+                return self.kucoin_futures_api.sell(
+                    symbol=self.kucoin_symbol,
+                    qty=adjusted_contracts,
+                    reduce_only=False,
+                )
 
-    def estimate_reversal_possible_for_new_bot(self) -> bool:
-        """
-        Estimate whether a newly activated futures bot is likely to support a
-        same-size one-order reversal later.
+            return self.kucoin_futures_api.buy(
+                symbol=self.kucoin_symbol,
+                qty=adjusted_contracts,
+                reduce_only=False,
+            )
+        except RestError as kucoin_error:
+            code = int(kucoin_error.response.code)
+            if code != 400100 and code != 200005:
+                raise kucoin_error
 
-        This is weaker than the live reversal pre-check because there is no
-        current exchange position yet; it estimates contracts from the current
-        market and then reuses the internal affordability logic.
-        """
-        if not self.active_bot.margin_short_reversal or self.active_bot.stop_loss <= 0:
-            return True
+            next_multiplier = round_numbers(repurchase_multiplier - 0.25, 2)
+            self.active_bot.add_log(
+                f"Repurchase order hit insufficient balance with multiplier {repurchase_multiplier}. Retrying with {next_multiplier}."
+            )
 
-        side = (
-            AddOrderReq.SideEnum.SELL
-            if self.active_bot.strategy == Strategy.margin_short
-            else AddOrderReq.SideEnum.BUY
-        )
-        estimated_price = self.kucoin_futures_api.matching_engine(
-            symbol=self.kucoin_symbol,
-            side=side,
-            size=1,
-        )
-        estimated_contracts = self.calculate_contracts(estimated_price)
+            if next_multiplier <= 0:
+                self.active_bot.add_log(
+                    "Failed to place repurchase order during reversal after reducing contracts to 0."
+                )
+                return None
 
-        if estimated_contracts <= 0:
-            return False
-
-        available_contracts = self._is_reversal_possible(
-            estimated_price, estimated_contracts
-        )
-        return available_contracts > estimated_contracts
+            return self.place_reversal_reentry_order(
+                contracts=contracts,
+                repurchase_multiplier=next_multiplier,
+            )
 
     def take_profit_order(self) -> BotModel:
         """
@@ -569,128 +553,124 @@ class PositionDeal(KucoinPositionDeal):
 
         new_position_contracts = abs(float(position.current_qty))
         remaining_contracts = max(0.0, current_contracts - new_position_contracts)
+        first_reversed_position_qty = new_position_contracts
 
         if remaining_contracts > 0:
-            try:
-                if reversed_bot.strategy == Strategy.margin_short:
-                    second_order = self.kucoin_futures_api.sell(
-                        symbol=self.kucoin_symbol,
-                        qty=remaining_contracts,
-                        reduce_only=False,
-                    )
-                else:
-                    second_order = self.kucoin_futures_api.buy(
-                        symbol=self.kucoin_symbol,
-                        qty=remaining_contracts,
-                        reduce_only=False,
-                    )
+            second_order = self.place_reversal_reentry_order(
+                contracts=remaining_contracts,
+            )
 
-                sleep(10)
-                second_order_details = self.kucoin_futures_api.retrieve_order(
-                    str(second_order.order_id)
-                )
-                second_position = self.kucoin_futures_api.get_futures_position(
-                    self.kucoin_symbol
-                )
-                if second_position and float(second_position.current_qty) != 0:
-                    self.active_bot.add_log(
-                        "Second position exists after placing additional order, using it for deal update"
-                    )
-                    position = second_position
-                    new_position_contracts = abs(float(second_position.current_qty))
-                filled_qty = float(
-                    getattr(second_order_details, "filled_size", 0)
-                    or second_order.qty
-                    or 0
-                )
-                filled_price = float(
-                    getattr(second_order_details, "avg_deal_price", 0)
-                    or second_order.price
-                    or 0
-                )
-                timestamp = int(
-                    getattr(second_order_details, "created_at", 0)
-                    or second_order.timestamp
-                    or 0
-                )
+            if second_order is None:
+                self.controller.save(reversed_bot)
+                self.active_bot = reversed_bot
+                return self.active_bot
 
-                if filled_qty <= 0 and position and float(position.current_qty) != 0:
-                    self.active_bot.add_log(
-                        "Filled qty not found in order details, using position qty for deal update"
-                    )
-                    filled_qty = abs(float(position.current_qty))
-                if filled_price <= 0 and position:
-                    self.active_bot.add_log(
-                        "Filled price not found in order details, using position mark price for deal update"
-                    )
-                    filled_price = float(position.mark_price or 0)
-
-                if filled_qty <= 0 or filled_price <= 0:
-                    self.active_bot.add_log(
-                        "Filled qty and price not found in order details, fetching fills for deal update"
-                    )
-                    fills = self.kucoin_futures_api.get_fills(
-                        symbol=self.kucoin_symbol,
-                        start_at=int(second_order.timestamp),
-                        end_at=int(time() * 1000),
-                    )
-                    matching_fills = [
-                        fill
-                        for fill in fills.items
-                        if str(fill.order_id) == str(second_order.order_id)
-                    ]
-                    if matching_fills:
-                        self.active_bot.add_log(
-                            f"Found {len(matching_fills)} matching fills for order, calculating filled qty and price from fills for deal update"
-                        )
-                        total_qty = sum(
-                            abs(float(fill.size)) for fill in matching_fills
-                        )
-                        total_notional = sum(
-                            abs(float(fill.size)) * float(fill.price)
-                            for fill in matching_fills
-                        )
-                        if filled_qty <= 0:
-                            filled_qty = total_qty
-                        if filled_price <= 0 and total_qty > 0:
-                            filled_price = total_notional / total_qty
-                        if timestamp <= 0:
-                            timestamp = int(matching_fills[0].created_at)
-
+            sleep(10)
+            second_order_details = self.kucoin_futures_api.retrieve_order(
+                str(second_order.order_id)
+            )
+            second_position = self.kucoin_futures_api.get_futures_position(
+                self.kucoin_symbol
+            )
+            if second_position and float(second_position.current_qty) != 0:
                 self.active_bot.add_log(
-                    f"Second order succeeded - filled_qty: {filled_qty}, filled_price: {filled_price}, timestamp: {timestamp}"
+                    "Second position exists after placing additional order, using it for deal update"
                 )
-                second_order_model = OrderModel(
-                    order_type=str(
-                        getattr(second_order_details, "type", None)
-                        or second_order.order_type
-                    ),
-                    time_in_force=str(
-                        getattr(second_order_details, "time_in_force", None)
-                        or second_order.time_in_force
-                    ),
-                    timestamp=timestamp or int(second_order.timestamp),
-                    order_id=str(second_order.order_id),
-                    order_side=str(
-                        getattr(second_order_details, "side", None)
-                        or second_order.order_side
-                    ),
-                    pair=str(
-                        getattr(second_order_details, "symbol", None)
-                        or second_order.pair
-                    ),
-                    qty=float(filled_qty or second_order.qty or 0),
-                    status=second_order.status,
-                    price=float(filled_price or second_order.price or 0),
-                    deal_type=DealType.base_order,
-                )
-                order_model = second_order_model
+                position = second_position
+                new_position_contracts = abs(float(second_position.current_qty))
+            filled_qty = float(
+                getattr(second_order_details, "filled_size", 0) or second_order.qty or 0
+            )
+            filled_price = float(
+                getattr(second_order_details, "avg_deal_price", 0)
+                or second_order.price
+                or 0
+            )
+            timestamp = int(
+                getattr(second_order_details, "created_at", 0)
+                or second_order.timestamp
+                or 0
+            )
+
+            if filled_qty <= 0 and position and float(position.current_qty) != 0:
                 self.active_bot.add_log(
-                    "Placed additional order for remaining contracts during reversal, updating deal with new order details"
+                    "Filled qty not found in order details, using position qty for deal update"
                 )
-                reversed_bot.orders = [second_order_model]
-            except RestError:
-                pass
+                filled_qty = abs(float(position.current_qty))
+
+            if filled_price <= 0 and position:
+                self.active_bot.add_log(
+                    "Filled price not found in order details, using position mark price for deal update"
+                )
+                filled_price = float(position.mark_price or 0)
+
+            if filled_qty <= 0 or filled_price <= 0:
+                self.active_bot.add_log(
+                    "Filled qty and price not found in order details, fetching fills for deal update"
+                )
+                fills = self.kucoin_futures_api.get_fills(
+                    symbol=self.kucoin_symbol,
+                    start_at=int(second_order.timestamp),
+                    end_at=int(time() * 1000),
+                )
+                matching_fills = [
+                    fill
+                    for fill in fills.items
+                    if str(fill.order_id) == str(second_order.order_id)
+                ]
+                if matching_fills:
+                    self.active_bot.add_log(
+                        f"Found {len(matching_fills)} matching fills for order, calculating filled qty and price from fills for deal update"
+                    )
+                    total_qty = sum(abs(float(fill.size)) for fill in matching_fills)
+                    total_notional = sum(
+                        abs(float(fill.size)) * float(fill.price)
+                        for fill in matching_fills
+                    )
+                    if filled_qty <= 0:
+                        filled_qty = total_qty
+                    if filled_price <= 0 and total_qty > 0:
+                        filled_price = total_notional / total_qty
+                    if timestamp <= 0:
+                        timestamp = int(matching_fills[0].created_at)
+
+            self.active_bot.add_log(
+                f"Second order succeeded - filled_qty: {filled_qty}, filled_price: {filled_price}, timestamp: {timestamp}"
+            )
+            second_order_model = OrderModel(
+                order_type=str(
+                    getattr(second_order_details, "type", None)
+                    or second_order.order_type
+                ),
+                time_in_force=str(
+                    getattr(second_order_details, "time_in_force", None)
+                    or second_order.time_in_force
+                ),
+                timestamp=timestamp or int(second_order.timestamp),
+                order_id=str(second_order.order_id),
+                order_side=str(
+                    getattr(second_order_details, "side", None)
+                    or second_order.order_side
+                ),
+                pair=str(
+                    getattr(second_order_details, "symbol", None) or second_order.pair
+                ),
+                qty=float(filled_qty or second_order.qty or 0),
+                status=second_order.status,
+                price=float(filled_price or second_order.price or 0),
+                deal_type=DealType.base_order,
+            )
+            order_model = second_order_model
+            combined_opening_qty = round_numbers(
+                first_reversed_position_qty + float(second_order_model.qty or 0),
+                self.qty_precision,
+            )
+            if combined_opening_qty > 0:
+                new_position_contracts = combined_opening_qty
+            self.active_bot.add_log(
+                "Placed additional order for remaining contracts during reversal, updating deal with new order details"
+            )
+            reversed_bot.orders = [second_order_model]
 
         reversed_bot.deal.base_order_size = new_position_contracts
         reversed_bot.deal.opening_price = order_model.price
@@ -707,14 +687,14 @@ class PositionDeal(KucoinPositionDeal):
             Status.active if new_position_contracts > 0 else Status.error
         )
         reversed_bot.add_log(
-            f"Futures bot updated @ {reversed_bot.deal.current_price} with {remaining_contracts} additional contracts"
+            f"Futures bot updated @ {reversed_bot.deal.current_price} with {max(0.0, new_position_contracts - first_reversed_position_qty)} additional contracts"
         )
         self.controller.save(reversed_bot)
         self.active_bot = reversed_bot
         if reversed_bot.status == Status.active:
             self.update_parameters()
 
-        return reversed_bot
+        return self.active_bot
 
     def exit(self, close_price: float, _: float | None = None) -> BotModel:
         """
