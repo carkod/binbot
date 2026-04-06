@@ -66,33 +66,112 @@ class KucoinPositionDeal(KucoinBaseBalance):
     def _direction_multiplier(self) -> int:
         return -1 if self.active_bot.strategy == Strategy.margin_short else 1
 
+    def create_controller(self) -> PaperTradingTableCrud | BotTableCrud:
+        """
+        Separate sessions to avoid locking database
+        when continuously saving (self.controller.save)
+        """
+        if isinstance(self.controller, PaperTradingTableCrud):
+            return PaperTradingTableCrud()
+        else:
+            return BotTableCrud()
+
+    def _calculate_contracts_for_balance(self, balance: float, price: float) -> float:
+        if balance <= 0 or price <= 0:
+            return 0.0
+
+        stop_loss_percent = float(self.active_bot.stop_loss or 0)
+        if stop_loss_percent <= 0:
+            return 0.0
+
+        symbol_data = getattr(self, "kucoin_symbol_data", None)
+        multiplier = float(
+            getattr(symbol_data, "multiplier", 0)
+            or getattr(self.kucoin_futures_api, "DEFAULT_MULTIPLIER", 1)
+            or 1
+        )
+        leverage = float(
+            getattr(self.kucoin_futures_api, "DEFAULT_LEVERAGE", 100) or 100
+        )
+
+        contracts = (balance * leverage) / (stop_loss_percent * price * multiplier)
+        return round_numbers(contracts, self.symbol_info.qty_precision)
+
+    def _is_reversal_possible(
+        self, mark_price: float, current_contracts: float
+    ) -> float:
+        reversal_buffer = 1.40
+        multiplier = float(
+            self.kucoin_symbol_data.multiplier
+            or self.kucoin_futures_api.DEFAULT_MULTIPLIER
+        )
+        min_contract_step = float(self.kucoin_symbol_data.lot_size or 1)
+        taker_fee_rate = float(self.kucoin_symbol_data.taker_fee_rate or 0)
+        available_balance = float(self.compute_available_balance())
+        leverage = float(self.kucoin_futures_api.DEFAULT_LEVERAGE)
+
+        per_contract_notional = mark_price * multiplier
+        per_contract_buffer = (per_contract_notional / leverage) + (
+            per_contract_notional * taker_fee_rate
+        )
+        estimated_available_buffer = available_balance - reversal_buffer
+
+        if estimated_available_buffer <= 0 or per_contract_buffer <= 0:
+            return float(current_contracts)
+
+        minimum_flip_contracts = round_numbers(
+            float(current_contracts) + min_contract_step,
+            self.symbol_info.qty_precision,
+        )
+
+        if estimated_available_buffer < (min_contract_step * per_contract_buffer):
+            return float(current_contracts)
+
+        return max(float(current_contracts), float(minimum_flip_contracts))
+
+    def estimate_reversal_possible_for_new_bot(self) -> bool:
+        """
+        Estimate whether a newly activated futures bot is likely to support a
+        same-size one-order reversal later.
+
+        This is weaker than the live reversal pre-check because there is no
+        current exchange position yet; it estimates contracts from the current
+        market and then reuses the internal affordability logic.
+        """
+        if not self.active_bot.margin_short_reversal or self.active_bot.stop_loss <= 0:
+            return True
+
+        side = (
+            AddOrderReq.SideEnum.SELL
+            if self.active_bot.strategy == Strategy.margin_short
+            else AddOrderReq.SideEnum.BUY
+        )
+        estimated_price = self.kucoin_futures_api.matching_engine(
+            symbol=self.kucoin_symbol,
+            side=side,
+            size=1,
+        )
+        estimated_contracts = self.calculate_contracts(estimated_price)
+
+        if estimated_contracts <= 0:
+            return False
+
+        available_contracts = self._is_reversal_possible(
+            estimated_price, estimated_contracts
+        )
+        return available_contracts > estimated_contracts
+
     def calculate_contracts(self, price: float) -> int:
         """
-        Calculate the number of contracts based on balance, stop loss, risk per trade, price, and contract multiplier.
+        Calculate the number of futures contracts the current bot can open
+        from `active_bot.fiat_order_size` at the given price.
 
-        balance: Available USDT balance.
-        stop_loss_percent: Stop loss as a decimal (e.g., 3% = 0.03).
-        max_risk_percent: Max risk per trade as a decimal (e.g., 5% = 0.05).
-        price: Current price of FLOCK.
-        multiplier: Size of one contract (default 1).
-
-        Returns: Number of contracts to buy (int).
+        Uses the shared balance-based sizing formula in
+        `_calculate_contracts_for_balance(...)` and floors the result to the
+        symbol qty precision before returning it as an integer contract count.
         """
-        balance = self.active_bot.fiat_order_size
-        stop_loss_percent = self.active_bot.stop_loss
-        # max_allowed_leverage = self.kucoin_futures_api.get_max_allowed_leverage(self.kucoin_symbol, balance)
-        max_risk_usdt = balance * self.kucoin_futures_api.DEFAULT_LEVERAGE
-        info = self.kucoin_futures_api.get_symbol_info(self.kucoin_symbol)
-        multiplier = info.multiplier
-        if not multiplier:
-            multiplier = self.kucoin_futures_api.DEFAULT_MULTIPLIER
-
-        # Calculate the total position size you can afford if the stop loss hits
-        max_position_size = max_risk_usdt / stop_loss_percent
-
-        # Calculate the number of contracts
-        contracts = round_numbers(
-            max_position_size / (price * float(multiplier)), self.price_precision
+        contracts = self._calculate_contracts_for_balance(
+            self.active_bot.fiat_order_size, price
         )
 
         return int(contracts)
