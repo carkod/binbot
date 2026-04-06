@@ -9,7 +9,7 @@ from databases.tables.account_balances import ConsolidatedBalancesTable
 
 
 def test_get_benchmark_series(client: TestClient, create_test_tables) -> None:
-    now = datetime.now().replace(hour=12, minute=0, second=0, microsecond=0)
+    now = datetime.now().replace(second=0, microsecond=0) - timedelta(hours=1)
     balance_points = [
         (int((now - timedelta(days=2)).timestamp() * 1000), 100.0),
         (int((now - timedelta(days=1)).timestamp() * 1000), 110.0),
