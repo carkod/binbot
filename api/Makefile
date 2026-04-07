@@ -1,4 +1,4 @@
-.PHONY: up down test migrate format delete-revision upgrade-pybinbot
+.PHONY: up down test migrate format delete-revision upgrade-pybinbot export-bot-records
 
 ifneq (,$(wildcard ../.env))
     include ../.env
@@ -6,6 +6,7 @@ ifneq (,$(wildcard ../.env))
 endif
 
 VENV=./.venv
+EXPORT_BOT_SCRIPT=/Users/carkod/.codex/skills/binbot-db-export-records/scripts/export_bot_records.py
 
 cmd-exists-%:
 	@hash $(*) > /dev/null 2>&1 || \
@@ -61,3 +62,10 @@ delete-revision:  ## Delete a specific Alembic revision from the database
 	@echo "POSTGRES_PASSWORD: $(POSTGRES_PASSWORD)"
 	@echo "Deleting revision $(revision) from alembic_version table..."
 	docker exec -ti binbot_api_db sh -c "PGPASSWORD=$(POSTGRES_PASSWORD) psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -c \"DELETE FROM alembic_version WHERE version_num = '$(revision)';\""
+
+export-bot-records:  ## Export bots using Codex script
+	@if [ -z "$(BOT_ID)" ]; then \
+		echo "ERROR: You must provide BOT_ID. Usage: make export-bot-records BOT_ID=<uuid>"; \
+		exit 1; \
+	fi
+	@python3 $(EXPORT_BOT_SCRIPT) "$(BOT_ID)"

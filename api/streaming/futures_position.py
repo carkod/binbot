@@ -35,7 +35,7 @@ class FuturesPosition(PositionMarket):
         self.base_streaming = base_streaming
         self.price_precision = price_precision
         self.qty_precision = qty_precision
-        self.kucoin_benchmark_symbol = "ETHBTCUSDTM"
+        self.kucoin_benchmark_symbol = "XBTUSDTM"
         self.api = self.base_streaming.kucoin_futures_api
         self.active_bot: BotModel = bot
 

@@ -468,8 +468,7 @@ class PositionDeal(KucoinPositionDeal):
             close_condition=source_bot.close_condition,
             cooldown=source_bot.cooldown,
             dynamic_trailling=source_bot.dynamic_trailling,
-            # Temporarily disable to avoid closing and opening constantly when reversal still has bugs
-            margin_short_reversal=False,
+            margin_short_reversal=source_bot.margin_short_reversal,
             name=source_bot.name,
             strategy=target_strategy,
             mode=source_bot.mode,
@@ -909,7 +908,7 @@ class PositionDeal(KucoinPositionDeal):
                 qty_precision=self.qty_precision,
                 db_table=self.db_table,
             )
-            cls.base_streaming.kucoin_benchmark_symbol = "ETHBTCUSDTM"
+            cls.base_streaming.kucoin_benchmark_symbol = "XBTUSDTM"
             self.api = self.base_streaming.kucoin_futures_api
             symbol_info = self.base_streaming.kucoin_futures_api.get_symbol_info(
                 self.active_bot.pair

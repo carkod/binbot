@@ -147,6 +147,9 @@ def activate(id: str, session: Session = Depends(get_session)):
     except BinanceErrors as error:
         deal_instance.update_logs(message=error.message)
         return BotResponse(data=bot_model, message=error.message, error=1)
+    except NotImplementedError as error:
+        deal_instance.update_logs(message=str(error))
+        return BotResponse(data=bot_model, message=str(error), error=1)
 
 
 @paper_trading_blueprint.delete(
