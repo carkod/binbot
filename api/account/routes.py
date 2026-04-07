@@ -1,5 +1,4 @@
 from fastapi import APIRouter, HTTPException, Depends
-from datetime import datetime, timedelta
 from account.controller import ConsolidatedAccounts
 from user.models.user import UserTokenData
 from user.services.auth import get_current_user
@@ -7,7 +6,6 @@ from exchange_apis.binance.assets import Assets
 from account.schemas import (
     BalanceResponse,
     GainersLosersResponse,
-    BalanceSeriesResponse,
     KucoinBalanceResponse,
 )
 from pybinbot import (
@@ -16,11 +14,11 @@ from pybinbot import (
     LowBalanceCleanupError,
     MarginLoanNotFound,
     KucoinApi,
+    StandardResponse,
 )
 from tools.handle_error import json_response_error, json_response_message
 from sqlmodel import Session
 from databases.utils import get_session
-from databases.crud.balances_crud import BalancesCrud
 from typing import Literal
 from tools.config import Config
 
@@ -56,26 +54,6 @@ def get_balance_by_type(
     }
 
 
-@account_blueprint.get("/pnl", tags=["assets"])
-def get_pnl(
-    days: int = 7,
-    session: Session = Depends(get_session),
-    _: UserTokenData = Depends(get_current_user),
-):
-    """
-    PnL data is the same across exchanges, because the moment we switch exchange,
-    we stop tracking previous exchange's PnL.
-    """
-
-    current_time = datetime.now()
-    start = current_time - timedelta(days=days)
-    ts = int(start.timestamp())
-    end_ts = int(current_time.timestamp())
-    data = BalancesCrud(session=session).query_balance_series(ts, end_ts)
-
-    return {"data": data, "message": "Successfully retrieved PnL data."}
-
-
 @account_blueprint.get("/store-balance", tags=["assets"])
 def store_balance(session: Session = Depends(get_session)):
     """
@@ -98,23 +76,7 @@ async def retrieve_gainers_losers(session: Session = Depends(get_session)):
     return await Assets(session=session).retrieve_gainers_losers()
 
 
-@account_blueprint.get(
-    "/balance-series", response_model=BalanceSeriesResponse, tags=["assets"]
-)
-def get_portfolio_performance(session: Session = Depends(get_session)):
-    today = datetime.now()
-    month_ago = today - timedelta(30)
-    start_date = int(datetime.timestamp(month_ago) * 1000)
-    end_date = int(datetime.timestamp(today) * 1000)
-    data = Assets(session=session).map_balance_with_benchmark(
-        start_date=start_date, end_date=end_date
-    )
-    return BalanceSeriesResponse(
-        data=data, message="Successfully retrieved balance series."
-    )
-
-
-@account_blueprint.get("/clean", response_model=BalanceSeriesResponse, tags=["assets"])
+@account_blueprint.get("/clean", tags=["assets"])
 def clean_balance(bypass: bool = False, session: Session = Depends(get_session)):
     try:
         accounts = ConsolidatedAccounts(session=session)
@@ -127,10 +89,13 @@ def clean_balance(bypass: bool = False, session: Session = Depends(get_session))
 
 
 @account_blueprint.get(
-    "/disable-isolated", response_model=BalanceSeriesResponse, tags=["account"]
+    "/disable-isolated", response_model=StandardResponse, tags=["account"]
 )
 def disable_isolated(session: Session = Depends(get_session)):
-    return Assets(session=session).disable_isolated_accounts()
+    msg = Assets(session=session).disable_isolated_accounts()
+    return {
+        "message": msg,
+    }
 
 
 @account_blueprint.get("/isolated", tags=["account"])

@@ -7,19 +7,16 @@ from databases.tables.bot_table import BotTable
 from databases.crud.autotrade_crud import AutotradeCrud
 from bots.models import BotModel
 from exchange_apis.binance.deals.factory import BinanceDeal
-from tools.handle_error import json_response, json_response_message
+from tools.handle_error import json_response
 from pybinbot import (
     round_numbers,
     ts_to_day,
-    BinanceKlineIntervals,
     Status,
     Strategy,
-    BinbotErrors,
     BinanceErrors,
     LowBalanceCleanupError,
 )
 from databases.crud.bot_crud import BotTableCrud
-from account.schemas import BalanceSeries
 from typing import Sequence
 
 
@@ -162,56 +159,6 @@ class Assets(BinanceOrderController):
         else:
             return None
 
-    def map_balance_with_benchmark(self, start_date, end_date) -> BalanceSeries:
-        balance_series = self.balances_controller.query_balance_series(
-            start_date=start_date, end_date=end_date
-        )
-
-        if len(balance_series) == 0:
-            raise BinbotErrors("No balance data found.")
-
-        # btc candlestick data series
-        end_time = int(
-            (
-                datetime.fromtimestamp(balance_series[0].id / 1000)
-                .replace(hour=0, minute=0, second=0)
-                .timestamp()
-            )
-            * 1000
-        )
-        klines = self.get_ui_klines(
-            limit=len(balance_series),
-            symbol="BTCUSDC",
-            interval=BinanceKlineIntervals.one_day.value,
-            end_time=end_time,
-        )
-
-        balances_series_diff = []
-        balances_series_dates = []
-        balance_btc_diff = []
-
-        for index, item in enumerate(balance_series):
-            btc_index = self.consolidate_dates(klines, item.id, index)
-            if btc_index is not None:
-                if hasattr(balance_series[index], "estimated_total_fiat"):
-                    balances_series_diff.append(
-                        round_numbers(balance_series[index].estimated_total_fiat, 4)
-                    )
-                    time: int = klines[btc_index][6]
-                    balances_series_dates.append(time)
-                    balance_btc_diff.append(float(klines[btc_index][4]))
-            else:
-                continue
-
-        # Reverse data so it shows latest in the graph on the right side.
-        balances_series_diff.reverse()
-        balances_series_dates.reverse()
-        balance_btc_diff.reverse()
-
-        return BalanceSeries(
-            usdc=balances_series_diff, btc=balance_btc_diff, dates=balances_series_dates
-        )
-
     def clean_balance_assets(self, bypass=False) -> list[str]:
         """
         Check if there are many small assets (0.000.. BTC)
@@ -303,7 +250,7 @@ class Assets(BinanceOrderController):
                 self.disable_isolated_margin_account(item["symbol"])
                 msg = "Sucessfully finished disabling isolated margin accounts."
 
-        return json_response_message(msg)
+        return msg
 
     def one_click_liquidation(
         self, pair: str, bot_strategy: str = "margin", bypass_check: bool = False

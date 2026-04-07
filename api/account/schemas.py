@@ -101,13 +101,3 @@ class EstimatedBalance(BaseModel):
 
 class EstimatedBalancesResponse(StandardResponse):
     data: EstimatedBalance
-
-
-class BalanceSeries(BaseModel):
-    usdc: list
-    btc: list
-    dates: list
-
-
-class BalanceSeriesResponse(StandardResponse):
-    data: BalanceSeries

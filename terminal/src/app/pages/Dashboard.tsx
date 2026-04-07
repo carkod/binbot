@@ -6,10 +6,6 @@ import {
 } from "../../features/balanceApiSlice";
 import { useGetBotsQuery } from "../../features/bots/botsApiSlice";
 import { useAdSeriesQuery } from "../../features/marketApiSlice";
-import {
-  calculateTotalRevenue,
-  computeWinnerLoserProportions,
-} from "../../utils/dashboard-computations";
 import { BotStatus } from "../../utils/enums";
 import { roundDecimals } from "../../utils/math";
 import GainersLosers from "../components/GainersLosers";
@@ -47,8 +43,6 @@ export const DashboardPage: FC<{}> = () => {
 
   const [activeBotsCount, setActiveBotsCount] = useState(0);
   const [errorBotsCount, setErrorBotsCount] = useState(0);
-  const [revenue, setRevenue] = useState<number>(0);
-  const [percentageRevenue, setPercentageRevenue] = useState<number>(0);
 
   const { spinner, setSpinner } = useContext(SpinnerContext);
 
@@ -56,16 +50,6 @@ export const DashboardPage: FC<{}> = () => {
     if (activeBotEntities) {
       setActiveBotsCount(activeBotEntities.bots.ids.length);
       setErrorBotsCount(0);
-    }
-
-    if (benchmark) {
-      if (benchmark.benchmarkData) {
-        const { revenue, percentage } = calculateTotalRevenue(
-          benchmark.benchmarkData,
-        );
-        setRevenue(revenue);
-        setPercentageRevenue(percentage);
-      }
     }
 
     if (
@@ -97,9 +81,6 @@ export const DashboardPage: FC<{}> = () => {
     loadingFuturesRankings,
   ]);
 
-  const { gainerCount, gainerAccumulator, loserAccumulator, loserCount } =
-    computeWinnerLoserProportions(combinedGainersLosers);
-
   return (
     <div className="content">
       <Row>
@@ -128,8 +109,8 @@ export const DashboardPage: FC<{}> = () => {
                   </Col>
                 </Row>
               </Card.Body>
-              <Card.Footer>
-                <hr />
+              <Card.Footer className="pt-0">
+                <hr className="mt-0" />
                 <Row>
                   <Col>
                     <p className="text-body-secondary fs-7 lh-1">
@@ -157,7 +138,9 @@ export const DashboardPage: FC<{}> = () => {
                   <div className="text-center fs-1">
                     <i
                       className={`${
-                        percentageRevenue > 0 ? "text-success" : "text-danger"
+                        benchmark?.portfolioStats?.pnl > 0
+                          ? "text-success"
+                          : "text-danger"
                       } fa-solid fa-building-columns`}
                     />
                   </div>
@@ -171,23 +154,83 @@ export const DashboardPage: FC<{}> = () => {
                   <Card.Title
                     as="h3"
                     className={`${
-                      percentageRevenue > 0 ? "text-success" : "text-danger"
+                      benchmark?.portfolioStats?.pnl > 0
+                        ? "text-success"
+                        : "text-danger"
                     } fs-4 text-end`}
                   >
-                    {`${roundDecimals(percentageRevenue)}%`}
+                    {benchmark?.portfolioStats?.pnl &&
+                      `${roundDecimals(benchmark?.portfolioStats?.pnl * 100)}%`}
                   </Card.Title>
                   <p />
                 </Col>
               </Row>
             </Card.Body>
-            <Card.Footer>
-              <hr />
+            <Card.Footer className="pt-0">
+              <hr className="mt-0" />
               <Row>
                 <Col>
                   <p>(Current - Last balance)</p>
                 </Col>
                 <Col>
-                  <p className="text-end">{roundDecimals(revenue)} USDC</p>
+                  <p className="text-end">
+                    {benchmark?.portfolioStats?.pnl &&
+                      `${roundDecimals(benchmark?.portfolioStats?.pnl * 100)} USDC`}
+                  </p>
+                </Col>
+              </Row>
+            </Card.Footer>
+          </Card>
+          <Card>
+            <Card.Body>
+              <Row>
+                <Col
+                  md="4"
+                  xs="5"
+                  className="d-flex justify-content-center align-items-center"
+                >
+                  <div className="text-center fs-1">
+                    <i
+                      className={`${
+                        benchmark?.portfolioStats?.sharpe > 0
+                          ? "text-success"
+                          : "text-danger"
+                      } fa-solid fa-chart-line`}
+                    />
+                  </div>
+                </Col>
+                <Col md="8" xs="7">
+                  <div>
+                    <p className="text-end text-body-secondary">Sharpe ratio</p>
+                  </div>
+                  <Card.Title
+                    as="h3"
+                    className={`${
+                      benchmark?.portfolioStats?.sharpe > 0
+                        ? "text-success"
+                        : "text-danger"
+                    } fs-4 text-end`}
+                  >
+                    {benchmark?.portfolioStats?.sharpe
+                      ? roundDecimals(benchmark.portfolioStats.sharpe)
+                      : ""}
+                  </Card.Title>
+                  <p />
+                </Col>
+              </Row>
+            </Card.Body>
+            <Card.Footer className="pt-0">
+              <hr className="mt-0" />
+              <Row>
+                <Col>
+                  <p>(How efficient are we with risk?)</p>
+                </Col>
+                <Col>
+                  <p className="text-end">
+                    {benchmark?.portfolioStats?.sharpe
+                      ? roundDecimals(benchmark.portfolioStats.sharpe)
+                      : ""}
+                  </p>
                 </Col>
               </Row>
             </Card.Footer>
@@ -219,8 +262,8 @@ export const DashboardPage: FC<{}> = () => {
                   </Col>
                 </Row>
               </Card.Body>
-              <Card.Footer>
-                <hr />
+              <Card.Footer className="pt-0">
+                <hr className="mt-0" />
                 {errorBotsCount > 0 && (
                   <Row>
                     <Col>
