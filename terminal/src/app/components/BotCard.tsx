@@ -164,7 +164,7 @@ const BotCard: FC<BotCardProps> = ({
                 <p>Commissions</p>
               </Col>
               <Col md="6" xs="5">
-                <p>{`${bot.deal.total_commissions} BNB`}</p>
+                <p>{`${bot.deal.total_commissions} ${bot.quote_asset}`}</p>
               </Col>
             </Row>
           )}
