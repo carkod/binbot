@@ -14,10 +14,7 @@
         "${workspaceFolder}/terminal/**/*.js",
         "${workspaceFolder}/terminal/src/node_modules/**"
       ],
-      "skipFiles": [
-        "<node_internals>/**",
-        "!**/node_modules/**"
-      ],
+      "skipFiles": ["<node_internals>/**", "!**/node_modules/**"]
     },
     {
       "name": "Python: FastAPI",
@@ -25,16 +22,10 @@
       "request": "launch",
       "module": "uvicorn",
       "cwd": "${workspaceFolder}/api",
-      "args": [
-        "main:app",
-        "--port",
-        "8008",
-        "--log-level",
-        "${env:LOG_LEVEL}"
-      ],
       "justMyCode": false,
       "console": "internalConsole",
       "envFile": "${workspaceFolder}/.env",
+      "args": ["main:app", "--port", "8008"]
     },
     {
       "name": "Python: streaming",
