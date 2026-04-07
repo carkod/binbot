@@ -241,7 +241,8 @@ class ApiDb:
                 role=role,
                 full_name="Admin",
             )
-            self.session.add(user_data)
+            if user_data:
+                self.session.add(user_data)
 
         service_username = self.config.service_user
         service_email = self.config.service_email
@@ -264,7 +265,7 @@ class ApiDb:
         self.session.commit()
         self.session.refresh(user_data)
         self.session.refresh(service_user_data)
-        return user_data
+        return
 
     def create_dummy_bot(self):
         """

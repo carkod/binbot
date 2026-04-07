@@ -25,13 +25,16 @@
       "request": "launch",
       "module": "uvicorn",
       "cwd": "${workspaceFolder}/api",
-      "args": ["main:app", "--port", "8008"],
+      "args": [
+        "main:app",
+        "--port",
+        "8008",
+        "--log-level",
+        "${env:LOG_LEVEL}"
+      ],
       "justMyCode": false,
       "console": "internalConsole",
       "envFile": "${workspaceFolder}/.env",
-      "env": {
-        "LOG_LEVEL": "debug"
-      }
     },
     {
       "name": "Python: streaming",
@@ -40,9 +43,6 @@
       "program": "${workspaceFolder}/api/market_updates.py",
       "console": "internalConsole",
       "envFile": "${workspaceFolder}/.env",
-      "env": {
-        "LOG_LEVEL": "debug"
-      },
       "justMyCode": false
     },
     {
