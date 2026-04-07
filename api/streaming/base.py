@@ -49,7 +49,7 @@ class BaseStreaming:
         self.autotrade_crud = AutotradeCrud()
         self.autotrade_settings = self.autotrade_crud.get_settings()
         self.exchange = ExchangeId(self.autotrade_settings.exchange_id)
-        self.benchmark_symbol = "BTCUSDT"
+        self.benchmark_symbol = "XBTUSDTM"
         self.kucoin_benchmark_symbol = "BTC-USDT"
 
         binance_interval = BinanceKlineIntervals(

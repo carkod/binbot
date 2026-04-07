@@ -908,7 +908,7 @@ class PositionDeal(KucoinPositionDeal):
                 qty_precision=self.qty_precision,
                 db_table=self.db_table,
             )
-            cls.base_streaming.kucoin_benchmark_symbol = "ETHBTCUSDTM"
+            cls.base_streaming.kucoin_benchmark_symbol = "XBTUSDTM"
             self.api = self.base_streaming.kucoin_futures_api
             symbol_info = self.base_streaming.kucoin_futures_api.get_symbol_info(
                 self.active_bot.pair
