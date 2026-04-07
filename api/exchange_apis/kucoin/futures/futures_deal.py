@@ -477,6 +477,12 @@ class KucoinPositionDeal(KucoinBaseBalance):
             size=self.active_bot.deal.opening_qty,
         )
 
+        if order_response.price and order_response.qty:
+            self.active_bot.add_log(
+                f"Stop loss placed @ {order_response.price} for {order_response.qty} contracts."
+            )
+            self.remove_stale_orders()
+
         order_response.deal_type = DealType.stop_loss
         order_model = OrderModel(**order_response.model_dump())
         self.active_bot.orders.append(order_model)
