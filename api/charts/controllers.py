@@ -1,13 +1,17 @@
 import re
 from datetime import datetime, timezone
+from typing import Any, Iterable
 from databases.crud.autotrade_crud import AutotradeCrud
 from charts.models import AdrSeriesDb
 from databases.db import Database
 from databases.crud.symbols_crud import SymbolsCrud
-from pybinbot import round_numbers, BinanceApi
+from pybinbot import ExchangeId, KucoinApi, round_numbers, BinanceApi
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.bot_crud import BotTableCrud
 from tools.config import Config
+from kucoin_universal_sdk.generate.spot.market.model_get_symbol_resp import (
+    GetSymbolResp,
+)
 
 
 class MarketDominationController(Database):
@@ -20,32 +24,72 @@ class MarketDominationController(Database):
         self.config = Config()
         self.autotrade_db = AutotradeCrud()
         self.autotrade_settings = self.autotrade_db.get_settings()
+        self.exchange = self.autotrade_settings.exchange_id
         self.symbols_crud = SymbolsCrud()
         self.binance_api = BinanceApi(
             key=self.config.binance_key, secret=self.config.binance_secret
         )
+        self.kucoin_api = KucoinApi(
+            key=self.config.kucoin_key,
+            secret=self.config.kucoin_secret,
+            passphrase=self.config.kucoin_passphrase,
+        )
 
-    def ingest_adp_data(self):
-        """
-        Store ticker 24 data every 30 min
-        and calculate ADR + Strength Index
-        """
-        get_ticker_data = self.binance_api.ticker_24()
+    def _get_market_breadth_tickers(self) -> tuple[Iterable[Any], datetime | None]:
+        if self.exchange == ExchangeId.KUCOIN:
+            response = self.kucoin_api.spot_api.get_all_tickers()
+            ticker = response.common_response.data["ticker"]
+            time = response.common_response.data["time"]
+            timestamp = datetime.fromtimestamp(time / 1000, tz=timezone.utc)
 
+            return ticker or [], timestamp
+
+        ticker_data = self.binance_api.ticker_24()
+        return ticker_data, None
+
+    def _normalize_market_breadth_ticker(
+        self, item: GetSymbolResp, fallback_timestamp: datetime | None = None
+    ) -> dict[str, Any] | None:
+        if self.exchange == ExchangeId.KUCOIN:
+            close_time = fallback_timestamp
+            return {
+                "symbol": item["symbol"],
+                "last_price": float(item.get("last", 0)),
+                "price_change_percent": float(item.get("changeRate", 0)) * 100,
+                "volume": float(item.get("vol", 0)),
+                "close_time": close_time,
+            }
+
+        return {
+            "symbol": item["symbol"],
+            "last_price": float(item["lastPrice"]),
+            "price_change_percent": float(item["priceChangePercent"]),
+            "volume": float(item["volume"]),
+            "close_time": datetime.fromtimestamp(
+                float(item["closeTime"]) / 1000, tz=timezone.utc
+            ),
+        }
+
+    def _calculate_adr_series_data(
+        self, market_tickers: Iterable[Any], fallback_timestamp: datetime | None = None
+    ) -> AdrSeriesDb:
         advancers = 0
         decliners = 0
         total_volume = 0.0
         gains = []
         losses = []
+        timestamp = fallback_timestamp
 
-        timestamp = None
+        for raw_item in market_tickers:
+            item = self._normalize_market_breadth_ticker(raw_item, fallback_timestamp)
+            if not item:
+                continue
 
-        for item in get_ticker_data:
             if (
                 item["symbol"].endswith(self.autotrade_settings.fiat)
-                and float(item["lastPrice"]) > 0
+                and float(item["last_price"]) > 0
             ):
-                price_change_percent = float(item["priceChangePercent"])
+                price_change_percent = item["price_change_percent"]
 
                 if price_change_percent > 0:
                     advancers += 1
@@ -54,10 +98,8 @@ class MarketDominationController(Database):
                     decliners += 1
                     losses.append(price_change_percent)
 
-                total_volume += float(item["volume"])
-                timestamp = datetime.fromtimestamp(
-                    float(item["closeTime"]) / 1000, tz=timezone.utc
-                ).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+                total_volume += item["volume"]
+                timestamp = item["close_time"]
 
         avg_gain = sum(gains) / len(gains) if gains else 0.0
         avg_loss = abs(sum(losses) / len(losses)) if losses else 0.0
@@ -70,16 +112,26 @@ class MarketDominationController(Database):
         else:
             strength_index = 0.0
 
-        adr_data = AdrSeriesDb(
-            timestamp=timestamp,
+        timestamp = timestamp or datetime.now(timezone.utc)
+
+        return AdrSeriesDb(
+            timestamp=timestamp.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
             advancers=advancers,
             decliners=decliners,
             total_volume=total_volume,
             strength_index=strength_index,
             avg_gain=avg_gain,
             avg_loss=avg_loss,
+            source=self.exchange.value,
         )
 
+    def ingest_adp_data(self):
+        """
+        Store ticker 24 data every 30 min
+        and calculate ADR + Strength Index
+        """
+        market_tickers, fallback_timestamp = self._get_market_breadth_tickers()
+        adr_data = self._calculate_adr_series_data(market_tickers, fallback_timestamp)
         response = self.kafka_db.advancers_decliners.insert_one(adr_data.model_dump())
         return response
 
