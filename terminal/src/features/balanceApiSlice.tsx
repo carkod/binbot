@@ -1,8 +1,5 @@
 import { notifification } from "../utils/api";
-import type {
-  BalanceData,
-  BenchmarkCollection,
-} from "./features.types";
+import type { BalanceData, BenchmarkCollection } from "./features.types";
 import { userApiSlice } from "./userApiSlice";
 
 export const balancesApiSlice = userApiSlice.injectEndpoints({

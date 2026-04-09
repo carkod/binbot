@@ -21,10 +21,6 @@ interface BenchmarkStats {
   pnl: number;
 }
 
-interface BenchmarkData {
-  series: BenchmarkSeries;
-}
-
 export interface BenchmarkSeriesData {
   fiatSeries: number[];
   btcSeries: number[];
@@ -32,7 +28,7 @@ export interface BenchmarkSeriesData {
 }
 
 export interface BenchmarkCollection {
-  benchmarkData: BenchmarkData;
+  benchmarkData: BenchmarkSeries;
   percentageSeries: BenchmarkSeriesData;
   portfolioStats: BenchmarkStats;
 }

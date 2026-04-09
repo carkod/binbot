@@ -6,6 +6,10 @@ import {
 } from "../../features/balanceApiSlice";
 import { useGetBotsQuery } from "../../features/bots/botsApiSlice";
 import { useAdSeriesQuery } from "../../features/marketApiSlice";
+import type {
+  BalanceData,
+  BenchmarkCollection,
+} from "../../features/features.types";
 import { BotStatus } from "../../utils/enums";
 import { roundDecimals } from "../../utils/math";
 import GainersLosers from "../components/GainersLosers";
@@ -16,6 +20,42 @@ import {
   useFilteredFuturesRankings,
   useFilteredGainerLosers,
 } from "../filter-gainers-losers";
+
+type PortfolioPnlDetails = {
+  portfolioPnlValue: number | undefined;
+  portfolioPnlPercentage: number | undefined;
+  portfolioPnlClass: string;
+};
+
+const usePortfolioPnlDetails = (
+  benchmark?: BenchmarkCollection,
+  accountData?: BalanceData,
+): PortfolioPnlDetails => {
+  const benchmarkSeries =
+    benchmark?.benchmarkData?.fiat ?? benchmark?.benchmarkData?.fiat;
+  const previousPortfolioValue = benchmarkSeries?.[benchmarkSeries.length - 1];
+  const latestPortfolioValue = accountData?.estimated_total_fiat;
+  const portfolioPnlValue =
+    latestPortfolioValue !== undefined && previousPortfolioValue !== undefined
+      ? latestPortfolioValue - previousPortfolioValue
+      : undefined;
+  const portfolioPnlPercentage =
+    portfolioPnlValue !== undefined && latestPortfolioValue
+      ? (portfolioPnlValue / latestPortfolioValue) * 100
+      : undefined;
+  const portfolioPnlClass =
+    portfolioPnlValue === undefined
+      ? ""
+      : portfolioPnlValue > 0
+        ? "text-success"
+        : "text-danger";
+
+  return {
+    portfolioPnlValue,
+    portfolioPnlPercentage,
+    portfolioPnlClass,
+  };
+};
 
 export const DashboardPage: FC<{}> = () => {
   const { data: accountData, isLoading: loadingEstimates } =
@@ -45,6 +85,8 @@ export const DashboardPage: FC<{}> = () => {
   const [errorBotsCount, setErrorBotsCount] = useState(0);
 
   const { spinner, setSpinner } = useContext(SpinnerContext);
+  const { portfolioPnlValue, portfolioPnlPercentage, portfolioPnlClass } =
+    usePortfolioPnlDetails(benchmark, accountData);
 
   useEffect(() => {
     if (activeBotEntities) {
@@ -137,11 +179,7 @@ export const DashboardPage: FC<{}> = () => {
                 >
                   <div className="text-center fs-1">
                     <i
-                      className={`${
-                        benchmark?.portfolioStats?.pnl > 0
-                          ? "text-success"
-                          : "text-danger"
-                      } fa-solid fa-building-columns`}
+                      className={`${portfolioPnlClass} fa-solid fa-building-columns`}
                     />
                   </div>
                 </Col>
@@ -153,14 +191,10 @@ export const DashboardPage: FC<{}> = () => {
                   </div>
                   <Card.Title
                     as="h3"
-                    className={`${
-                      benchmark?.portfolioStats?.pnl > 0
-                        ? "text-success"
-                        : "text-danger"
-                    } fs-4 text-end`}
+                    className={`${portfolioPnlClass} fs-4 text-end`}
                   >
-                    {benchmark?.portfolioStats?.pnl &&
-                      `${roundDecimals(benchmark?.portfolioStats?.pnl * 100)}%`}
+                    {portfolioPnlPercentage !== undefined &&
+                      `${roundDecimals(portfolioPnlPercentage)}%`}
                   </Card.Title>
                   <p />
                 </Col>
@@ -170,12 +204,12 @@ export const DashboardPage: FC<{}> = () => {
               <hr className="mt-0" />
               <Row>
                 <Col>
-                  <p>(Current - Last balance)</p>
+                  <p>(Last balance - Current real time)</p>
                 </Col>
                 <Col>
                   <p className="text-end">
-                    {benchmark?.portfolioStats?.pnl &&
-                      `${roundDecimals(benchmark?.portfolioStats?.pnl * 100)} USDC`}
+                    {portfolioPnlValue !== undefined &&
+                      `${roundDecimals(portfolioPnlValue)} USDC`}
                   </p>
                 </Col>
               </Row>
