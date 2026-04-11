@@ -106,6 +106,7 @@ class AdrSeriesDb(BaseModel):
     decliners: int
     total_volume: float
     strength_index: float
+    source: str
 
 
 class AdrSeries(StandardResponse):
@@ -114,6 +115,7 @@ class AdrSeries(StandardResponse):
     decliners: int
     total_volume: float
     strength_index: float
+    source: str
     timestamp: str
 
     @field_validator("timestamp", mode="after")
