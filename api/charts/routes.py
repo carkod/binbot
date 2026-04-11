@@ -76,23 +76,3 @@ def get_adr_series(size: int = 14, session: Session = Depends(get_session)):
 
     except Exception as error:
         return json_response_error(f"Failed to retrieve ADR series data: {error}")
-
-
-@charts_blueprint.get(
-    "/algorithm-performance",
-    tags=["charts"],
-    summary="Get algorithm profit and loss",
-    response_model=AdrSeriesResponse,
-)
-def algorithm_performance():
-    algorithm_performance_data = MarketDominationController().algo_performance()
-    if algorithm_performance_data:
-        return json_response(
-            {
-                "data": algorithm_performance_data,
-                "message": "Successfully retrieved algorithm performance data.",
-                "error": 0,
-            }
-        )
-    else:
-        raise HTTPException(404, detail="No algorithm performance data found")
