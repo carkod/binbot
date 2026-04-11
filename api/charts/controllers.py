@@ -1,13 +1,12 @@
-import re
+import logging
 from datetime import datetime, timezone
 from typing import Any, Iterable
 from databases.crud.autotrade_crud import AutotradeCrud
 from charts.models import AdrSeriesDb
 from databases.db import Database
 from databases.crud.symbols_crud import SymbolsCrud
-from pybinbot import ExchangeId, KucoinApi, round_numbers, BinanceApi
-from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from databases.crud.bot_crud import BotTableCrud
+from pymongo.errors import BulkWriteError
+from pybinbot import ExchangeId, KucoinApi, BinanceApi
 from tools.config import Config
 from kucoin_universal_sdk.generate.spot.market.model_get_symbol_resp import (
     GetSymbolResp,
@@ -34,6 +33,72 @@ class MarketDominationController(Database):
             secret=self.config.kucoin_secret,
             passphrase=self.config.kucoin_passphrase,
         )
+
+    def _ensure_market_breadth_collection(self) -> None:
+        if "market_breadth" in self.kafka_db.list_collection_names():
+            return
+
+        self.kafka_db.create_collection(
+            "market_breadth",
+            timeseries={
+                "timeField": "timestamp",
+                "metaField": "source",
+                "granularity": "hours",
+            },
+        )
+        logging.info("Created time-series collection market_breadth")
+
+    def migrate_adrs(self) -> int:
+        self._ensure_market_breadth_collection()
+
+        legacy_collection = self.kafka_db.advancers_decliners
+        target_collection = self.kafka_db.market_breadth
+
+        if target_collection.estimated_document_count() > 0:
+            logging.info(
+                "Skipping ADR migration because market_breadth already contains data"
+            )
+            return 0
+
+        documents_to_insert = []
+        for document in legacy_collection.find({}):
+            document["source"] = document.get("source") or ExchangeId.BINANCE.value
+            documents_to_insert.append(document)
+
+        if not documents_to_insert:
+            logging.info("No ADR documents needed migration into market_breadth")
+            return 0
+
+        try:
+            result = target_collection.insert_many(documents_to_insert, ordered=False)
+            migrated_count = len(result.inserted_ids)
+        except BulkWriteError as exc:
+            write_errors = exc.details.get("writeErrors", [])
+            duplicate_errors = [
+                error for error in write_errors if error.get("code") == 11000
+            ]
+            non_duplicate_errors = [
+                error for error in write_errors if error.get("code") != 11000
+            ]
+
+            if non_duplicate_errors:
+                raise
+
+            migrated_count = len(
+                exc.details.get("writeResult", {}).get("insertedIds", [])
+            )
+            if not migrated_count:
+                attempted = len(documents_to_insert)
+                migrated_count = max(attempted - len(duplicate_errors), 0)
+
+        if migrated_count:
+            logging.info(
+                "Migrated %s ADR documents into market_breadth", migrated_count
+            )
+        else:
+            logging.info("No ADR documents needed migration into market_breadth")
+
+        return migrated_count
 
     def _get_market_breadth_tickers(self) -> tuple[Iterable[Any], datetime | None]:
         if self.exchange == ExchangeId.KUCOIN:
@@ -130,21 +195,26 @@ class MarketDominationController(Database):
         Store ticker 24 data every 30 min
         and calculate ADR + Strength Index
         """
+        self._ensure_market_breadth_collection()
         market_tickers, fallback_timestamp = self._get_market_breadth_tickers()
         adr_data = self._calculate_adr_series_data(market_tickers, fallback_timestamp)
-        response = self.kafka_db.advancers_decliners.insert_one(adr_data.model_dump())
+        response = self.kafka_db.market_breadth.insert_one(adr_data.model_dump())
         return response
 
-    def get_adrs(self, size=7, window=3) -> dict | None:
+    def get_adrs(
+        self, size: int = 7, window: int = 3, exchange: ExchangeId | None = None
+    ) -> dict | None:
         """
         Get ADRs historical data with moving average of 'adr', using ObjectId _id for date.
 
         Args:
             size (int, optional): Number of data points to retrieve. Defaults to 7 (1 week).
             window (int, optional): Window size for moving average. Defaults to 3.
+            exchange (ExchangeId, optional): Exchange ID to filter data. Defaults to None.
         Returns:
             list: A list of ADR data points with moving average.
         """
+        self._ensure_market_breadth_collection()
         fetch_size = size + window - 1
         pipeline = [
             {"$addFields": {"timestamp_dt": "$timestamp"}},
@@ -214,13 +284,15 @@ class MarketDominationController(Database):
             },
             {"$project": {"_id": 0}},
         ]
-        results = self.kafka_db.advancers_decliners.aggregate(pipeline)
+        if exchange:
+            pipeline.insert(0, {"$match": {"source": exchange.value}})
+        results = self.kafka_db.market_breadth.aggregate(pipeline)
         data = list(results)
         if len(data) > 0:
             return data[0]
         return None
 
-    def gainers_losers(self):
+    def gainers_losers(self) -> tuple[Iterable[Any], Iterable[Any]]:
         """
         Get market top gainers of the day
 
@@ -252,43 +324,3 @@ class MarketDominationController(Database):
         )
 
         return gainers[:10], losers[:10]
-
-    def algo_performance(self, paper_trading: bool = False) -> dict:
-        """
-        Get algorithm performance data
-        from bots in the last month
-
-        1. Get bots
-        2. Parse names
-        3. Do an aggregation of all profits and return net profit
-        """
-        algo_performance: dict = {}
-
-        if paper_trading:
-            bots_crud: PaperTradingTableCrud | BotTableCrud = PaperTradingTableCrud()
-
-        else:
-            bots_crud = BotTableCrud()
-
-        bots = bots_crud.get()
-        if not bots:
-            return algo_performance
-        else:
-            for bot in bots:
-                match_name = re.match(
-                    r"^(.*?)(?=_[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2})", bot.name
-                )
-                if match_name:
-                    key = match_name.group(1).lower()
-                    if key not in algo_performance:
-                        algo_performance[key] = {"net_profit": 0.0, "bots_count": 0}
-
-                    if bot.deal.closing_price > 0:
-                        algo_performance[key]["net_profit"] += round_numbers(
-                            (bot.deal.closing_price - bot.deal.opening_price)
-                            / bot.deal.closing_price
-                        )
-
-                    algo_performance[key]["bots_count"] += 1
-
-        return algo_performance

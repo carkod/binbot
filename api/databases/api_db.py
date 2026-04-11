@@ -1,4 +1,5 @@
 import logging
+from charts.controllers import MarketDominationController
 from databases.tables.inquiry_table import InquiryTable
 from databases.symbols_etl import SymbolDataEtl
 from databases.tables.autotrade_table import AutotradeTable, TestAutotradeTable
@@ -49,8 +50,13 @@ class ApiDb:
         # Depends on autotrade settings
         self.init_balances()
         self.init_inquiries()
+        self.init_market_breadth()
 
         logging.info("Finishing db operations")
+
+    def init_market_breadth(self):
+        controller = MarketDominationController()
+        controller.migrate_adrs()
 
     def run_migrations(self):
         """
@@ -241,8 +247,7 @@ class ApiDb:
                 role=role,
                 full_name="Admin",
             )
-            if user_data:
-                self.session.add(user_data)
+            self.session.add(user_data)
 
         service_username = self.config.service_user
         service_email = self.config.service_email
@@ -263,8 +268,6 @@ class ApiDb:
             self.session.add(service_user_data)
 
         self.session.commit()
-        self.session.refresh(user_data)
-        self.session.refresh(service_user_data)
         return
 
     def create_dummy_bot(self):
