@@ -120,7 +120,7 @@ def test_get_bots_filter_by_name_not_found(client: TestClient):
 
 
 def test_get_algo_ranking(client: TestClient):
-    """Test that /bot/algo-ranking returns a list of {name, count} items"""
+    """Test that /bot/algo-ranking returns a list of {name, count, bot_profit} items"""
     response = client.get("/bot/algo-ranking")
 
     assert response.status_code == 200
@@ -132,16 +132,17 @@ def test_get_algo_ranking(client: TestClient):
         assert isinstance(item["name"], str)
         assert isinstance(item["count"], int)
         assert item["count"] >= 1
+        assert isinstance(item["bot_profit"], float)
 
 
 def test_get_algo_ranking_ordered_by_count(client: TestClient):
-    """Test that /bot/algo-ranking results are ordered by count descending"""
+    """Test that /bot/algo-ranking results are ordered by bot_profit descending"""
     response = client.get("/bot/algo-ranking")
 
     assert response.status_code == 200
     content = response.json()
-    counts = [item["count"] for item in content["detail"]]
-    assert counts == sorted(counts, reverse=True)
+    profits = [item["bot_profit"] for item in content["detail"]]
+    assert profits == sorted(profits, reverse=True)
 
 
 def test_create_bot(client: TestClient):

@@ -375,19 +375,33 @@ class BotTableCrud:
     def get_list_algo(self) -> list[AlgoRankingItem]:
         """
         Query all bots, group by name, and return a list of AlgoRankingItem
-        with non-repeating bot names and their counts,
-        ordered from highest count to lowest.
+        with non-repeating bot names, their counts, and aggregated profit,
+        ordered from highest bot_profit to lowest.
         """
         stmt = (
-            select(BotTable.name, func.count(1).label("count"))
+            select(
+                BotTable.name,
+                func.count(1).label("count"),
+                func.coalesce(
+                    func.sum(
+                        (DealTable.closing_price - DealTable.opening_price)
+                        / func.nullif(DealTable.opening_price, 0)
+                    ),
+                    0,
+                ).label("bot_profit"),
+            )
+            .outerjoin(DealTable, BotTable.deal_id == DealTable.id)
             .group_by(BotTable.name)
-            .order_by(desc("count"))
+            .order_by(desc("bot_profit"))
         )
 
         with self._get_session() as s:
             rows = s.exec(stmt).all()
 
-        return [AlgoRankingItem(name=name, count=count) for name, count in rows]
+        return [
+            AlgoRankingItem(name=name, count=count, bot_profit=bot_profit)
+            for name, count, bot_profit in rows
+        ]
 
     def get_active_pairs(self) -> Sequence[str]:
         stmt = select(BotTable.pair).where(BotTable.status == Status.active)
