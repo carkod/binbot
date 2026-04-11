@@ -9,10 +9,21 @@ from pybinbot import ExchangeId
 class CollectionStub:
     def __init__(self):
         self.inserted_docs = []
+        self.aggregate_pipeline = None
 
     def insert_one(self, doc):
         self.inserted_docs.append(doc)
         return doc
+
+    def insert_many(self, docs, ordered=False):
+        self.inserted_docs.extend(docs)
+        return SimpleNamespace(
+            inserted_ids=[doc["_id"] for doc in docs if "_id" in doc]
+        )
+
+    def aggregate(self, pipeline):
+        self.aggregate_pipeline = pipeline
+        return []
 
 
 def _make_controller(exchange_id: ExchangeId, fiat: str = "USDC"):
@@ -50,12 +61,9 @@ def test_migrate_adrs_copies_legacy_documents_to_market_breadth():
     inserted_docs: list[dict] = []
 
     class MarketBreadthStub(CollectionStub):
-        def count_documents(self, query, limit=0):
-            return int(any(doc["_id"] == query["_id"] for doc in inserted_docs))
-
-        def insert_one(self, doc):
-            inserted_docs.append(doc)
-            return doc
+        def insert_many(self, docs, ordered=False):
+            inserted_docs.extend(docs)
+            return SimpleNamespace(inserted_ids=[doc["_id"] for doc in docs])
 
     controller = _make_controller(ExchangeId.BINANCE)
     controller.kafka_db = SimpleNamespace(
@@ -70,6 +78,16 @@ def test_migrate_adrs_copies_legacy_documents_to_market_breadth():
     assert migrated_count == 2
     assert inserted_docs[0]["source"] == ExchangeId.BINANCE.value
     assert inserted_docs[1]["source"] == ExchangeId.KUCOIN.value
+
+
+def test_get_adrs_filters_by_exchange_when_exchange_arg_is_set():
+    controller = _make_controller(ExchangeId.BINANCE)
+
+    controller.get_adrs(exchange=ExchangeId.KUCOIN)
+
+    assert controller.kafka_db.market_breadth.aggregate_pipeline[0] == {
+        "$match": {"source": ExchangeId.KUCOIN.value}
+    }
 
 
 def test_ingest_adp_data_uses_binance_ticker_payload():

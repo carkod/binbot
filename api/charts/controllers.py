@@ -5,6 +5,7 @@ from databases.crud.autotrade_crud import AutotradeCrud
 from charts.models import AdrSeriesDb
 from databases.db import Database
 from databases.crud.symbols_crud import SymbolsCrud
+from pymongo.errors import BulkWriteError
 from pybinbot import ExchangeId, KucoinApi, BinanceApi
 from tools.config import Config
 from kucoin_universal_sdk.generate.spot.market.model_get_symbol_resp import (
@@ -53,15 +54,36 @@ class MarketDominationController(Database):
         legacy_collection = self.kafka_db.advancers_decliners
         target_collection = self.kafka_db.market_breadth
 
-        migrated_count = 0
+        documents_to_insert = []
         for document in legacy_collection.find({}):
             document["source"] = document.get("source") or ExchangeId.BINANCE.value
+            documents_to_insert.append(document)
 
-            if target_collection.count_documents({"_id": document["_id"]}, limit=1):
-                continue
+        if not documents_to_insert:
+            logging.info("No ADR documents needed migration into market_breadth")
+            return 0
 
-            target_collection.insert_one(document)
-            migrated_count += 1
+        try:
+            result = target_collection.insert_many(documents_to_insert, ordered=False)
+            migrated_count = len(result.inserted_ids)
+        except BulkWriteError as exc:
+            write_errors = exc.details.get("writeErrors", [])
+            duplicate_errors = [
+                error for error in write_errors if error.get("code") == 11000
+            ]
+            non_duplicate_errors = [
+                error for error in write_errors if error.get("code") != 11000
+            ]
+
+            if non_duplicate_errors:
+                raise
+
+            migrated_count = len(
+                exc.details.get("writeResult", {}).get("insertedIds", [])
+            )
+            if not migrated_count:
+                attempted = len(documents_to_insert)
+                migrated_count = max(attempted - len(duplicate_errors), 0)
 
         if migrated_count:
             logging.info(
