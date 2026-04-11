@@ -367,16 +367,22 @@ export const DashboardPage: FC<{}> = () => {
                   <thead>
                     <tr>
                       <th>#</th>
-                      <th>Bot Name</th>
+                      <th>Name</th>
                       <th className="text-end">Count</th>
+                      <th className="text-end">Performance</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {algoRanking.map(({ name, count }, index) => (
+                    {algoRanking.map(({ name, count, bot_profit }, index) => (
                       <tr key={name}>
                         <td>{index + 1}</td>
                         <td>{name}</td>
                         <td className="text-end">{count}</td>
+                        <td className="text-end">
+                          {count > 0
+                            ? (bot_profit / count * 100).toFixed(2) + "%"
+                            : "N/A"}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
