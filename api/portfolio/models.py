@@ -5,6 +5,7 @@ from pydantic import BaseModel
 class Stats(BaseModel):
     pnl: float
     sharpe: float
+    btc_sharpe: float
 
     class Config:
         extra = "forbid"

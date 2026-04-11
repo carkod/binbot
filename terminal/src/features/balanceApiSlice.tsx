@@ -54,7 +54,11 @@ export const balancesApiSlice = userApiSlice.injectEndpoints({
         return {
           benchmarkData: data.series,
           percentageSeries: percentageSeries,
-          portfolioStats: stats,
+          portfolioStats: {
+            pnl: stats.pnl,
+            sharpe: stats.sharpe,
+            btc_sharpe: stats.btc_sharpe,
+          },
         };
       },
     }),

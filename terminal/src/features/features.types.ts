@@ -18,6 +18,7 @@ export interface BenchmarkSeries {
 
 interface BenchmarkStats {
   sharpe: number;
+  btc_sharpe: number;
   pnl: number;
 }
 

@@ -87,6 +87,8 @@ export const DashboardPage: FC<{}> = () => {
   const { spinner, setSpinner } = useContext(SpinnerContext);
   const { portfolioPnlValue, portfolioPnlPercentage, portfolioPnlClass } =
     usePortfolioPnlDetails(benchmark, accountData);
+  const portfolioSharpe = benchmark?.portfolioStats?.sharpe;
+  const btcSharpe = benchmark?.portfolioStats?.btc_sharpe;
 
   useEffect(() => {
     if (activeBotEntities) {
@@ -226,7 +228,7 @@ export const DashboardPage: FC<{}> = () => {
                   <div className="text-center fs-1">
                     <i
                       className={`${
-                        benchmark?.portfolioStats?.sharpe > 0
+                        (portfolioSharpe ?? 0) > 0
                           ? "text-success"
                           : "text-danger"
                       } fa-solid fa-chart-line`}
@@ -240,13 +242,13 @@ export const DashboardPage: FC<{}> = () => {
                   <Card.Title
                     as="h3"
                     className={`${
-                      benchmark?.portfolioStats?.sharpe > 0
+                      (portfolioSharpe ?? 0) > 0
                         ? "text-success"
                         : "text-danger"
                     } fs-4 text-end`}
                   >
-                    {benchmark?.portfolioStats?.sharpe
-                      ? roundDecimals(benchmark.portfolioStats.sharpe)
+                    {portfolioSharpe !== undefined
+                      ? roundDecimals(portfolioSharpe)
                       : ""}
                   </Card.Title>
                   <p />
@@ -261,8 +263,8 @@ export const DashboardPage: FC<{}> = () => {
                 </Col>
                 <Col>
                   <p className="text-end">
-                    {benchmark?.portfolioStats?.sharpe
-                      ? roundDecimals(benchmark.portfolioStats.sharpe)
+                    {btcSharpe !== undefined
+                      ? `${roundDecimals(btcSharpe)} BTC`
                       : ""}
                   </p>
                 </Col>
