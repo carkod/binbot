@@ -1,7 +1,8 @@
 from time import time
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 from sqlmodel import Session
-from typing import Optional
 from pybinbot import Status, BinbotErrors, BinanceErrors
 from user.models.user import UserTokenData
 from bots.models import (
@@ -27,10 +28,11 @@ bot_blueprint = APIRouter()
 @bot_blueprint.get("/bot", response_model=BotListResponse, tags=["bots"])
 def get_bots(
     status: Status = Status.all,
-    start_date: Optional[int] = None,
-    end_date: Optional[int] = None,
+    start_date: int | None = None,
+    end_date: int | None = None,
     limit: int = 200,
     offset: int = 0,
+    bot_name: str | None = None,
     session: Session = Depends(get_session),
     _: UserTokenData = Depends(get_current_user),
 ):
@@ -42,6 +44,7 @@ def get_bots(
             end_date=end_date,
             limit=limit,
             offset=offset,
+            bot_name=bot_name,
         )
         data = [BotModel.dump_from_table(bot) for bot in bots]
         return BotListResponse(message="Successfully found bots!", data=data)
@@ -60,6 +63,19 @@ def get_active_pairs(
         return BotListResponse(message="Successfully found active pairs.", data=pairs)
     except BinbotErrors as e:
         return BotResponse(message=e.message, error=1)
+
+
+@bot_blueprint.get("/bot/algo-ranking", tags=["bots"])
+def get_algo_ranking(
+    session: Session = Depends(get_session),
+    _: UserTokenData = Depends(get_current_user),
+):
+    crud = BotTableCrud(session)
+    try:
+        ranking = crud.get_list_algo()
+        return JSONResponse(content={"detail": jsonable_encoder(ranking)})
+    except BinbotErrors as e:
+        raise HTTPException(status_code=400, detail=e.message)
 
 
 @bot_blueprint.get("/bot/public", response_model=BotListResponse, tags=["bots"])

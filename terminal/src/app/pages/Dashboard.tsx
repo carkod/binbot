@@ -1,10 +1,13 @@
 import React, { useContext, useEffect, useState, type FC } from "react";
-import { Card, Col, Row } from "react-bootstrap";
+import { Card, Col, Row, Table } from "react-bootstrap";
 import {
   useGetBalanceQuery,
   useGetBenchmarkQuery,
 } from "../../features/balanceApiSlice";
-import { useGetBotsQuery } from "../../features/bots/botsApiSlice";
+import {
+  useGetBotsQuery,
+  useGetAlgoRankingQuery,
+} from "../../features/bots/botsApiSlice";
 import { useAdSeriesQuery } from "../../features/marketApiSlice";
 import type {
   BalanceData,
@@ -81,6 +84,9 @@ export const DashboardPage: FC<{}> = () => {
 
   const { data: adpSeries, isLoading: loadingAdpSeries } = useAdSeriesQuery();
 
+  const { data: algoRanking, isLoading: loadingAlgoRanking } =
+    useGetAlgoRankingQuery();
+
   const [activeBotsCount, setActiveBotsCount] = useState(0);
   const [errorBotsCount, setErrorBotsCount] = useState(0);
 
@@ -103,7 +109,8 @@ export const DashboardPage: FC<{}> = () => {
       !loadingErrorBots &&
       !loadingCombined &&
       !loadingFuturesRankings &&
-      !loadingAdpSeries
+      !loadingAdpSeries &&
+      !loadingAlgoRanking
     ) {
       setSpinner(false);
     } else {
@@ -123,6 +130,7 @@ export const DashboardPage: FC<{}> = () => {
     loadingCombined,
     loadingAdpSeries,
     loadingFuturesRankings,
+    loadingAlgoRanking,
   ]);
 
   return (
@@ -347,6 +355,37 @@ export const DashboardPage: FC<{}> = () => {
           )}
         </Col>
       </Row>
+      {algoRanking && algoRanking.length > 0 && (
+        <Row>
+          <Col>
+            <Card>
+              <Card.Header>
+                <Card.Title as="h5">Algorithm Ranking</Card.Title>
+              </Card.Header>
+              <Card.Body>
+                <Table striped hover responsive size="sm">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Bot Name</th>
+                      <th className="text-end">Count</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {algoRanking.map(({ name, count }, index) => (
+                      <tr key={name}>
+                        <td>{index + 1}</td>
+                        <td>{name}</td>
+                        <td className="text-end">{count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+      )}
     </div>
   );
 };

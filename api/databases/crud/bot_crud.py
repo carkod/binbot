@@ -1,12 +1,13 @@
 from typing import Any, List, Sequence, Generator, cast
+import re
 from uuid import UUID
 from contextlib import contextmanager, AbstractContextManager
 
-from sqlmodel import Session, select, asc, desc, case
+from sqlmodel import Session, select, asc, desc, case, func
 from sqlalchemy.orm import QueryableAttribute, selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
-from bots.models import BotModel, OrderModel
+from bots.models import BotModel, OrderModel, AlgoRankingItem
 from databases.tables.bot_table import BotTable
 from databases.tables.deal_table import DealTable
 from databases.tables.order_table import ExchangeOrderTable
@@ -161,6 +162,7 @@ class BotTableCrud:
         end_date: float | None = None,
         limit: int = 200,
         offset: int = 0,
+        bot_name: str | None = None,
     ) -> Sequence[BotTable]:
 
         stmt = select(BotTable).options(
@@ -176,6 +178,10 @@ class BotTableCrud:
 
         if end_date:
             stmt = stmt.where(BotTable.created_at <= int(end_date))
+
+        if bot_name:
+            bot_name = re.sub(r"[^\w\s\-']", "", bot_name.strip())
+            stmt = stmt.where(BotTable.name == bot_name)
 
         stmt = (
             stmt.order_by(
@@ -365,6 +371,23 @@ class BotTableCrud:
     # --------------------------------------------------
     # Utility
     # --------------------------------------------------
+
+    def get_list_algo(self) -> list[AlgoRankingItem]:
+        """
+        Query all bots, group by name, and return a list of AlgoRankingItem
+        with non-repeating bot names and their counts,
+        ordered from highest count to lowest.
+        """
+        stmt = (
+            select(BotTable.name, func.count(1).label("count"))
+            .group_by(BotTable.name)
+            .order_by(desc("count"))
+        )
+
+        with self._get_session() as s:
+            rows = s.exec(stmt).all()
+
+        return [AlgoRankingItem(name=name, count=count) for name, count in rows]
 
     def get_active_pairs(self) -> Sequence[str]:
         stmt = select(BotTable.pair).where(BotTable.status == Status.active)

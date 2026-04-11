@@ -186,6 +186,26 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         };
       },
     }),
+    getAlgoRanking: build.query<{ name: string; count: number }[], void>({
+      query: () => ({
+        url: import.meta.env.VITE_BOT_ALGO_RANKING || "/bot/algo-ranking",
+        method: "GET",
+      }),
+      transformResponse: (response: {
+        detail: { name: string; count: number }[];
+      }) => {
+        return response.detail;
+      },
+      transformErrorResponse: (error: {
+        status: number;
+        data: { detail: string };
+      }) => {
+        if (error.status >= 400) {
+          notifification("error", error.data.detail);
+        }
+        return error;
+      },
+    }),
   }),
 });
 
@@ -199,4 +219,5 @@ export const {
   useLazyActivateBotQuery,
   useDeactivateBotMutation,
   useGetOneBySymbolQuery,
+  useGetAlgoRankingQuery,
 } = botsApiSlice;

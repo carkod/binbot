@@ -167,6 +167,15 @@ class BulkDeleteRequest(BaseModel):
         return v
 
 
+class AlgoRankingItem(BaseModel):
+    name: str
+    count: int
+
+
+class AlgoRankingResponse(IResponseBase):
+    data: list[AlgoRankingItem] = Field(default_factory=list)
+
+
 class GetBotParams(BaseModel):
     status: str | None = None
     start_date: float | None = None
