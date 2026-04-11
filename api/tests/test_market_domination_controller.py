@@ -25,6 +25,9 @@ class CollectionStub:
         self.aggregate_pipeline = pipeline
         return []
 
+    def estimated_document_count(self):
+        return len(self.inserted_docs)
+
 
 def _make_controller(exchange_id: ExchangeId, fiat: str = "USDC"):
     controller = MarketDominationController.__new__(MarketDominationController)
@@ -78,6 +81,20 @@ def test_migrate_adrs_copies_legacy_documents_to_market_breadth():
     assert migrated_count == 2
     assert inserted_docs[0]["source"] == ExchangeId.BINANCE.value
     assert inserted_docs[1]["source"] == ExchangeId.KUCOIN.value
+
+
+def test_migrate_adrs_skips_when_market_breadth_already_has_data():
+    controller = _make_controller(ExchangeId.BINANCE)
+    controller.kafka_db.market_breadth.inserted_docs.append({"_id": "existing"})
+    controller.kafka_db.advancers_decliners = SimpleNamespace(
+        find=lambda query=None: (_ for _ in ()).throw(
+            AssertionError("legacy collection should not be read")
+        )
+    )
+
+    migrated_count = controller.migrate_adrs()
+
+    assert migrated_count == 0
 
 
 def test_get_adrs_filters_by_exchange_when_exchange_arg_is_set():

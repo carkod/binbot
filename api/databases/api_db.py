@@ -57,7 +57,6 @@ class ApiDb:
     def init_market_breadth(self):
         controller = MarketDominationController()
         controller.migrate_adrs()
-        logging.debug("Finished initializing market breadth data")
 
     def run_migrations(self):
         """

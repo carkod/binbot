@@ -54,6 +54,12 @@ class MarketDominationController(Database):
         legacy_collection = self.kafka_db.advancers_decliners
         target_collection = self.kafka_db.market_breadth
 
+        if target_collection.estimated_document_count() > 0:
+            logging.info(
+                "Skipping ADR migration because market_breadth already contains data"
+            )
+            return 0
+
         documents_to_insert = []
         for document in legacy_collection.find({}):
             document["source"] = document.get("source") or ExchangeId.BINANCE.value
