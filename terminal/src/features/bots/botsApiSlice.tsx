@@ -19,6 +19,12 @@ type GetBotsResponse = {
   totalProfit: number;
 };
 
+export type AlgoRankingItem = {
+  name: string;
+  count: number;
+  bot_profit: number;
+};
+
 export const buildGetBotsPath = (
   status: string = BotStatus.ALL,
   startDate: number = weekAgo(),
@@ -186,13 +192,13 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         };
       },
     }),
-    getAlgoRanking: build.query<{ name: string; count: number }[], void>({
+    getAlgoRanking: build.query<AlgoRankingItem[], void>({
       query: () => ({
         url: import.meta.env.VITE_BOT_ALGO_RANKING || "/bot/algo-ranking",
         method: "GET",
       }),
       transformResponse: (response: {
-        detail: { name: string; count: number }[];
+        detail: AlgoRankingItem[];
       }) => {
         return response.detail;
       },
