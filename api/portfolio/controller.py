@@ -152,6 +152,7 @@ class PortfolioController:
         stats = Stats(
             pnl=pnl,
             sharpe=self.compute_sharpe(balances),
+            btc_sharpe=self.compute_sharpe(btc_series),
         )
         series = BenchmarkData(
             fiat=fiat_series,
