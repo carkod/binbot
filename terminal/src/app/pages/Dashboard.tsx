@@ -95,6 +95,12 @@ export const DashboardPage: FC<{}> = () => {
     usePortfolioPnlDetails(benchmark, accountData);
   const portfolioSharpe = benchmark?.portfolioStats?.sharpe;
   const btcSharpe = benchmark?.portfolioStats?.btc_sharpe;
+  const topAlgoCounts = new Set(
+    algoRanking
+      ?.map(({ count }) => count)
+      .sort((a, b) => b - a)
+      .slice(0, 3) ?? [],
+  );
 
   useEffect(() => {
     if (activeBotEntities) {
@@ -357,31 +363,51 @@ export const DashboardPage: FC<{}> = () => {
       </Row>
       {algoRanking && algoRanking.length > 0 && (
         <Row>
-          <Col>
+          <Col lg="6" md="12">
             <Card>
               <Card.Header>
-                <Card.Title as="h5">Algorithm Ranking</Card.Title>
+                <Card.Title as="h5" className="d-flex align-items-center gap-2">
+                  <i className="fa-solid fa-trophy text-warning" />
+                  <span>Algorithm Ranking</span>
+                </Card.Title>
+                <Card.Text className="text-body-secondary">
+                  These are the algorithms executed by Binquant through
+                  autotrade
+                </Card.Text>
               </Card.Header>
               <Card.Body>
-                <Table striped hover responsive size="sm">
+                <Table hover responsive size="sm">
                   <thead>
                     <tr>
                       <th>#</th>
                       <th>Name</th>
                       <th className="text-end">Count</th>
+                      <th className="text-end">
+                        Profit ({accountData?.fiat_currency})
+                      </th>
                       <th className="text-end">Performance</th>
                     </tr>
                   </thead>
                   <tbody>
                     {algoRanking.map(({ name, count, bot_profit }, index) => (
-                      <tr key={name}>
+                      <tr
+                        key={name}
+                        className={
+                          topAlgoCounts.has(count)
+                            ? "table-secondary text-white"
+                            : ""
+                        }
+                      >
                         <td>{index + 1}</td>
                         <td>{name}</td>
                         <td className="text-end">{count}</td>
                         <td className="text-end">
+                          {roundDecimals(bot_profit, 2)}
+                        </td>
+                        <td className="text-end">
                           {count > 0
-                            ? (bot_profit / count * 100).toFixed(2) + "%"
-                            : "N/A"}
+                            ? ((bot_profit / count) * 100).toFixed(2) + "%"
+                            : ""}
                         </td>
                       </tr>
                     ))}

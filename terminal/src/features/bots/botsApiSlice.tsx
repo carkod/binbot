@@ -197,9 +197,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         url: import.meta.env.VITE_BOT_ALGO_RANKING || "/bot/algo-ranking",
         method: "GET",
       }),
-      transformResponse: (response: {
-        detail: AlgoRankingItem[];
-      }) => {
+      transformResponse: (response: { detail: AlgoRankingItem[] }) => {
         return response.detail;
       },
       transformErrorResponse: (error: {

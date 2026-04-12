@@ -390,7 +390,7 @@ class BotTableCrud:
                     0,
                 ).label("bot_profit"),
             )
-            .outerjoin(DealTable, BotTable.deal_id == DealTable.id)
+            .outerjoin(BOT_DEAL_REL)
             .group_by(BotTable.name)
             .order_by(desc("bot_profit"))
         )
