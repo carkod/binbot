@@ -9,6 +9,14 @@ from databases.tables.order_table import ExchangeOrderTable
 
 
 class OrderModel(OrderBase):
+
+    @field_validator("order_type", "order_side")
+    @classmethod
+    def validate_order_params(cls, v):
+        if not isinstance(v, str):
+            return str(v)
+        return v
+
     @classmethod
     def dump_from_table(cls, bot):
         """
