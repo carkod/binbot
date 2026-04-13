@@ -19,6 +19,12 @@ type GetBotsResponse = {
   totalProfit: number;
 };
 
+export type AlgoRankingItem = {
+  name: string;
+  count: number;
+  bot_profit: number;
+};
+
 export const buildGetBotsPath = (
   status: string = BotStatus.ALL,
   startDate: number = weekAgo(),
@@ -186,6 +192,24 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         };
       },
     }),
+    getAlgoRanking: build.query<AlgoRankingItem[], void>({
+      query: () => ({
+        url: import.meta.env.VITE_BOT_ALGO_RANKING || "/bot/algo-ranking",
+        method: "GET",
+      }),
+      transformResponse: (response: { detail: AlgoRankingItem[] }) => {
+        return response.detail;
+      },
+      transformErrorResponse: (error: {
+        status: number;
+        data: { detail: string };
+      }) => {
+        if (error.status >= 400) {
+          notifification("error", error.data.detail);
+        }
+        return error;
+      },
+    }),
   }),
 });
 
@@ -199,4 +223,5 @@ export const {
   useLazyActivateBotQuery,
   useDeactivateBotMutation,
   useGetOneBySymbolQuery,
+  useGetAlgoRankingQuery,
 } = botsApiSlice;

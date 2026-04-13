@@ -98,6 +98,53 @@ def test_get_bots(client: TestClient):
     assert "fiat" in content["data"][0]
 
 
+def test_get_bots_filter_by_name(client: TestClient):
+    """Test filtering bots by bot_name query parameter"""
+    response = client.get("/bot", params={"bot_name": "Test bot 1"})
+
+    assert response.status_code == 200
+    content = response.json()
+    assert isinstance(content["data"], list)
+    assert len(content["data"]) == 1
+    assert content["data"][0]["name"] == "Test bot 1"
+
+
+def test_get_bots_filter_by_name_not_found(client: TestClient):
+    """Test filtering bots by a name that doesn't match any bot"""
+    response = client.get("/bot", params={"bot_name": "NonExistentBotName"})
+
+    assert response.status_code == 200
+    content = response.json()
+    assert isinstance(content["data"], list)
+    assert len(content["data"]) == 0
+
+
+def test_get_algo_ranking(client: TestClient):
+    """Test that /bot/algo-ranking returns a list of {name, count, bot_profit} items"""
+    response = client.get("/bot/algo-ranking")
+
+    assert response.status_code == 200
+    content = response.json()
+    assert "detail" in content
+    assert isinstance(content["detail"], list)
+    # All seeded bots have unique names so each count should be 1
+    for item in content["detail"]:
+        assert isinstance(item["name"], str)
+        assert isinstance(item["count"], int)
+        assert item["count"] >= 1
+        assert isinstance(item["bot_profit"], float)
+
+
+def test_get_algo_ranking_ordered_by_count(client: TestClient):
+    """Test that /bot/algo-ranking results are ordered by bot_profit descending"""
+    response = client.get("/bot/algo-ranking")
+
+    assert response.status_code == 200
+    content = response.json()
+    profits = [item["bot_profit"] for item in content["detail"]]
+    assert profits == sorted(profits, reverse=True)
+
+
 def test_create_bot(client: TestClient):
     response = client.post("/bot", json=mock_bot_data_superusdt)
 

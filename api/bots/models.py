@@ -167,6 +167,12 @@ class BulkDeleteRequest(BaseModel):
         return v
 
 
+class AlgoRankingItem(BaseModel):
+    name: str
+    count: int
+    bot_profit: float
+
+
 class GetBotParams(BaseModel):
     status: str | None = None
     start_date: float | None = None

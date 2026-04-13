@@ -47,6 +47,10 @@ vi.mock("../../../features/bots/botsApiSlice", () => ({
     },
     isLoading: false,
   })),
+  useGetAlgoRankingQuery: vi.fn(() => ({
+    data: [],
+    isLoading: false,
+  })),
 }));
 
 vi.mock("../../../features/marketApiSlice", () => ({

@@ -1,10 +1,13 @@
 import React, { useContext, useEffect, useState, type FC } from "react";
-import { Card, Col, Row } from "react-bootstrap";
+import { Card, Col, Row, Table } from "react-bootstrap";
 import {
   useGetBalanceQuery,
   useGetBenchmarkQuery,
 } from "../../features/balanceApiSlice";
-import { useGetBotsQuery } from "../../features/bots/botsApiSlice";
+import {
+  useGetBotsQuery,
+  useGetAlgoRankingQuery,
+} from "../../features/bots/botsApiSlice";
 import { useAdSeriesQuery } from "../../features/marketApiSlice";
 import type {
   BalanceData,
@@ -81,6 +84,9 @@ export const DashboardPage: FC<{}> = () => {
 
   const { data: adpSeries, isLoading: loadingAdpSeries } = useAdSeriesQuery();
 
+  const { data: algoRanking, isLoading: loadingAlgoRanking } =
+    useGetAlgoRankingQuery();
+
   const [activeBotsCount, setActiveBotsCount] = useState(0);
   const [errorBotsCount, setErrorBotsCount] = useState(0);
 
@@ -89,6 +95,12 @@ export const DashboardPage: FC<{}> = () => {
     usePortfolioPnlDetails(benchmark, accountData);
   const portfolioSharpe = benchmark?.portfolioStats?.sharpe;
   const btcSharpe = benchmark?.portfolioStats?.btc_sharpe;
+  const topAlgoCounts = new Set(
+    algoRanking
+      ?.map(({ count }) => count)
+      .sort((a, b) => b - a)
+      .slice(0, 3) ?? [],
+  );
 
   useEffect(() => {
     if (activeBotEntities) {
@@ -103,7 +115,8 @@ export const DashboardPage: FC<{}> = () => {
       !loadingErrorBots &&
       !loadingCombined &&
       !loadingFuturesRankings &&
-      !loadingAdpSeries
+      !loadingAdpSeries &&
+      !loadingAlgoRanking
     ) {
       setSpinner(false);
     } else {
@@ -123,6 +136,7 @@ export const DashboardPage: FC<{}> = () => {
     loadingCombined,
     loadingAdpSeries,
     loadingFuturesRankings,
+    loadingAlgoRanking,
   ]);
 
   return (
@@ -347,6 +361,63 @@ export const DashboardPage: FC<{}> = () => {
           )}
         </Col>
       </Row>
+      {algoRanking && algoRanking.length > 0 && (
+        <Row>
+          <Col lg="6" md="12">
+            <Card>
+              <Card.Header>
+                <Card.Title as="h5" className="d-flex align-items-center gap-2">
+                  <i className="fa-solid fa-trophy text-warning" />
+                  <span>Algorithm Ranking</span>
+                </Card.Title>
+                <Card.Text className="text-body-secondary">
+                  These are the algorithms executed by Binquant through
+                  autotrade
+                </Card.Text>
+              </Card.Header>
+              <Card.Body>
+                <Table hover responsive size="sm">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Name</th>
+                      <th className="text-end">Count</th>
+                      <th className="text-end">
+                        Profit ({accountData?.fiat_currency})
+                      </th>
+                      <th className="text-end">Performance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {algoRanking.map(({ name, count, bot_profit }, index) => (
+                      <tr
+                        key={name}
+                        className={
+                          topAlgoCounts.has(count)
+                            ? "table-secondary text-white"
+                            : ""
+                        }
+                      >
+                        <td>{index + 1}</td>
+                        <td>{name}</td>
+                        <td className="text-end">{count}</td>
+                        <td className="text-end">
+                          {roundDecimals(bot_profit, 2)}
+                        </td>
+                        <td className="text-end">
+                          {count > 0
+                            ? ((bot_profit / count) * 100).toFixed(2) + "%"
+                            : ""}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+      )}
     </div>
   );
 };
