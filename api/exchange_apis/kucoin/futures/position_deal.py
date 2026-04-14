@@ -1,34 +1,32 @@
 from copy import deepcopy
-from time import time
-from time import sleep
-from typing import Union, Type
+from time import sleep, time
+from typing import Type, Union
+
+from bots.models import BotModel, OrderModel
+from databases.crud.bot_crud import BotTableCrud
+from databases.crud.paper_trading_crud import PaperTradingTableCrud
+from databases.tables.bot_table import BotTable, PaperTradingTable
+from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
+from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
+from kucoin_universal_sdk.model.common import RestError
 from pybinbot import (
     BotBase,
-    KucoinFutures,
-    KucoinApi,
-    OrderBase,
-    round_numbers,
-    round_timestamp,
     DealType,
-    Status,
+    KucoinApi,
+    KucoinFutures,
+    MarketType,
+    OrderBase,
     OrderSide,
     OrderStatus,
     OrderType,
+    Status,
     Strategy,
     convert_to_kucoin_symbol,
-    MarketType,
+    round_numbers,
+    round_timestamp,
 )
-from databases.crud.bot_crud import BotTableCrud
 from streaming.futures_position import FuturesPosition
 from streaming.spot_position import SpotPosition
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from bots.models import BotModel, OrderModel
-from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
-from kucoin_universal_sdk.generate.futures.order.model_add_order_req import (
-    AddOrderReq,
-)
-from kucoin_universal_sdk.model.common import RestError
 
 
 class PositionDeal(KucoinPositionDeal):
@@ -94,7 +92,7 @@ class PositionDeal(KucoinPositionDeal):
             )
         except RestError as kucoin_error:
             code = int(kucoin_error.response.code)
-            if code != 400100 and code != 200005:
+            if code not in (400100, 200005, 200004):
                 raise kucoin_error
 
             next_multiplier = round_numbers(repurchase_multiplier - 0.25, 2)
@@ -432,7 +430,7 @@ class PositionDeal(KucoinPositionDeal):
             self.kucoin_symbol
         )
 
-        if not current_position or float(current_position.current_qty) <= 0:
+        if not current_position or abs(current_position.current_qty) == 0:
             msg = "No open futures position found to reverse, skipping reversal."
             previous_bot.add_log(msg)
             self.controller.save(previous_bot)

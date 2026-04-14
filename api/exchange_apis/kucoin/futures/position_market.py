@@ -1,21 +1,22 @@
+from copy import deepcopy
+from typing import Type, Union
+
+from bots.models import BotModel
+from databases.tables.bot_table import BotTable, PaperTradingTable
+from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from pybinbot import (
+    BinanceApi,
     ExchangeId,
+    HABollinguerSpread,
+    HeikinAshi,
+    Indicators,
+    KucoinApi,
+    KucoinFutures,
     convert_to_kucoin_symbol,
     round_numbers,
-    BinanceApi,
-    KucoinApi,
-    HABollinguerSpread,
-    Indicators,
-    HeikinAshi,
-    KucoinFutures,
 )
-from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from streaming.base import BaseStreaming
-from bots.models import BotModel
-from typing import Union, Type
 from streaming.apex_flow_closing import ApexFlowClose
-from copy import deepcopy
+from streaming.base import BaseStreaming
 
 
 class PositionMarket(KucoinPositionDeal):
@@ -117,12 +118,12 @@ class PositionMarket(KucoinPositionDeal):
             interval=str(self.base_streaming.interval.value),
         )
         candles = self.klines.copy()
-        df, df_15m, df_4h, _ = HeikinAshi().pre_process(
+        df, _, _, _ = HeikinAshi().pre_process(
             exchange=self.base_streaming.exchange, candles=candles
         )
         self.df = df
         btc_candles = self.btc_klines.copy()
-        btc_df, btc_df_15m, _, _ = HeikinAshi().pre_process(
+        btc_df, _, _, _ = HeikinAshi().pre_process(
             exchange=self.base_streaming.exchange, candles=btc_candles
         )
         self.btc_df = btc_df
