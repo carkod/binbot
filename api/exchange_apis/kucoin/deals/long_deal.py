@@ -2,13 +2,13 @@ from typing import Type
 from pybinbot import (
     round_numbers,
     round_timestamp,
-    DealType,
     Status,
     Strategy,
     OrderSide,
     OrderStatus,
     BotBase,
 )
+from tools.enum_definitions import DealType
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from bots.models import BotModel, OrderModel

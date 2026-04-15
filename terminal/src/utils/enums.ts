@@ -32,6 +32,7 @@ export enum DealType {
   PANIC_CLOSE = "panic_close",
   TRAILLING_PROFIT = "trailling_profit",
   TRAILLING_STOP_LOSS = "trailling_stop_loss",
+  ALGORITHMIC_CLOSE = "algorithmic_close",
 }
 
 export enum BinanceKlineintervals {

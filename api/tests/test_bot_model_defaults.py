@@ -1,5 +1,6 @@
 from bots.models import BotModel, BotListResponse, BotPairsList, OrderModel
-from pybinbot import DealType, OrderStatus
+from pybinbot import OrderStatus
+from tools.enum_definitions import DealType
 from databases.tables.bot_table import BotTable, PaperTradingTable
 
 

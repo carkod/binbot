@@ -5,7 +5,6 @@ from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
 from pybinbot import (
     CloseConditions,
-    DealType,
     OrderSide,
     Status,
     Strategy,
@@ -14,6 +13,7 @@ from pybinbot import (
     round_timestamp,
     BotBase,
 )
+from tools.enum_definitions import DealType
 from bots.models import BotModel, OrderModel
 from exchange_apis.binance.deals.factory import BinanceDeal
 from exchange_apis.binance.deals.margin_deal import BinanceMarginDeal

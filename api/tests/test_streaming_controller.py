@@ -15,10 +15,10 @@ from pybinbot import (
     HeikinAshi,
     BinanceErrors,
     HABollinguerSpread,
-    DealType,
     OrderStatus,
     Status,
 )
+from tools.enum_definitions import DealType
 from streaming.futures_position import FuturesPosition
 
 

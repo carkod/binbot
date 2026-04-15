@@ -12,7 +12,6 @@ from kucoin_universal_sdk.generate.futures.order import GetTradeHistoryReq
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
 from pybinbot import (
     BinbotErrors,
-    DealType,
     KucoinFutures,
     OrderBase,
     OrderStatus,
@@ -22,6 +21,7 @@ from pybinbot import (
     convert_to_kucoin_symbol,
     round_numbers,
 )
+from tools.enum_definitions import DealType
 from streaming.base import BaseStreaming
 
 

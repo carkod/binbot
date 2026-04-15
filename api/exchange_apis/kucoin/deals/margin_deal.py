@@ -5,13 +5,13 @@ from pybinbot import (
     round_timestamp,
     round_numbers,
     round_numbers_ceiling,
-    DealType,
     OrderStatus,
     Strategy,
     QuoteAssets,
     Status,
     MarginLoanNotFound,
 )
+from tools.enum_definitions import DealType
 from databases.crud.symbols_crud import SymbolsCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from bots.models import BotModel, OrderModel

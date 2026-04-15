@@ -8,7 +8,6 @@ from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from pybinbot import (
     CloseConditions,
-    DealType,
     OrderSide,
     QuoteAssets,
     Status,
@@ -22,6 +21,7 @@ from pybinbot import (
     MarginShortError,
     BinbotApi,
 )
+from tools.enum_definitions import DealType
 from databases.crud.symbols_crud import SymbolsCrud
 from exchange_apis.binance.deals.factory import BinanceDeal
 from tools.config import Config

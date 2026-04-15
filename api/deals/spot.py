@@ -3,7 +3,6 @@ from databases.crud.autotrade_crud import AutotradeCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from bots.models import BotModel, OrderModel
 from pybinbot import (
-    DealType,
     Status,
     OrderSide,
     OrderStatus,
@@ -11,6 +10,7 @@ from pybinbot import (
     round_timestamp,
     BinanceErrors,
 )
+from tools.enum_definitions import DealType
 from exchange_apis.binance.deals.spot_deal import BinanceSpotDeal
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 

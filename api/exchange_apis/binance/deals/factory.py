@@ -4,7 +4,6 @@ from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.symbols_crud import SymbolsCrud
 from bots.models import BotModel, OrderModel
 from pybinbot import (
-    DealType,
     OrderSide,
     Status,
     QuoteAssets,
@@ -15,6 +14,7 @@ from pybinbot import (
     round_numbers_ceiling,
     BinanceErrors,
 )
+from tools.enum_definitions import DealType
 from exchange_apis.binance.deals.base_deal import BaseDeal
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from tools.exceptions import TakeProfitError

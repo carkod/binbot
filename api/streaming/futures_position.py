@@ -6,13 +6,13 @@ from databases.tables.bot_table import BotTable, PaperTradingTable
 from exchange_apis.kucoin.futures.position_market import PositionMarket
 from kucoin_universal_sdk.model.common import RestError
 from pybinbot import (
-    DealType,
     ExchangeId,
     OrderStatus,
     Status,
     convert_to_kucoin_symbol,
     round_numbers,
 )
+from tools.enum_definitions import DealType
 from streaming.base import BaseStreaming
 
 

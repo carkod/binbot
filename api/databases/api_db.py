@@ -11,13 +11,13 @@ from sqlmodel import SQLModel, Session, select, text
 from pybinbot import (
     AutotradeSettingsDocument,
     BinanceKlineIntervals,
-    DealType,
     ExchangeId,
     Status,
     Strategy,
     OrderStatus,
     BinbotErrors,
 )
+from tools.enum_definitions import DealType
 from alembic import command
 from alembic.script import ScriptDirectory
 from alembic.config import Config

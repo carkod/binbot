@@ -1,7 +1,8 @@
 from databases.tables.bot_table import BotTable
 from databases.tables.deal_table import DealTable
 from databases.tables.order_table import ExchangeOrderTable
-from pybinbot import DealType, OrderType
+from pybinbot import OrderType
+from tools.enum_definitions import DealType
 from uuid import UUID
 
 ts = 1733973560249.0

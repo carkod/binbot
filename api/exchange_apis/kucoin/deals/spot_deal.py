@@ -4,12 +4,12 @@ from pybinbot import (
     round_numbers_floor,
     round_numbers,
     round_numbers_ceiling,
-    DealType,
     OrderStatus,
     Strategy,
     QuoteAssets,
     Status,
 )
+from tools.enum_definitions import DealType
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.bot_crud import BotTableCrud

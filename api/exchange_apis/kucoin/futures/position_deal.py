@@ -11,7 +11,6 @@ from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddO
 from kucoin_universal_sdk.model.common import RestError
 from pybinbot import (
     BotBase,
-    DealType,
     KucoinApi,
     KucoinFutures,
     MarketType,
@@ -25,6 +24,7 @@ from pybinbot import (
     round_numbers,
     round_timestamp,
 )
+from tools.enum_definitions import DealType
 from streaming.futures_position import FuturesPosition
 from streaming.spot_position import SpotPosition
 

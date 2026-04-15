@@ -3,7 +3,8 @@ import types
 
 from bots.models import BotModel, DealModel
 from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
-from pybinbot import DealType, OrderBase, OrderStatus, Strategy
+from pybinbot import OrderBase, OrderStatus, Strategy
+from tools.enum_definitions import DealType
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import (
     AddOrderReq,
 )

@@ -5,13 +5,13 @@ from exchange_apis.kucoin.futures.position_market import PositionMarket
 from streaming.base import BaseStreaming
 from bots.models import BotModel
 from pybinbot import (
-    DealType,
     OrderStatus,
     Status,
     ExchangeId,
     round_numbers,
     convert_to_kucoin_symbol,
 )
+from tools.enum_definitions import DealType
 
 
 class SpotPosition(PositionMarket):
