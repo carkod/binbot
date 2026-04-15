@@ -56,25 +56,25 @@ export default function marginTrading(
       });
     }
 
-    if (bot.trailling && bot.status === BotStatus.ACTIVE) {
-      if (bot.deal.trailling_profit_price > 0) {
+    if (bot.trailing && bot.status === BotStatus.ACTIVE) {
+      if (bot.deal.trailing_profit_price > 0) {
         totalOrderLines.push({
-          id: "trailling_profit",
+          id: "trailing_profit",
           text: `Trail profit ${bot.take_profit}%`,
           tooltip: [bot.status, " Trace upward profit"],
           quantity: `${qtyText} ${quoteAsset}`,
-          price: bot.deal.trailling_profit_price,
-          color: dealColors.trailling_profit,
+          price: bot.deal.trailing_profit_price,
+          color: dealColors.trailing_profit,
         });
       }
 
-      if (bot.deal.trailling_stop_loss_price > 0) {
+      if (bot.deal.trailing_stop_loss_price > 0) {
         totalOrderLines.push({
-          id: "trailling_stop_loss",
-          text: `Trailling stop loss -${bot.trailling_deviation}%`,
+          id: "trailing_stop_loss",
+          text: `Trailing stop loss -${bot.trailing_deviation}%`,
           tooltip: [bot.status, " Sell order when prices drop here"],
           quantity: `${qtyText} ${quoteAsset}`,
-          price: bot.deal.trailling_stop_loss_price,
+          price: bot.deal.trailing_stop_loss_price,
           color: dealColors.take_profit,
         });
       }
@@ -84,55 +84,55 @@ export default function marginTrading(
     ) {
       // completed bot
       totalOrderLines.push({
-        id: "trailling_profit",
-        text: `Trail profit ${bot.trailling_profit}%`,
+        id: "trailing_profit",
+        text: `Trail profit ${bot.trailing_profit}%`,
         tooltip: [bot.status, " Breakpoint to increase Take profit"],
         quantity: `${qtyText} ${quoteAsset}`,
-        price: bot.deal.trailling_profit_price,
-        color: dealColors.trailling_profit,
+        price: bot.deal.trailing_profit_price,
+        color: dealColors.trailing_profit,
         lineStyle: 2,
       });
       totalOrderLines.push({
-        id: "trailling_stop_loss",
-        text: `Trailling stop loss -${bot.trailling_deviation}%`,
+        id: "trailing_stop_loss",
+        text: `Trailing stop loss -${bot.trailing_deviation}%`,
         tooltip: [bot.status, " Sell order when prices drop here"],
         quantity: `${bot.deal.opening_qty || baseOrderSize} ${quoteAsset}`,
-        price: bot.deal.trailling_stop_loss_price,
+        price: bot.deal.trailing_stop_loss_price,
         color: dealColors.take_profit,
       });
     } else {
       // Inactive bot
       const price =
         bot.deal?.opening_price || currentPrice || bot.deal.current_price;
-      const traillingProfitPrice = price * (1 - bot.trailling_profit / 100);
-      if (bot.deal.trailling_profit_price > 0) {
+      const trailingProfitPrice = price * (1 - bot.trailing_profit / 100);
+      if (bot.deal.trailing_profit_price > 0) {
         totalOrderLines.push({
-          id: "trailling_profit",
-          text: `Take profit (trailling) ${bot.take_profit}%`,
+          id: "trailing_profit",
+          text: `Take profit (trailing) ${bot.take_profit}%`,
           tooltip: [bot.status, " Breakpoint to increase Take profit"],
           quantity: `${qtyText} ${quoteAsset}`,
-          price: bot.deal?.trailling_profit_price || traillingProfitPrice,
-          color: dealColors.trailling_profit,
+          price: bot.deal?.trailing_profit_price || trailingProfitPrice,
+          color: dealColors.trailing_profit,
           lineStyle: 2,
         });
       }
 
-      if (bot.deal.trailling_stop_loss_price > 0) {
+      if (bot.deal.trailing_stop_loss_price > 0) {
         totalOrderLines.push({
-          id: "trailling_stop_loss",
-          text: `Trailling stop loss -${bot.trailling_deviation}%`,
+          id: "trailing_stop_loss",
+          text: `Trailing stop loss -${bot.trailing_deviation}%`,
           tooltip: [bot.status, " Sell order when prices drop here"],
           quantity: `${bot.deal.opening_qty || baseOrderSize} ${quoteAsset}`,
           price:
-            bot.deal?.trailling_profit_price ||
-            traillingProfitPrice * (1 + bot.trailling_deviation / 100),
+            bot.deal?.trailing_profit_price ||
+            trailingProfitPrice * (1 + bot.trailing_deviation / 100),
           color: dealColors.take_profit,
         });
       }
     }
   } else {
     if (bot.status === BotStatus.COMPLETED && bot.deal.take_profit_price > 0) {
-      // No trailling take profit
+      // No trailing take profit
       const price = currentPrice * (1 + bot.take_profit / 100);
       totalOrderLines.push({
         id: "take_profit",

@@ -22,11 +22,11 @@ class DealBase(SQLModel):
         default=0,
         description="derived from take_profit, while this price gets updated according to market, take_profit percentage doesn't",
     )
-    trailling_stop_loss_price: float = Field(
+    trailing_stop_loss_price: float = Field(
         default=0,
-        description="take_profit but for trailling, to avoid confusion, trailling_profit_price always be > trailling_stop_loss_price, and it cannot be triggered unless it's above opening_price",
+        description="take_profit but for trailing, to avoid confusion, trailing_profit_price always be > trailing_stop_loss_price, and it cannot be triggered unless it's above opening_price",
     )
-    trailling_profit_price: float = Field(default=0)
+    trailing_profit_price: float = Field(default=0)
     stop_loss_price: float = Field(default=0)
 
     # fields for margin trading

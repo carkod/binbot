@@ -4,7 +4,6 @@ from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
 from pybinbot import (
-    CloseConditions,
     OrderSide,
     Status,
     Strategy,
@@ -13,7 +12,7 @@ from pybinbot import (
     round_timestamp,
     BotBase,
 )
-from tools.enum_definitions import DealType
+from tools.enum_definitions import DealType, CloseConditions
 from bots.models import BotModel, OrderModel
 from exchange_apis.binance.deals.factory import BinanceDeal
 from exchange_apis.binance.deals.margin_deal import BinanceMarginDeal
@@ -144,7 +143,7 @@ class BinanceSpotDeal(BinanceDeal):
 
         else:
             self.controller.update_logs(
-                "Dispatching sell order for trailling profit...",
+                "Dispatching sell order for trailing profit...",
                 self.active_bot,
             )
             # Dispatch real order
@@ -187,9 +186,9 @@ class BinanceSpotDeal(BinanceDeal):
 
         return self.active_bot
 
-    def trailling_profit(self) -> BotModel | None:
+    def trailing_profit(self) -> BotModel | None:
         """
-        Sell at take_profit price, because prices will not reach trailling
+        Sell at take_profit price, because prices will not reach trailing
         """
 
         if isinstance(self.controller, PaperTradingTableCrud):
@@ -203,13 +202,13 @@ class BinanceSpotDeal(BinanceDeal):
                     order = self.verify_deal_close_order()
                     if order:
                         self.active_bot.add_log(
-                            "Execute trailling profit previous order found! Appending..."
+                            "Execute trailing profit previous order found! Appending..."
                         )
                         self.active_bot.orders.append(order)
                         self.controller.save(self.active_bot)
                     else:
                         self.active_bot.add_log(
-                            "No quantity in balance, no closed orders. Cannot execute update trailling profit."
+                            "No quantity in balance, no closed orders. Cannot execute update trailing profit."
                         )
                         self.active_bot.status = Status.error
                         self.controller.save(self.active_bot)
@@ -224,7 +223,7 @@ class BinanceSpotDeal(BinanceDeal):
 
         else:
             self.controller.update_logs(
-                "Dispatching sell order for trailling profit...",
+                "Dispatching sell order for trailing profit...",
                 self.active_bot,
             )
             # Dispatch real order
@@ -241,7 +240,7 @@ class BinanceSpotDeal(BinanceDeal):
         order_data = OrderModel(
             timestamp=res["transactTime"],
             order_id=str(res["orderId"]),
-            deal_type=DealType.trailling_profit,
+            deal_type=DealType.trailing_profit,
             pair=res["symbol"],
             order_side=res["side"],
             order_type=res["type"],
@@ -257,12 +256,12 @@ class BinanceSpotDeal(BinanceDeal):
 
         self.active_bot.orders.append(order_data)
 
-        self.active_bot.deal.trailling_profit_price = float(res["price"])
-        trailling_stop_loss_price = float(res["price"]) - (
-            float(res["price"]) * (self.active_bot.trailling_deviation / 100)
+        self.active_bot.deal.trailing_profit_price = float(res["price"])
+        trailing_stop_loss_price = float(res["price"]) - (
+            float(res["price"]) * (self.active_bot.trailing_deviation / 100)
         )
-        self.active_bot.deal.trailling_stop_loss_price = round_numbers(
-            trailling_stop_loss_price, self.price_precision
+        self.active_bot.deal.trailing_stop_loss_price = round_numbers(
+            trailing_stop_loss_price, self.price_precision
         )
 
         # new deal parameters to replace previous
@@ -272,7 +271,7 @@ class BinanceSpotDeal(BinanceDeal):
 
         self.active_bot.status = Status.completed
         self.active_bot.add_log(
-            "Completed take profit after failing to break trailling"
+            "Completed take profit after failing to break trailing"
         )
         self.controller.save(self.active_bot)
 
@@ -295,9 +294,9 @@ class BinanceSpotDeal(BinanceDeal):
 
         pass
 
-    def long_open_deal_trailling_parameters(self) -> BotModel:
+    def long_open_deal_trailing_parameters(self) -> BotModel:
         """
-        This updates trailling parameters for spot long bots
+        This updates trailing parameters for spot long bots
         Once bot is activated.
 
         Inherits from old open_deal method
@@ -305,7 +304,7 @@ class BinanceSpotDeal(BinanceDeal):
         """
 
         if self.active_bot.strategy == Strategy.margin_short:
-            logging.error("Bot executing wrong long_open_deal_trailling_parameters")
+            logging.error("Bot executing wrong long_open_deal_trailing_parameters")
             return self.active_bot
 
         # Update stop loss regarless of base order
@@ -315,21 +314,21 @@ class BinanceSpotDeal(BinanceDeal):
                 price * (self.active_bot.stop_loss / 100)
             )
 
-        # Keep trailling_stop_loss_price up to date in case of failure to update in autotrade
-        # if we don't do this, the trailling stop loss will trigger
-        if self.active_bot.trailling:
-            trailling_profit = float(self.active_bot.deal.opening_price) * (
-                1 + (float(self.active_bot.trailling_profit) / 100)
+        # Keep trailing_stop_loss_price up to date in case of failure to update in autotrade
+        # if we don't do this, the trailing stop loss will trigger
+        if self.active_bot.trailing:
+            trailing_profit = float(self.active_bot.deal.opening_price) * (
+                1 + (float(self.active_bot.trailing_profit) / 100)
             )
-            self.active_bot.deal.trailling_profit_price = trailling_profit
-            # Reset trailling stop loss
+            self.active_bot.deal.trailing_profit_price = trailing_profit
+            # Reset trailing stop loss
             # this should be updated during streaming
-            self.active_bot.deal.trailling_stop_loss_price = 0
+            self.active_bot.deal.trailing_stop_loss_price = 0
             # Old property fix
             self.active_bot.deal.take_profit_price = 0
 
         else:
-            # No trailling so only update take_profit
+            # No trailing so only update take_profit
             take_profit_price = float(self.active_bot.deal.opening_price) * (
                 1 + (float(self.active_bot.take_profit) / 100)
             )
@@ -340,17 +339,17 @@ class BinanceSpotDeal(BinanceDeal):
         self.controller.save(self.active_bot)
         return self.active_bot
 
-    def long_update_deal_trailling_parameters(self) -> BotModel:
+    def long_update_deal_trailing_parameters(self) -> BotModel:
         """
-        Same as long_open_deal_trailling_parameters
+        Same as long_open_deal_trailing_parameters
         but when clicked on "update deal".
 
-        This makes sure deal trailling values are up to date and
+        This makes sure deal trailing values are up to date and
         not out of sync with the bot parameters
         """
 
         if self.active_bot.strategy == Strategy.margin_short:
-            logging.error("Bot executing wrong long_update_deal_trailling_parameters")
+            logging.error("Bot executing wrong long_update_deal_trailing_parameters")
             return self.active_bot
 
         if self.active_bot.stop_loss > 0:
@@ -363,20 +362,20 @@ class BinanceSpotDeal(BinanceDeal):
             )
 
         if (
-            self.active_bot.trailling
-            and self.active_bot.trailling_deviation > 0
-            and self.active_bot.trailling_profit > 0
+            self.active_bot.trailing
+            and self.active_bot.trailing_deviation > 0
+            and self.active_bot.trailing_profit > 0
         ):
-            trailling_profit_price = float(self.active_bot.deal.opening_price) * (
+            trailing_profit_price = float(self.active_bot.deal.opening_price) * (
                 1 + (float(self.active_bot.take_profit) / 100)
             )
-            self.active_bot.deal.trailling_profit_price = round_numbers(
-                trailling_profit_price, self.price_precision
+            self.active_bot.deal.trailing_profit_price = round_numbers(
+                trailing_profit_price, self.price_precision
             )
 
-            if self.active_bot.deal.trailling_stop_loss_price != 0:
-                # trailling_stop_loss_price should be updated during streaming
+            if self.active_bot.deal.trailing_stop_loss_price != 0:
+                # trailing_stop_loss_price should be updated during streaming
                 # This resets it after "Update deal" because parameters have changed
-                self.active_bot.deal.trailling_stop_loss_price = 0
+                self.active_bot.deal.trailing_stop_loss_price = 0
 
         return self.active_bot

@@ -237,10 +237,10 @@ class TestPositionManager:
         bot.pair = pair
         bot.fiat = "USDC"
         bot.strategy = strategy
-        bot.dynamic_trailling = True
-        bot.trailling = False
-        bot.trailling_profit = 0.0
-        bot.trailling_deviation = 0.0
+        bot.dynamic_trailing = True
+        bot.trailing = False
+        bot.trailing_profit = 0.0
+        bot.trailing_deviation = 0.0
         bot.stop_loss = 0.0
         bot.status = None
         bot.name = "test_bot"
@@ -325,7 +325,7 @@ class TestPositionManager:
         sc.api = base.kucoin_api
 
         live_bot = self._make_bot(pair="BTCUSDC", strategy=Strategy.long)
-        live_bot.dynamic_trailling = True
+        live_bot.dynamic_trailing = True
 
         monkeypatch.setattr(
             BaseStreaming,
@@ -374,7 +374,7 @@ class TestPositionManager:
 
         # Provide a current bot via BaseStreaming.get_current_bot
         bot = self._make_bot(pair="BTCUSDC", strategy=Strategy.long)
-        bot.dynamic_trailling = False
+        bot.dynamic_trailing = False
 
         # Mock DB access by overriding BaseStreaming.get_current_bot at class level
         monkeypatch.setattr(
@@ -432,7 +432,7 @@ class TestPositionManager:
         sc = PositionManager(base, symbol="BTCUSDC")
 
         bot = self._make_bot(pair="BTCUSDC", strategy=Strategy.long)
-        bot.dynamic_trailling = False
+        bot.dynamic_trailing = False
 
         # Mock DB access by overriding BaseStreaming.get_current_bot at class level
         monkeypatch.setattr(

@@ -135,9 +135,9 @@ class KucoinSpotDeal(KucoinBaseBalance):
                 return order
         return None
 
-    def long_open_deal_trailling_parameters(self) -> BotModel:
+    def long_open_deal_trailing_parameters(self) -> BotModel:
         """
-        This updates trailling parameters for spot long bots
+        This updates trailing parameters for spot long bots
         Once bot is activated.
 
         Inherits from old open_deal method
@@ -145,7 +145,7 @@ class KucoinSpotDeal(KucoinBaseBalance):
         """
 
         if self.active_bot.strategy == Strategy.margin_short:
-            logging.error("Bot executing wrong long_open_deal_trailling_parameters")
+            logging.error("Bot executing wrong long_open_deal_trailing_parameters")
             return self.active_bot
 
         # Update stop loss regarless of base order
@@ -155,21 +155,21 @@ class KucoinSpotDeal(KucoinBaseBalance):
                 price * (self.active_bot.stop_loss / 100)
             )
 
-        # Keep trailling_stop_loss_price up to date in case of failure to update in autotrade
-        # if we don't do this, the trailling stop loss will trigger
-        if self.active_bot.trailling:
-            trailling_profit = float(self.active_bot.deal.opening_price) * (
-                1 + (float(self.active_bot.trailling_profit) / 100)
+        # Keep trailing_stop_loss_price up to date in case of failure to update in autotrade
+        # if we don't do this, the trailing stop loss will trigger
+        if self.active_bot.trailing:
+            trailing_profit = float(self.active_bot.deal.opening_price) * (
+                1 + (float(self.active_bot.trailing_profit) / 100)
             )
-            self.active_bot.deal.trailling_profit_price = trailling_profit
-            # Reset trailling stop loss
+            self.active_bot.deal.trailing_profit_price = trailing_profit
+            # Reset trailing stop loss
             # this should be updated during streaming
-            self.active_bot.deal.trailling_stop_loss_price = 0
+            self.active_bot.deal.trailing_stop_loss_price = 0
             # Old property fix
             self.active_bot.deal.take_profit_price = 0
 
         else:
-            # No trailling so only update take_profit
+            # No trailing so only update take_profit
             take_profit_price = float(self.active_bot.deal.opening_price) * (
                 1 + (float(self.active_bot.take_profit) / 100)
             )
@@ -180,17 +180,17 @@ class KucoinSpotDeal(KucoinBaseBalance):
         self.controller.save(self.active_bot)
         return self.active_bot
 
-    def long_update_deal_trailling_parameters(self) -> BotModel:
+    def long_update_deal_trailing_parameters(self) -> BotModel:
         """
-        Same as long_open_deal_trailling_parameters
+        Same as long_open_deal_trailing_parameters
         but when clicked on "update deal".
 
-        This makes sure deal trailling values are up to date and
+        This makes sure deal trailing values are up to date and
         not out of sync with the bot parameters
         """
 
         if self.active_bot.strategy == Strategy.margin_short:
-            logging.error("Bot executing wrong long_update_deal_trailling_parameters")
+            logging.error("Bot executing wrong long_update_deal_trailing_parameters")
             return self.active_bot
 
         if self.active_bot.stop_loss > 0:
@@ -203,21 +203,21 @@ class KucoinSpotDeal(KucoinBaseBalance):
             )
 
         if (
-            self.active_bot.trailling
-            and self.active_bot.trailling_deviation > 0
-            and self.active_bot.trailling_profit > 0
+            self.active_bot.trailing
+            and self.active_bot.trailing_deviation > 0
+            and self.active_bot.trailing_profit > 0
         ):
-            trailling_profit_price = float(self.active_bot.deal.opening_price) * (
+            trailing_profit_price = float(self.active_bot.deal.opening_price) * (
                 1 + (float(self.active_bot.take_profit) / 100)
             )
-            self.active_bot.deal.trailling_profit_price = round_numbers(
-                trailling_profit_price, self.price_precision
+            self.active_bot.deal.trailing_profit_price = round_numbers(
+                trailing_profit_price, self.price_precision
             )
 
-            if self.active_bot.deal.trailling_stop_loss_price != 0:
-                # trailling_stop_loss_price should be updated during streaming
+            if self.active_bot.deal.trailing_stop_loss_price != 0:
+                # trailing_stop_loss_price should be updated during streaming
                 # This resets it after "Update deal" because parameters have changed
-                self.active_bot.deal.trailling_stop_loss_price = 0
+                self.active_bot.deal.trailing_stop_loss_price = 0
 
         return self.active_bot
 
@@ -394,10 +394,10 @@ class KucoinSpotDeal(KucoinBaseBalance):
             or self.active_bot.deal.opening_price > 0
         ):
             # Update bot no activation required
-            self.active_bot = self.long_update_deal_trailling_parameters()
+            self.active_bot = self.long_update_deal_trailing_parameters()
         else:
             # Activation required
-            self.active_bot = self.long_open_deal_trailling_parameters()
+            self.active_bot = self.long_open_deal_trailing_parameters()
 
         self.controller.save(self.active_bot)
         return self.active_bot

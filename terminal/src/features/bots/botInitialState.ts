@@ -8,8 +8,8 @@ import {
 export interface Deal {
   base_order_size: number;
   current_price?: number;
-  trailling_stop_loss_price?: number;
-  trailling_profit_price?: number;
+  trailing_stop_loss_price?: number;
+  trailing_profit_price?: number;
   take_profit_price?: number;
   stop_loss_price?: number;
   opening_price: number;
@@ -31,7 +31,7 @@ export interface Bot {
   fiat_order_size: number;
   candle_interval?: string;
   close_condition?: string;
-  dynamic_trailling: boolean;
+  dynamic_trailing: boolean;
   logs: string[];
   mode: string;
   market_type: MarketType;
@@ -40,9 +40,9 @@ export interface Bot {
   stop_loss: number;
   margin_short_reversal: boolean;
   take_profit: number;
-  trailling: boolean;
-  trailling_deviation: number;
-  trailling_profit: number;
+  trailing: boolean;
+  trailing_deviation: number;
+  trailing_profit: number;
   strategy: BotStrategy;
   balance_available: number;
   deal?: Deal;
@@ -74,15 +74,15 @@ export const singleBot: Bot = {
   name: `terminal`,
   pair: "",
   take_profit: 2.3,
-  trailling: false,
-  trailling_deviation: 2.8,
-  trailling_profit: 2.3,
-  dynamic_trailling: false,
+  trailing: false,
+  trailing_deviation: 2.8,
+  trailing_profit: 2.3,
+  dynamic_trailing: false,
   deal: {
     base_order_size: 0,
     current_price: 0,
-    trailling_stop_loss_price: 0,
-    trailling_profit_price: 0,
+    trailing_stop_loss_price: 0,
+    trailing_profit_price: 0,
     take_profit_price: 0,
     stop_loss_price: 0,
     opening_price: 0,

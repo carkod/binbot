@@ -68,10 +68,10 @@ def test_paper_trading_create_bot(client: TestClient):
         "name": "terminal_1743217337463",
         "pair": "TRXUSDC",
         "take_profit": 2.3,
-        "trailling": True,
-        "trailling_deviation": 2.8,
-        "trailling_profit": 2.3,
-        "dynamic_trailling": True,
+        "trailing": True,
+        "trailing_deviation": 2.8,
+        "trailing_profit": 2.3,
+        "dynamic_trailing": True,
         "stop_loss": 3,
         "margin_short_reversal": True,
         "strategy": "long",
@@ -92,8 +92,8 @@ def test_paper_trading_create_bot(client: TestClient):
     assert data["stop_loss"] == 3.0
     assert data["margin_short_reversal"] is True
     assert data["take_profit"] == 2.3
-    assert data["trailling"] is True
-    assert data["trailling_deviation"] == 2.8
+    assert data["trailing"] is True
+    assert data["trailing_deviation"] == 2.8
     assert data["strategy"] == "long"
     # Verify structure
     assert "id" in data
@@ -108,9 +108,9 @@ def test_paper_trading_edit_bot(client: TestClient):
         "fiat": "USDC",
         "fiat_order_size": 50,
         "candlestick_interval": "15m",
-        "close_condition": "dynamic_trailling",
+        "close_condition": "dynamic_trailing",
         "cooldown": 0,
-        "dynamic_trailling": True,
+        "dynamic_trailing": True,
         "logs": [],
         "mode": "manual",
         "name": "terminal_1743217337463",
@@ -118,9 +118,9 @@ def test_paper_trading_edit_bot(client: TestClient):
         "stop_loss": 3,
         "margin_short_reversal": True,
         "take_profit": 2.3,
-        "trailling": True,
-        "trailling_deviation": 2.8,
-        "trailling_profit": 2.3,
+        "trailing": True,
+        "trailing_deviation": 2.8,
+        "trailing_profit": 2.3,
         "strategy": "long",
     }
 

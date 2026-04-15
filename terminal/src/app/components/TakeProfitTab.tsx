@@ -39,10 +39,10 @@ const TakeProfit: FC<{ botType?: BotType }> = ({ botType = BotType.BOTS }) => {
     reValidateMode: "onBlur",
     defaultValues: {
       take_profit: bot.take_profit,
-      trailling: bot.trailling,
-      trailling_deviation: bot.trailling_deviation,
-      trailling_profit: bot.trailling_profit,
-      dynamic_trailling: bot.dynamic_trailling,
+      trailing: bot.trailing,
+      trailing_deviation: bot.trailing_deviation,
+      trailing_profit: bot.trailing_profit,
+      dynamic_trailing: bot.dynamic_trailing,
     },
   });
 
@@ -70,10 +70,10 @@ const TakeProfit: FC<{ botType?: BotType }> = ({ botType = BotType.BOTS }) => {
     if (bot.id) {
       reset({
         take_profit: bot.take_profit,
-        trailling: bot.trailling,
-        trailling_deviation: bot.trailling_deviation,
-        dynamic_trailling: bot.dynamic_trailling,
-        trailling_profit: bot.trailling_profit,
+        trailing: bot.trailing,
+        trailing_deviation: bot.trailing_deviation,
+        dynamic_trailing: bot.dynamic_trailing,
+        trailing_profit: bot.trailing_profit,
       });
     }
 
@@ -98,27 +98,27 @@ const TakeProfit: FC<{ botType?: BotType }> = ({ botType = BotType.BOTS }) => {
     <Tab.Pane eventKey={TabsKeys.TAKEPROFIT}>
       <Container>
         <Row className="my-3">
-          {bot.trailling ? (
+          {bot.trailing ? (
             <Col md="6" sm="12">
-              <Form.Label htmlFor="trailling_profit">
+              <Form.Label htmlFor="trailing_profit">
                 Trail profit at <span className="u-required">*</span>
               </Form.Label>
               <InputGroup>
                 <Form.Control
                   type="number"
-                  name="trailling_profit"
+                  name="trailing_profit"
                   onBlur={(e) => handleBlur(e)}
-                  {...register("trailling_profit", {
+                  {...register("trailing_profit", {
                     required:
-                      "Trailling profit in percentage is required when trailling is activated",
+                      "Trailing profit in percentage is required when trailing is activated",
                     valueAsNumber: true,
                     min: {
                       value: 0,
-                      message: "Minimum trailling profit is 1",
+                      message: "Minimum trailing profit is 1",
                     },
                     max: {
                       value: 100,
-                      message: "Maximum trailling profit is 100",
+                      message: "Maximum trailing profit is 100",
                     },
                   })}
                 />
@@ -159,101 +159,101 @@ const TakeProfit: FC<{ botType?: BotType }> = ({ botType = BotType.BOTS }) => {
           )}
           <Col md="3" sm="12">
             <Form.Group>
-              <Form.Label htmlFor="trailling">Trailling</Form.Label>
+              <Form.Label htmlFor="trailing">Trailing</Form.Label>
               <br />
               <ButtonGroup>
                 <ToggleButton
-                  id="trailling"
+                  id="trailing"
                   className="position-relative"
-                  checked={bot.trailling}
+                  checked={bot.trailing}
                   value={1}
-                  variant={bot.trailling ? "primary" : "secondary"}
+                  variant={bot.trailing ? "primary" : "secondary"}
                   onClick={(e) => {
                     if (botType === BotType.PAPER_TRADING) {
                       dispatch(
                         setTestBotToggle({
-                          name: "trailling",
-                          value: !bot.trailling,
+                          name: "trailing",
+                          value: !bot.trailing,
                         }),
                       );
                     } else {
                       dispatch(
-                        setToggle({ name: "trailling", value: !bot.trailling }),
+                        setToggle({ name: "trailing", value: !bot.trailing }),
                       );
                     }
                   }}
                 >
-                  {bot.trailling ? "On" : "Off"}
+                  {bot.trailing ? "On" : "Off"}
                 </ToggleButton>
               </ButtonGroup>
               <Form.Control.Feedback tooltip>
-                {"Trailling won't trigger until trailling_stop_loss > base"}
+                {"Trailing won't trigger until trailing_stop_loss > base"}
               </Form.Control.Feedback>
             </Form.Group>
           </Col>
           <Col md="3" sm="12">
             <Form.Group>
-              <Form.Label htmlFor="dynamic_trailling">
-                Dynamic trailling
+              <Form.Label htmlFor="dynamic_trailing">
+                Dynamic trailing
               </Form.Label>
               <br />
               <ButtonGroup>
                 <ToggleButton
-                  id="dynamic_trailling"
-                  name="dynamic_trailling"
+                  id="dynamic_trailing"
+                  name="dynamic_trailing"
                   className="position-relative"
-                  checked={bot.dynamic_trailling}
+                  checked={bot.dynamic_trailing}
                   value={1}
-                  variant={bot.dynamic_trailling ? "primary" : "secondary"}
+                  variant={bot.dynamic_trailing ? "primary" : "secondary"}
                   onClick={(e) => {
                     if (botType === BotType.PAPER_TRADING) {
                       dispatch(
                         setTestBotToggle({
-                          name: "dynamic_trailling",
-                          value: !bot.dynamic_trailling,
+                          name: "dynamic_trailing",
+                          value: !bot.dynamic_trailing,
                         }),
                       );
                     } else {
                       dispatch(
                         setToggle({
-                          name: "dynamic_trailling",
-                          value: !bot.dynamic_trailling,
+                          name: "dynamic_trailing",
+                          value: !bot.dynamic_trailing,
                         }),
                       );
                     }
                   }}
                 >
-                  {bot.dynamic_trailling ? "On" : "Off"}
+                  {bot.dynamic_trailing ? "On" : "Off"}
                 </ToggleButton>
               </ButtonGroup>
               <Form.Control.Feedback tooltip>
-                {"Update the trailling_deviation according to volatility (SD)"}
+                {"Update the trailing_deviation according to volatility (SD)"}
               </Form.Control.Feedback>
             </Form.Group>
           </Col>
         </Row>
         <Row className="my-3">
-          {bot.trailling && (
+          {bot.trailing && (
             <Col md="6" sm="12">
-              <Form.Label htmlFor="trailling_deviation">
-                Trailling deviation
+              <Form.Label htmlFor="trailing_deviation">
+                Trailing deviation
               </Form.Label>
               <InputGroup>
                 <Form.Control
                   type="number"
-                  name="trailling_deviation"
+                  name="trailing_deviation"
                   onBlur={(e) => handleBlur(e)}
-                  {...register("trailling_deviation", {
+                  {...register("trailing_deviation", {
                     required:
-                      "Trailling deviation in percentage is required when trailling is activated",
+                      "Trailing deviation in percentage is required when trailing is activated",
                     valueAsNumber: true,
                     min: {
                       value: 0,
-                      message: "Minimum trailling deviation is 1",
+                      message: "Minimum trailing deviation is 1",
                     },
                     max: {
                       value: 100,
-                      message: "Maximum trailling deviation is 100",
+                      message: "Maximum trailing deviation is 100",
                     },
                   })}
                 />

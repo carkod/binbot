@@ -5,12 +5,12 @@ from sqlalchemy import JSON, Column, Enum
 from pybinbot import (
     QuoteAssets,
     BinanceKlineIntervals,
-    CloseConditions,
     Status,
     Strategy,
     timestamp,
     MarketType,
 )
+from tools.enum_definitions import CloseConditions
 from sqlmodel import Relationship, SQLModel, Field
 from databases.tables.order_table import ExchangeOrderTable, FakeOrderTable
 from databases.tables.deal_table import DealTable
@@ -38,7 +38,7 @@ class BotTable(SQLModel, table=True):
         sa_column=Column(Enum(BinanceKlineIntervals)),
     )
     close_condition: CloseConditions = Field(
-        default=CloseConditions.dynamic_trailling,
+        default=CloseConditions.dynamic_trailing,
         sa_column=Column(Enum(CloseConditions)),
     )
     cooldown: int = Field(
@@ -47,7 +47,7 @@ class BotTable(SQLModel, table=True):
     )
     created_at: float = Field(default_factory=timestamp)
     updated_at: float = Field(default_factory=timestamp)
-    dynamic_trailling: bool = Field(default=False)
+    dynamic_trailing: bool = Field(default=False)
     logs: list = Field(default_factory=list, sa_column=Column(JSON))
     mode: str = Field(default="manual")
     market_type: MarketType = Field(
@@ -60,14 +60,14 @@ class BotTable(SQLModel, table=True):
     )
     margin_short_reversal: bool = Field(default=False)
     take_profit: float = Field(default=0)
-    trailling: bool = Field(default=False)
-    trailling_deviation: float = Field(
+    trailing: bool = Field(default=False)
+    trailing_deviation: float = Field(
         default=0,
         ge=-1,
         le=101,
-        description="Set trailling_deviation once trailling_profit is broken first time",
+        description="Set trailing_deviation once trailing_profit is broken first time",
     )
-    trailling_profit: float = Field(
+    trailing_profit: float = Field(
         default=0,
         ge=-1,
         le=101,
@@ -114,14 +114,14 @@ class BotTable(SQLModel, table=True):
     def validate_logs(cls, v, info):
         return v
 
-    @field_validator("trailling")
+    @field_validator("trailing")
     @classmethod
-    def validate_trailling(cls, v, values):
-        if v and values.get("trailling_deviation") == 0:
-            raise ValueError("Trailling deviation must be set if trailling is enabled")
+    def validate_trailing(cls, v, values):
+        if v and values.get("trailing_deviation") == 0:
+            raise ValueError("Trailing deviation must be set if trailing is enabled")
 
-        if v and values.get("trailling_profit") == 0:
-            raise ValueError("Trailling profit must be set if trailling is enabled")
+        if v and values.get("trailing_profit") == 0:
+            raise ValueError("Trailing profit must be set if trailing is enabled")
 
         return v
 
@@ -154,7 +154,7 @@ class PaperTradingTable(SQLModel, table=True):
         sa_column=Column(Enum(BinanceKlineIntervals)),
     )
     close_condition: CloseConditions = Field(
-        default=CloseConditions.dynamic_trailling,
+        default=CloseConditions.dynamic_trailing,
         sa_column=Column(Enum(CloseConditions)),
     )
     cooldown: int = Field(
@@ -163,7 +163,7 @@ class PaperTradingTable(SQLModel, table=True):
     )
     created_at: float = Field(default_factory=timestamp)
     updated_at: float = Field(default_factory=timestamp)
-    dynamic_trailling: bool = Field(default=False)
+    dynamic_trailing: bool = Field(default=False)
     logs: list = Field(default_factory=list, sa_column=Column(JSON))
     mode: str = Field(default="manual")
     market_type: MarketType = Field(
@@ -176,14 +176,14 @@ class PaperTradingTable(SQLModel, table=True):
     )
     margin_short_reversal: bool = Field(default=False)
     take_profit: float = Field(default=0)
-    trailling: bool = Field(default=False)
-    trailling_deviation: float = Field(
+    trailing: bool = Field(default=False)
+    trailing_deviation: float = Field(
         default=0,
         ge=-1,
         le=101,
-        description="Trailling activation (first take profit hit)",
+        description="Trailing activation (first take profit hit)",
     )
-    trailling_profit: float = Field(
+    trailing_profit: float = Field(
         default=0,
         ge=-1,
         le=101,

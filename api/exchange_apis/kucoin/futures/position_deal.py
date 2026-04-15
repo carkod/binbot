@@ -306,7 +306,7 @@ class PositionDeal(KucoinPositionDeal):
             order_data = OrderModel(
                 timestamp=int(time() * 1000),
                 order_id="paper-futures-trail",
-                deal_type=DealType.trailling_profit,
+                deal_type=DealType.trailing_profit,
                 pair=self.kucoin_symbol,
                 order_side=close_side,
                 order_type="MARKET",
@@ -330,7 +330,7 @@ class PositionDeal(KucoinPositionDeal):
                 "buy" if self.active_bot.strategy == Strategy.margin_short else "sell"
             )
             self.controller.update_logs(
-                f"Dispatching futures {action} order for trailling profit...",
+                f"Dispatching futures {action} order for trailing profit...",
                 self.active_bot,
             )
 
@@ -349,7 +349,7 @@ class PositionDeal(KucoinPositionDeal):
                     order_type=OrderType.market,
                     stop_price_type=AddOrderReq.StopPriceTypeEnum.MARK_PRICE,
                     stop=AddOrderReq.StopEnum.UP,
-                    stop_price=self.active_bot.deal.trailling_stop_loss_price,
+                    stop_price=self.active_bot.deal.trailing_stop_loss_price,
                 )
             else:
                 order_base = self.kucoin_futures_api.place_futures_order(
@@ -360,10 +360,10 @@ class PositionDeal(KucoinPositionDeal):
                     order_type=OrderType.market,
                     stop_price_type=AddOrderReq.StopPriceTypeEnum.MARK_PRICE,
                     stop=AddOrderReq.StopEnum.DOWN,
-                    stop_price=self.active_bot.deal.trailling_stop_loss_price,
+                    stop_price=self.active_bot.deal.trailing_stop_loss_price,
                 )
 
-            order_base.deal_type = DealType.trailling_profit
+            order_base.deal_type = DealType.trailing_profit
             order_data = OrderModel(**order_base.model_dump())
 
         self.remove_stale_orders()
@@ -455,7 +455,7 @@ class PositionDeal(KucoinPositionDeal):
             market_type=source_bot.market_type,
             close_condition=source_bot.close_condition,
             cooldown=source_bot.cooldown,
-            dynamic_trailling=source_bot.dynamic_trailling,
+            dynamic_trailing=source_bot.dynamic_trailing,
             margin_short_reversal=source_bot.margin_short_reversal,
             name=source_bot.name,
             strategy=target_strategy,
@@ -463,9 +463,9 @@ class PositionDeal(KucoinPositionDeal):
             status=Status.inactive,
             stop_loss=source_bot.stop_loss,
             take_profit=source_bot.take_profit,
-            trailling=source_bot.trailling,
-            trailling_deviation=source_bot.trailling_deviation,
-            trailling_profit=source_bot.trailling_profit,
+            trailing=source_bot.trailing,
+            trailing_deviation=source_bot.trailing_deviation,
+            trailing_profit=source_bot.trailing_profit,
             logs=[],
         )
         created_bot = self.controller.create(new_bot)
@@ -740,76 +740,76 @@ class PositionDeal(KucoinPositionDeal):
                 )
                 self.execute_stop_loss()
 
-        # Trailling profit (price going down)
-        if self.active_bot.trailling and self.active_bot.deal.opening_price > 0:
+        # Trailing profit (price going down)
+        if self.active_bot.trailing and self.active_bot.deal.opening_price > 0:
             # First activation: derive the next trailing trigger from entry or the last trailing stop.
-            if self.active_bot.deal.trailling_stop_loss_price == 0:
+            if self.active_bot.deal.trailing_stop_loss_price == 0:
                 trailing_price = float(self.active_bot.deal.opening_price) * (
-                    1 + direction * (float(self.active_bot.trailling_profit) / 100)
+                    1 + direction * (float(self.active_bot.trailing_profit) / 100)
                 )
                 trailing_price = round_numbers(trailing_price, self.price_precision)
             else:
                 # Advance the trailing trigger in the profitable direction.
                 trailing_price = float(
-                    self.active_bot.deal.trailling_stop_loss_price
-                ) * (1 + direction * (self.active_bot.trailling_profit / 100))
+                    self.active_bot.deal.trailing_stop_loss_price
+                ) * (1 + direction * (self.active_bot.trailing_profit / 100))
                 trailing_price = round_numbers(trailing_price, self.price_precision)
 
-            self.active_bot.deal.trailling_profit_price = round_numbers(
+            self.active_bot.deal.trailing_profit_price = round_numbers(
                 trailing_price, self.price_precision
             )
             if (current_price - trailing_price) * direction >= 0:
                 new_take_profit = current_price * (
-                    1 + direction * ((self.active_bot.trailling_profit) / 100)
+                    1 + direction * ((self.active_bot.trailing_profit) / 100)
                 )
-                new_trailling_stop_loss: float = round_numbers(
+                new_trailing_stop_loss: float = round_numbers(
                     current_price
                     - direction
-                    * (current_price * ((self.active_bot.trailling_deviation) / 100)),
+                    * (current_price * ((self.active_bot.trailing_deviation) / 100)),
                     self.price_precision,
                 )
 
                 # Avoid duplicate logs
-                old_trailling_profit_price = self.active_bot.deal.trailling_profit_price
-                old_trailling_stop_loss = self.active_bot.deal.trailling_stop_loss_price
+                old_trailing_profit_price = self.active_bot.deal.trailing_profit_price
+                old_trailing_stop_loss = self.active_bot.deal.trailing_stop_loss_price
 
                 # Keep the next trailing trigger ahead of the current price move.
-                self.active_bot.deal.trailling_profit_price = round_numbers(
+                self.active_bot.deal.trailing_profit_price = round_numbers(
                     new_take_profit, self.price_precision
                 )
 
                 # Bot is not able to break ceiling profit
                 # so time to close with net profit
                 if (
-                    new_trailling_stop_loss - self.active_bot.deal.opening_price
+                    new_trailing_stop_loss - self.active_bot.deal.opening_price
                 ) * direction > 0 and (
-                    self.active_bot.deal.trailling_stop_loss_price == 0
+                    self.active_bot.deal.trailing_stop_loss_price == 0
                     or (
-                        new_trailling_stop_loss
-                        - self.active_bot.deal.trailling_stop_loss_price
+                        new_trailing_stop_loss
+                        - self.active_bot.deal.trailing_stop_loss_price
                     )
                     * direction
                     > 0
                 ):
-                    self.active_bot.deal.trailling_stop_loss_price = (
-                        new_trailling_stop_loss
+                    self.active_bot.deal.trailing_stop_loss_price = (
+                        new_trailing_stop_loss
                     )
                     self.place_trailing_stop_loss()
 
                 if (
-                    old_trailling_stop_loss
-                    != self.active_bot.deal.trailling_stop_loss_price
+                    old_trailing_stop_loss
+                    != self.active_bot.deal.trailing_stop_loss_price
                 ):
                     self.active_bot.add_log(
-                        f"Updated trailling_stop_loss_price to {self.active_bot.deal.trailling_stop_loss_price} and set trailing stop loss (stop loss in Kucoin)"
+                        f"Updated trailing_stop_loss_price to {self.active_bot.deal.trailing_stop_loss_price} and set trailing stop loss (stop loss in Kucoin)"
                     )
 
                 if (
-                    old_trailling_profit_price
-                    != self.active_bot.deal.trailling_profit_price
+                    old_trailing_profit_price
+                    != self.active_bot.deal.trailing_profit_price
                 ):
                     self.active_bot.add_log(
-                        f"Updated trailling_profit_price to {round_numbers(self.active_bot.deal.trailling_profit_price, self.price_precision)} and set trailing profit (profit in Kucoin)"
+                        f"Updated trailing_profit_price to {round_numbers(self.active_bot.deal.trailing_profit_price, self.price_precision)} and set trailing profit (profit in Kucoin)"
                     )
 
                 self.controller.save(self.active_bot)
@@ -837,50 +837,50 @@ class PositionDeal(KucoinPositionDeal):
             self.active_bot.deal.current_price = close_price
 
         take_profit_pct = float(self.active_bot.take_profit) / 100
-        deviation_pct = float(self.active_bot.trailling_deviation) / 100
+        deviation_pct = float(self.active_bot.trailing_deviation) / 100
 
-        if deal.trailling_stop_loss_price == 0:
+        if deal.trailing_stop_loss_price == 0:
             price_reference = (
                 close_price if close_price < opening_price else opening_price
             )
-            trailling_take_profit = price_reference - (
+            trailing_take_profit = price_reference - (
                 price_reference * take_profit_pct
             )
-            stop_loss_trailing_price = trailling_take_profit - (
-                trailling_take_profit * deviation_pct
+            stop_loss_trailing_price = trailing_take_profit - (
+                trailing_take_profit * deviation_pct
             )
             if stop_loss_trailing_price < opening_price:
-                deal.trailling_profit_price = trailling_take_profit
-                deal.trailling_stop_loss_price = stop_loss_trailing_price
+                deal.trailing_profit_price = trailing_take_profit
+                deal.trailing_stop_loss_price = stop_loss_trailing_price
                 self.active_bot.add_log(
-                    f"{self.kucoin_symbol} below opening_price, setting futures short trailling_stop_loss"
+                    f"{self.kucoin_symbol} below opening_price, setting futures short trailing_stop_loss"
                 )
                 self.controller.save(self.active_bot)
 
         if (
-            deal.trailling_stop_loss_price > 0
-            and deal.trailling_profit_price > 0
-            and deal.trailling_stop_loss_price < close_price
+            deal.trailing_stop_loss_price > 0
+            and deal.trailing_profit_price > 0
+            and deal.trailing_stop_loss_price < close_price
         ):
-            deal.trailling_stop_loss_price = deal.trailling_profit_price * (
+            deal.trailing_stop_loss_price = deal.trailing_profit_price * (
                 1 + deviation_pct
             )
             deal.stop_loss_price = 0
             self.controller.update_logs(
-                f"{self.kucoin_symbol} Updating after broken first trailling_profit (futures short)",
+                f"{self.kucoin_symbol} Updating after broken first trailing_profit (futures short)",
                 self.active_bot,
             )
 
-        if deal.trailling_profit_price == 0:
+        if deal.trailing_profit_price == 0:
             return
 
-        if close_price <= deal.trailling_profit_price:
+        if close_price <= deal.trailing_profit_price:
             new_take_profit: float = close_price - (close_price * take_profit_pct)
-            new_trailling_stop_loss = close_price * (1 + deviation_pct)
-            deal.trailling_profit_price = new_take_profit
+            new_trailing_stop_loss = close_price * (1 + deviation_pct)
+            deal.trailing_profit_price = new_take_profit
 
-            if new_trailling_stop_loss < close_price:
-                deal.trailling_stop_loss_price = new_trailling_stop_loss
+            if new_trailing_stop_loss < close_price:
+                deal.trailing_stop_loss_price = new_trailing_stop_loss
 
         self.controller.save(self.active_bot)
 
@@ -933,7 +933,7 @@ class PositionDeal(KucoinPositionDeal):
         self.active_bot.deal.current_price = close_price
         self.controller.save(self.active_bot)
 
-        if self.active_bot.dynamic_trailling:
+        if self.active_bot.dynamic_trailing:
             cls.market_trailing_analytics(current_price=close_price)
 
         try:

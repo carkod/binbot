@@ -6,7 +6,7 @@ import { BotStrategy, DealType } from "../enums";
 
 const dealColors = {
   base_order: "#1f77d0",
-  trailling_profit: "#9368e9",
+  trailing_profit: "#9368e9",
   take_profit: "#87cb16",
   safety_order: "#ffa534",
 };
@@ -67,10 +67,10 @@ export function updateTimescaleMarks(bot: Bot): TimescaleMark[] {
         }
         label = "S";
       }
-      if (order.deal_type === DealType.TRAILLING_PROFIT) {
-        color = dealColors.trailling_profit;
+      if (order.deal_type === DealType.TRAILING_PROFIT) {
+        color = dealColors.trailing_profit;
       }
-      if (order.deal_type === DealType.TRAILLING_STOP_LOSS) {
+      if (order.deal_type === DealType.TRAILING_STOP_LOSS) {
         color = dealColors.take_profit;
         label = "S";
       }

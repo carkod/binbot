@@ -42,9 +42,9 @@ export const TestAutotradePage: FC<{}> = () => {
       fiat: settings.fiat,
       stop_loss: settings.stop_loss,
       take_profit: settings.take_profit,
-      trailling: settings.trailling,
-      trailling_deviation: settings.trailling_deviation,
-      trailling_profit: settings.trailling_profit,
+      trailing: settings.trailing,
+      trailing_deviation: settings.trailing_deviation,
+      trailing_profit: settings.trailing_profit,
       autoswitch: settings.autoswitch,
     },
   });
@@ -101,9 +101,9 @@ export const TestAutotradePage: FC<{}> = () => {
         fiat: settings.fiat,
         stop_loss: settings.stop_loss,
         take_profit: settings.take_profit,
-        trailling: settings.trailling,
-        trailling_deviation: settings.trailling_deviation,
-        trailling_profit: settings.trailling_profit,
+        trailing: settings.trailing,
+        trailing_deviation: settings.trailing_deviation,
+        trailing_profit: settings.trailing_profit,
         autoswitch: settings.autoswitch,
       });
     }
@@ -285,14 +285,14 @@ export const TestAutotradePage: FC<{}> = () => {
                 <hr />
                 <Row>
                   <Col md="3">
-                    <label htmlFor="trailling">Trailling</label>
+                    <label htmlFor="trailing">Trailing</label>
                     <br />
                     <LightSwitch
-                      value={settings.trailling}
-                      name="trailling"
+                      value={settings.trailing}
+                      name="trailing"
                       register={register}
                       toggle={(name, value) => {
-                        setValue("trailling", !value);
+                        setValue("trailing", !value);
                         dispatch(
                           setTestSettingsToggle({
                             name: name,
@@ -303,13 +303,13 @@ export const TestAutotradePage: FC<{}> = () => {
                     />
                   </Col>
                 </Row>
-                {settings.trailling ? (
+                {settings.trailing ? (
                   <Row>
                     <Col md="3">
                       <SettingsInput
-                        value={settings.trailling_deviation}
-                        name={"trailling_deviation"}
-                        label={"Trailling stop loss"}
+                        value={settings.trailing_deviation}
+                        name={"trailing_deviation"}
+                        label={"Trailing stop loss"}
                         type="number"
                         infoText="Should be kept as small as possible as this will increase funds needed to start base_order_size"
                         register={register}
@@ -317,8 +317,8 @@ export const TestAutotradePage: FC<{}> = () => {
                     </Col>
                     <Col md="3">
                       <SettingsInput
-                        value={settings.trailling_profit}
-                        name={"trailling_profit"}
+                        value={settings.trailing_profit}
+                        name={"trailing_profit"}
                         label={"Trail profit"}
                         type="number"
                         register={register}

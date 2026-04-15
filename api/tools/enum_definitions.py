@@ -17,6 +17,12 @@ class DealType(str, Enum):
     short_buy = "short_buy"
     margin_short = "margin_short"
     panic_close = "panic_close"
-    trailling_profit = "trailling_profit"
+    trailing_profit = "trailing_profit"
     conversion = "conversion"
     algorithmic_close = "algorithmic_close"
+
+
+class CloseConditions(str, Enum):
+    dynamic_trailing = "dynamic_trailing"
+    timestamp = "timestamp"
+    market_reversal = "market_reversal"

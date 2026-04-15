@@ -1,11 +1,38 @@
 from typing import List, Optional
 from uuid import uuid4, UUID
-from pybinbot import DealBase as DealModel, BotBase, OrderBase
-from pydantic import BaseModel, Field, field_validator
+from pybinbot import DealBase as _PybinbotDealBase, BotBase, OrderBase
+from pydantic import BaseModel, Field, field_validator, model_validator
 from tools.handle_error import IResponseBase
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.tables.deal_table import DealTable
 from databases.tables.order_table import ExchangeOrderTable
+from pybinbot.shared.types import Amount
+
+
+class DealModel(_PybinbotDealBase):
+    """
+    Local DealModel that overrides pybinbot's DealBase with renamed trailing fields.
+    """
+
+    trailing_stop_loss_price: Amount = Field(
+        default=0,
+        description="take_profit but for trailing, trailing_profit_price always be > trailing_stop_loss_price",
+    )
+    trailing_profit_price: Amount = Field(default=0)
+
+    @model_validator(mode="before")
+    @classmethod
+    def handle_trailing_rename(cls, values):
+        """Backward compat: map old 'trailling' field names from pybinbot to 'trailing'."""
+        if isinstance(values, dict):
+            renames = {
+                "trailling_stop_loss_price": "trailing_stop_loss_price",
+                "trailling_profit_price": "trailing_profit_price",
+            }
+            for old, new in renames.items():
+                if old in values and new not in values:
+                    values[new] = values.pop(old)
+        return values
 
 
 class OrderModel(OrderBase):
@@ -46,6 +73,28 @@ class BotModel(BotBase):
     deal: DealModel = Field(default_factory=DealModel)
     orders: List[OrderModel] = Field(default_factory=list)
 
+    # Explicit fields to override pybinbot BotBase (which uses old 'trailling' spelling)
+    trailing: bool = Field(default=False)
+    trailing_deviation: float = Field(default=0)
+    trailing_profit: float = Field(default=0)
+    dynamic_trailing: bool = Field(default=False)
+
+    @model_validator(mode="before")
+    @classmethod
+    def handle_trailing_rename(cls, values):
+        """Backward compat: map old 'trailling' field names from pybinbot to 'trailing'."""
+        if isinstance(values, dict):
+            renames = {
+                "trailling": "trailing",
+                "trailling_deviation": "trailing_deviation",
+                "trailling_profit": "trailing_profit",
+                "dynamic_trailling": "dynamic_trailing",
+            }
+            for old, new in renames.items():
+                if old in values and new not in values:
+                    values[new] = values.pop(old)
+        return values
+
     model_config = {
         "from_attributes": True,
         "use_enum_values": True,
@@ -59,20 +108,20 @@ class BotModel(BotBase):
                     "quote_asset": "USDC",
                     "fiat_order_size": 15,
                     "candlestick_interval": "15m",
-                    "close_condition": "dynamic_trailling",
+                    "close_condition": "dynamic_trailing",
                     "cooldown": 0,
                     "created_at": 1702999999.0,
                     "updated_at": 1702999999.0,
-                    "dynamic_trailling": False,
+                    "dynamic_trailing": False,
                     "logs": [],
                     "mode": "manual",
                     "name": "Default bot",
                     "status": "inactive",
                     "stop_loss": 0,
                     "take_profit": 2.3,
-                    "trailling": True,
-                    "trailling_deviation": 0.63,
-                    "trailling_profit": 2.3,
+                    "trailing": True,
+                    "trailing_deviation": 0.63,
+                    "trailing_profit": 2.3,
                     "margin_short_reversal": False,
                     "strategy": "long",
                     "deal": {},

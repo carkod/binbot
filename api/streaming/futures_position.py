@@ -136,7 +136,7 @@ class FuturesPosition(PositionMarket):
                             order.deal_type == DealType.take_profit
                             or order.deal_type == DealType.stop_loss
                             or order.deal_type == DealType.panic_close
-                            or order.deal_type == DealType.trailling_profit
+                            or order.deal_type == DealType.trailing_profit
                         )
                         and self.active_bot.deal.closing_price == 0
                         and filled_size > 0
