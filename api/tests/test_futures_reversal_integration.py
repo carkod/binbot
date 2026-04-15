@@ -168,7 +168,7 @@ def test_reverse_position_closes_previous_and_opens_new_bot(monkeypatch):
     assert len(reversed_bot.orders) == 1
     assert reversed_bot.orders[0].qty == 56
     assert reversed_bot.orders[0].deal_type == DealType.base_order
-    assert futures_api.sell_calls == [80, 56]
+    assert futures_api.sell_calls == [1, 56]
 
     completed_previous = [
         saved
@@ -224,4 +224,4 @@ def test_reverse_position_retries_second_order_after_insufficient_balance(
     assert len(reversed_bot.orders) == 1
     assert reversed_bot.orders[0].qty == 42
     assert reversed_bot.orders[0].deal_type == DealType.base_order
-    assert futures_api.sell_calls == [80, 56, 42]
+    assert futures_api.sell_calls == [1, 56, 42]

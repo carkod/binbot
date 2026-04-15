@@ -9,7 +9,6 @@ from databases.tables.order_table import ExchangeOrderTable
 
 
 class OrderModel(OrderBase):
-
     @field_validator("order_type", "order_side")
     @classmethod
     def validate_order_params(cls, v):

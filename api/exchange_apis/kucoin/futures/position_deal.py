@@ -442,18 +442,8 @@ class PositionDeal(KucoinPositionDeal):
 
         current_contracts = abs(float(current_position.current_qty))
 
-        flip_contracts = self._is_reversal_possible(
-            current_position.mark_price, current_contracts
-        )
-
-        if flip_contracts <= current_contracts:
-            self.active_bot.add_log(
-                f"Insufficient available balance to reverse position with {flip_contracts} contracts. Required: {current_contracts + self.kucoin_symbol_data.lot_size}, Available buffer: {self.compute_available_balance()}. Skipping reversal."
-            )
-            source_bot.status = Status.error
-            self.controller.save(source_bot)
-            self.active_bot = source_bot
-            return source_bot
+        # set fixed to ensure flip
+        flip_contracts = 1
 
         # Construct new bot
         new_bot = BotBase(
