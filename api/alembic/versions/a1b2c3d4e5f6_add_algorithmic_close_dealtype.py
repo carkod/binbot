@@ -41,6 +41,9 @@ def downgrade() -> None:
         "CREATE TYPE dealtype_new AS ENUM ("
         "'base_order', 'take_profit', 'stop_loss', 'short_sell', "
         "'short_buy', 'margin_short', 'panic_close', 'trailling_profit', 'conversion'"
+        # Note: 'trailling_profit' (old spelling) is intentional here - at the point
+        # when this migration is being downgraded, migration b2c3d4e5f6a7 will have
+        # already been downgraded first, reverting the column value back to 'trailling_profit'.
         ")"
     )
     op.execute(
