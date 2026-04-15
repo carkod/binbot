@@ -2,7 +2,7 @@ import spotTrading from "./spot-strategy.service";
 import marginTrading from "./margin-short.service";
 import { type Bot } from "../../features/bots/botInitialState";
 import { type TimescaleMark } from "./index.d";
-import { BotStrategy, DealType } from "../enums";
+import { BotPosition, DealType } from "../enums";
 
 const dealColors = {
   base_order: "#1f77d0",
@@ -33,7 +33,7 @@ export function updateOrderLines(bot: Bot, currentPrice: number): any[] {
    * @param currentPrice {number}. If inactive, use chart current price, if bot active, use buy_price
    */
   let totalOrderLines = [];
-  if (bot.strategy === BotStrategy.MARGIN_SHORT) {
+  if (bot.strategy === BotPosition.SHORT) {
     totalOrderLines = marginTrading(bot, currentPrice);
   } else {
     totalOrderLines = spotTrading(bot, currentPrice);
@@ -54,7 +54,7 @@ export function updateTimescaleMarks(bot: Bot): TimescaleMark[] {
         return;
       }
       // If base_order and margin_short
-      if (bot.strategy === BotStrategy.MARGIN_SHORT) {
+      if (bot.strategy === BotPosition.SHORT) {
         label = "S";
       }
       if (
@@ -62,7 +62,7 @@ export function updateTimescaleMarks(bot: Bot): TimescaleMark[] {
         order.deal_type === DealType.STOP_LOSS
       ) {
         color = dealColors.take_profit;
-        if (bot.strategy === BotStrategy.MARGIN_SHORT) {
+        if (bot.strategy === BotPosition.SHORT) {
           label = "B";
         }
         label = "S";

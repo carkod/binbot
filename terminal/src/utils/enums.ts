@@ -16,9 +16,9 @@ export enum BotMode {
   AUTO = "auto",
 }
 
-export enum BotStrategy {
+export enum BotPosition {
   LONG = "long",
-  MARGIN_SHORT = "margin_short",
+  SHORT = "short",
 }
 
 export enum DealType {

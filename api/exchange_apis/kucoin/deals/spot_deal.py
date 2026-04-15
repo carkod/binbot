@@ -5,11 +5,11 @@ from pybinbot import (
     round_numbers,
     round_numbers_ceiling,
     OrderStatus,
-    Strategy,
     QuoteAssets,
     Status,
 )
 from tools.enum_definitions import DealType
+from tools.enum_definitions import Position
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.bot_crud import BotTableCrud
@@ -144,7 +144,7 @@ class KucoinSpotDeal(KucoinBaseBalance):
         this one simplifies by separating strategy specific
         """
 
-        if self.active_bot.strategy == Strategy.margin_short:
+        if self.active_bot.strategy == Position.short:
             logging.error("Bot executing wrong long_open_deal_trailing_parameters")
             return self.active_bot
 
@@ -189,7 +189,7 @@ class KucoinSpotDeal(KucoinBaseBalance):
         not out of sync with the bot parameters
         """
 
-        if self.active_bot.strategy == Strategy.margin_short:
+        if self.active_bot.strategy == Position.short:
             logging.error("Bot executing wrong long_update_deal_trailing_parameters")
             return self.active_bot
 

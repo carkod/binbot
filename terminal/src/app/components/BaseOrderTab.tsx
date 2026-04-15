@@ -20,7 +20,7 @@ import {
 } from "../../features/bots/botSlice";
 import {
   BotStatus,
-  BotStrategy,
+  BotPosition,
   BotType,
   MarketType,
   TabsKeys,
@@ -308,8 +308,8 @@ const BaseOrderTab: FC<{
                       required: "Strategy is required",
                     })}
                   >
-                    <option value={BotStrategy.LONG}>Long</option>
-                    <option value={BotStrategy.MARGIN_SHORT}>
+                    <option value={BotPosition.LONG}>Long</option>
+                    <option value={BotPosition.SHORT}>
                       Margin short
                     </option>
                   </Form.Select>

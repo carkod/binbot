@@ -26,3 +26,8 @@ class CloseConditions(str, Enum):
     dynamic_trailing = "dynamic_trailing"
     timestamp = "timestamp"
     market_reversal = "market_reversal"
+
+
+class Position(str, Enum):
+    long = "long"
+    short = "short"

@@ -3,7 +3,8 @@ from typing import Any, cast
 from bots.models import BotModel, OrderModel
 from exchange_apis.kucoin.futures.position_deal import PositionDeal
 from kucoin_universal_sdk.model.common import RestError
-from pybinbot import MarketType, OrderStatus, QuoteAssets, Status, Strategy
+from pybinbot import MarketType, OrderStatus, QuoteAssets, Status
+from tools.enum_definitions import Position
 from tools.enum_definitions import DealType
 from tests.fixtures.mock_bot_table import make_mock_bot_active_model
 
@@ -130,7 +131,7 @@ class DummyFuturesApiInsufficientBalance(DummyFuturesApi):
 def test_reverse_position_closes_previous_and_opens_new_bot(monkeypatch):
     bot = make_mock_bot_active_model()
     bot.market_type = MarketType.FUTURES
-    bot.strategy = Strategy.long
+    bot.strategy = Position.long
     bot.margin_short_reversal = True
     bot.pair = "BTCUSDT"
     bot.quote_asset = QuoteAssets.USDT
@@ -161,7 +162,7 @@ def test_reverse_position_closes_previous_and_opens_new_bot(monkeypatch):
 
     reversed_bot = PositionDeal.reverse_position(position_deal)
 
-    assert reversed_bot.strategy == Strategy.margin_short
+    assert reversed_bot.strategy == Position.short
     assert reversed_bot.status == Status.active
     assert reversed_bot.deal.base_order_size == 68
     assert reversed_bot.deal.opening_qty == 68
@@ -185,7 +186,7 @@ def test_reverse_position_retries_second_order_after_insufficient_balance(
 ):
     bot = make_mock_bot_active_model()
     bot.market_type = MarketType.FUTURES
-    bot.strategy = Strategy.long
+    bot.strategy = Position.long
     bot.margin_short_reversal = True
     bot.pair = "BTCUSDT"
     bot.quote_asset = QuoteAssets.USDT
@@ -217,7 +218,7 @@ def test_reverse_position_retries_second_order_after_insufficient_balance(
 
     reversed_bot = PositionDeal.reverse_position(position_deal)
 
-    assert reversed_bot.strategy == Strategy.margin_short
+    assert reversed_bot.strategy == Position.short
     assert reversed_bot.status == Status.active
     assert reversed_bot.deal.base_order_size == 54
     assert reversed_bot.deal.opening_qty == 54

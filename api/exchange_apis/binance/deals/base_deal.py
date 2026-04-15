@@ -8,7 +8,6 @@ from pybinbot import (
     round_numbers,
     round_numbers_ceiling,
     Status,
-    Strategy,
     OrderStatus,
     BinanceErrors,
     DealCreationError,
@@ -16,6 +15,7 @@ from pybinbot import (
     MarginLoanNotFound,
     BinbotErrors,
 )
+from tools.enum_definitions import Position
 from exchange_apis.binance.orders import BinanceOrderController
 
 # To be removed one day en commission endpoint found that provides this value
@@ -76,7 +76,7 @@ class BaseDeal(BinanceOrderController):
 
         asset = self.symbols_crud.base_asset(pair)
         balance = self.get_single_spot_balance(asset)
-        if balance == 0 and self.active_bot.strategy == Strategy.margin_short:
+        if balance == 0 and self.active_bot.strategy == Position.short:
             # If spot balance is not found
             # try to get isolated margin balance
             balance = self.get_margin_balance(asset)

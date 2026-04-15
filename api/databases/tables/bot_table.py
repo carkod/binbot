@@ -6,11 +6,11 @@ from pybinbot import (
     QuoteAssets,
     BinanceKlineIntervals,
     Status,
-    Strategy,
     timestamp,
     MarketType,
 )
 from tools.enum_definitions import CloseConditions
+from tools.enum_definitions import Position
 from sqlmodel import Relationship, SQLModel, Field
 from databases.tables.order_table import ExchangeOrderTable, FakeOrderTable
 from databases.tables.deal_table import DealTable
@@ -73,7 +73,7 @@ class BotTable(SQLModel, table=True):
         le=101,
         description="Equivalent to take_profit but it moves dynamically based on current price",
     )
-    strategy: Strategy = Field(default=Strategy.long, sa_column=Column(Enum(Strategy)))
+    strategy: Position = Field(default=Position.long, sa_column=Column(Enum(Position)))
 
     # Table relationships filled up internally
     orders: list[ExchangeOrderTable] = Relationship(
@@ -189,7 +189,7 @@ class PaperTradingTable(SQLModel, table=True):
         le=101,
         description="Equivalent to take_profit but it moves dynamically based on current price",
     )
-    strategy: Strategy = Field(default=Strategy.long, sa_column=Column(Enum(Strategy)))
+    strategy: Position = Field(default=Position.long, sa_column=Column(Enum(Position)))
 
     # Table relationships filled up internally
     orders: list[FakeOrderTable] = Relationship(

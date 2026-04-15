@@ -1,6 +1,7 @@
 from exchange_apis.kucoin.deals.long_deal import KucoinLongDeal
 from databases.tables.bot_table import BotTable, PaperTradingTable
-from pybinbot import ExchangeId, Strategy, MarketType
+from pybinbot import ExchangeId, MarketType
+from tools.enum_definitions import Position
 from bots.models import BotModel
 from typing import Union, Type
 from exchange_apis.kucoin.deals.short_deal import KucoinShortDeal
@@ -35,7 +36,7 @@ class DealGateway:
             if bot.market_type == MarketType.FUTURES:
                 self.deal = PositionDeal(bot, db_table=db_table)
             else:
-                if bot.strategy == Strategy.margin_short:
+                if bot.strategy == Position.short:
                     self.deal = KucoinShortDeal(bot, db_table=db_table)
                 else:
                     if bot.market_type == MarketType.FUTURES:
@@ -45,7 +46,7 @@ class DealGateway:
                             "Spot trading is not supported for Kucoin exchange"
                         )
         else:
-            if bot.strategy == Strategy.margin_short:
+            if bot.strategy == Position.short:
                 self.deal = BinanceShortDeal(bot, db_table=db_table)
             else:
                 self.deal = BinanceLongDeal(bot, db_table=db_table)

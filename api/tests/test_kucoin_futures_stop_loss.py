@@ -3,7 +3,8 @@ import types
 
 from bots.models import BotModel, DealModel
 from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
-from pybinbot import OrderBase, OrderStatus, Strategy
+from pybinbot import OrderBase, OrderStatus
+from tools.enum_definitions import Position
 from tools.enum_definitions import DealType
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import (
     AddOrderReq,
@@ -39,7 +40,7 @@ def test_place_stop_loss_for_margin_short_uses_price_above_entry():
     )
     deal.active_bot = BotModel(
         pair="BEATUSDT",
-        strategy=Strategy.margin_short,
+        strategy=Position.short,
         stop_loss=2.0,
         margin_short_reversal=False,
         deal=DealModel(

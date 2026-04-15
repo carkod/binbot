@@ -1,15 +1,15 @@
-import { BotStrategy } from "../../utils/enums";
+import { BotPosition } from "../../utils/enums";
 import { roundDecimals } from "../../utils/math";
 import { type Bot } from "./botInitialState";
 
 export function getProfit(
   base_price: number,
   current_price: number,
-  strategy = BotStrategy.LONG,
+  strategy = BotPosition.LONG,
 ) {
   if (base_price && current_price) {
     let percent = ((current_price - base_price) / base_price) * 100;
-    if (strategy === BotStrategy.MARGIN_SHORT) {
+    if (strategy === BotPosition.SHORT) {
       percent = percent * -1;
     }
     return parseFloat(percent.toFixed(2));

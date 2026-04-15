@@ -19,12 +19,12 @@ from pybinbot import (
     OrderStatus,
     OrderType,
     Status,
-    Strategy,
     convert_to_kucoin_symbol,
     round_numbers,
     round_timestamp,
 )
 from tools.enum_definitions import DealType
+from tools.enum_definitions import Position
 from streaming.futures_position import FuturesPosition
 from streaming.spot_position import SpotPosition
 
@@ -78,7 +78,7 @@ class PositionDeal(KucoinPositionDeal):
             return None
 
         try:
-            if self.active_bot.strategy == Strategy.margin_short:
+            if self.active_bot.strategy == Position.short:
                 return self.kucoin_futures_api.sell(
                     symbol=self.kucoin_symbol,
                     qty=adjusted_contracts,
@@ -122,7 +122,7 @@ class PositionDeal(KucoinPositionDeal):
         take_profit_pct = float(self.active_bot.take_profit or 0) / 100
         take_profit_multiplier = (
             1 - take_profit_pct
-            if self.active_bot.strategy == Strategy.margin_short
+            if self.active_bot.strategy == Position.short
             else 1 + take_profit_pct
         )
         self.active_bot.deal.take_profit_price = take_profit_multiplier * float(
@@ -130,7 +130,7 @@ class PositionDeal(KucoinPositionDeal):
         )
         close_side = (
             OrderSide.buy
-            if self.active_bot.strategy == Strategy.margin_short
+            if self.active_bot.strategy == Position.short
             else OrderSide.sell
         )
 
@@ -158,7 +158,7 @@ class PositionDeal(KucoinPositionDeal):
                 return self.active_bot
 
             qty = round_numbers(abs(float(position.current_qty)), 8)
-            if self.active_bot.strategy == Strategy.margin_short:
+            if self.active_bot.strategy == Position.short:
                 self.controller.update_logs(
                     "Dispatching futures buy order for take profit...",
                     self.active_bot,
@@ -215,7 +215,7 @@ class PositionDeal(KucoinPositionDeal):
             price = float(self.active_bot.deal.current_price or 0)
             close_side = (
                 OrderSide.buy
-                if self.active_bot.strategy == Strategy.margin_short
+                if self.active_bot.strategy == Position.short
                 else OrderSide.sell
             )
             stop_loss_order = OrderModel(
@@ -233,7 +233,7 @@ class PositionDeal(KucoinPositionDeal):
         else:
             qty = self.active_bot.deal.opening_qty
             try:
-                if self.active_bot.strategy == Strategy.margin_short:
+                if self.active_bot.strategy == Position.short:
                     order_base = self.kucoin_futures_api.buy(
                         symbol=self.kucoin_symbol,
                         qty=qty,
@@ -300,7 +300,7 @@ class PositionDeal(KucoinPositionDeal):
             price = float(self.active_bot.deal.current_price or 0)
             close_side = (
                 OrderSide.buy
-                if self.active_bot.strategy == Strategy.margin_short
+                if self.active_bot.strategy == Position.short
                 else OrderSide.sell
             )
             order_data = OrderModel(
@@ -327,7 +327,7 @@ class PositionDeal(KucoinPositionDeal):
                 abs(float(position.current_qty)) * repurchase_multiplier, 8
             )
             action = (
-                "buy" if self.active_bot.strategy == Strategy.margin_short else "sell"
+                "buy" if self.active_bot.strategy == Position.short else "sell"
             )
             self.controller.update_logs(
                 f"Dispatching futures {action} order for trailing profit...",
@@ -340,7 +340,7 @@ class PositionDeal(KucoinPositionDeal):
             # to avoid cancelling constantly
             self.cancel_current_sl()
 
-            if self.active_bot.strategy == Strategy.margin_short:
+            if self.active_bot.strategy == Position.short:
                 order_base: OrderBase = self.kucoin_futures_api.place_futures_order(
                     side=AddOrderReq.SideEnum.BUY,
                     symbol=self.kucoin_symbol,
@@ -414,9 +414,9 @@ class PositionDeal(KucoinPositionDeal):
 
         # Strategy toggle
         target_strategy = (
-            Strategy.margin_short
-            if source_bot.strategy == Strategy.long
-            else Strategy.long
+            Position.short
+            if source_bot.strategy == Position.long
+            else Position.long
         )
 
         # Pre-close current bot
@@ -472,7 +472,7 @@ class PositionDeal(KucoinPositionDeal):
         reversed_bot = BotModel(**created_bot.model_dump())
 
         try:
-            if reversed_bot.strategy == Strategy.margin_short:
+            if reversed_bot.strategy == Position.short:
                 order = self.kucoin_futures_api.sell(
                     symbol=self.kucoin_symbol,
                     qty=flip_contracts,

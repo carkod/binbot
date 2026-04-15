@@ -3,12 +3,12 @@ from pybinbot import (
     round_numbers,
     round_timestamp,
     Status,
-    Strategy,
     OrderSide,
     OrderStatus,
     BotBase,
 )
 from tools.enum_definitions import DealType
+from tools.enum_definitions import Position
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from bots.models import BotModel, OrderModel
@@ -129,7 +129,7 @@ class KucoinLongDeal(KucoinSpotDeal):
 
         # Reset bot operations
         new_bot = BotBase.model_validate(self.active_bot.model_dump())
-        new_bot.strategy = Strategy.margin_short
+        new_bot.strategy = Position.short
         new_bot.logs = []
 
         # failure of the bot creation

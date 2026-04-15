@@ -7,6 +7,7 @@ from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.tables.deal_table import DealTable
 from databases.tables.order_table import ExchangeOrderTable
 from pybinbot.shared.types import Amount
+from tools.enum_definitions import Position
 
 
 class DealModel(_PybinbotDealBase):
@@ -78,11 +79,13 @@ class BotModel(BotBase):
     trailing_deviation: float = Field(default=0)
     trailing_profit: float = Field(default=0)
     dynamic_trailing: bool = Field(default=False)
+    # Override strategy field to use local Position enum (replaces pybinbot Strategy)
+    strategy: Position = Field(default=Position.long)
 
     @model_validator(mode="before")
     @classmethod
     def handle_trailing_rename(cls, values):
-        """Backward compat: map old 'trailling' field names from pybinbot to 'trailing'."""
+        """Backward compat: map old field names from pybinbot to renamed fields."""
         if isinstance(values, dict):
             renames = {
                 "trailling": "trailing",
@@ -93,6 +96,9 @@ class BotModel(BotBase):
             for old, new in renames.items():
                 if old in values and new not in values:
                     values[new] = values.pop(old)
+            # Map old strategy value 'margin_short' to new 'short'
+            if values.get("strategy") == "margin_short":
+                values["strategy"] = "short"
         return values
 
     model_config = {

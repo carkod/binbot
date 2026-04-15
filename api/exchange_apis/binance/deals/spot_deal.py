@@ -6,13 +6,13 @@ from databases.crud.symbols_crud import SymbolsCrud
 from pybinbot import (
     OrderSide,
     Status,
-    Strategy,
     OrderStatus,
     round_numbers,
     round_timestamp,
     BotBase,
 )
 from tools.enum_definitions import DealType, CloseConditions
+from tools.enum_definitions import Position
 from bots.models import BotModel, OrderModel
 from exchange_apis.binance.deals.factory import BinanceDeal
 from exchange_apis.binance.deals.margin_deal import BinanceMarginDeal
@@ -104,7 +104,7 @@ class BinanceSpotDeal(BinanceDeal):
 
         # Reset bot operations
         new_bot = BotBase.model_validate(self.active_bot.model_dump())
-        new_bot.strategy = Strategy.margin_short
+        new_bot.strategy = Position.short
         new_bot.logs = []
 
         # failure of the bot creation
@@ -303,7 +303,7 @@ class BinanceSpotDeal(BinanceDeal):
         this one simplifies by separating strategy specific
         """
 
-        if self.active_bot.strategy == Strategy.margin_short:
+        if self.active_bot.strategy == Position.short:
             logging.error("Bot executing wrong long_open_deal_trailing_parameters")
             return self.active_bot
 
@@ -348,7 +348,7 @@ class BinanceSpotDeal(BinanceDeal):
         not out of sync with the bot parameters
         """
 
-        if self.active_bot.strategy == Strategy.margin_short:
+        if self.active_bot.strategy == Position.short:
             logging.error("Bot executing wrong long_update_deal_trailing_parameters")
             return self.active_bot
 

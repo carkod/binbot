@@ -6,12 +6,12 @@ from pybinbot import (
     round_numbers,
     round_numbers_ceiling,
     OrderStatus,
-    Strategy,
     QuoteAssets,
     Status,
     MarginLoanNotFound,
 )
 from tools.enum_definitions import DealType
+from tools.enum_definitions import Position
 from databases.crud.symbols_crud import SymbolsCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from bots.models import BotModel, OrderModel
@@ -303,7 +303,7 @@ class KucoinMarginDeal(KucoinBaseBalance):
         not out of sync with the bot parameters
         """
 
-        if self.active_bot.strategy == Strategy.margin_short:
+        if self.active_bot.strategy == Position.short:
             logging.error("Bot executing wrong short_update_deal_trailing_parameters")
             return self.active_bot
 
@@ -343,7 +343,7 @@ class KucoinMarginDeal(KucoinBaseBalance):
         Only use for short margin strategy!
         """
 
-        if self.active_bot.strategy == Strategy.long:
+        if self.active_bot.strategy == Position.long:
             logging.error("Bot executing wrong short_open_deal_trailing_parameters")
             return self.active_bot
 
@@ -365,7 +365,7 @@ class KucoinMarginDeal(KucoinBaseBalance):
         # Bot has trailing set
         # trailing_profit must also be set
         if self.active_bot.trailing:
-            if self.active_bot.strategy == Strategy.margin_short:
+            if self.active_bot.strategy == Position.short:
                 price = self.active_bot.deal.opening_price
                 trailing_profit = price - (
                     price * (self.active_bot.trailing_profit / 100)

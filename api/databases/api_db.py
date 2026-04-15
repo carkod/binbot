@@ -13,11 +13,11 @@ from pybinbot import (
     BinanceKlineIntervals,
     ExchangeId,
     Status,
-    Strategy,
     OrderStatus,
     BinbotErrors,
 )
 from tools.enum_definitions import DealType
+from tools.enum_definitions import Position
 from alembic import command
 from alembic.script import ScriptDirectory
 from alembic.config import Config
@@ -340,7 +340,7 @@ class ApiDb:
             trailing=True,
             trailing_deviation=0.63,
             trailing_profit=2.3,
-            strategy=Strategy.long,
+            strategy=Position.long,
             short_opening_price=0,
             short_sell_price=0,
             total_commission=0,
@@ -396,7 +396,7 @@ class ApiDb:
             trailing=True,
             trailing_deviation=0.63,
             trailing_profit=2.3,
-            strategy=Strategy.long,
+            strategy=Position.long,
             short_opening_price=0,
             short_sell_price=0,
             total_commission=0,

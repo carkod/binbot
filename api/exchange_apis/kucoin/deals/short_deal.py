@@ -1,5 +1,6 @@
 from typing import Type
-from pybinbot import round_timestamp, OrderStatus, Strategy, Status, BotBase
+from pybinbot import round_timestamp, OrderStatus, Status, BotBase
+from tools.enum_definitions import Position
 from tools.enum_definitions import DealType
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from bots.models import BotModel, OrderModel
@@ -143,7 +144,7 @@ class KucoinShortDeal(KucoinMarginDeal):
 
         # Create new bot as you'd do through Dashboard terminal
         new_bot = BotBase.model_validate(self.active_bot.model_dump())
-        new_bot.strategy = Strategy.long
+        new_bot.strategy = Position.long
         new_bot.logs = []
 
         # margin bot fund liquidation and network request can cause
