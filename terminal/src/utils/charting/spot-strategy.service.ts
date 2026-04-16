@@ -75,11 +75,7 @@ export default function spotTrading(
       });
     }
 
-    if (
-      bot.trailing &&
-      bot.trailing_deviation > 0 &&
-      bot.trailing_profit > 0
-    ) {
+    if (bot.trailing && bot.trailing_deviation > 0 && bot.trailing_profit > 0) {
       // Bot is sold and completed
       if (bot.status === BotStatus.COMPLETED && bot.deal.closing_price > 0) {
         totalOrderLines.push({

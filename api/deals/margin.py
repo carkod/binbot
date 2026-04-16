@@ -16,7 +16,7 @@ from exchange_apis.binance.deals.margin_deal import BinanceMarginDeal
 
 class ShortDeal(BinanceMarginDeal):
     """
-    Short deals are Binbot deals made using a short strategy: sell high, buy low.
+    Short deals are Binbot deals made using a short position: sell high, buy low.
 
     They use the Exchange's MARGIN ISOLATED market, so it would be using the margin adaptation of Binance APIs, thus inheriting from BinanceMarginDeal.
 

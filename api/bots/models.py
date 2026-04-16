@@ -60,9 +60,11 @@ class BotModel(BotBase):
             for old, new in renames.items():
                 if old in values and new not in values:
                     values[new] = values.pop(old)
+            if "strategy" in values and "position" not in values:
+                values["position"] = values.pop("strategy")
             # Map old strategy value 'margin_short' to new 'short'
-            if values.get("strategy") == "margin_short":
-                values["strategy"] = "short"
+            if values.get("position") == "margin_short":
+                values["position"] = "short"
         return values
 
     model_config = {
@@ -93,7 +95,7 @@ class BotModel(BotBase):
                     "trailing_deviation": 0.63,
                     "trailing_profit": 2.3,
                     "margin_short_reversal": False,
-                    "strategy": "long",
+                    "position": "long",
                     "deal": {},
                     "orders": [],
                 }

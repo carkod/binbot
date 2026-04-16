@@ -80,7 +80,7 @@ const BaseOrderTab: FC<{
     defaultValues: {
       pair: bot.pair,
       name: bot.name,
-      strategy: bot.strategy,
+      position: bot.position,
       fiat_order_size: bot.fiat_order_size,
     },
   });
@@ -300,22 +300,20 @@ const BaseOrderTab: FC<{
             <Row>
               <Col>
                 <Form.Group>
-                  <Form.Label htmlFor="strategy">Strategy</Form.Label>
+                  <Form.Label htmlFor="position">Position</Form.Label>
                   <Form.Select
-                    id="strategy"
-                    name="strategy"
-                    {...register("strategy", {
-                      required: "Strategy is required",
+                    id="position"
+                    name="position"
+                    {...register("position", {
+                      required: "Position is required",
                     })}
                   >
                     <option value={BotPosition.LONG}>Long</option>
-                    <option value={BotPosition.SHORT}>
-                      Margin short
-                    </option>
+                    <option value={BotPosition.SHORT}>Margin short</option>
                   </Form.Select>
-                  {errors.strategy && (
+                  {errors.position && (
                     <Form.Control.Feedback type="invalid">
-                      {errors.strategy.message as string}
+                      {errors.position.message as string}
                     </Form.Control.Feedback>
                   )}
                 </Form.Group>

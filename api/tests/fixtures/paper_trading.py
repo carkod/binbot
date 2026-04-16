@@ -28,7 +28,7 @@ PAPER_TRADING_FIXTURE_ROWS = [
         "trailing_deviation": 3.0,
         "trailing_profit": 0.0,
         "margin_short_reversal": False,
-        "strategy": "long",
+        "position": "long",
         "deal_id": "550e8400-e29b-41d4-a716-446655440001",
     },
     {
@@ -51,7 +51,7 @@ PAPER_TRADING_FIXTURE_ROWS = [
         "trailing_deviation": 3.0,
         "trailing_profit": 0.0,
         "margin_short_reversal": False,
-        "strategy": "long",
+        "position": "long",
         "deal_id": "550e8400-e29b-41d4-a716-446655440002",
     },
     {
@@ -74,7 +74,7 @@ PAPER_TRADING_FIXTURE_ROWS = [
         "trailing_deviation": 2.8,
         "trailing_profit": 2.3,
         "margin_short_reversal": True,
-        "strategy": "long",
+        "position": "long",
         "deal_id": "550e8400-e29b-41d4-a716-446655440003",
     },
     {
@@ -97,7 +97,7 @@ PAPER_TRADING_FIXTURE_ROWS = [
         "trailing_deviation": 3.0,
         "trailing_profit": 0.0,
         "margin_short_reversal": False,
-        "strategy": "long",
+        "position": "long",
         "deal_id": "550e8400-e29b-41d4-a716-446655440004",
     },
 ]
@@ -129,7 +129,7 @@ def build_paper_trading_rows() -> List[PaperTradingTable]:
                 trailing_deviation=row["trailing_deviation"],
                 trailing_profit=row["trailing_profit"],
                 margin_short_reversal=row["margin_short_reversal"],
-                strategy=row["strategy"],
+                position=row["position"],
                 deal_id=deal_id,
             )
         )

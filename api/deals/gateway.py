@@ -35,7 +35,7 @@ class DealGateway:
             if bot.market_type == MarketType.FUTURES:
                 self.deal = PositionDeal(bot, db_table=db_table)
             else:
-                if bot.strategy == Position.short:
+                if bot.position == Position.short:
                     self.deal = KucoinShortDeal(bot, db_table=db_table)
                 else:
                     if bot.market_type == MarketType.FUTURES:
@@ -45,7 +45,7 @@ class DealGateway:
                             "Spot trading is not supported for Kucoin exchange"
                         )
         else:
-            if bot.strategy == Position.short:
+            if bot.position == Position.short:
                 self.deal = BinanceShortDeal(bot, db_table=db_table)
             else:
                 self.deal = BinanceLongDeal(bot, db_table=db_table)

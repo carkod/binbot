@@ -272,7 +272,7 @@ class Assets(BinanceOrderController):
         strategy = Position.short if bot_strategy == "margin" else Position.long
 
         bot = self.bot_controller.get_one(
-            symbol=pair, strategy=strategy, status=Status.all
+            symbol=pair, position=strategy, status=Status.all
         )
 
         if not bot:

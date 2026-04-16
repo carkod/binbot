@@ -64,7 +64,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         self.price_precision = self.symbol_info.price_precision
 
     def _direction_multiplier(self) -> int:
-        return -1 if self.active_bot.strategy == Position.short else 1
+        return -1 if self.active_bot.position == Position.short else 1
 
     def create_controller(self) -> PaperTradingTableCrud | BotTableCrud:
         """
@@ -143,7 +143,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         side = (
             AddOrderReq.SideEnum.SELL
-            if self.active_bot.strategy == Position.short
+            if self.active_bot.position == Position.short
             else AddOrderReq.SideEnum.BUY
         )
         estimated_price = self.kucoin_futures_api.matching_engine(
@@ -259,7 +259,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         )
         side = (
             GetTradeHistoryReq.SideEnum.BUY
-            if self.active_bot.strategy == Position.short
+            if self.active_bot.position == Position.short
             else GetTradeHistoryReq.SideEnum.SELL
         )
 
@@ -286,7 +286,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 if total_qty > 0
                 else float(order_resp.price)
             )
-            if self.active_bot.strategy == Position.short:
+            if self.active_bot.position == Position.short:
                 deal_type = (
                     DealType.take_profit
                     if (closing_price < self.active_bot.deal.opening_price)
@@ -407,7 +407,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 "Calculated contracts is 0. Check if the order size, stop loss, and risk settings are correct."
             )
 
-        if self.active_bot.strategy == Position.short:
+        if self.active_bot.position == Position.short:
             order: OrderBase = self.kucoin_futures_api.sell(
                 symbol=self.kucoin_symbol,
                 qty=contracts,
@@ -436,7 +436,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         self.controller.update_logs(
             bot=self.active_bot,
-            log_message=f"Futures {self.active_bot.strategy.name} opened @ {position.mark_price} with {order.qty} contracts",
+            log_message=f"Futures {self.active_bot.position.name} opened @ {position.mark_price} with {order.qty} contracts",
         )
 
         self.controller.save(self.active_bot)
@@ -459,7 +459,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 self.price_precision,
             )
 
-        if self.active_bot.strategy == Position.short:
+        if self.active_bot.position == Position.short:
             side = AddOrderReq.SideEnum.BUY
             stop = AddOrderReq.StopEnum.UP
         else:
@@ -592,7 +592,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
 
         if position and float(position.current_qty) != 0:
-            if self.active_bot.strategy == Position.short:
+            if self.active_bot.position == Position.short:
                 order_response = self.kucoin_futures_api.buy(
                     symbol=self.kucoin_symbol,
                     qty=abs(int(position.current_qty)),

@@ -74,7 +74,7 @@ def test_paper_trading_create_bot(client: TestClient):
         "dynamic_trailing": True,
         "stop_loss": 3,
         "margin_short_reversal": True,
-        "strategy": "long",
+        "position": "long",
     }
 
     response = client.post("/paper-trading", json=payload)
@@ -94,7 +94,7 @@ def test_paper_trading_create_bot(client: TestClient):
     assert data["take_profit"] == 2.3
     assert data["trailing"] is True
     assert data["trailing_deviation"] == 2.8
-    assert data["strategy"] == "long"
+    assert data["position"] == "long"
     # Verify structure
     assert "id" in data
     assert "deal" in data
@@ -121,7 +121,7 @@ def test_paper_trading_edit_bot(client: TestClient):
         "trailing": True,
         "trailing_deviation": 2.8,
         "trailing_profit": 2.3,
-        "strategy": "long",
+        "position": "long",
     }
 
     response = client.put(

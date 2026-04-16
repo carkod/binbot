@@ -17,7 +17,7 @@ from databases.crud.paper_trading_crud import PaperTradingTableCrud
 
 class BinanceLongDeal(BinanceSpotDeal):
     """
-    Long deals are Binbot deals made using a long strategy: buy low, sell high.
+    Long deals are Binbot deals made using a long position: buy low, sell high.
 
     They use the Exchange's SPOT market, so it would be using the spot adaptation of Binance APIs, thus inheriting from BinanceSpotDeal.
     """
