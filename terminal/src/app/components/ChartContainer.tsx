@@ -131,7 +131,7 @@ const ChartContainer: FC<{
               >
                 {bot.status}
               </Badge>{" "}
-              <Badge bg="info">{bot.strategy}</Badge>{" "}
+              <Badge bg="info">{bot.position}</Badge>{" "}
               <Badge bg="dark" className="text-uppercase">
                 {marketLabel}
               </Badge>

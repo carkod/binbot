@@ -5,11 +5,11 @@ import { type Bot } from "./botInitialState";
 export function getProfit(
   base_price: number,
   current_price: number,
-  strategy = BotPosition.LONG,
+  position = BotPosition.LONG,
 ) {
   if (base_price && current_price) {
     let percent = ((current_price - base_price) / base_price) * 100;
-    if (strategy === BotPosition.SHORT) {
+    if (position === BotPosition.SHORT) {
       percent = percent * -1;
     }
     return parseFloat(percent.toFixed(2));
@@ -50,7 +50,7 @@ export function computeSingleBotProfit(
           : bot.deal.current_price;
     const buyPrice = bot.deal.opening_price;
     if (currentPrice > 0) {
-      const profitChange = getProfit(buyPrice, currentPrice, bot.strategy);
+      const profitChange = getProfit(buyPrice, currentPrice, bot.position);
       return roundDecimals(profitChange, 2);
     }
     return 0;
@@ -61,7 +61,7 @@ export function computeSingleBotProfit(
     const profitChange = getProfit(
       bot.deal.opening_price,
       bot.deal.closing_price,
-      bot.strategy,
+      bot.position,
     );
     return roundDecimals(profitChange, 2);
   }
@@ -78,7 +78,7 @@ export function computeSingleBotProfit(
   const profitChange = getProfit(
     bot.deal.opening_price,
     closePrice,
-    bot.strategy,
+    bot.position,
   );
   return roundDecimals(profitChange, 2);
 }
@@ -94,7 +94,7 @@ export function computeTotalProfit(bots: Bot[] = []) {
       return accumulator;
     }
 
-    const profit = getProfit(openingPrice, closingPrice, bot.strategy);
+    const profit = getProfit(openingPrice, closingPrice, bot.position);
     return accumulator + profit;
   }, 0);
   return roundDecimals(totalProfit, 2);

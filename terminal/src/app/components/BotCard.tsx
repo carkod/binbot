@@ -89,10 +89,10 @@ const BotCard: FC<BotCardProps> = ({
           </Row>
           <Row>
             <Col md="6" xs="7">
-              <p>Strategy</p>
+              <p>Position</p>
             </Col>
             <Col md="6" xs="5">
-              <p className="capitalize">{bot.strategy}</p>
+              <p className="capitalize">{bot.position}</p>
             </Col>
           </Row>
           <Row>

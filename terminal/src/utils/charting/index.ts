@@ -33,7 +33,7 @@ export function updateOrderLines(bot: Bot, currentPrice: number): any[] {
    * @param currentPrice {number}. If inactive, use chart current price, if bot active, use buy_price
    */
   let totalOrderLines = [];
-  if (bot.strategy === BotPosition.SHORT) {
+  if (bot.position === BotPosition.SHORT) {
     totalOrderLines = marginTrading(bot, currentPrice);
   } else {
     totalOrderLines = spotTrading(bot, currentPrice);
@@ -54,7 +54,7 @@ export function updateTimescaleMarks(bot: Bot): TimescaleMark[] {
         return;
       }
       // If base_order and margin_short
-      if (bot.strategy === BotPosition.SHORT) {
+      if (bot.position === BotPosition.SHORT) {
         label = "S";
       }
       if (
@@ -62,7 +62,7 @@ export function updateTimescaleMarks(bot: Bot): TimescaleMark[] {
         order.deal_type === DealType.STOP_LOSS
       ) {
         color = dealColors.take_profit;
-        if (bot.strategy === BotPosition.SHORT) {
+        if (bot.position === BotPosition.SHORT) {
           label = "B";
         }
         label = "S";

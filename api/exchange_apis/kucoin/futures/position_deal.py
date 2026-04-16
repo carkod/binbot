@@ -411,14 +411,14 @@ class PositionDeal(KucoinPositionDeal):
         source_bot = self.active_bot
 
         # Strategy toggle
-        target_strategy = (
+        target_position = (
             Position.short if source_bot.position == Position.long else Position.long
         )
 
         # Pre-close current bot
         previous_bot = deepcopy(source_bot)
         previous_bot.add_log(
-            f"Skipped stop loss and reversing to {target_strategy.value} in a new bot."
+            f"Skipped stop loss and reversing to {target_position.value} in a new bot."
         )
         self.controller.save(previous_bot)
 
@@ -454,7 +454,7 @@ class PositionDeal(KucoinPositionDeal):
             dynamic_trailing=source_bot.dynamic_trailing,
             margin_short_reversal=source_bot.margin_short_reversal,
             name=source_bot.name,
-            position=target_strategy,
+            position=target_position,
             mode=source_bot.mode,
             status=Status.inactive,
             stop_loss=source_bot.stop_loss,
@@ -484,7 +484,7 @@ class PositionDeal(KucoinPositionDeal):
         except RestError as kucoin_error:
             msg = kucoin_error.response.message
             reversed_bot.add_log(
-                f"Failed to open {target_strategy.value} position during reversal: {msg}"
+                f"Failed to open {target_position.value} position during reversal: {msg}"
             )
             reversed_bot.status = Status.error
             self.controller.save(reversed_bot)

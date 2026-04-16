@@ -164,7 +164,7 @@ const StopLossTab: FC<{ botType?: BotType }> = ({ botType = "bots" }) => {
                 </ToggleButton>
               </ButtonGroup>
               <Form.Control.Feedback tooltip>
-                Autoswitch strategy to margin short or long
+                Autoswitch position to short or long
               </Form.Control.Feedback>
             </Form.Group>
           </Col>
