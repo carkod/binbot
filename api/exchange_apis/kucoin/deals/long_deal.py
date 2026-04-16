@@ -129,7 +129,7 @@ class KucoinLongDeal(KucoinSpotDeal):
 
         # Reset bot operations
         new_bot = BotBase.model_validate(self.active_bot.model_dump())
-        new_bot.strategy = Position.short
+        new_bot.position = Position.short
         new_bot.logs = []
 
         # failure of the bot creation

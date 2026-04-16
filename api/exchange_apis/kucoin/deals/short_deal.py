@@ -142,7 +142,7 @@ class KucoinShortDeal(KucoinMarginDeal):
 
         # Create new bot as you'd do through Dashboard terminal
         new_bot = BotBase.model_validate(self.active_bot.model_dump())
-        new_bot.strategy = Position.long
+        new_bot.position = Position.long
         new_bot.logs = []
 
         # margin bot fund liquidation and network request can cause

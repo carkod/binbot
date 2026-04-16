@@ -45,7 +45,7 @@ mock_bot_data = {
     "trailing": True,
     "trailing_deviation": 3.0,
     "trailing_profit": 0.0,
-    "strategy": "long",
+    "position": "long",
     "orders": [],
     "deal": mock_deal_data,
 }
@@ -72,7 +72,7 @@ mock_bot_data_active = {
     "trailing": True,
     "trailing_deviation": 3.0,
     "trailing_profit": 0.0,
-    "strategy": "long",
+    "position": "long",
     "orders": [],
     "deal": mock_deal_data,
 }
@@ -98,7 +98,7 @@ mock_bot_data_superusdt = {
     "trailing": True,
     "trailing_deviation": 3.0,
     "trailing_profit": 0.0,
-    "strategy": "long",
+    "position": "long",
     "orders": [],
     "deal": mock_deal_data,
 }

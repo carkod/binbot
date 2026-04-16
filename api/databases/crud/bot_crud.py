@@ -204,7 +204,7 @@ class BotTableCrud:
         bot_id: str | None = None,
         symbol: str | None = None,
         status: Status | None = None,
-        strategy: Position | None = None,
+        position: Position | None = None,
     ) -> BotTable:
 
         with self._get_session() as s:
@@ -221,8 +221,8 @@ class BotTableCrud:
 
                 if status and status != Status.all:
                     stmt = stmt.where(BotTable.status == status)
-                elif strategy:
-                    stmt = stmt.where(BotTable.strategy == strategy)
+                elif position:
+                    stmt = stmt.where(BotTable.position == position)
 
             else:
                 raise BinbotErrors("Invalid bot id or symbol")

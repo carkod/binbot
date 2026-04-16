@@ -105,7 +105,7 @@ class BinanceSpotDeal(BinanceDeal):
 
         # Reset bot operations
         new_bot = BotBase.model_validate(self.active_bot.model_dump())
-        new_bot.strategy = Position.short
+        new_bot.position = Position.short
         new_bot.logs = []
 
         # failure of the bot creation
@@ -302,7 +302,7 @@ class BinanceSpotDeal(BinanceDeal):
         this one simplifies by separating strategy specific
         """
 
-        if self.active_bot.strategy == Position.short:
+        if self.active_bot.position == Position.short:
             logging.error("Bot executing wrong long_open_deal_trailing_parameters")
             return self.active_bot
 
@@ -347,7 +347,7 @@ class BinanceSpotDeal(BinanceDeal):
         not out of sync with the bot parameters
         """
 
-        if self.active_bot.strategy == Position.short:
+        if self.active_bot.position == Position.short:
             logging.error("Bot executing wrong long_update_deal_trailing_parameters")
             return self.active_bot
 

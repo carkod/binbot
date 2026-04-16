@@ -229,7 +229,7 @@ class TestPositionManager:
     def _make_bot(
         self,
         pair="BTCUSDC",
-        strategy=Position.long,
+        position=Position.long,
         market_type=MarketType.SPOT,
     ):
         # Lightweight BotModel-like object for tests
@@ -237,7 +237,7 @@ class TestPositionManager:
         bot.name = "apex_aggressive_momo"
         bot.pair = pair
         bot.fiat = "USDC"
-        bot.strategy = strategy
+        bot.position = position
         bot.dynamic_trailing = True
         bot.trailing = False
         bot.trailing_profit = 0.0
@@ -325,7 +325,7 @@ class TestPositionManager:
         sc.api = base.kucoin_api
         sc.api = base.kucoin_api
 
-        live_bot = self._make_bot(pair="BTCUSDC", strategy=Position.long)
+        live_bot = self._make_bot(pair="BTCUSDC", position=Position.long)
         live_bot.dynamic_trailing = True
 
         monkeypatch.setattr(
@@ -374,7 +374,7 @@ class TestPositionManager:
         sc = PositionManager(base, symbol="BTCUSDC")
 
         # Provide a current bot via BaseStreaming.get_current_bot
-        bot = self._make_bot(pair="BTCUSDC", strategy=Position.long)
+        bot = self._make_bot(pair="BTCUSDC", position=Position.long)
         bot.dynamic_trailing = False
 
         # Mock DB access by overriding BaseStreaming.get_current_bot at class level
@@ -432,7 +432,7 @@ class TestPositionManager:
         base.exchange = ExchangeId.KUCOIN
         sc = PositionManager(base, symbol="BTCUSDC")
 
-        bot = self._make_bot(pair="BTCUSDC", strategy=Position.long)
+        bot = self._make_bot(pair="BTCUSDC", position=Position.long)
         bot.dynamic_trailing = False
 
         # Mock DB access by overriding BaseStreaming.get_current_bot at class level
@@ -583,7 +583,7 @@ class TestPositionManager:
 
         bot = self._make_bot(
             pair="BTCUSDT",
-            strategy=Position.long,
+            position=Position.long,
             market_type=MarketType.FUTURES,
         )
         bot.orders = [
@@ -670,7 +670,7 @@ class TestPositionManager:
 
         bot = self._make_bot(
             pair="BTCUSDT",
-            strategy=Position.long,
+            position=Position.long,
             market_type=MarketType.FUTURES,
         )
         bot.orders = [

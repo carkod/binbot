@@ -73,7 +73,7 @@ class BotTable(SQLModel, table=True):
         le=101,
         description="Equivalent to take_profit but it moves dynamically based on current price",
     )
-    strategy: Position = Field(default=Position.long, sa_column=Column(Enum(Position)))
+    position: Position = Field(default=Position.long, sa_column=Column(Enum(Position)))
 
     # Table relationships filled up internally
     orders: list[ExchangeOrderTable] = Relationship(
@@ -189,7 +189,7 @@ class PaperTradingTable(SQLModel, table=True):
         le=101,
         description="Equivalent to take_profit but it moves dynamically based on current price",
     )
-    strategy: Position = Field(default=Position.long, sa_column=Column(Enum(Position)))
+    position: Position = Field(default=Position.long, sa_column=Column(Enum(Position)))
 
     # Table relationships filled up internally
     orders: list[FakeOrderTable] = Relationship(

@@ -38,7 +38,7 @@ def test_place_stop_loss_for_margin_short_uses_price_above_entry():
     )
     deal.active_bot = BotModel(
         pair="BEATUSDT",
-        strategy=Position.short,
+        position=Position.short,
         stop_loss=2.0,
         margin_short_reversal=False,
         deal=DealModel(

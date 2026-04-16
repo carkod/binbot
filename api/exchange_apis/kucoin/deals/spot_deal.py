@@ -144,7 +144,7 @@ class KucoinSpotDeal(KucoinBaseBalance):
         this one simplifies by separating strategy specific
         """
 
-        if self.active_bot.strategy == Position.short:
+        if self.active_bot.position == Position.short:
             logging.error("Bot executing wrong long_open_deal_trailing_parameters")
             return self.active_bot
 
@@ -189,7 +189,7 @@ class KucoinSpotDeal(KucoinBaseBalance):
         not out of sync with the bot parameters
         """
 
-        if self.active_bot.strategy == Position.short:
+        if self.active_bot.position == Position.short:
             logging.error("Bot executing wrong long_update_deal_trailing_parameters")
             return self.active_bot
 

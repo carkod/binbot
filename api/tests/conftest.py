@@ -240,7 +240,7 @@ def create_test_tables():
                 trailing=True,
                 trailing_deviation=3.0,
                 trailing_profit=0.0,
-                strategy="long",
+                position="long",
                 deal=test_deals[0],
             ),
             BotTable(
@@ -262,7 +262,7 @@ def create_test_tables():
                 trailing=True,
                 trailing_deviation=3.0,
                 trailing_profit=0.0,
-                strategy="long",
+                position="long",
                 deal=test_deals[1],
             ),
             BotTable(
@@ -284,7 +284,7 @@ def create_test_tables():
                 trailing=True,
                 trailing_deviation=3.0,
                 trailing_profit=0.0,
-                strategy="long",
+                position="long",
                 deal=test_deals[2],
             ),
             # Additional bots for deletion testing
@@ -307,7 +307,7 @@ def create_test_tables():
                 trailing=True,
                 trailing_deviation=3.0,
                 trailing_profit=0.0,
-                strategy="long",
+                position="long",
                 deal=test_deals[3],
             ),
             BotTable(
@@ -329,7 +329,7 @@ def create_test_tables():
                 trailing=True,
                 trailing_deviation=3.0,
                 trailing_profit=0.0,
-                strategy="long",
+                position="long",
                 deal=test_deals[4],
             ),
         ]
