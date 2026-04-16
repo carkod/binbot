@@ -10,9 +10,10 @@ from pybinbot import (
     round_numbers,
     round_timestamp,
     BotBase,
+    CloseConditions,
+    DealType,
+    Position,
 )
-from tools.enum_definitions import DealType, CloseConditions
-from tools.enum_definitions import Position
 from bots.models import BotModel, OrderModel
 from exchange_apis.binance.deals.factory import BinanceDeal
 from exchange_apis.binance.deals.margin_deal import BinanceMarginDeal

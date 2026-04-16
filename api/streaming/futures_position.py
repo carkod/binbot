@@ -12,7 +12,6 @@ from pybinbot import (
     convert_to_kucoin_symbol,
     round_numbers,
 )
-from tools.enum_definitions import DealType
 from streaming.base import BaseStreaming
 
 

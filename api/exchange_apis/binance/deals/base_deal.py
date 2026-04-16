@@ -14,8 +14,8 @@ from pybinbot import (
     InsufficientBalance,
     MarginLoanNotFound,
     BinbotErrors,
+    Position,
 )
-from tools.enum_definitions import Position
 from exchange_apis.binance.orders import BinanceOrderController
 
 # To be removed one day en commission endpoint found that provides this value

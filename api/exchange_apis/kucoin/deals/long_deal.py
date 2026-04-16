@@ -6,9 +6,9 @@ from pybinbot import (
     OrderSide,
     OrderStatus,
     BotBase,
+    DealType,
+    Position,
 )
-from tools.enum_definitions import DealType
-from tools.enum_definitions import Position
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from bots.models import BotModel, OrderModel

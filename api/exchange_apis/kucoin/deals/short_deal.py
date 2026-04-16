@@ -1,7 +1,5 @@
 from typing import Type
-from pybinbot import round_timestamp, OrderStatus, Status, BotBase
-from tools.enum_definitions import Position
-from tools.enum_definitions import DealType
+from pybinbot import round_timestamp, OrderStatus, Status, BotBase, DealType, Position
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from bots.models import BotModel, OrderModel
 from exchange_apis.kucoin.deals.margin_deal import KucoinMarginDeal

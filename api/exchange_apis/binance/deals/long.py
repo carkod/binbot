@@ -10,7 +10,6 @@ from pybinbot import (
     round_timestamp,
     BinanceErrors,
 )
-from tools.enum_definitions import DealType
 from exchange_apis.binance.deals.spot_deal import BinanceSpotDeal
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 

@@ -14,8 +14,8 @@ from pybinbot import (
     Status,
     BinanceErrors,
     LowBalanceCleanupError,
+    Position,
 )
-from tools.enum_definitions import Position
 from databases.crud.bot_crud import BotTableCrud
 from typing import Sequence
 

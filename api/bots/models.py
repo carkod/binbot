@@ -1,39 +1,11 @@
 from typing import List, Optional
 from uuid import uuid4, UUID
-from pybinbot import DealBase as _PybinbotDealBase, BotBase, OrderBase
+from pybinbot import DealBase as DealModel, BotBase, OrderBase
 from pydantic import BaseModel, Field, field_validator, model_validator
 from tools.handle_error import IResponseBase
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.tables.deal_table import DealTable
 from databases.tables.order_table import ExchangeOrderTable
-from pybinbot.shared.types import Amount
-from tools.enum_definitions import Position
-
-
-class DealModel(_PybinbotDealBase):
-    """
-    Local DealModel that overrides pybinbot's DealBase with renamed trailing fields.
-    """
-
-    trailing_stop_loss_price: Amount = Field(
-        default=0,
-        description="take_profit but for trailing, trailing_profit_price always be > trailing_stop_loss_price",
-    )
-    trailing_profit_price: Amount = Field(default=0)
-
-    @model_validator(mode="before")
-    @classmethod
-    def handle_trailing_rename(cls, values):
-        """Backward compat: map old 'trailling' field names from pybinbot to 'trailing'."""
-        if isinstance(values, dict):
-            renames = {
-                "trailling_stop_loss_price": "trailing_stop_loss_price",
-                "trailling_profit_price": "trailing_profit_price",
-            }
-            for old, new in renames.items():
-                if old in values and new not in values:
-                    values[new] = values.pop(old)
-        return values
 
 
 class OrderModel(OrderBase):
@@ -73,14 +45,6 @@ class BotModel(BotBase):
     id: UUID = Field(default_factory=uuid4)
     deal: DealModel = Field(default_factory=DealModel)
     orders: List[OrderModel] = Field(default_factory=list)
-
-    # Explicit fields to override pybinbot BotBase (which uses old 'trailling' spelling)
-    trailing: bool = Field(default=False)
-    trailing_deviation: float = Field(default=0)
-    trailing_profit: float = Field(default=0)
-    dynamic_trailing: bool = Field(default=False)
-    # Override strategy field to use local Position enum (replaces pybinbot Strategy)
-    strategy: Position = Field(default=Position.long)
 
     @model_validator(mode="before")
     @classmethod

@@ -7,7 +7,6 @@ from bots.models import OrderModel
 from pandas import Index
 from typing import Any, cast
 from pybinbot import MarketType
-from tools.enum_definitions import Position
 from streaming.position_manager import PositionManager
 from streaming.base import BaseStreaming
 from pandas import DataFrame
@@ -18,8 +17,9 @@ from pybinbot import (
     HABollinguerSpread,
     OrderStatus,
     Status,
+    DealType,
+    Position,
 )
-from tools.enum_definitions import DealType
 from streaming.futures_position import FuturesPosition
 
 

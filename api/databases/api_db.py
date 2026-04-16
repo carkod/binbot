@@ -15,9 +15,8 @@ from pybinbot import (
     Status,
     OrderStatus,
     BinbotErrors,
+    Position,
 )
-from tools.enum_definitions import DealType
-from tools.enum_definitions import Position
 from alembic import command
 from alembic.script import ScriptDirectory
 from alembic.config import Config

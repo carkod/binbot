@@ -22,9 +22,9 @@ from pybinbot import (
     convert_to_kucoin_symbol,
     round_numbers,
     round_timestamp,
+    DealType,
+    Position,
 )
-from tools.enum_definitions import DealType
-from tools.enum_definitions import Position
 from streaming.futures_position import FuturesPosition
 from streaming.spot_position import SpotPosition
 

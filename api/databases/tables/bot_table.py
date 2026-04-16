@@ -8,9 +8,9 @@ from pybinbot import (
     Status,
     timestamp,
     MarketType,
+    CloseConditions,
+    Position,
 )
-from tools.enum_definitions import CloseConditions
-from tools.enum_definitions import Position
 from sqlmodel import Relationship, SQLModel, Field
 from databases.tables.order_table import ExchangeOrderTable, FakeOrderTable
 from databases.tables.deal_table import DealTable

@@ -9,9 +9,9 @@ from pybinbot import (
     QuoteAssets,
     Status,
     MarginLoanNotFound,
+    DealType,
+    Position,
 )
-from tools.enum_definitions import DealType
-from tools.enum_definitions import Position
 from databases.crud.symbols_crud import SymbolsCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from bots.models import BotModel, OrderModel

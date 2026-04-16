@@ -18,9 +18,10 @@ from pybinbot import (
     BinanceErrors,
     MarginShortError,
     BinbotApi,
+    CloseConditions,
+    DealType,
+    Position,
 )
-from tools.enum_definitions import DealType, CloseConditions
-from tools.enum_definitions import Position
 from databases.crud.symbols_crud import SymbolsCrud
 from exchange_apis.binance.deals.factory import BinanceDeal
 from tools.config import Config

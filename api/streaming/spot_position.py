@@ -11,7 +11,6 @@ from pybinbot import (
     round_numbers,
     convert_to_kucoin_symbol,
 )
-from tools.enum_definitions import DealType
 
 
 class SpotPosition(PositionMarket):

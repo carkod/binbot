@@ -9,7 +9,6 @@ from pybinbot import (
     round_timestamp,
     BinanceErrors,
 )
-from tools.enum_definitions import DealType
 from exchange_apis.binance.deals.margin_deal import BinanceMarginDeal
 
 

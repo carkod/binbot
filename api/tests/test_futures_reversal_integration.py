@@ -3,9 +3,7 @@ from typing import Any, cast
 from bots.models import BotModel, OrderModel
 from exchange_apis.kucoin.futures.position_deal import PositionDeal
 from kucoin_universal_sdk.model.common import RestError
-from pybinbot import MarketType, OrderStatus, QuoteAssets, Status
-from tools.enum_definitions import Position
-from tools.enum_definitions import DealType
+from pybinbot import MarketType, OrderStatus, QuoteAssets, Status, DealType, Position
 from tests.fixtures.mock_bot_table import make_mock_bot_active_model
 
 

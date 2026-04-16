@@ -20,8 +20,8 @@ from pybinbot import (
     SaveBotError,
     BinbotErrors,
     BotBase,
+    Position,
 )
-from tools.enum_definitions import Position
 
 
 def get_session() -> AbstractContextManager[Session]:

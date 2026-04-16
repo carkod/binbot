@@ -6,8 +6,8 @@ from pybinbot import (
     AutotradeSettingsDocument,
     BinanceKlineIntervals,
     ExchangeId,
+    CloseConditions,
 )
-from tools.enum_definitions import CloseConditions
 
 
 class SettingsDocument(SQLModel):

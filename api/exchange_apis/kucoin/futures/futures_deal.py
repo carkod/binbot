@@ -19,9 +19,8 @@ from pybinbot import (
     Status,
     convert_to_kucoin_symbol,
     round_numbers,
+    Position,
 )
-from tools.enum_definitions import DealType
-from tools.enum_definitions import Position
 from streaming.base import BaseStreaming
 
 

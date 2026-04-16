@@ -5,8 +5,8 @@ from pybinbot import (
     BinanceKlineIntervals,
     ExchangeId,
     StandardResponse,
+    CloseConditions,
 )
-from tools.enum_definitions import CloseConditions
 
 
 class AutotradeSettingsSchema(BaseModel):

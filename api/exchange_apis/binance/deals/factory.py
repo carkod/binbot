@@ -12,9 +12,9 @@ from pybinbot import (
     round_numbers_floor,
     round_numbers_ceiling,
     BinanceErrors,
+    DealType,
+    Position,
 )
-from tools.enum_definitions import DealType
-from tools.enum_definitions import Position
 from exchange_apis.binance.deals.base_deal import BaseDeal
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from tools.exceptions import TakeProfitError
