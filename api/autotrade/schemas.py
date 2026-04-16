@@ -3,9 +3,9 @@ from pydantic import BaseModel, Field
 from pybinbot import (
     AutotradeSettingsDocument,
     BinanceKlineIntervals,
-    CloseConditions,
     ExchangeId,
     StandardResponse,
+    CloseConditions,
 )
 
 
@@ -15,15 +15,15 @@ class AutotradeSettingsSchema(BaseModel):
         default=BinanceKlineIntervals.fifteen_minutes,
     )
     close_condition: CloseConditions = Field(
-        default=CloseConditions.dynamic_trailling,
+        default=CloseConditions.dynamic_trailing,
     )
     autotrade: bool = Field(default=False)
     updated_at: float = Field(default=time() * 1000)
     # Assuming 10 USDC is the minimum, adding a bit more to avoid MIN_NOTIONAL fail
     base_order_size: float = Field(default=15)
-    trailling: bool = Field(default=False)
-    trailling_deviation: float = Field(default=3)
-    trailling_profit: float = Field(default=2.4)
+    trailing: bool = Field(default=False)
+    trailing_deviation: float = Field(default=3)
+    trailing_profit: float = Field(default=2.4)
     stop_loss: float = Field(default=0)
     take_profit: float = Field(default=2.3)
     fiat: str = Field(default="USDC")
@@ -47,15 +47,15 @@ class TestAutotradeSettingsSchema(BaseModel):
         default=BinanceKlineIntervals.fifteen_minutes,
     )
     close_condition: CloseConditions = Field(
-        default=CloseConditions.dynamic_trailling,
+        default=CloseConditions.dynamic_trailing,
     )
     autotrade: bool = Field(default=False)
     updated_at: float = Field(default=time() * 1000)
     # Assuming 10 USDC is the minimum, adding a bit more to avoid MIN_NOTIONAL fail
     base_order_size: float = Field(default=15)
-    trailling: bool = Field(default=False)
-    trailling_deviation: float = Field(default=3)
-    trailling_profit: float = Field(default=2.4)
+    trailing: bool = Field(default=False)
+    trailing_deviation: float = Field(default=3)
+    trailing_profit: float = Field(default=2.4)
     stop_loss: float = Field(default=0)
     take_profit: float = Field(default=2.3)
     fiat: str = Field(default="USDC")

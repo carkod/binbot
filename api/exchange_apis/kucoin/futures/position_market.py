@@ -84,8 +84,8 @@ class PositionMarket(KucoinPositionDeal):
         elif bot_profit >= 3:
             raw_trail_profit = min(raw_trail_profit, 3.0)
 
-        self.active_bot.trailling_profit = round_numbers(max(0.6, raw_trail_profit), 2)
-        self.active_bot.trailling_deviation = round_numbers(
+        self.active_bot.trailing_profit = round_numbers(max(0.6, raw_trail_profit), 2)
+        self.active_bot.trailing_deviation = round_numbers(
             max(0.6, bottom_spread * trail_tighten_mult),
             2,
         )
@@ -271,8 +271,8 @@ class PositionMarket(KucoinPositionDeal):
         # Persist only if changed
         # ─────────────────────────────
         if (
-            self.active_bot.trailling_profit != original_bot.trailling_profit
-            or self.active_bot.trailling_deviation != original_bot.trailling_deviation
+            self.active_bot.trailing_profit != original_bot.trailing_profit
+            or self.active_bot.trailing_deviation != original_bot.trailing_deviation
             or self.active_bot.stop_loss != original_bot.stop_loss
         ):
             self.active_bot = self.update_parameters()

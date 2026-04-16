@@ -112,11 +112,11 @@ const StopLossTab: FC<{ botType?: BotType }> = ({ botType = "bots" }) => {
                   valueAsNumber: true,
                   min: {
                     value: 0,
-                    message: "Minimum trailling deviation is 1",
+                    message: "Minimum trailing deviation is 1",
                   },
                   max: {
                     value: 100,
-                    message: "Maximum trailling deviation is 100",
+                    message: "Maximum trailing deviation is 100",
                   },
                 })}
               />

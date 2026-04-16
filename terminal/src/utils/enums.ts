@@ -16,9 +16,9 @@ export enum BotMode {
   AUTO = "auto",
 }
 
-export enum BotStrategy {
+export enum BotPosition {
   LONG = "long",
-  MARGIN_SHORT = "margin_short",
+  SHORT = "short",
 }
 
 export enum DealType {
@@ -30,8 +30,9 @@ export enum DealType {
   SHORT_BUY = "short_buy",
   MARGIN_SHORT = "margin_short",
   PANIC_CLOSE = "panic_close",
-  TRAILLING_PROFIT = "trailling_profit",
-  TRAILLING_STOP_LOSS = "trailling_stop_loss",
+  TRAILING_PROFIT = "trailing_profit",
+  TRAILING_STOP_LOSS = "trailing_stop_loss",
+  ALGORITHMIC_CLOSE = "algorithmic_close",
 }
 
 export enum BinanceKlineintervals {
@@ -59,7 +60,7 @@ export enum TabsKeys {
 }
 
 export enum CloseConditions {
-  DYNAMIC_TRAILLING = "dynamic_trailling",
+  DYNAMIC_TRAILING = "dynamic_trailing",
   TIMESTAMP = "timestamp",
   MARKET_REVERSAL = "market_reversal",
 }

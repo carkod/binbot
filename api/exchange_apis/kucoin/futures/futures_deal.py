@@ -18,9 +18,9 @@ from pybinbot import (
     OrderStatus,
     OrderType,
     Status,
-    Strategy,
     convert_to_kucoin_symbol,
     round_numbers,
+    Position,
 )
 from streaming.base import BaseStreaming
 
@@ -64,7 +64,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         self.price_precision = self.symbol_info.price_precision
 
     def _direction_multiplier(self) -> int:
-        return -1 if self.active_bot.strategy == Strategy.margin_short else 1
+        return -1 if self.active_bot.strategy == Position.short else 1
 
     def create_controller(self) -> PaperTradingTableCrud | BotTableCrud:
         """
@@ -143,7 +143,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         side = (
             AddOrderReq.SideEnum.SELL
-            if self.active_bot.strategy == Strategy.margin_short
+            if self.active_bot.strategy == Position.short
             else AddOrderReq.SideEnum.BUY
         )
         estimated_price = self.kucoin_futures_api.matching_engine(
@@ -259,7 +259,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         )
         side = (
             GetTradeHistoryReq.SideEnum.BUY
-            if self.active_bot.strategy == Strategy.margin_short
+            if self.active_bot.strategy == Position.short
             else GetTradeHistoryReq.SideEnum.SELL
         )
 
@@ -286,7 +286,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 if total_qty > 0
                 else float(order_resp.price)
             )
-            if self.active_bot.strategy == Strategy.margin_short:
+            if self.active_bot.strategy == Position.short:
                 deal_type = (
                     DealType.take_profit
                     if (closing_price < self.active_bot.deal.opening_price)
@@ -335,7 +335,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         stale_orders = [
             order
             for order in self.active_bot.orders
-            if order.deal_type == DealType.trailling_profit
+            if order.deal_type == DealType.trailing_profit
             and order.status == OrderStatus.FILLED
             and order.price == 0
             and order.qty == 0
@@ -352,7 +352,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             order
             for order in self.active_bot.orders
             if not (
-                order.deal_type == DealType.trailling_profit
+                order.deal_type == DealType.trailing_profit
                 and order.status == OrderStatus.FILLED
                 and order.price == 0
                 and order.qty == 0
@@ -407,7 +407,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 "Calculated contracts is 0. Check if the order size, stop loss, and risk settings are correct."
             )
 
-        if self.active_bot.strategy == Strategy.margin_short:
+        if self.active_bot.strategy == Position.short:
             order: OrderBase = self.kucoin_futures_api.sell(
                 symbol=self.kucoin_symbol,
                 qty=contracts,
@@ -459,7 +459,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 self.price_precision,
             )
 
-        if self.active_bot.strategy == Strategy.margin_short:
+        if self.active_bot.strategy == Position.short:
             side = AddOrderReq.SideEnum.BUY
             stop = AddOrderReq.StopEnum.UP
         else:
@@ -524,29 +524,29 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 self.place_stop_loss()
 
         if (
-            self.active_bot.trailling
-            and self.active_bot.trailling_deviation > 0
-            and self.active_bot.trailling_profit > 0
+            self.active_bot.trailing
+            and self.active_bot.trailing_deviation > 0
+            and self.active_bot.trailing_profit > 0
         ):
             entry_price = float(self.active_bot.deal.opening_price)
-            trailling_profit_price = entry_price * (
+            trailing_profit_price = entry_price * (
                 1 + direction * (float(self.active_bot.take_profit) / 100)
             )
-            self.active_bot.deal.trailling_profit_price = round_numbers(
-                trailling_profit_price, self.price_precision
+            self.active_bot.deal.trailing_profit_price = round_numbers(
+                trailing_profit_price, self.price_precision
             )
 
-            # trailling_stop_loss_price and trailling_profit should be updated during streaming
+            # trailing_stop_loss_price and trailing_profit should be updated during streaming
             # This resets it after "Update deal" because parameters have changed
-            if self.active_bot.trailling_profit != 0:
+            if self.active_bot.trailing_profit != 0:
                 new_trailing_profit_price = self.active_bot.deal.opening_price * (
-                    1 + direction * (float(self.active_bot.trailling_profit) / 100)
+                    1 + direction * (float(self.active_bot.trailing_profit) / 100)
                 )
-                self.active_bot.deal.trailling_profit_price = round_numbers(
+                self.active_bot.deal.trailing_profit_price = round_numbers(
                     new_trailing_profit_price, self.price_precision
                 )
-            if self.active_bot.deal.trailling_stop_loss_price != 0:
-                self.active_bot.deal.trailling_stop_loss_price = 0
+            if self.active_bot.deal.trailing_stop_loss_price != 0:
+                self.active_bot.deal.trailing_stop_loss_price = 0
 
         return self.active_bot
 
@@ -563,12 +563,12 @@ class KucoinPositionDeal(KucoinBaseBalance):
             delta = price * (self.active_bot.stop_loss / 100)
             self.active_bot.deal.stop_loss_price = price - (delta * direction)
 
-        if self.active_bot.trailling:
-            trailling_profit = float(self.active_bot.deal.opening_price) * (
-                1 + direction * (float(self.active_bot.trailling_profit) / 100)
+        if self.active_bot.trailing:
+            trailing_profit = float(self.active_bot.deal.opening_price) * (
+                1 + direction * (float(self.active_bot.trailing_profit) / 100)
             )
-            self.active_bot.deal.trailling_profit_price = trailling_profit
-            self.active_bot.deal.trailling_stop_loss_price = 0
+            self.active_bot.deal.trailing_profit_price = trailing_profit
+            self.active_bot.deal.trailing_stop_loss_price = 0
             self.active_bot.deal.take_profit_price = 0
         else:
             take_profit_price = float(self.active_bot.deal.opening_price) * (
@@ -592,7 +592,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
 
         if position and float(position.current_qty) != 0:
-            if self.active_bot.strategy == Strategy.margin_short:
+            if self.active_bot.strategy == Position.short:
                 order_response = self.kucoin_futures_api.buy(
                     symbol=self.kucoin_symbol,
                     qty=abs(int(position.current_qty)),

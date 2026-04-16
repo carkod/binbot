@@ -117,22 +117,22 @@ const BotCard: FC<BotCardProps> = ({
               </Col>
             </Row>
           )}
-          {bot.trailling ? (
+          {bot.trailing ? (
             <>
               <Row>
                 <Col md="6" xs="7">
-                  <p>Trailling profit</p>
+                  <p>Trailing profit</p>
                 </Col>
                 <Col md="6" xs="5">
-                  <p>{roundDecimals(bot.trailling_profit) + "%"}</p>
+                  <p>{roundDecimals(bot.trailing_profit) + "%"}</p>
                 </Col>
               </Row>
               <Row>
                 <Col md="6" xs="7">
-                  <p>Trailling deviation</p>
+                  <p>Trailing deviation</p>
                 </Col>
                 <Col md="6" xs="5">
-                  <p>{roundDecimals(bot.trailling_deviation) + "%"}</p>
+                  <p>{roundDecimals(bot.trailing_deviation) + "%"}</p>
                 </Col>
               </Row>
             </>

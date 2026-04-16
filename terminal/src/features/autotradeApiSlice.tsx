@@ -10,9 +10,9 @@ export interface AutotradeSettings {
   id: "autotrade_settings" | "test_autotrade_settings";
   candlestick_interval: BinanceKlineintervals;
   autotrade: boolean;
-  trailling: boolean;
-  trailling_deviation: number;
-  trailling_profit: number;
+  trailing: boolean;
+  trailing_deviation: number;
+  trailing_profit: number;
   stop_loss: number;
   take_profit: number;
   fiat: string;

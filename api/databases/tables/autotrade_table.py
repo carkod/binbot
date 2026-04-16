@@ -5,8 +5,8 @@ from sqlmodel import Field, SQLModel
 from pybinbot import (
     AutotradeSettingsDocument,
     BinanceKlineIntervals,
-    CloseConditions,
     ExchangeId,
+    CloseConditions,
 )
 
 
@@ -19,9 +19,9 @@ class SettingsDocument(SQLModel):
     updated_at: float = Field(default=time() * 1000)
     # Assuming 10 USDC is the minimum, adding a bit more to avoid MIN_NOTIONAL fail
     base_order_size: float = Field(default=15)
-    trailling: bool = Field(default=False)
-    trailling_deviation: float = Field(default=3)
-    trailling_profit: float = Field(default=2.4)
+    trailing: bool = Field(default=False)
+    trailing_deviation: float = Field(default=3)
+    trailing_profit: float = Field(default=2.4)
     stop_loss: float = Field(default=0)
     take_profit: float = Field(default=2.3)
     fiat: str = Field(default="USDC")
@@ -59,7 +59,7 @@ class AutotradeTable(SettingsDocument, table=True):
         sa_column=Column(Enum(BinanceKlineIntervals)),
     )
     close_condition: CloseConditions = Field(
-        default=CloseConditions.dynamic_trailling,
+        default=CloseConditions.dynamic_trailing,
         sa_column=Column(Enum(CloseConditions)),
     )
 
@@ -73,16 +73,16 @@ class AutotradeTable(SettingsDocument, table=True):
                     "autotrade": True,
                     "base_order_size": 15,
                     "candlestick_interval": "15m",
-                    "trailling": False,
-                    "trailling_deviation": 3,
-                    "trailling_profit": 2.4,
+                    "trailing": False,
+                    "trailing_deviation": 3,
+                    "trailing_profit": 2.4,
                     "stop_loss": 0,
                     "take_profit": 2.3,
                     "fiat": "USDC",
                     "max_request": 950,
                     "telegram_signals": True,
                     "max_active_autotrade_bots": 1,
-                    "close_condition": "dynamic_trailling",
+                    "close_condition": "dynamic_trailing",
                     "exchange_id": "binance",
                 }
             ],
@@ -109,7 +109,7 @@ class TestAutotradeTable(SettingsDocument, table=True):
         sa_column=Column(Enum(BinanceKlineIntervals)),
     )
     close_condition: CloseConditions = Field(
-        default=CloseConditions.dynamic_trailling,
+        default=CloseConditions.dynamic_trailing,
         sa_column=Column(Enum(CloseConditions)),
     )
 
@@ -123,16 +123,16 @@ class TestAutotradeTable(SettingsDocument, table=True):
                     "autotrade": True,
                     "base_order_size": 15,
                     "candlestick_interval": "15m",
-                    "trailling": False,
-                    "trailling_deviation": 3,
-                    "trailling_profit": 2.4,
+                    "trailing": False,
+                    "trailing_deviation": 3,
+                    "trailing_profit": 2.4,
                     "stop_loss": 0,
                     "take_profit": 2.3,
                     "fiat": "USDC",
                     "max_request": 950,
                     "telegram_signals": True,
                     "max_active_autotrade_bots": 1,
-                    "close_condition": "dynamic_trailling",
+                    "close_condition": "dynamic_trailing",
                     "exchange_id": "binance",
                 }
             ],

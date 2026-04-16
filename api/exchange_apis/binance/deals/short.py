@@ -66,7 +66,7 @@ class BinanceShortDeal(BinanceMarginDeal):
             )
 
         # Direction 3: upward trend (short)
-        # Breaking trailling_stop_loss, sell for safety
+        # Breaking trailing_stop_loss, sell for safety
         if close_price > self.active_bot.deal.stop_loss_price:
             self.controller.update_logs(
                 f"Executing margin_short stop_loss reversal after hitting stop_loss_price {self.active_bot.deal.stop_loss_price}",
@@ -87,29 +87,29 @@ class BinanceShortDeal(BinanceMarginDeal):
 
         if (
             close_price > 0
-            and self.active_bot.trailling
-            and self.active_bot.trailling_profit > 0
-            and self.active_bot.trailling_deviation > 0
+            and self.active_bot.trailing
+            and self.active_bot.trailing_profit > 0
+            and self.active_bot.trailing_deviation > 0
         ):
             # Direction 1.1: downward trend (short)
-            # Breaking trailling
-            # Trailling only to update when it's above opening_price
-            if close_price < self.active_bot.deal.trailling_profit_price:
-                self.update_trailling_profit(close_price)
+            # Breaking trailing
+            # Trailing only to update when it's above opening_price
+            if close_price < self.active_bot.deal.trailing_profit_price:
+                self.update_trailing_profit(close_price)
 
-            # Direction 2: upward trend (short). breaking the trailling_stop_loss
+            # Direction 2: upward trend (short). breaking the trailing_stop_loss
             # Make sure it's red candlestick, to avoid slippage loss
-            # Sell after hitting trailling stop_loss and if price already broken trailling
-            if close_price > self.active_bot.deal.trailling_stop_loss_price:
+            # Sell after hitting trailing stop_loss and if price already broken trailing
+            if close_price > self.active_bot.deal.trailing_stop_loss_price:
                 self.controller.update_logs(
-                    f"Hit trailling_stop_loss_price {self.active_bot.deal.trailling_stop_loss_price}. Selling {self.active_bot.pair}",
+                    f"Hit trailing_stop_loss_price {self.active_bot.deal.trailing_stop_loss_price}. Selling {self.active_bot.pair}",
                     self.active_bot,
                 )
                 # since price is given by matching engine
-                self.execute_take_profit(DealType.trailling_profit)
+                self.execute_take_profit(DealType.trailing_profit)
 
-        if not self.active_bot.trailling and self.active_bot.deal.take_profit_price > 0:
-            # Not a trailling bot, just simple take profit
+        if not self.active_bot.trailing and self.active_bot.deal.take_profit_price > 0:
+            # Not a trailing bot, just simple take profit
             if close_price <= self.active_bot.deal.take_profit_price:
                 self.controller.update_logs(
                     f"Executing margin_short take_profit after hitting take_profit_price {self.active_bot.deal.take_profit_price}",
@@ -205,10 +205,10 @@ class BinanceShortDeal(BinanceMarginDeal):
 
         1. Opening a new deal, which entails opening orders
         2. Updating stop loss and take profit
-        3. Updating trailling
+        3. Updating trailing
         4. Save in db
 
-        - If bot DOES have a base order, we still need to update stop loss and take profit and trailling
+        - If bot DOES have a base order, we still need to update stop loss and take profit and trailing
         """
         base_order_deal = next(
             (
@@ -238,10 +238,10 @@ class BinanceShortDeal(BinanceMarginDeal):
             self.active_bot.status == Status.active
             or self.active_bot.deal.opening_price > 0
         ):
-            self.active_bot = self.short_update_deal_trailling_parameters()
+            self.active_bot = self.short_update_deal_trailing_parameters()
         else:
             # Activation required
-            self.active_bot = self.short_open_deal_trailling_parameters()
+            self.active_bot = self.short_open_deal_trailing_parameters()
 
         self.controller.save(self.active_bot)
         return self.active_bot

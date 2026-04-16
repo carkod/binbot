@@ -15,12 +15,12 @@ from databases.utils import get_db_session as _get_db_session
 
 from pybinbot import (
     Status,
-    Strategy,
     ts_to_humandate,
     timestamp,
     SaveBotError,
     BinbotErrors,
     BotBase,
+    Position,
 )
 
 
@@ -204,7 +204,7 @@ class BotTableCrud:
         bot_id: str | None = None,
         symbol: str | None = None,
         status: Status | None = None,
-        strategy: Strategy | None = None,
+        strategy: Position | None = None,
     ) -> BotTable:
 
         with self._get_session() as s:

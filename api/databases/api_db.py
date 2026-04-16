@@ -11,12 +11,12 @@ from sqlmodel import SQLModel, Session, select, text
 from pybinbot import (
     AutotradeSettingsDocument,
     BinanceKlineIntervals,
-    DealType,
     ExchangeId,
     Status,
-    Strategy,
     OrderStatus,
     BinbotErrors,
+    Position,
+    DealType,
 )
 from alembic import command
 from alembic.script import ScriptDirectory
@@ -118,7 +118,8 @@ class ApiDb:
                         conn.commit()
                         versions = [keep_version]
             except Exception as heal_exc:
-                # If anything goes wrong while reading/healing, log and continue. We'll stamp if needed.
+                # If anything goes wrong while reading/healing, log and continue.
+                # Alembic can still upgrade from base when no version row exists yet.
                 logging.info(
                     "Unable to inspect alembic_version table (maybe it does not exist yet): %s",
                     heal_exc,
@@ -126,14 +127,6 @@ class ApiDb:
                 versions = []
 
             current_revision = versions[0] if versions else None
-
-            if current_revision is None:
-                logging.info(
-                    "Database has no Alembic version; stamping to head %s without running migrations.",
-                    head_revision,
-                )
-                command.stamp(alembic_cfg, head_revision)
-                return
 
             if current_revision == head_revision:
                 logging.info(
@@ -144,13 +137,14 @@ class ApiDb:
 
             logging.info(
                 "Upgrading database from revision %s to head %s.",
-                current_revision,
+                current_revision or "base",
                 head_revision,
             )
             command.upgrade(alembic_cfg, "head")
             logging.info("Alembic migrations completed successfully")
         except Exception as exc:
             logging.error(f"Alembic migrations failed: {exc}", exc_info=True)
+            raise
 
     def delete_autotrade_settings_table(self, table_name: str):
         """
@@ -186,9 +180,9 @@ class ApiDb:
             stop_loss=3,
             take_profit=2.3,
             telegram_signals=True,
-            trailling=True,
-            trailling_deviation=1.63,
-            trailling_profit=2.3,
+            trailing=True,
+            trailing_deviation=1.63,
+            trailing_profit=2.3,
             autotrade=True,
             autoswitch=False,
             exchange_id=ExchangeId.BINANCE,
@@ -218,9 +212,9 @@ class ApiDb:
             stop_loss=3,
             take_profit=2.3,
             telegram_signals=True,
-            trailling=True,
-            trailling_deviation=1.63,
-            trailling_profit=2.3,
+            trailing=True,
+            trailing_deviation=1.63,
+            trailing_profit=2.3,
             autotrade=False,
             exchange_id=ExchangeId.BINANCE,
         )
@@ -314,8 +308,8 @@ class ApiDb:
             sd=0,
             avg_opening_price=0,
             take_profit_price=0.02333,
-            trailling_stop_loss_price=0,
-            trailling_profit_price=0,
+            trailing_stop_loss_price=0,
+            trailing_profit_price=0,
             stop_loss_price=0,
             margin_loan_id=0,
             margin_repay_id=0,
@@ -337,10 +331,10 @@ class ApiDb:
             status=Status.inactive,
             stop_loss=0,
             take_profit=2.3,
-            trailling=True,
-            trailling_deviation=0.63,
-            trailling_profit=2.3,
-            strategy=Strategy.long,
+            trailing=True,
+            trailing_deviation=0.63,
+            trailing_profit=2.3,
+            strategy=Position.long,
             short_opening_price=0,
             short_sell_price=0,
             total_commission=0,
@@ -393,10 +387,10 @@ class ApiDb:
             status=Status.inactive,
             stop_loss=0,
             take_profit=2.3,
-            trailling=True,
-            trailling_deviation=0.63,
-            trailling_profit=2.3,
-            strategy=Strategy.long,
+            trailing=True,
+            trailing_deviation=0.63,
+            trailing_profit=2.3,
+            strategy=Position.long,
             short_opening_price=0,
             short_sell_price=0,
             total_commission=0,

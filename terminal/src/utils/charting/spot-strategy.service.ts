@@ -76,27 +76,27 @@ export default function spotTrading(
     }
 
     if (
-      bot.trailling &&
-      bot.trailling_deviation > 0 &&
-      bot.trailling_profit > 0
+      bot.trailing &&
+      bot.trailing_deviation > 0 &&
+      bot.trailing_profit > 0
     ) {
       // Bot is sold and completed
       if (bot.status === BotStatus.COMPLETED && bot.deal.closing_price > 0) {
         totalOrderLines.push({
-          id: "trailling_stop_loss",
-          text: `Trailling stop loss -${bot.trailling_deviation}%`,
+          id: "trailing_stop_loss",
+          text: `Trailing stop loss -${bot.trailing_deviation}%`,
           tooltip: [bot.status, " Sell when prices drop to here"],
           quantity: `${qtyText} ${quoteAsset}`,
           price: bot.deal.closing_price,
           color: dealColors.take_profit,
         });
         totalOrderLines.push({
-          id: "trailling_profit",
-          text: `Trailling profit ${bot.trailling_profit}%`,
-          tooltip: [bot.status, " Breakpoint to move up trailling profit"],
+          id: "trailing_profit",
+          text: `Trailing profit ${bot.trailing_profit}%`,
+          tooltip: [bot.status, " Breakpoint to move up trailing profit"],
           quantity: `${qtyText} ${quoteAsset}`,
-          price: bot.deal.closing_price, // closing_price is probably the most accurate closing position price, trailling_profit may not be the price it was sold at
-          color: dealColors.trailling_profit,
+          price: bot.deal.closing_price, // closing_price is probably the most accurate closing position price, trailing_profit may not be the price it was sold at
+          color: dealColors.trailing_profit,
           lineStyle: 2,
         });
       } else if (
@@ -104,45 +104,45 @@ export default function spotTrading(
         bot.status === BotStatus.ACTIVE
       ) {
         totalOrderLines.push({
-          id: "trailling_profit",
-          text: `Trail profit ${bot.trailling_profit}%`,
+          id: "trailing_profit",
+          text: `Trail profit ${bot.trailing_profit}%`,
           tooltip: [bot.status, " Trace upward profit"],
           quantity: `${qtyText} ${quoteAsset}`,
-          price: bot.deal.trailling_profit_price,
-          color: dealColors.trailling_profit,
+          price: bot.deal.trailing_profit_price,
+          color: dealColors.trailing_profit,
         });
         totalOrderLines.push({
-          id: "trailling_stop_loss",
-          text: `Trailling stop loss ${bot.trailling_deviation}%`,
+          id: "trailing_stop_loss",
+          text: `Trailing stop loss ${bot.trailing_deviation}%`,
           tooltip: [bot.status, " Sell order when prices drop here"],
           quantity: `${qtyText} ${quoteAsset}`,
-          price: bot.deal.trailling_stop_loss_price,
+          price: bot.deal.trailing_stop_loss_price,
           color: dealColors.take_profit,
         });
       } else {
         // Inactive bot
-        const traillingProfitPrice =
-          currentPrice * (1 + bot.trailling_profit / 100);
+        const trailingProfitPrice =
+          currentPrice * (1 + bot.trailing_profit / 100);
         totalOrderLines.push({
-          id: "trailling_profit",
-          text: `Trailling profit ${bot.trailling_profit}%`,
+          id: "trailing_profit",
+          text: `Trailing profit ${bot.trailing_profit}%`,
           tooltip: [bot.status, " Breakpoint to increase Take profit"],
           quantity: `${qtyText} ${quoteAsset}`,
-          price: traillingProfitPrice,
-          color: dealColors.trailling_profit,
+          price: trailingProfitPrice,
+          color: dealColors.trailing_profit,
           lineStyle: 2,
         });
         totalOrderLines.push({
-          id: "trailling_stop_loss",
-          text: `Trailling stop loss -${bot.trailling_deviation}%`,
+          id: "trailing_stop_loss",
+          text: `Trailing stop loss -${bot.trailing_deviation}%`,
           tooltip: [bot.status, " Sell order when prices drop here"],
           quantity: `${bot.deal.opening_qty || baseOrderSize} ${quoteAsset}`,
-          price: traillingProfitPrice * (1 - bot.trailling_deviation / 100),
+          price: trailingProfitPrice * (1 - bot.trailing_deviation / 100),
           color: dealColors.take_profit,
         });
       }
     } else {
-      // No trailling, just normal take_profit
+      // No trailing, just normal take_profit
       if (
         bot.status === BotStatus.COMPLETED &&
         bot.deal.take_profit_price > 0
@@ -156,7 +156,7 @@ export default function spotTrading(
           color: dealColors.take_profit,
         });
       } else {
-        if (!bot.trailling) {
+        if (!bot.trailing) {
           totalOrderLines.push({
             id: "take_profit",
             text: `Take profit ${bot.take_profit}%`,

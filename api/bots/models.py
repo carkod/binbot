@@ -1,7 +1,7 @@
 from typing import List, Optional
 from uuid import uuid4, UUID
 from pybinbot import DealBase as DealModel, BotBase, OrderBase
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from tools.handle_error import IResponseBase
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.tables.deal_table import DealTable
@@ -46,6 +46,25 @@ class BotModel(BotBase):
     deal: DealModel = Field(default_factory=DealModel)
     orders: List[OrderModel] = Field(default_factory=list)
 
+    @model_validator(mode="before")
+    @classmethod
+    def handle_trailing_rename(cls, values):
+        """Backward compat: map old field names from pybinbot to renamed fields."""
+        if isinstance(values, dict):
+            renames = {
+                "trailling": "trailing",
+                "trailling_deviation": "trailing_deviation",
+                "trailling_profit": "trailing_profit",
+                "dynamic_trailling": "dynamic_trailing",
+            }
+            for old, new in renames.items():
+                if old in values and new not in values:
+                    values[new] = values.pop(old)
+            # Map old strategy value 'margin_short' to new 'short'
+            if values.get("strategy") == "margin_short":
+                values["strategy"] = "short"
+        return values
+
     model_config = {
         "from_attributes": True,
         "use_enum_values": True,
@@ -59,20 +78,20 @@ class BotModel(BotBase):
                     "quote_asset": "USDC",
                     "fiat_order_size": 15,
                     "candlestick_interval": "15m",
-                    "close_condition": "dynamic_trailling",
+                    "close_condition": "dynamic_trailing",
                     "cooldown": 0,
                     "created_at": 1702999999.0,
                     "updated_at": 1702999999.0,
-                    "dynamic_trailling": False,
+                    "dynamic_trailing": False,
                     "logs": [],
                     "mode": "manual",
                     "name": "Default bot",
                     "status": "inactive",
                     "stop_loss": 0,
                     "take_profit": 2.3,
-                    "trailling": True,
-                    "trailling_deviation": 0.63,
-                    "trailling_profit": 2.3,
+                    "trailing": True,
+                    "trailing_deviation": 0.63,
+                    "trailing_profit": 2.3,
                     "margin_short_reversal": False,
                     "strategy": "long",
                     "deal": {},

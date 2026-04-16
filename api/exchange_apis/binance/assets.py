@@ -12,9 +12,9 @@ from pybinbot import (
     round_numbers,
     ts_to_day,
     Status,
-    Strategy,
     BinanceErrors,
     LowBalanceCleanupError,
+    Position,
 )
 from databases.crud.bot_crud import BotTableCrud
 from typing import Sequence
@@ -269,7 +269,7 @@ class Assets(BinanceOrderController):
         pairs in both MARGIN and SPOT markets.
         """
 
-        strategy = Strategy.margin_short if bot_strategy == "margin" else Strategy.long
+        strategy = Position.short if bot_strategy == "margin" else Position.long
 
         bot = self.bot_controller.get_one(
             symbol=pair, strategy=strategy, status=Status.all
@@ -281,7 +281,7 @@ class Assets(BinanceOrderController):
         active_bot = BotModel.dump_from_table(bot)
         deal = BinanceDeal(active_bot, db_table=BotTable)
 
-        if strategy == Strategy.margin_short:
+        if strategy == Position.short:
             deal.margin_liquidation(pair)
         else:
             deal.spot_liquidation(pair)

@@ -4,16 +4,16 @@ from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.crud.symbols_crud import SymbolsCrud
 from bots.models import BotModel, OrderModel
 from pybinbot import (
-    DealType,
     OrderSide,
     Status,
     QuoteAssets,
-    Strategy,
     round_numbers,
     round_timestamp,
     round_numbers_floor,
     round_numbers_ceiling,
     BinanceErrors,
+    DealType,
+    Position,
 )
 from exchange_apis.binance.deals.base_deal import BaseDeal
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
@@ -229,7 +229,7 @@ class BinanceDeal(BaseDeal):
 
             # Calculate amount missing and buy the difference
             amount_missing = self.active_bot.fiat_order_size - total_qty_available
-            if self.active_bot.strategy == Strategy.margin_short:
+            if self.active_bot.strategy == Position.short:
                 qty = (
                     amount_missing / float(quote_fiat_price)
                 ) * self.conversion_threshold
@@ -472,7 +472,7 @@ class BinanceDeal(BaseDeal):
             # initial price with 1 qty should return first match
             last_ticker_price = self.get_ticker_price(self.active_bot.pair)
 
-            if self.active_bot.strategy == Strategy.margin_short:
+            if self.active_bot.strategy == Position.short:
                 # Use all available quote asset balance
                 # this avoids diffs in ups and downs in prices and fees
                 available_quote_asset = self.get_single_raw_balance(

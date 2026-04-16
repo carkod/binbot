@@ -12,9 +12,9 @@ export const initialAutotradeSettings: AutotradeSettings = {
   balance_size_to_use: 0,
   candlestick_interval: BinanceKlineintervals.ONE_HOUR,
   autotrade: true,
-  trailling: true,
-  trailling_deviation: 0,
-  trailling_profit: 0,
+  trailing: true,
+  trailing_deviation: 0,
+  trailing_profit: 0,
   stop_loss: 0,
   take_profit: 0,
   fiat: "USDC",
@@ -23,7 +23,7 @@ export const initialAutotradeSettings: AutotradeSettings = {
   max_active_autotrade_bots: 0,
   base_order_size: 0,
   updated_at: 0,
-  close_condition: CloseConditions.DYNAMIC_TRAILLING,
+  close_condition: CloseConditions.DYNAMIC_TRAILING,
 };
 
 // In general, this will be unused
