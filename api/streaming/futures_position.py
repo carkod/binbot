@@ -6,6 +6,7 @@ from databases.tables.bot_table import BotTable, PaperTradingTable
 from exchange_apis.kucoin.futures.position_market import PositionMarket
 from kucoin_universal_sdk.model.common import RestError
 from pybinbot import (
+    DealType,
     ExchangeId,
     OrderStatus,
     Status,

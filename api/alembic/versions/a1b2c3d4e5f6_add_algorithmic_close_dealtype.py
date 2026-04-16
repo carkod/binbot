@@ -20,9 +20,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    op.execute(
-        "ALTER TYPE dealtype ADD VALUE IF NOT EXISTS 'algorithmic_close'"
-    )
+    op.execute("ALTER TYPE dealtype ADD VALUE IF NOT EXISTS 'algorithmic_close'")
 
 
 def downgrade() -> None:

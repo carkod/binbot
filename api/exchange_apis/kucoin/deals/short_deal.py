@@ -181,9 +181,7 @@ class KucoinShortDeal(KucoinMarginDeal):
             # If trailing_stop_loss is above (margin) the opening_price do not update trailing stop loss, because it'll close at a loss
             # stop_loss is the safe net in this case
             if stop_loss_trailing_price < self.active_bot.deal.opening_price:
-                self.active_bot.deal.trailing_stop_loss_price = (
-                    stop_loss_trailing_price
-                )
+                self.active_bot.deal.trailing_stop_loss_price = stop_loss_trailing_price
                 self.active_bot.add_log(
                     f"{self.symbol} below opening_price, setting trailing_stop_loss (margin_short)"
                 )

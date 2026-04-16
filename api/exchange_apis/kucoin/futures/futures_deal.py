@@ -12,6 +12,7 @@ from kucoin_universal_sdk.generate.futures.order import GetTradeHistoryReq
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
 from pybinbot import (
     BinbotErrors,
+    DealType,
     KucoinFutures,
     OrderBase,
     OrderStatus,

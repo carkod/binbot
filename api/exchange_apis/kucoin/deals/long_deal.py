@@ -303,9 +303,7 @@ class KucoinLongDeal(KucoinSpotDeal):
         )
 
         self.active_bot.status = Status.completed
-        self.active_bot.add_log(
-            "Completed take profit after failing to break trailing"
-        )
+        self.active_bot.add_log("Completed take profit after failing to break trailing")
         self.controller.save(self.active_bot)
 
         return self.active_bot

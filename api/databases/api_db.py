@@ -16,6 +16,7 @@ from pybinbot import (
     OrderStatus,
     BinbotErrors,
     Position,
+    DealType,
 )
 from alembic import command
 from alembic.script import ScriptDirectory
@@ -117,7 +118,8 @@ class ApiDb:
                         conn.commit()
                         versions = [keep_version]
             except Exception as heal_exc:
-                # If anything goes wrong while reading/healing, log and continue. We'll stamp if needed.
+                # If anything goes wrong while reading/healing, log and continue.
+                # Alembic can still upgrade from base when no version row exists yet.
                 logging.info(
                     "Unable to inspect alembic_version table (maybe it does not exist yet): %s",
                     heal_exc,
@@ -125,14 +127,6 @@ class ApiDb:
                 versions = []
 
             current_revision = versions[0] if versions else None
-
-            if current_revision is None:
-                logging.info(
-                    "Database has no Alembic version; stamping to head %s without running migrations.",
-                    head_revision,
-                )
-                command.stamp(alembic_cfg, head_revision)
-                return
 
             if current_revision == head_revision:
                 logging.info(
@@ -143,13 +137,14 @@ class ApiDb:
 
             logging.info(
                 "Upgrading database from revision %s to head %s.",
-                current_revision,
+                current_revision or "base",
                 head_revision,
             )
             command.upgrade(alembic_cfg, "head")
             logging.info("Alembic migrations completed successfully")
         except Exception as exc:
             logging.error(f"Alembic migrations failed: {exc}", exc_info=True)
+            raise
 
     def delete_autotrade_settings_table(self, table_name: str):
         """

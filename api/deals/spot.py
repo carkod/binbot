@@ -3,6 +3,7 @@ from databases.crud.autotrade_crud import AutotradeCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from bots.models import BotModel, OrderModel
 from pybinbot import (
+    DealType,
     Status,
     OrderSide,
     OrderStatus,

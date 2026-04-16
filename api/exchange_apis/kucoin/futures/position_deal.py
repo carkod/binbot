@@ -326,9 +326,7 @@ class PositionDeal(KucoinPositionDeal):
             qty = round_numbers(
                 abs(float(position.current_qty)) * repurchase_multiplier, 8
             )
-            action = (
-                "buy" if self.active_bot.strategy == Position.short else "sell"
-            )
+            action = "buy" if self.active_bot.strategy == Position.short else "sell"
             self.controller.update_logs(
                 f"Dispatching futures {action} order for trailing profit...",
                 self.active_bot,
@@ -414,9 +412,7 @@ class PositionDeal(KucoinPositionDeal):
 
         # Strategy toggle
         target_strategy = (
-            Position.short
-            if source_bot.strategy == Position.long
-            else Position.long
+            Position.short if source_bot.strategy == Position.long else Position.long
         )
 
         # Pre-close current bot
@@ -843,9 +839,7 @@ class PositionDeal(KucoinPositionDeal):
             price_reference = (
                 close_price if close_price < opening_price else opening_price
             )
-            trailing_take_profit = price_reference - (
-                price_reference * take_profit_pct
-            )
+            trailing_take_profit = price_reference - (price_reference * take_profit_pct)
             stop_loss_trailing_price = trailing_take_profit - (
                 trailing_take_profit * deviation_pct
             )

@@ -1,5 +1,5 @@
 from bots.models import BotModel, BotListResponse, BotPairsList, OrderModel
-from pybinbot import OrderStatus
+from pybinbot import DealType, OrderStatus
 from databases.tables.bot_table import BotTable, PaperTradingTable
 
 

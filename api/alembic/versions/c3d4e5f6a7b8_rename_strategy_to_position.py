@@ -23,7 +23,10 @@ _BOT_TABLES = ["bot", "paper_trading"]
 def upgrade() -> None:
     """Upgrade schema."""
     # 1. Add the new 'short' value to the existing strategy enum type
+    # Must commit before using the new value in DML statements
+    op.execute("COMMIT")
     op.execute("ALTER TYPE strategy ADD VALUE IF NOT EXISTS 'short'")
+    op.execute("BEGIN")
 
     # 2. Update existing data: 'margin_short' -> 'short'
     for table in _BOT_TABLES:

@@ -5,6 +5,7 @@ from exchange_apis.kucoin.futures.position_market import PositionMarket
 from streaming.base import BaseStreaming
 from bots.models import BotModel
 from pybinbot import (
+    DealType,
     OrderStatus,
     Status,
     ExchangeId,

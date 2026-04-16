@@ -271,9 +271,7 @@ class BinanceSpotDeal(BinanceDeal):
         self.active_bot.deal.closing_timestamp = round_timestamp(res["transactTime"])
 
         self.active_bot.status = Status.completed
-        self.active_bot.add_log(
-            "Completed take profit after failing to break trailing"
-        )
+        self.active_bot.add_log("Completed take profit after failing to break trailing")
         self.controller.save(self.active_bot)
 
         self.sell_quote_asset()
