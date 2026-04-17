@@ -202,6 +202,14 @@ export const DashboardPage: FC<{}> = () => {
                 <Col md="8" xs="7">
                   <div>
                     <p className="text-end text-body-secondary">
+                      <span
+                        className={`u-live-dot me-2 ${
+                          portfolioPnlClass || "text-body-secondary"
+                        }`}
+                        aria-label="Live balance indicator"
+                        role="img"
+                        title="Current real-time value compared to the last balance snapshot"
+                      />
                       Profit &amp; Loss
                     </p>
                   </div>
@@ -402,7 +410,7 @@ export const DashboardPage: FC<{}> = () => {
                         <td>{name}</td>
                         <td className="text-end">{count}</td>
                         <td className="text-end">
-                          {roundDecimals(bot_profit, 2)}
+                          {roundDecimals(bot_profit, 2)}%
                         </td>
                         <td className="text-end">
                           {count > 0

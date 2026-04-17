@@ -112,3 +112,41 @@
 .u-space-bottom {
   margin-bottom: 1.5rem;
 }
+
+@keyframes live-dot-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--live-dot-rgb), 0.45);
+    transform: scale(0.95);
+  }
+
+  70% {
+    box-shadow: 0 0 0 0.45rem rgba(var(--live-dot-rgb), 0);
+    transform: scale(1);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--live-dot-rgb), 0);
+    transform: scale(0.95);
+  }
+}
+
+.u-live-dot {
+  --live-dot-rgb: var(--bs-success-rgb);
+  display: inline-block;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  color: var(--bs-success);
+  background-color: currentColor;
+  animation: live-dot-pulse 1.8s ease-out infinite;
+}
+
+.u-live-dot.text-danger {
+  --live-dot-rgb: var(--bs-danger-rgb);
+  color: var(--bs-danger);
+}
+
+.u-live-dot.text-body-secondary {
+  --live-dot-rgb: var(--bs-secondary-color-rgb);
+  color: rgba(var(--bs-secondary-color-rgb), 1);
+}
