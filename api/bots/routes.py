@@ -236,9 +236,18 @@ def activate_bot(
 )
 def deactivate_bot(
     bot_id: str,
+    algorithmic_close: bool = False,
     session: Session = Depends(get_session),
     _: UserTokenData = Depends(get_current_user),
 ):
+    """
+    Deactivation means closing all deals and selling to fiat (USDT at the time of writing)
+    to realize profits or losses.
+
+    This could be done for several reasons:
+        - Panic close. We need to cut loses, this is the drastic measure that will stop everything and deposses the asset
+        - Algorithmic close. A Binquant strategy has decided to close due to market conditions or rules
+    """
     crud = BotTableCrud(session)
     bot_row = crud.get_one(bot_id=bot_id)
     if not isinstance(bot_row, (BotTable, PaperTradingTable)):
@@ -247,7 +256,7 @@ def deactivate_bot(
     bot_model = BotModel.dump_from_table(bot_row)
     deal_gateway = DealGateway(bot_model, db_table=BotTable)
     try:
-        deactivated_bot = deal_gateway.deactivation()
+        deactivated_bot = deal_gateway.deactivation(algorithmic_close=algorithmic_close)
         bot_model = deactivated_bot
         return BotResponse(
             message="Successfully triggered panic sell! Bot deactivated.",

@@ -304,7 +304,7 @@ class KucoinShortDeal(KucoinMarginDeal):
 
         return self.active_bot
 
-    def close_all(self) -> BotModel:
+    def close_all(self, algorithmic_close: bool = False) -> BotModel:
         """
         Deactivation + liquidation of loans
 
@@ -313,6 +313,9 @@ class KucoinShortDeal(KucoinMarginDeal):
         3. Update bot status to completed
         """
         orders = self.active_bot.orders
+        deal_type = (
+            DealType.algorithmic_close if algorithmic_close else DealType.panic_close
+        )
 
         # Close all active orders
         if len(orders) > 0:
@@ -340,7 +343,7 @@ class KucoinShortDeal(KucoinMarginDeal):
             if system_order:
                 order = OrderModel(
                     timestamp=int(system_order.created_at),
-                    deal_type=DealType.panic_close,
+                    deal_type=deal_type,
                     order_id=str(system_order.id),
                     pair=system_order.symbol,
                     order_side=system_order.side,

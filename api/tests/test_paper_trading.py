@@ -1,7 +1,9 @@
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 from main import app
 from pytest import fixture
 import pytest
+from tests.fixtures.mock_bot_table import make_mock_bot_active_model
 
 pytestmark = pytest.mark.usefixtures("paper_trading_table_fixture")
 
@@ -169,3 +171,23 @@ def test_paper_trading_deactivate(client: TestClient):
     assert "message" in content
     assert "data" in content
     assert content["data"] is not None
+
+
+def test_paper_trading_deactivate_algorithmic_close(client: TestClient):
+    deactivate_id = "3c3dd13e-4233-4e91-b27b-97459ff33fe7"
+    active_bot = make_mock_bot_active_model()
+
+    with patch(
+        "deals.gateway.DealGateway.deactivation",
+        return_value=active_bot,
+    ) as mock_deactivate:
+        response = client.delete(
+            f"/paper-trading/deactivate/{deactivate_id}?algorithmic_close=true"
+        )
+
+    assert response.status_code == 200
+    content = response.json()
+    assert "message" in content
+    assert "data" in content
+    assert content["data"] is not None
+    mock_deactivate.assert_called_once_with(algorithmic_close=True)

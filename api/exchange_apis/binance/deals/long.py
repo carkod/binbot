@@ -163,7 +163,7 @@ class BinanceLongDeal(BinanceSpotDeal):
 
         return self.active_bot
 
-    def close_all(self) -> BotModel:
+    def close_all(self, algorithmic_close: bool = False) -> BotModel:
         """
         Close all deals and sell pair
         1. Close all deals
@@ -171,6 +171,9 @@ class BinanceLongDeal(BinanceSpotDeal):
         3. Delete bot
         """
         orders = self.active_bot.orders
+        deal_type = (
+            DealType.algorithmic_close if algorithmic_close else DealType.panic_close
+        )
 
         # Close all active orders
         if isinstance(self.controller, PaperTradingTableCrud) and len(orders) > 0:
@@ -210,7 +213,7 @@ class BinanceLongDeal(BinanceSpotDeal):
                 order_data = OrderModel(
                     timestamp=int(res["transactTime"]),
                     order_id=str(res["orderId"]),
-                    deal_type=DealType.take_profit,
+                    deal_type=deal_type,
                     pair=res["symbol"],
                     order_side=res["side"],
                     order_type=res["type"],

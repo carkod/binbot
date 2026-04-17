@@ -204,6 +204,21 @@ def test_deactivate(client: TestClient, mock_deal_gateway, bot_models):
     assert content["data"]["pair"] == bot_models["active"].pair
     assert content["data"]["fiat"] == bot_models["active"].fiat
     assert content["data"]["fiat_order_size"] == bot_models["active"].fiat_order_size
+    mock_deal_gateway["deactivate"].assert_called_once_with(algorithmic_close=False)
+
+
+def test_deactivate_algorithmic_close(
+    client: TestClient, mock_deal_gateway, bot_models
+):
+    deactivate_id = "ebda4958-837c-4544-bf97-9bf449698152"
+    response = client.delete(f"/bot/deactivate/{deactivate_id}?algorithmic_close=true")
+
+    assert response.status_code == 200
+    content = response.json()
+    assert content["data"]["pair"] == bot_models["active"].pair
+    assert content["data"]["fiat"] == bot_models["active"].fiat
+    assert content["data"]["fiat_order_size"] == bot_models["active"].fiat_order_size
+    mock_deal_gateway["deactivate"].assert_called_once_with(algorithmic_close=True)
 
 
 def test_post_bot_errors_str(client: TestClient):
