@@ -1,16 +1,24 @@
 from account.schemas import BalanceSchema, KucoinBalance
 from databases.crud.balances_crud import BalancesCrud
 from exchange_apis.binance.assets import Assets
-from pybinbot import ExchangeId, round_numbers, KucoinApi, KucoinFutures, BinbotErrors
+from pybinbot import ExchangeId, round_numbers, KucoinApi, KucoinFutures
+from pybinbot.shared.enums import KucoinKlineIntervals
 from databases.utils import get_session
 from sqlmodel import Session
 from exchange_apis.kucoin.deals.base import KucoinBaseBalance
+from kucoin_universal_sdk.generate.account.account import (
+    GetSpotLedgerItems,
+)
 from typing import Dict
 from enum import Enum
 from tools.config import Config
 
 
 class ConsolidatedAccounts:
+    PAGINATION_PAGE_SIZE = 500
+    BANK_TRANSFER_CURRENCIES = frozenset({"EUR", "GBP"})
+    HISTORICAL_RATE_INTERVAL = KucoinKlineIntervals.ONE_HOUR.value
+
     def __init__(self, session: Session = None):
         if not session:
             self.session = get_session()
@@ -32,20 +40,105 @@ class ConsolidatedAccounts:
         self.autotrade_settings = self.binance_assets.autotrade_settings
         self.balances_crud = BalancesCrud(session=self.session)
         self.fiat = self.autotrade_settings.fiat
+        self._historical_rate_cache: dict[tuple[str, int], float] = {}
 
     @staticmethod
-    def _deposit_amount(entry) -> float:
-        if isinstance(entry, dict):
-            amount = entry.get("amount") or entry.get("size") or 0
-        else:
-            amount = getattr(entry, "amount", None)
-            if amount is None:
-                amount = getattr(entry, "size", 0)
+    def _extract_entry_timestamp(entry: GetSpotLedgerItems) -> int | None:
+        return int(entry.created_at) if entry.created_at is not None else None
 
-        try:
-            return float(amount)
-        except (TypeError, ValueError):
+    def _get_historical_ticker_price(
+        self, symbol: str, timestamp_ms: int | None
+    ) -> float:
+        if timestamp_ms is None:
+            return float(self.kucoin_api.get_ticker_price(symbol))
+
+        interval_ms = KucoinKlineIntervals.get_interval_ms(
+            self.HISTORICAL_RATE_INTERVAL
+        )
+        candle_open_ms = timestamp_ms - (timestamp_ms % interval_ms)
+        cache_key = (symbol, candle_open_ms)
+        cached = self._historical_rate_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        klines = self.kucoin_api.get_ui_klines(
+            symbol=symbol,
+            interval=self.HISTORICAL_RATE_INTERVAL,
+            limit=1,
+            start_time=candle_open_ms,
+            end_time=candle_open_ms + interval_ms,
+        )
+
+        if klines:
+            price = float(klines[-1][4])
+        else:
+            price = float(self.kucoin_api.get_ticker_price(symbol))
+
+        self._historical_rate_cache[cache_key] = price
+        return price
+
+    def _convert_amount_to_fiat(
+        self, currency: str | None, amount: float, timestamp_ms: int | None = None
+    ) -> float:
+        if amount <= 0 or not currency:
             return 0.0
+
+        if currency == self.fiat:
+            return amount
+
+        if currency in ["EUR", "GBP", "AUD", "JPY"]:
+            rate = self._get_historical_ticker_price(
+                f"{self.fiat}-{currency}",
+                timestamp_ms=timestamp_ms,
+            )
+            return amount / float(rate)
+
+        rate = self._get_historical_ticker_price(
+            f"{currency}-{self.fiat}",
+            timestamp_ms=timestamp_ms,
+        )
+        return amount * float(rate)
+
+    def _sum_deposit_entries(
+        self,
+        entries: list[GetSpotLedgerItems],
+    ) -> float:
+        total = 0.0
+
+        for entry in entries:
+            timestamp_ms = self._extract_entry_timestamp(entry)
+            total += self._convert_amount_to_fiat(
+                entry.currency,
+                float(entry.amount or 0),
+                timestamp_ms=timestamp_ms,
+            )
+
+        return total
+
+    def _get_bank_transfer_entries(self) -> list[GetSpotLedgerItems]:
+        page = 1
+        bank_transfers: list[GetSpotLedgerItems] = []
+
+        while True:
+            response = self.kucoin_api.get_spot_ledger(
+                current_page=page,
+                page_size=self.PAGINATION_PAGE_SIZE,
+            )
+
+            bank_transfers.extend(
+                entry
+                for entry in (response.items or [])
+                if entry.currency in self.BANK_TRANSFER_CURRENCIES
+                and str(entry.account_type or "").upper() == "MAIN"
+                and str(entry.biz_type or "").lower() == "fiat deposit"
+            )
+
+            if page >= max(int(response.total_page or 1), 1):
+                break
+
+            page += 1
+
+        return bank_transfers
 
     def get_total_deposit(self) -> float:
         if self.autotrade_settings.exchange_id != ExchangeId.KUCOIN:
@@ -53,28 +146,8 @@ class ConsolidatedAccounts:
                 "Total deposit aggregation is only implemented for KuCoin."
             )
 
-        try:
-            deposits = self.kucoin_futures_api.get_deposit_history()
-        except BinbotErrors:
-            return 0.0
-
-        if not deposits:
-            return 0.0
-
-        if isinstance(deposits, dict):
-            candidates = (
-                deposits.get("items")
-                or deposits.get("data")
-                or deposits.get("deposits")
-                or []
-            )
-        else:
-            candidates = deposits
-
-        if isinstance(candidates, dict):
-            candidates = candidates.get("items") or []
-
-        return sum(self._deposit_amount(deposit) for deposit in candidates)
+        bank_transfers = self._get_bank_transfer_entries()
+        return self._sum_deposit_entries(bank_transfers)
 
     def get_balance(self) -> BalanceSchema:
         """
@@ -193,8 +266,20 @@ class ConsolidatedAccounts:
                         fiat_available += float(value["balance"])
                     # we don't want to convert USDC, TUSD or USDT to itself
                     if key != self.fiat:
-                        rate = self.kucoin_api.get_ticker_price(f"{key}-{self.fiat}")
-                        estimated_total_fiat += float(value["balance"]) * float(rate)
+                        if key in ["EUR", "GBP", "AUD", "JPY"]:
+                            rate = self.kucoin_api.get_ticker_price(
+                                f"{self.fiat}-{key}"
+                            )
+                            estimated_total_fiat += float(value["balance"]) / float(
+                                rate
+                            )
+                        else:
+                            rate = self.kucoin_api.get_ticker_price(
+                                f"{key}-{self.fiat}"
+                            )
+                            estimated_total_fiat += float(value["balance"]) * float(
+                                rate
+                            )
                     else:
                         estimated_total_fiat += float(value["balance"])
 

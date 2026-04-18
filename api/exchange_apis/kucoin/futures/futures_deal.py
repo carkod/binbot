@@ -127,7 +127,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         if estimated_available_buffer < (min_contract_step * per_contract_buffer):
             return float(current_contracts)
 
-        return max(float(current_contracts), float(minimum_flip_contracts))
+        return float(minimum_flip_contracts)
 
     def estimate_reversal_possible_for_new_bot(self) -> bool:
         """
