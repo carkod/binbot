@@ -4,15 +4,12 @@ import time
 import pandas as pd
 import pytest
 from bots.models import OrderModel
-from pandas import Index
 from typing import Any, cast
 from pybinbot import MarketType
 from streaming.position_manager import PositionManager
 from streaming.base import BaseStreaming
-from pandas import DataFrame
 from pybinbot import (
     ExchangeId,
-    HeikinAshi,
     BinanceErrors,
     HABollinguerSpread,
     OrderStatus,
@@ -155,61 +152,6 @@ class TestPositionManager:
             "exchange_apis.kucoin.futures.futures_deal.KucoinFutures.get_symbol_info",
             dummy_get_symbol_info,
         )
-
-        def patched_pre_process(self, exchange, candles):
-            from pandas import to_datetime
-            from typing import cast
-
-            if exchange == ExchangeId.BINANCE:
-                # Binance API may return extra columns; only take the expected ones
-                df_raw = DataFrame(candles)
-                cols = HeikinAshi().binance_cols
-                df = df_raw.iloc[:, : len(cols)]
-                df.columns = Index(cols)
-            else:
-                df_raw = DataFrame(candles)
-                kucoin_cols = HeikinAshi().kucoin_cols
-                if df_raw.shape[1] == len(kucoin_cols):
-                    df_raw.columns = Index(kucoin_cols)
-                elif df_raw.shape[1] == len(kucoin_cols) - 1:
-                    # Recent Kucoin klines omit close_time; derive it from open_time
-                    df_raw.columns = Index(kucoin_cols[:-1])
-                    df_raw["close_time"] = df_raw["open_time"]
-                else:
-                    raise ValueError(
-                        f"Unexpected KuCoin dummy kline column count: {df_raw.shape[1]}"
-                    )
-                df = df_raw
-
-            # Convert numeric columns
-            numeric_cols = ["open", "high", "low", "close", "volume"]
-            for col in numeric_cols:
-                if col in df.columns:
-                    df[col] = pd.to_numeric(df[col], errors="coerce")
-
-            # Set timestamp index for resampling
-            df["timestamp"] = to_datetime(df["close_time"], unit="ms")
-            df.set_index("timestamp", inplace=True)
-            df = df.sort_index()
-
-            # Create aggregation dictionary
-            resample_aggregation = {
-                "open": "first",
-                "close": "last",
-                "high": "max",
-                "low": "min",
-                "volume": "sum",
-                "close_time": "first",
-                "open_time": "first",
-            }
-
-            # Resample to 4h and 1h
-            df_4h = df.resample("4h").agg(cast(dict, resample_aggregation))
-            df_1h = df.resample("1h").agg(cast(dict, resample_aggregation))
-
-            return df, df_1h, df_4h
-
-        monkeypatch.setattr(HeikinAshi, "pre_process", patched_pre_process)
 
         base = BaseStreaming()
 
