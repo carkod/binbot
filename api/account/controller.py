@@ -1,7 +1,7 @@
 from account.schemas import BalanceSchema, KucoinBalance
 from databases.crud.balances_crud import BalancesCrud
 from exchange_apis.binance.assets import Assets
-from pybinbot import ExchangeId, round_numbers, KucoinApi, KucoinFutures
+from pybinbot import ExchangeId, round_numbers, KucoinApi, KucoinFutures, BinbotErrors
 from databases.utils import get_session
 from sqlmodel import Session
 from exchange_apis.kucoin.deals.base import KucoinBaseBalance
@@ -32,6 +32,47 @@ class ConsolidatedAccounts:
         self.autotrade_settings = self.binance_assets.autotrade_settings
         self.balances_crud = BalancesCrud(session=self.session)
         self.fiat = self.autotrade_settings.fiat
+
+    @staticmethod
+    def _deposit_amount(entry) -> float:
+        if isinstance(entry, dict):
+            amount = entry.get("amount") or entry.get("size") or 0
+        else:
+            amount = getattr(entry, "amount", None)
+            if amount is None:
+                amount = getattr(entry, "size", 0)
+
+        try:
+            return float(amount)
+        except (TypeError, ValueError):
+            return 0.0
+
+    def get_total_deposit(self) -> float:
+        if self.autotrade_settings.exchange_id != ExchangeId.KUCOIN:
+            return 0.0
+
+        try:
+            deposits = self.kucoin_futures_api.get_deposit_history()
+        except BinbotErrors:
+            return 0.0
+
+        if not deposits:
+            return 0.0
+
+        if isinstance(deposits, dict):
+            candidates = (
+                deposits.get("items")
+                or deposits.get("data")
+                or deposits.get("deposits")
+                or []
+            )
+        else:
+            candidates = deposits
+
+        if isinstance(candidates, dict):
+            candidates = candidates.get("items") or []
+
+        return sum(self._deposit_amount(deposit) for deposit in candidates)
 
     def get_balance(self) -> BalanceSchema:
         """
@@ -94,15 +135,19 @@ class ConsolidatedAccounts:
         result.estimated_total_fiat = estimated_total_fiat
         result.fiat_available = fiat_available
         result.fiat_currency = self.autotrade_settings.fiat
+        result.total_deposit = self.get_total_deposit()
 
         return result
 
     def store_balance(self):
         if self.autotrade_settings.exchange_id == ExchangeId.KUCOIN:
             kucoin_balances = self.get_balance()
+            net_estimated_total_fiat = (
+                kucoin_balances.estimated_total_fiat - kucoin_balances.total_deposit
+            )
             response = self.balances_crud.create_balance_series(
                 kucoin_balances.balances,
-                round_numbers(kucoin_balances.estimated_total_fiat, 4),
+                round_numbers(net_estimated_total_fiat, 4),
                 exchange_id=ExchangeId.KUCOIN,
             )
             return response

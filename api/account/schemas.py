@@ -39,6 +39,10 @@ class BalanceSchema(BaseBalance):
     balances: Dict[str, float] = Field(
         default={}, description="Dictionary of asset balances 'BTC': 0.5, 'ETH': 0.01"
     )
+    total_deposit: float = Field(
+        default=0,
+        description="Aggregated total deposits from KuCoin Futures deposit history",
+    )
 
 
 class KucoinBalanceResponse(StandardResponse):
