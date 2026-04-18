@@ -49,7 +49,9 @@ class ConsolidatedAccounts:
 
     def get_total_deposit(self) -> float:
         if self.autotrade_settings.exchange_id != ExchangeId.KUCOIN:
-            return 0.0
+            raise NotImplementedError(
+                "Total deposit aggregation is only implemented for KuCoin."
+            )
 
         try:
             deposits = self.kucoin_futures_api.get_deposit_history()
@@ -135,7 +137,10 @@ class ConsolidatedAccounts:
         result.estimated_total_fiat = estimated_total_fiat
         result.fiat_available = fiat_available
         result.fiat_currency = self.autotrade_settings.fiat
-        result.total_deposit = self.get_total_deposit()
+        if self.autotrade_settings.exchange_id == ExchangeId.KUCOIN:
+            result.total_deposit = self.get_total_deposit()
+        else:
+            result.total_deposit = 0.0
 
         return result
 
