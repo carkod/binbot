@@ -584,11 +584,14 @@ class KucoinPositionDeal(KucoinBaseBalance):
         self.controller.save(self.active_bot)
         return self.active_bot
 
-    def close_all(self) -> BotModel:
+    def close_all(self, algorithmic_close: bool = False) -> BotModel:
         """
         Closes all open positions and cancels all orders.
         To be used also for panic selling from terminal.
         """
+        deal_type = (
+            DealType.algorithmic_close if algorithmic_close else DealType.panic_close
+        )
         position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
 
         if position and float(position.current_qty) != 0:
@@ -606,7 +609,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 )
 
             order_model = OrderModel(**order_response.model_dump())
-            order_model.deal_type = DealType.panic_close
+            order_model.deal_type = deal_type
             self.active_bot.orders.append(order_model)
             self.active_bot.deal.closing_price = order_response.price
             self.active_bot.deal.closing_qty = abs(int(position.current_qty))

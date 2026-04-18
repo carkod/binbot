@@ -155,10 +155,18 @@ def activate(id: str, session: Session = Depends(get_session)):
 @paper_trading_blueprint.delete(
     "/paper-trading/deactivate/{id}", tags=["paper trading"]
 )
-def deactivate(id: str, session: Session = Depends(get_session)):
+def deactivate(
+    id: str,
+    algorithmic_close: bool = False,
+    session: Session = Depends(get_session),
+):
     """
-    Deactivation means closing all deals and selling to GBP
-    Otherwise losses will be incurred
+    Deactivation means closing all deals and selling to fiat (USDT at the time of writing)
+    to realize profits or losses.
+
+    This could be done for several reasons:
+        - Panic close. We need to cut loses, this is the drastic measure that will stop everything and deposses the asset
+        - Algorithmic close. A Binquant strategy has decided to close due to market conditions or rules
     """
     bot_model = PaperTradingTableCrud(session=session).get_one(bot_id=id)
     if not bot_model:
@@ -171,7 +179,7 @@ def deactivate(id: str, session: Session = Depends(get_session)):
     deal_instance = DealGateway(bot=bot_model, db_table=PaperTradingTable)
 
     try:
-        bot = deal_instance.deactivation()
+        bot = deal_instance.deactivation(algorithmic_close=algorithmic_close)
         response_data = bot
         return {
             "message": "Successfully triggered panic sell! Bot deactivated.",

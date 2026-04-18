@@ -64,11 +64,11 @@ class DealGateway:
         """
         return self.deal.controller.update_logs(bot=self.bot, log_message=message)
 
-    def deactivation(self) -> BotModel:
+    def deactivation(self, algorithmic_close: bool = False) -> BotModel:
         """
         Abstract method for deactivation (which is pretty much closing all deals) during bot runtime
         """
-        return self.deal.close_all()
+        return self.deal.close_all(algorithmic_close=algorithmic_close)
 
     def deal_exit_orchestration(
         self, close_price: float, open_price: float

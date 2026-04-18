@@ -129,7 +129,7 @@ class ShortDeal(BinanceMarginDeal):
 
         return self.active_bot
 
-    def close_all(self) -> BotModel:
+    def close_all(self, algorithmic_close: bool = False) -> BotModel:
         """
         Deactivation + liquidation of loans
 
@@ -138,6 +138,9 @@ class ShortDeal(BinanceMarginDeal):
         3. Update bot status to completed
         """
         orders = self.active_bot.orders
+        deal_type = (
+            DealType.algorithmic_close if algorithmic_close else DealType.panic_close
+        )
 
         # Close all active orders
         if len(orders) > 0:
@@ -173,7 +176,7 @@ class ShortDeal(BinanceMarginDeal):
             if res:
                 order = OrderModel(
                     timestamp=int(res["transactTime"]),
-                    deal_type=DealType.panic_close,
+                    deal_type=deal_type,
                     order_id=str(res["orderId"]),
                     pair=res["symbol"],
                     order_side=res["side"],

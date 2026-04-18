@@ -402,10 +402,13 @@ class KucoinSpotDeal(KucoinBaseBalance):
         self.controller.save(self.active_bot)
         return self.active_bot
 
-    def close_all(self) -> BotModel:
+    def close_all(self, algorithmic_close: bool = False) -> BotModel:
         """
         Close all open positions for spot long bot
         """
+        deal_type = (
+            DealType.algorithmic_close if algorithmic_close else DealType.panic_close
+        )
         if self.active_bot.deal.opening_qty > 0:
             if isinstance(self.controller, PaperTradingTableCrud):
                 system_order = self.kucoin_api.simulate_order(
@@ -422,7 +425,7 @@ class KucoinSpotDeal(KucoinBaseBalance):
                 order = OrderModel(
                     timestamp=system_order.created_at,
                     order_id=system_order.id,
-                    deal_type=DealType.panic_close,
+                    deal_type=deal_type,
                     pair=system_order.symbol,
                     order_side=AddOrderReq.SideEnum.SELL,
                     order_type=system_order.type,

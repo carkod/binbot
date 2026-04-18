@@ -130,7 +130,7 @@ class DealFactoryMock:
         bot_model = BotModel(**mock_model_data.model_dump())
         return bot_model
 
-    def close_all(self):
+    def close_all(self, algorithmic_close: bool = False):
         bot_model = BotModel(**mock_model_data.model_dump())
         return bot_model
 
