@@ -13,6 +13,7 @@ vi.mock("../../../features/balanceApiSlice", () => ({
       fiat_available: 5,
       fiat_currency: "USDC",
       estimated_total_fiat: 110,
+      total_deposit: 5,
     },
     isLoading: false,
   })),
@@ -98,6 +99,7 @@ describe("Dashboard page", () => {
     expect(
       rtlScreen.getByText("(How efficient are we with risk?)"),
     ).toBeInTheDocument();
+    expect(rtlScreen.getByText("105 USDC")).toBeInTheDocument();
     expect(rtlScreen.getByText("1.27 BTC")).toBeInTheDocument();
   });
 });

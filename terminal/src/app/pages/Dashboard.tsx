@@ -37,7 +37,10 @@ const usePortfolioPnlDetails = (
   const benchmarkSeries =
     benchmark?.benchmarkData?.fiat ?? benchmark?.benchmarkData?.fiat;
   const previousPortfolioValue = benchmarkSeries?.[benchmarkSeries.length - 1];
-  const latestPortfolioValue = accountData?.estimated_total_fiat;
+  const latestPortfolioValue =
+    accountData?.estimated_total_fiat !== undefined
+      ? accountData.estimated_total_fiat - (accountData?.total_deposit ?? 0)
+      : undefined;
   const portfolioPnlValue =
     latestPortfolioValue !== undefined && previousPortfolioValue !== undefined
       ? latestPortfolioValue - previousPortfolioValue
@@ -94,6 +97,8 @@ export const DashboardPage: FC<{}> = () => {
   const { portfolioPnlValue, portfolioPnlPercentage, portfolioPnlClass } =
     usePortfolioPnlDetails(benchmark, accountData);
   const portfolioSharpe = benchmark?.portfolioStats?.sharpe;
+  const netTotalBalance =
+    (accountData?.estimated_total_fiat ?? 0) - (accountData?.total_deposit ?? 0);
   const btcSharpe = benchmark?.portfolioStats?.btc_sharpe;
   const topAlgoCounts = new Set(
     algoRanking
@@ -161,7 +166,7 @@ export const DashboardPage: FC<{}> = () => {
                       Total Balance
                     </p>
                     <Card.Title as="h3" className="fs-4 text-end text-info">
-                      {roundDecimals(accountData?.estimated_total_fiat, 2)}{" "}
+                      {roundDecimals(netTotalBalance, 2)}{" "}
                       {accountData.fiat_currency}
                     </Card.Title>
                   </Col>

@@ -5,8 +5,9 @@ interface AssetCollection {
 export interface BalanceData {
   balances: AssetCollection;
   fiat_available: number;
-  fiat_currency: number;
+  fiat_currency: string;
   estimated_total_fiat: number;
+  total_deposit: number;
 }
 
 // Benchmark of portfolio (in USDC at time of writing) against BTC
