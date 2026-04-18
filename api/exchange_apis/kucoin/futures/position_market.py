@@ -1,20 +1,22 @@
 from copy import deepcopy
 from typing import Type, Union
-
 from bots.models import BotModel
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from pybinbot import (
     BinanceApi,
+    Candles,
     ExchangeId,
     HABollinguerSpread,
-    HeikinAshi,
     Indicators,
     KucoinApi,
     KucoinFutures,
+    MarketType,
+    Position,
     convert_to_kucoin_symbol,
     round_numbers,
 )
+from tools.utils import clamp
 from streaming.apex_flow_closing import ApexFlowClose
 from streaming.base import BaseStreaming
 
@@ -23,6 +25,17 @@ class PositionMarket(KucoinPositionDeal):
     """
     Analytics for position deal exist
     """
+
+    MIN_STOP_LOSS = 0.8
+    MAX_STOP_LOSS = 4.0
+    MIN_TRAILING_PROFIT = 0.6
+    MAX_TRAILING_PROFIT = 3.5
+    MIN_TRAILING_DEVIATION = 0.4
+    MAX_TRAILING_DEVIATION = 2.5
+    MIN_TRAIL_GAP = 0.35
+    PULLBACK_ARM_PROFIT = 1.0
+    SHALLOW_PULLBACK = 0.75
+    DEEP_PULLBACK = 1.5
 
     def __init__(
         self,
@@ -58,7 +71,65 @@ class PositionMarket(KucoinPositionDeal):
 
         return bb_spreads
 
-    def set_trailing_params(
+    def build_bb_metrics(self) -> tuple[float, float] | None:
+        bb_spreads = self.build_bb_spreads()
+        if bb_spreads.bb_high == 0 or bb_spreads.bb_low == 0:
+            return None
+
+        top_spread = (
+            abs((bb_spreads.bb_high - bb_spreads.bb_mid) / bb_spreads.bb_high) * 100
+        )
+        bottom_spread = (
+            abs((bb_spreads.bb_mid - bb_spreads.bb_low) / bb_spreads.bb_mid) * 100
+        )
+
+        return (
+            clamp(top_spread, 1.5, 6.0),
+            clamp(bottom_spread, 1.0, 4.0),
+        )
+
+    def build_pullback_metrics(self, current_price: float) -> dict[str, float] | None:
+        entry_price = float(self.active_bot.deal.opening_price or 0)
+        entry_timestamp = int(self.active_bot.deal.opening_timestamp or 0)
+        if entry_price <= 0 or entry_timestamp <= 0:
+            return None
+
+        entry_index = None
+        for index, candle in enumerate(self.klines):
+            if len(candle) < 3:
+                continue
+            if int(float(candle[0])) >= entry_timestamp:
+                entry_index = index
+                break
+
+        if entry_index is None:
+            return None
+
+        peak_price_since_entry = max(
+            [
+                float(candle[2])
+                for candle in self.klines[entry_index:]
+                if len(candle) >= 3
+            ]
+            + [float(current_price)],
+        )
+        if peak_price_since_entry <= 0:
+            return None
+
+        peak_profit_pct = ((peak_price_since_entry - entry_price) / entry_price) * 100
+        pullback_pct = max(
+            0.0,
+            ((peak_price_since_entry - float(current_price)) / peak_price_since_entry)
+            * 100,
+        )
+
+        return {
+            "peak_price_since_entry": peak_price_since_entry,
+            "peak_profit_pct": peak_profit_pct,
+            "pullback_pct": pullback_pct,
+        }
+
+    def derive_dynamic_trailing_params(
         self,
         top_spread: float,
         bottom_spread: float,
@@ -67,7 +138,8 @@ class PositionMarket(KucoinPositionDeal):
         is_aggressive_momo: bool,
         expansion_range: float,
         trail_tighten_mult: float,
-    ) -> None:
+        current_price: float,
+    ) -> tuple[float, float, float]:
         """
         LONG trailing logic.
 
@@ -84,27 +156,64 @@ class PositionMarket(KucoinPositionDeal):
         elif bot_profit >= 3:
             raw_trail_profit = min(raw_trail_profit, 3.0)
 
-        self.active_bot.trailing_profit = round_numbers(max(0.6, raw_trail_profit), 2)
-        self.active_bot.trailing_deviation = round_numbers(
-            max(0.6, bottom_spread * trail_tighten_mult),
-            2,
+        trailing_profit = clamp(
+            raw_trail_profit,
+            self.MIN_TRAILING_PROFIT,
+            self.MAX_TRAILING_PROFIT,
+        )
+        trailing_deviation = clamp(
+            bottom_spread * trail_tighten_mult,
+            self.MIN_TRAILING_DEVIATION,
+            self.MAX_TRAILING_DEVIATION,
         )
 
-        if self.active_bot.stop_loss == 0:
-            if is_aggressive_momo:
-                self.active_bot.stop_loss = round_numbers(
-                    self.active_bot.deal.opening_price - (expansion_range * 0.5),
-                    self.symbol_data.price_precision,
-                )
-            else:
-                self.active_bot.stop_loss = round_numbers(
-                    self.active_bot.deal.opening_price * (1 - 0.03),
-                    self.symbol_data.price_precision,
-                )
+        opening_price = float(self.active_bot.deal.opening_price or 0)
+        if is_aggressive_momo and opening_price > 0:
+            stop_loss = ((expansion_range * 0.5) / opening_price) * 100
+        else:
+            stop_loss = 3.0
+        stop_loss = clamp(stop_loss, self.MIN_STOP_LOSS, self.MAX_STOP_LOSS)
+
+        pullback_metrics = self.build_pullback_metrics(current_price=current_price)
+        if (
+            pullback_metrics
+            and pullback_metrics["peak_profit_pct"] >= self.PULLBACK_ARM_PROFIT
+        ):
+            pullback_pct = pullback_metrics["pullback_pct"]
+            if pullback_pct < self.SHALLOW_PULLBACK:
+                stop_loss += 0.25
+                trailing_profit += 0.25
+                trailing_deviation += 0.05
+            elif pullback_pct >= self.DEEP_PULLBACK:
+                stop_loss -= 0.50
+                trailing_profit -= 0.30
+                trailing_deviation -= 0.10
+
+        stop_loss = clamp(stop_loss, self.MIN_STOP_LOSS, self.MAX_STOP_LOSS)
+        trailing_profit = clamp(
+            trailing_profit,
+            self.MIN_TRAILING_PROFIT,
+            self.MAX_TRAILING_PROFIT,
+        )
+        max_deviation = min(
+            self.MAX_TRAILING_DEVIATION,
+            trailing_profit - self.MIN_TRAIL_GAP,
+        )
+        trailing_deviation = clamp(
+            trailing_deviation,
+            self.MIN_TRAILING_DEVIATION,
+            max_deviation,
+        )
+
+        return (
+            round_numbers(stop_loss, 2),
+            round_numbers(trailing_profit, 2),
+            round_numbers(trailing_deviation, 2),
+        )
 
     def dataframe_ops(self) -> tuple[list, list]:
         """
-        Converts klines to DataFrame for indicator calculations
+        Converts raw klines to DataFrames for indicator calculations.
         """
         # Get klines from the appropriate exchange
         self.klines = self.api.get_ui_klines(
@@ -117,22 +226,24 @@ class PositionMarket(KucoinPositionDeal):
             else self.base_streaming.benchmark_symbol,
             interval=str(self.base_streaming.interval.value),
         )
-        candles = self.klines.copy()
-        df, _, _, _ = HeikinAshi().pre_process(
-            exchange=self.base_streaming.exchange, candles=candles
+
+        raw_candles = Candles(
+            exchange=self.base_streaming.exchange,
+            candles=self.klines.copy(),
         )
-        self.df = df
-        btc_candles = self.btc_klines.copy()
-        btc_df, _, _, _ = HeikinAshi().pre_process(
-            exchange=self.base_streaming.exchange, candles=btc_candles
+        self.df = raw_candles.pre_process()
+
+        raw_btc_candles = Candles(
+            exchange=self.base_streaming.exchange,
+            candles=self.btc_klines.copy(),
         )
-        self.btc_df = btc_df
+        self.btc_df = raw_btc_candles.pre_process()
 
         self.df = Indicators.bollinguer_spreads(self.df)
         self.btc_df = Indicators.bollinguer_spreads(self.btc_df, window=20)
 
-        self.df = HeikinAshi().post_process(self.df)
-        self.btc_df = HeikinAshi().post_process(self.btc_df)
+        self.df = raw_candles.post_process(self.df)
+        self.btc_df = raw_btc_candles.post_process(self.btc_df)
 
         return self.klines, self.btc_klines
 
@@ -186,23 +297,24 @@ class PositionMarket(KucoinPositionDeal):
         self.apex_flow_closing = ApexFlowClose(self.df, self.btc_df)
 
         original_bot = deepcopy(self.active_bot)
+        market_type = getattr(
+            self.active_bot.market_type, "value", self.active_bot.market_type
+        )
+        position = getattr(self.active_bot.position, "value", self.active_bot.position)
+        if (
+            str(market_type).lower() != MarketType.FUTURES.value.lower()
+            or str(position).lower() != Position.long.value.lower()
+            or float(self.active_bot.deal.opening_price or 0) <= 0
+        ):
+            return
 
         # ─────────────────────────────
         # Bollinger spreads
         # ─────────────────────────────
-        bb_spreads = self.build_bb_spreads()
-        if bb_spreads.bb_high == 0 or bb_spreads.bb_low == 0:
+        bb_metrics = self.build_bb_metrics()
+        if not bb_metrics:
             return
-
-        top_spread = (
-            abs((bb_spreads.bb_high - bb_spreads.bb_mid) / bb_spreads.bb_high) * 100
-        )
-        bottom_spread = (
-            abs((bb_spreads.bb_mid - bb_spreads.bb_low) / bb_spreads.bb_mid) * 100
-        )
-
-        top_spread = min(max(top_spread, 1.5), 6.0)
-        bottom_spread = min(max(bottom_spread, 1.0), 4.0)
+        top_spread, bottom_spread = bb_metrics
 
         # ─────────────────────────────
         # Profit
@@ -257,15 +369,21 @@ class PositionMarket(KucoinPositionDeal):
         # ─────────────────────────────
         # Apply strategy-specific logic
         # ─────────────────────────────
-        self.set_trailing_params(
-            top_spread=top_spread,
-            bottom_spread=bottom_spread,
-            bot_profit=bot_profit,
-            expansion_multiplier=expansion_multiplier,
-            is_aggressive_momo=is_aggressive_momo,
-            expansion_range=expansion_range,
-            trail_tighten_mult=trail_tighten_mult,
+        stop_loss, trailing_profit, trailing_deviation = (
+            self.derive_dynamic_trailing_params(
+                top_spread=top_spread,
+                bottom_spread=bottom_spread,
+                bot_profit=bot_profit,
+                expansion_multiplier=expansion_multiplier,
+                is_aggressive_momo=is_aggressive_momo,
+                expansion_range=expansion_range,
+                trail_tighten_mult=trail_tighten_mult,
+                current_price=current_price,
+            )
         )
+        self.active_bot.stop_loss = stop_loss
+        self.active_bot.trailing_profit = trailing_profit
+        self.active_bot.trailing_deviation = trailing_deviation
 
         # ─────────────────────────────
         # Persist only if changed
