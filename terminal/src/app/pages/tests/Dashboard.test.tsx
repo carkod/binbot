@@ -99,7 +99,7 @@ describe("Dashboard page", () => {
     expect(
       rtlScreen.getByText("(How efficient are we with risk?)"),
     ).toBeInTheDocument();
-    expect(rtlScreen.getByText("105 USDC")).toBeInTheDocument();
+    expect(rtlScreen.getByText("110 USDC")).toBeInTheDocument();
     expect(rtlScreen.getByText("1.27 BTC")).toBeInTheDocument();
   });
 });

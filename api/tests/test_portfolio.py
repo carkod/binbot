@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -34,9 +35,22 @@ def test_get_benchmark_series(client: TestClient, create_test_tables) -> None:
         [balance_points[2][0] - 1, "0", "0", "0", "97000", "0", balance_points[2][0]],
     ]
 
-    with patch(
-        "portfolio.controller.BinanceApi.get_ui_klines",
-        return_value=klines,
+    with (
+        patch(
+            "portfolio.controller.BinanceApi.get_ui_klines",
+            return_value=klines,
+        ),
+        patch(
+            "portfolio.controller.BinanceApi.get_ticker_price",
+            return_value=98000.0,
+        ),
+        patch(
+            "portfolio.controller.ConsolidatedAccounts.get_balance",
+            return_value=SimpleNamespace(
+                estimated_total_fiat=130.0,
+                total_deposit=5.0,
+            ),
+        ),
     ):
         response = client.get("/portfolio/benchmark-series")
 
@@ -44,11 +58,14 @@ def test_get_benchmark_series(client: TestClient, create_test_tables) -> None:
 
     content = response.json()
     assert content["message"] == "Successfully retrieved benchmark series."
-    assert content["data"]["series"] == {
-        "fiat": [100.0, 110.0, 105.0],
-        "btc": [95000.0, 96000.0, 97000.0],
-        "dates": [balance_points[0][0], balance_points[1][0], balance_points[2][0]],
-    }
-    assert content["data"]["stats"]["pnl"] == -0.0477
-    assert content["data"]["stats"]["sharpe"] == 7.1643
-    assert content["data"]["stats"]["btc_sharpe"] == 3649.0498
+    assert content["data"]["series"]["fiat"] == [100.0, 110.0, 105.0, 125.0]
+    assert content["data"]["series"]["btc"] == [95000.0, 96000.0, 97000.0, 98000.0]
+    assert content["data"]["series"]["dates"][:3] == [
+        balance_points[0][0],
+        balance_points[1][0],
+        balance_points[2][0],
+    ]
+    assert len(content["data"]["series"]["dates"]) == 4
+    assert content["data"]["stats"]["pnl"] == 0.16
+    assert content["data"]["stats"]["sharpe"] == 16.0555
+    assert content["data"]["stats"]["btc_sharpe"] == 2246.155

@@ -442,7 +442,7 @@ class PositionDeal(KucoinPositionDeal):
             current_position.mark_price, current_contracts
         )
 
-        if flip_contracts < current_contracts:
+        if flip_contracts <= current_contracts:
             self.active_bot.add_log(
                 "Insufficient balance to reverse position after hitting stop loss, closing position with stop loss order."
             )
