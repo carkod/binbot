@@ -438,8 +438,15 @@ class PositionDeal(KucoinPositionDeal):
 
         current_contracts = abs(float(current_position.current_qty))
 
-        # set fixed to ensure flip
-        flip_contracts = 1
+        flip_contracts = self._is_reversal_possible(
+            current_position.mark_price, current_contracts
+        )
+
+        if flip_contracts < current_contracts:
+            self.active_bot.add_log(
+                "Insufficient balance to reverse position after hitting stop loss, closing position with stop loss order."
+            )
+            self.execute_stop_loss()
 
         # Construct new bot
         new_bot = BotBase(
@@ -621,23 +628,24 @@ class PositionDeal(KucoinPositionDeal):
                 f"Second order succeeded - filled_qty: {filled_qty}, filled_price: {filled_price}, timestamp: {timestamp}"
             )
             second_order_model = OrderModel(
-                order_type=str(
-                    getattr(second_order_details, "type", None)
-                    or second_order.order_type
+                order_type=(
+                    second_order_details.type.value
+                    if second_order_details.type
+                    else second_order.order_type
                 ),
-                time_in_force=str(
-                    getattr(second_order_details, "time_in_force", None)
-                    or second_order.time_in_force
+                time_in_force=(
+                    second_order_details.time_in_force
+                    if second_order_details.time_in_force
+                    else second_order.time_in_force
                 ),
                 timestamp=timestamp or int(second_order.timestamp),
                 order_id=str(second_order.order_id),
-                order_side=str(
-                    getattr(second_order_details, "side", None)
-                    or second_order.order_side
+                order_side=(
+                    second_order_details.side.value
+                    if second_order_details.side
+                    else second_order.order_side
                 ),
-                pair=str(
-                    getattr(second_order_details, "symbol", None) or second_order.pair
-                ),
+                pair=str(second_order_details.symbol or second_order.pair),
                 qty=float(filled_qty or second_order.qty or 0),
                 status=second_order.status,
                 price=float(filled_price or second_order.price or 0),
@@ -675,7 +683,7 @@ class PositionDeal(KucoinPositionDeal):
         self.controller.save(reversed_bot)
         self.active_bot = reversed_bot
         if reversed_bot.status == Status.active:
-            self.update_parameters()
+            self.active_bot = self.update_parameters()
 
         return self.active_bot
 

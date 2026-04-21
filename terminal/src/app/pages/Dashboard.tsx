@@ -47,7 +47,7 @@ const usePortfolioPnlDetails = (
       : undefined;
   const portfolioPnlPercentage =
     portfolioPnlValue !== undefined && latestPortfolioValue
-      ? (portfolioPnlValue / latestPortfolioValue) * 100
+      ? (portfolioPnlValue / (latestPortfolioValue - (accountData?.total_deposit ?? 0))) * 100
       : undefined;
   const portfolioPnlClass =
     portfolioPnlValue === undefined

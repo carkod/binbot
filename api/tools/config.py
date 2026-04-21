@@ -80,8 +80,6 @@ class Config:
             "KUCOIN_KEY",
             "KUCOIN_SECRET",
             "KUCOIN_PASSPHRASE",
-            "TELEGRAM_BOT_KEY",
-            "TELEGRAM_USER_ID",
         ]
 
         missing = [var for var in required_vars if not os.getenv(var)]
@@ -214,15 +212,6 @@ class Config:
     @property
     def kucoin_passphrase(self) -> str:
         return self._get_required("KUCOIN_PASSPHRASE")
-
-    # Telegram settings
-    @property
-    def telegram_bot_key(self) -> str:
-        return self._get_required("TELEGRAM_BOT_KEY")
-
-    @property
-    def telegram_user_id(self) -> str:
-        return self._get_required("TELEGRAM_USER_ID")
 
     @property
     def service_password(self) -> str:
