@@ -100,28 +100,19 @@ class MarketDominationController(Database):
 
         return migrated_count
 
-    def _get_market_breadth_tickers(self) -> tuple[Iterable[Any], datetime | None]:
-        if self.exchange == ExchangeId.KUCOIN:
-            response = self.kucoin_api.spot_api.get_all_tickers()
-            ticker = response.common_response.data["ticker"]
-            time = response.common_response.data["time"]
-            timestamp = datetime.fromtimestamp(time / 1000, tz=timezone.utc)
-
-            return ticker or [], timestamp
-
-        ticker_data = self.binance_api.ticker_24()
-        return ticker_data, None
-
     def _normalize_market_breadth_ticker(
         self, item: GetSymbolResp, fallback_timestamp: datetime | None = None
     ) -> dict[str, Any] | None:
         if self.exchange == ExchangeId.KUCOIN:
             close_time = fallback_timestamp
+            if item["last"] is None:
+                # auction coin
+                return None
             return {
                 "symbol": item["symbol"],
-                "last_price": float(item.get("last", 0)),
+                "last_price": float(item["last"]),
                 "price_change_percent": float(item.get("changeRate", 0)) * 100,
-                "volume": float(item.get("vol", 0)),
+                "volume": float(item["vol"]),
                 "close_time": close_time,
             }
 
@@ -196,7 +187,19 @@ class MarketDominationController(Database):
         and calculate ADR + Strength Index
         """
         self._ensure_market_breadth_collection()
-        market_tickers, fallback_timestamp = self._get_market_breadth_tickers()
+        if self.exchange == ExchangeId.KUCOIN:
+            response = self.kucoin_api.spot_api.get_all_tickers()
+            ticker = response.common_response.data["ticker"]
+            time = response.common_response.data["time"]
+            timestamp = datetime.fromtimestamp(time / 1000, tz=timezone.utc)
+
+            market_tickers = ticker or []
+            fallback_timestamp = timestamp
+        else:
+            ticker_data = self.binance_api.ticker_24()
+            market_tickers = ticker_data or []
+            fallback_timestamp = None
+
         adr_data = self._calculate_adr_series_data(market_tickers, fallback_timestamp)
         response = self.kafka_db.market_breadth.insert_one(adr_data.model_dump())
         return response
