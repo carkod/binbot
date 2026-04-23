@@ -61,7 +61,7 @@ def main():
         func=market_domination.ingest_adp_data,
         trigger="interval",
         timezone=config.timezone,
-        hours=1,
+        minutes=30,
         id="ingest_adp_data",
     )
     scheduler.start()
