@@ -9,6 +9,7 @@
 binbot-research/
 binquant/
 *.log
+binquant_telegram_user.session
 
 # Editor directories and files
 !.vscode/extensions.json

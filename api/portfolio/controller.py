@@ -1,6 +1,7 @@
 from datetime import datetime
 from math import sqrt
 from typing import Union
+from account.controller import ConsolidatedAccounts
 from databases.crud.autotrade_crud import AutotradeCrud
 from databases.crud.balances_crud import BalancesCrud
 from pybinbot import (
@@ -54,6 +55,25 @@ class PortfolioController:
         if self.exchange == ExchangeId.KUCOIN:
             return KucoinKlineIntervals.ONE_DAY.value
         return BinanceKlineIntervals.one_day.value
+
+    def _append_live_benchmark_point(
+        self,
+        fiat_series: list[float],
+        btc_series: list[float],
+        dates: list[int],
+        balances: list[float],
+    ) -> None:
+        current_balance = ConsolidatedAccounts(session=self.session).get_balance()
+        live_net_balance = round_numbers(
+            current_balance.estimated_total_fiat - current_balance.total_deposit, 4
+        )
+        live_btc_price = float(self.api.get_ticker_price(self.benchmark_symbol))
+        live_timestamp = int(datetime.now().timestamp() * 1000)
+
+        fiat_series.append(live_net_balance)
+        btc_series.append(live_btc_price)
+        dates.append(live_timestamp)
+        balances.append(live_net_balance)
 
     def _consolidate_dates(self, klines: list[list], balance_date: int) -> int | None:
         balance_date_day = ts_to_day(balance_date)
@@ -143,6 +163,12 @@ class PortfolioController:
         btc_series.reverse()
         dates.reverse()
         balances.reverse()
+        self._append_live_benchmark_point(
+            fiat_series=fiat_series,
+            btc_series=btc_series,
+            dates=dates,
+            balances=balances,
+        )
 
         pnl = 0.0
         if len(balances) >= 2:
