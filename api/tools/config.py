@@ -213,6 +213,15 @@ class Config:
     def kucoin_passphrase(self) -> str:
         return self._get_required("KUCOIN_PASSPHRASE")
 
+
+    @property
+    def grid_threshold_llm_model(self) -> str:
+        return self._get_optional("GRID_THRESHOLD_LLM_MODEL", "gpt-4.1-mini")
+
+    @property
+    def openai_api_key(self) -> str:
+        return self._get_optional("OPENAI_API_KEY")
+
     @property
     def service_password(self) -> str:
         return self._get_optional("SERVICE_PASSWORD")
