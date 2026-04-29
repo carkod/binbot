@@ -379,6 +379,59 @@ class PositionDeal(KucoinPositionDeal):
         self.controller.save(self.active_bot)
         return self.active_bot
 
+    # Strategies whose reversal chain has historically compounded losses on chop;
+    # for these, a second SL on the same pair within the cooldown closes instead of flipping.
+    _NO_REVERSAL_AFTER_LOSS_NAMES = {
+        "coinrule_buy_the_dip",
+        "coinrule_price_tracker",
+    }
+
+    def _prior_leg_was_loss(self) -> bool:
+        """
+        True when the most recent completed bot for this pair+name (within the
+        active bot's cooldown window) closed at a loss. Used by the reversal
+        circuit-breaker to avoid the loss → flip → loss → flip chain on
+        chop-prone strategies.
+        """
+        if self.active_bot.name not in self._NO_REVERSAL_AFTER_LOSS_NAMES:
+            return False
+        try:
+            cooldown_minutes = max(int(self.active_bot.cooldown or 0), 240)
+            window_ms = cooldown_minutes * 60 * 1000
+            now_ms = int(time() * 1000)
+            candidates = self.controller.get(
+                status=Status.completed,
+                bot_name=self.active_bot.name,
+                start_date=now_ms - window_ms,
+                end_date=now_ms,
+                limit=20,
+            )
+        except Exception as exc:
+            self.active_bot.add_log(
+                f"Reversal circuit-breaker lookup failed ({exc}); allowing reversal."
+            )
+            return False
+
+        for prev in candidates:
+            if prev.pair != self.active_bot.pair:
+                continue
+            if str(prev.id) == str(self.active_bot.id):
+                continue
+            deal = getattr(prev, "deal", None)
+            if deal is None:
+                continue
+            op = float(getattr(deal, "opening_price", 0) or 0)
+            cp = float(getattr(deal, "closing_price", 0) or 0)
+            if op <= 0 or cp <= 0:
+                continue
+            prev_position = getattr(prev, "position", None)
+            prev_position_value = getattr(prev_position, "value", prev_position)
+            prev_direction = 1 if str(prev_position_value).lower() == "long" else -1
+            prev_pct = ((cp - op) / op) * 100 * prev_direction
+            if prev_pct < 0:
+                return True
+        return False
+
     def reverse_position(self) -> BotModel:
         """
         After hitting stop loss, open a new position (long or short) with a new bot/deal.
@@ -721,7 +774,21 @@ class PositionDeal(KucoinPositionDeal):
 
         if self.active_bot.deal.stop_loss_price == 0:
             entry_price = float(self.active_bot.deal.opening_price)
-            delta = entry_price * (self.active_bot.stop_loss / 100)
+            sl_pct = float(self.active_bot.stop_loss)
+            # ATR-equivalent floor for low-priced perpetuals: tick-noise on
+            # sub-$0.05 contracts routinely exceeds the configured 2.5% SL,
+            # so we widen the band to 4% to avoid pure-noise stop-outs.
+            if (
+                self.active_bot.market_type == MarketType.FUTURES
+                and 0 < entry_price < 0.05
+                and sl_pct < 4.0
+            ):
+                self.active_bot.add_log(
+                    f"SL floored from {sl_pct:.2f}% to 4.00% for low-priced perpetual {self.active_bot.pair} (entry {entry_price})."
+                )
+                sl_pct = 4.0
+                self.active_bot.stop_loss = sl_pct
+            delta = entry_price * (sl_pct / 100)
             self.active_bot.deal.stop_loss_price = round_numbers(
                 entry_price - (delta * direction),
                 self.price_precision,
@@ -731,17 +798,23 @@ class PositionDeal(KucoinPositionDeal):
             self.active_bot.stop_loss > 0
             and ((current_price - self.active_bot.deal.stop_loss_price) * direction) < 0
         ):
-            if self.active_bot.margin_short_reversal:
+            if self.active_bot.margin_short_reversal and not self._prior_leg_was_loss():
                 self.controller.update_logs(
                     f"Margin short reversal enabled, opening {self.active_bot.position.value} position after stop loss...",
                     self.active_bot,
                 )
                 self.active_bot = self.reverse_position()
             else:
-                self.controller.update_logs(
-                    f"Executing futures {position_name} stop_loss after hitting {self.active_bot.deal.stop_loss_price}",
-                    self.active_bot,
-                )
+                if self.active_bot.margin_short_reversal:
+                    self.controller.update_logs(
+                        f"Reversal circuit-breaker tripped: prior {self.active_bot.name} leg on {self.active_bot.pair} was a loss; closing instead of flipping.",
+                        self.active_bot,
+                    )
+                else:
+                    self.controller.update_logs(
+                        f"Executing futures {position_name} stop_loss after hitting {self.active_bot.deal.stop_loss_price}",
+                        self.active_bot,
+                    )
                 self.execute_stop_loss()
 
         # Trailing profit (price going down)
