@@ -370,10 +370,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
         if len(stop_orders) > 0:
             stop_order_ids = [order.id for order in stop_orders]
             self.kucoin_futures_api.batch_cancel_stop_loss_orders(stop_order_ids)
-            for index, existing_order in enumerate(self.active_bot.orders):
-                if existing_order.order_id in stop_order_ids:
-                    existing_order.status = OrderStatus.CANCELED
-                    self.active_bot.orders[index] = existing_order
+            self.active_bot.orders = [
+                o for o in self.active_bot.orders if o.order_id not in stop_order_ids
+            ]
         else:
             self.remove_stale_orders()
 

@@ -1,3 +1,4 @@
+import re
 from typing import List
 from uuid import UUID
 from sqlmodel import Session, select, case, desc, asc
@@ -67,6 +68,7 @@ class PaperTradingTableCrud:
         end_date: float | None = None,
         limit: int = 200,
         offset: int = 0,
+        bot_name: str | None = None,
     ) -> Sequence[PaperTradingTable]:
         """
         Get all bots in the db except archived
@@ -85,6 +87,10 @@ class PaperTradingTableCrud:
 
         if end_date:
             statement = statement.where(PaperTradingTable.created_at <= end_date)
+
+        if bot_name:
+            bot_name = re.sub(r"[^\w\s\-']", "", bot_name.strip())
+            statement = statement.where(PaperTradingTable.name == bot_name)
 
         # sorting
         statement = statement.order_by(
