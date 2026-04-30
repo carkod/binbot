@@ -3,7 +3,7 @@ from typing import Annotated
 from sqlmodel import Session
 from user.services.auth import get_current_user
 from databases.crud.autotrade_crud import AutotradeCrud
-from pybinbot import AutotradeSettingsDocument
+from pybinbot.shared.enums import AutotradeSettingsDocument
 from databases.utils import get_session
 from autotrade.schemas import (
     AutotradeSettingsResponse,

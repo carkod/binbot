@@ -380,6 +380,10 @@ def create_test_tables():
         "databases.crud.paper_trading_crud.independent_session",
         side_effect=mock_independent_session,
     )
+    patcher_charts = patch(
+        "charts.controllers.independent_session",
+        side_effect=mock_independent_session,
+    )
 
     # Mock exchange API methods that are called during bot activation/deactivation
     mock_buy_order_response = {
@@ -451,6 +455,7 @@ def create_test_tables():
     patcher4.start()
     patcher5.start()
     patcher6.start()
+    patcher_charts.start()
     patcher7.start()
     patcher8.start()
     patcher9.start()
@@ -468,6 +473,7 @@ def create_test_tables():
     patcher4.stop()
     patcher5.stop()
     patcher6.stop()
+    patcher_charts.stop()
     patcher7.stop()
     patcher8.stop()
     patcher9.stop()

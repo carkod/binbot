@@ -6,7 +6,7 @@ from databases.tables.autotrade_table import (
 from databases.utils import independent_session
 from sqlmodel import Session, select
 from sqlmodel.sql._expression_select_cls import SelectOfScalar
-from pybinbot import AutotradeSettingsDocument
+from pybinbot.shared.enums import AutotradeSettingsDocument
 from autotrade.schemas import AutotradeSettingsSchema, TestAutotradeSettingsSchema
 
 

@@ -61,12 +61,6 @@ class Config:
             "BACKEND_DIRECTORY",
             "BACKEND_DOMAIN",
             "FRONTEND_DOMAIN",
-            "MONGO_HOSTNAME",
-            "MONGO_AUTH_DATABASE",
-            "MONGO_AUTH_USERNAME",
-            "MONGO_AUTH_PASSWORD",
-            "MONGO_APP_DATABASE",
-            "MONGO_KAFKA_DATABASE",
             "KAFKA_HOST",
             "POSTGRES_USER",
             "POSTGRES_PASSWORD",
@@ -115,35 +109,6 @@ class Config:
     @property
     def frontend_domain(self) -> str:
         return self._get_required("FRONTEND_DOMAIN")
-
-    # MongoDB settings
-    @property
-    def mongo_hostname(self) -> str:
-        return self._get_required("MONGO_HOSTNAME")
-
-    @property
-    def mongo_port(self) -> int:
-        return int(self._get_optional("MONGO_PORT", "27018"))
-
-    @property
-    def mongo_auth_database(self) -> str:
-        return self._get_required("MONGO_AUTH_DATABASE")
-
-    @property
-    def mongo_auth_username(self) -> str:
-        return self._get_required("MONGO_AUTH_USERNAME")
-
-    @property
-    def mongo_auth_password(self) -> str:
-        return self._get_required("MONGO_AUTH_PASSWORD")
-
-    @property
-    def mongo_app_database(self) -> str:
-        return self._get_required("MONGO_APP_DATABASE")
-
-    @property
-    def mongo_kafka_database(self) -> str:
-        return self._get_required("MONGO_KAFKA_DATABASE")
 
     # Kafka settings
     @property

@@ -1,10 +1,7 @@
-import json
 from typing import Any, Union, Optional
-from bson import json_util
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from fastapi.encoders import jsonable_encoder
-from copy import deepcopy
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError, DataError
 
 
@@ -42,10 +39,9 @@ def json_response(content, status=200):
     Legacy JSON response wrapper
     Use Pydantic response_model instead, it handles JSON serialization automatically
     """
-    content = json.loads(json_util.dumps(content))  # Objectid serialization
     response = JSONResponse(
         status_code=status,
-        content=content,
+        content=jsonable_encoder(content),
         media_type="application/json",
     )
     return response
@@ -62,19 +58,7 @@ def json_response_error(message):
 
 
 def encode_json(raw):
-    """
-    Wrapper for jsonable_encoder to encode ObjectId
-    """
-    if hasattr(raw, "_id"):
-        # Objectid serialization
-        id = str(raw._id)
-        content = deepcopy(raw)
-        del content._id
-        content = jsonable_encoder(content)
-        content["_id"] = id
-    else:
-        content = jsonable_encoder(raw)
-    return content
+    return jsonable_encoder(raw)
 
 
 class IResponseBase(BaseModel):

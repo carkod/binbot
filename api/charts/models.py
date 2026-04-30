@@ -1,7 +1,6 @@
 import datetime
 from pydantic import BaseModel, field_validator
 from pybinbot import StandardResponse
-from bson.objectid import ObjectId
 
 
 class CandlestickItemRequest(BaseModel):
@@ -74,7 +73,6 @@ class CandlestickData(BaseModel):
     close: float
     low: float
     time: datetime.datetime
-    _id: ObjectId
 
 
 class SingleCandle(BaseModel):
@@ -96,41 +94,40 @@ class CandlestickResponse(StandardResponse):
 
 class AdrSeriesDb(BaseModel):
     """
-    Replacement for MarketDominationSeriesStore
-    which should in theory take less space in the database
-    and still provide the necessary data for market domination analysis.
+    Ingest payload for one market_breadth row. Mirrors the SQL columns 1:1
+    so model_dump() can be passed straight into MarketBreadthTable(**dump).
     """
 
     timestamp: datetime.datetime
+    source: str
     advancers: int
     decliners: int
+    adp: float
+    avg_gain: float
+    avg_loss: float
     total_volume: float
     strength_index: float
-    source: str
 
 
-class AdrSeries(StandardResponse):
-    adr: float
-    advancers: int
-    decliners: int
-    total_volume: float
-    strength_index: float
-    source: str
-    timestamp: str
+class AdrSeries(BaseModel):
+    """
+    Read shape returned by GET /charts/adr-series.
 
-    @field_validator("timestamp", mode="after")
-    @classmethod
-    def format_timestamp(cls, v: datetime.datetime):
-        if isinstance(v, datetime.datetime):
-            return v.strftime("%Y-%m-%d %H:%M:%S")
+    Parallel arrays (newest-first) so the frontend can plot directly without
+    pivoting. Every field except adp_ma is read straight from the stored
+    columns; adp_ma is a rolling window computed in SQL.
+    """
 
-    @field_validator("timestamp", mode="after")
-    @classmethod
-    def convert_id(cls, v: str):
-        if isinstance(v, ObjectId):
-            return str(v)
-        return v
+    timestamp: list[str]
+    advancers: list[int]
+    decliners: list[int]
+    adp: list[float]
+    adp_ma: list[float | None]
+    avg_gain: list[float]
+    avg_loss: list[float]
+    total_volume: list[float]
+    strength_index: list[float]
 
 
 class AdrSeriesResponse(StandardResponse):
-    data: list[AdrSeries]
+    data: AdrSeries

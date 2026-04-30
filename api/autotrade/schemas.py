@@ -1,12 +1,12 @@
 from time import time
 from pydantic import BaseModel, Field
 from pybinbot import (
-    AutotradeSettingsDocument,
     BinanceKlineIntervals,
     ExchangeId,
     StandardResponse,
     CloseConditions,
 )
+from pybinbot.shared.enums import AutotradeSettingsDocument
 
 
 class AutotradeSettingsSchema(BaseModel):
