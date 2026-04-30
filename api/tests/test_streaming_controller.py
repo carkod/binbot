@@ -58,9 +58,6 @@ class TestPositionManager:
                     qty_precision=4,
                 )
 
-        class DummyCandlesCrud:
-            pass
-
         class DummyBinanceApi:
             def __init__(self, *args, **kwargs):
                 pass
@@ -136,7 +133,6 @@ class TestPositionManager:
         monkeypatch.setattr("streaming.base.BotTableCrud", DummyBotCrud)
         monkeypatch.setattr("streaming.base.PaperTradingTableCrud", DummyPaperCrud)
         monkeypatch.setattr("streaming.base.SymbolsCrud", DummySymbolsCrud)
-        monkeypatch.setattr("streaming.base.CandlesCrud", DummyCandlesCrud)
         monkeypatch.setattr("streaming.base.BinanceApi", DummyBinanceApi)
         monkeypatch.setattr("streaming.base.KucoinApi", DummyKucoinApi)
         monkeypatch.setattr("streaming.base.KucoinFutures", DummyKucoinApi)

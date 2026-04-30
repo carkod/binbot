@@ -7,13 +7,6 @@ env:
   SECRET_KEY: test
   ENV: ci
   FRONTEND_DOMAIN: http://localhost
-  MONGO_AUTH_USERNAME: root
-  MONGO_AUTH_PASSWORD: rootPassXXX
-  MONGO_APP_DATABASE: binbot
-  MONGO_KAFKA_DATABASE: kafka
-  MONGO_AUTH_DATABASE: admin
-  MONGO_HOSTNAME: data_db
-  MONGO_PORT: 27017
   POSTGRES_USER: "postgres"
   POSTGRES_PASSWORD: "postgres"
   POSTGRES_DB: "postgres"

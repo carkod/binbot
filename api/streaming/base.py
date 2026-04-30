@@ -3,7 +3,6 @@ from typing import Union
 from bots.models import BotModel
 from databases.crud.autotrade_crud import AutotradeCrud
 from databases.crud.bot_crud import BotTableCrud
-from databases.crud.candles_crud import CandlesCrud
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
 from pybinbot import (
@@ -45,7 +44,6 @@ class BaseStreaming:
         self.bot_controller = BotTableCrud(session=self.session)
         self.paper_trading_controller = PaperTradingTableCrud()
         self.symbols_crud = SymbolsCrud()
-        self.cs = CandlesCrud()
         self.autotrade_crud = AutotradeCrud()
         self.autotrade_settings = self.autotrade_crud.get_settings()
         self.exchange = ExchangeId(self.autotrade_settings.exchange_id)

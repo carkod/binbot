@@ -1,114 +1,47 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from types import SimpleNamespace
+
+import pytest
+from sqlmodel import Session, delete, select
 
 from charts.controllers import MarketDominationController
 from databases.tables.autotrade_table import AutotradeTable
+from databases.tables.market_breadth_table import MarketBreadthTable
 from pybinbot import ExchangeId
+from tests import conftest
 
 
-class CollectionStub:
-    def __init__(self):
-        self.inserted_docs = []
-        self.aggregate_pipeline = None
-
-    def insert_one(self, doc):
-        self.inserted_docs.append(doc)
-        return doc
-
-    def insert_many(self, docs, ordered=False):
-        self.inserted_docs.extend(docs)
-        return SimpleNamespace(
-            inserted_ids=[doc["_id"] for doc in docs if "_id" in doc]
-        )
-
-    def aggregate(self, pipeline):
-        self.aggregate_pipeline = pipeline
-        return []
-
-    def estimated_document_count(self):
-        return len(self.inserted_docs)
+def _make_session() -> Session:
+    assert conftest._test_engine is not None, (
+        "create_test_tables fixture has not initialised the engine yet"
+    )
+    return Session(conftest._test_engine, expire_on_commit=False)
 
 
-def _make_controller(exchange_id: ExchangeId, fiat: str = "USDC"):
+def _make_controller(
+    exchange_id: ExchangeId, session: Session, fiat: str = "USDC"
+) -> MarketDominationController:
     controller = MarketDominationController.__new__(MarketDominationController)
+    controller.session = session
     controller.exchange = exchange_id
     controller.autotrade_settings = AutotradeTable(fiat=fiat, exchange_id=exchange_id)
-    controller.kafka_db = SimpleNamespace(
-        list_collection_names=lambda: ["market_breadth"],
-        market_breadth=CollectionStub(),
-    )
     return controller
 
 
-def test_migrate_adrs_copies_legacy_documents_to_market_breadth():
-    legacy_docs = [
-        {
-            "_id": "legacy-binance",
-            "timestamp": datetime(2025, 9, 14, 0, 5, 13),
-            "advancers": 187,
-            "decliners": 57,
-            "total_volume": 6912803774816.687,
-            "strength_index": 0.5924651628279104,
-        },
-        {
-            "_id": "legacy-kucoin",
-            "timestamp": datetime(2026, 4, 11, 5, 27, 0),
-            "advancers": 443,
-            "decliners": 445,
-            "total_volume": 82548895987280.3,
-            "strength_index": 0.20350799552462534,
-            "source": ExchangeId.KUCOIN.value,
-        },
-    ]
-
-    inserted_docs: list[dict] = []
-
-    class MarketBreadthStub(CollectionStub):
-        def insert_many(self, docs, ordered=False):
-            inserted_docs.extend(docs)
-            return SimpleNamespace(inserted_ids=[doc["_id"] for doc in docs])
-
-    controller = _make_controller(ExchangeId.BINANCE)
-    controller.kafka_db = SimpleNamespace(
-        list_collection_names=lambda: [],
-        create_collection=lambda *args, **kwargs: None,
-        advancers_decliners=SimpleNamespace(find=lambda query=None: legacy_docs),
-        market_breadth=MarketBreadthStub(),
-    )
-
-    migrated_count = controller.migrate_adrs()
-
-    assert migrated_count == 2
-    assert inserted_docs[0]["source"] == ExchangeId.BINANCE.value
-    assert inserted_docs[1]["source"] == ExchangeId.KUCOIN.value
-
-
-def test_migrate_adrs_skips_when_market_breadth_already_has_data():
-    controller = _make_controller(ExchangeId.BINANCE)
-    controller.kafka_db.market_breadth.inserted_docs.append({"_id": "existing"})
-    controller.kafka_db.advancers_decliners = SimpleNamespace(
-        find=lambda query=None: (_ for _ in ()).throw(
-            AssertionError("legacy collection should not be read")
-        )
-    )
-
-    migrated_count = controller.migrate_adrs()
-
-    assert migrated_count == 0
-
-
-def test_get_adrs_filters_by_exchange_when_exchange_arg_is_set():
-    controller = _make_controller(ExchangeId.BINANCE)
-
-    controller.get_adrs(exchange=ExchangeId.KUCOIN)
-
-    assert controller.kafka_db.market_breadth.aggregate_pipeline[0] == {
-        "$match": {"source": ExchangeId.KUCOIN.value}
-    }
+@pytest.fixture(autouse=True)
+def _clean_market_breadth():
+    with _make_session() as session:
+        session.execute(delete(MarketBreadthTable))
+        session.commit()
+    yield
+    with _make_session() as session:
+        session.execute(delete(MarketBreadthTable))
+        session.commit()
 
 
 def test_ingest_adp_data_uses_binance_ticker_payload():
-    controller = _make_controller(ExchangeId.BINANCE)
+    session = _make_session()
+    controller = _make_controller(ExchangeId.BINANCE, session)
     controller.binance_api = SimpleNamespace(
         ticker_24=lambda: [
             {
@@ -137,17 +70,26 @@ def test_ingest_adp_data_uses_binance_ticker_payload():
 
     inserted = controller.ingest_adp_data()
 
-    assert controller.kafka_db.market_breadth.inserted_docs[0] == inserted
+    assert inserted is not None
     assert inserted["advancers"] == 1
     assert inserted["decliners"] == 1
     assert inserted["total_volume"] == 7.0
-    assert inserted["strength_index"] == 1 / 3
+    assert inserted["strength_index"] == pytest.approx(1 / 3)
+    assert inserted["adp"] == 0.0
+    assert inserted["avg_gain"] == pytest.approx(10.0)
+    assert inserted["avg_loss"] == pytest.approx(5.0)
     assert inserted["source"] == ExchangeId.BINANCE.value
-    assert inserted["timestamp"] == datetime.fromtimestamp(1710000000000 / 1000)
+
+    rows = session.exec(select(MarketBreadthTable)).all()
+    assert len(rows) == 1
+    assert rows[0].advancers == 1
+    assert rows[0].decliners == 1
+    assert rows[0].source == ExchangeId.BINANCE.value
 
 
 def test_ingest_adp_data_uses_kucoin_all_tickers_payload():
-    controller = _make_controller(ExchangeId.KUCOIN)
+    session = _make_session()
+    controller = _make_controller(ExchangeId.KUCOIN, session)
     controller.kucoin_api = SimpleNamespace(
         spot_api=SimpleNamespace(
             get_all_tickers=lambda: SimpleNamespace(
@@ -182,10 +124,101 @@ def test_ingest_adp_data_uses_kucoin_all_tickers_payload():
 
     inserted = controller.ingest_adp_data()
 
-    assert controller.kafka_db.market_breadth.inserted_docs[0] == inserted
+    assert inserted is not None
     assert inserted["advancers"] == 1
     assert inserted["decliners"] == 1
     assert inserted["total_volume"] == 700.0
-    assert inserted["strength_index"] == 1 / 3
+    assert inserted["strength_index"] == pytest.approx(1 / 3)
+    assert inserted["adp"] == 0.0
     assert inserted["source"] == ExchangeId.KUCOIN.value
-    assert inserted["timestamp"] == datetime.fromtimestamp(1710000000000 / 1000)
+
+
+def test_ingest_adp_data_skips_duplicate_timestamp_source():
+    session = _make_session()
+    controller = _make_controller(ExchangeId.BINANCE, session)
+    payload_factory = lambda: [
+        {
+            "symbol": "BTCUSDC",
+            "lastPrice": "100",
+            "priceChangePercent": "10",
+            "volume": "5",
+            "closeTime": 1710000000000,
+        }
+    ]
+    controller.binance_api = SimpleNamespace(ticker_24=payload_factory)
+
+    first = controller.ingest_adp_data()
+    second = controller.ingest_adp_data()
+
+    assert first is not None
+    assert second is None  # unique constraint on (timestamp, source)
+    rows = session.exec(select(MarketBreadthTable)).all()
+    assert len(rows) == 1
+
+
+def _seed_rows(session: Session, source: str, count: int):
+    base = datetime(2026, 4, 1, 0, 0, 0, tzinfo=timezone.utc)
+    for i in range(count):
+        session.add(
+            MarketBreadthTable(
+                timestamp=base.replace(hour=i),
+                source=source,
+                advancers=10 + i,
+                decliners=5 + i,
+                adp=(10 + i - (5 + i)) / (10 + i + 5 + i),
+                avg_gain=1.0,
+                avg_loss=0.5,
+                total_volume=100.0 * (i + 1),
+                strength_index=0.4,
+            )
+        )
+    session.commit()
+
+
+def test_get_adrs_returns_parallel_arrays_newest_first():
+    session = _make_session()
+    _seed_rows(session, ExchangeId.BINANCE.value, count=5)
+
+    controller = _make_controller(ExchangeId.BINANCE, session)
+    result = controller.get_adrs(size=3, window=2)
+
+    # fetch_size = size + window - 1 = 4
+    assert result is not None
+    assert len(result["timestamp"]) == 4
+    # newest first
+    assert result["timestamp"][0] > result["timestamp"][-1]
+    # all stored fields are present
+    for key in (
+        "timestamp",
+        "advancers",
+        "decliners",
+        "adp",
+        "adp_ma",
+        "avg_gain",
+        "avg_loss",
+        "total_volume",
+        "strength_index",
+    ):
+        assert key in result
+        assert len(result[key]) == 4
+    # adp_ma is computed; first row in chronological order has just itself in the window
+    assert result["adp_ma"][-1] == pytest.approx(result["adp"][-1])
+
+
+def test_get_adrs_filters_by_exchange():
+    session = _make_session()
+    _seed_rows(session, ExchangeId.BINANCE.value, count=3)
+    _seed_rows(session, ExchangeId.KUCOIN.value, count=3)
+
+    controller = _make_controller(ExchangeId.BINANCE, session)
+    result = controller.get_adrs(size=10, window=1, exchange=ExchangeId.KUCOIN)
+
+    # only kucoin rows should be returned
+    assert result is not None
+    assert len(result["timestamp"]) == 3
+
+
+def test_get_adrs_returns_none_when_empty():
+    session = _make_session()
+    controller = _make_controller(ExchangeId.BINANCE, session)
+    assert controller.get_adrs() is None

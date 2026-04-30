@@ -1,30 +1,34 @@
 import logging
 from datetime import datetime, timezone
 from typing import Any, Iterable
+
+from sqlalchemy.exc import IntegrityError
+from sqlmodel import Session, text
+
+from charts.models import AdrSeries, AdrSeriesDb
 from databases.crud.autotrade_crud import AutotradeCrud
-from charts.models import AdrSeriesDb
-from databases.db import Database
 from databases.crud.symbols_crud import SymbolsCrud
-from pymongo.errors import BulkWriteError
-from pybinbot import ExchangeId, KucoinApi, BinanceApi
-from tools.config import Config
+from databases.tables.market_breadth_table import MarketBreadthTable
+from databases.utils import independent_session
 from kucoin_universal_sdk.generate.spot.market.model_get_symbol_resp import (
     GetSymbolResp,
 )
+from pybinbot import BinanceApi, ExchangeId, KucoinApi
+from tools.config import Config
 
 
-class MarketDominationController(Database):
+class MarketDominationController:
     """
-    CRUD operations for market domination
+    Reads/writes market-breadth (ADR) samples in Postgres.
     """
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, session: Session | None = None) -> None:
         self.config = Config()
-        self.autotrade_db = AutotradeCrud()
+        self.session = session if session is not None else independent_session()
+        self.autotrade_db = AutotradeCrud(session=self.session)
         self.autotrade_settings = self.autotrade_db.get_settings()
-        self.exchange = self.autotrade_settings.exchange_id
-        self.symbols_crud = SymbolsCrud()
+        self.exchange = ExchangeId(self.autotrade_settings.exchange_id)
+        self.symbols_crud = SymbolsCrud(session=self.session)
         self.binance_api = BinanceApi(
             key=self.config.binance_key, secret=self.config.binance_secret
         )
@@ -33,72 +37,6 @@ class MarketDominationController(Database):
             secret=self.config.kucoin_secret,
             passphrase=self.config.kucoin_passphrase,
         )
-
-    def _ensure_market_breadth_collection(self) -> None:
-        if "market_breadth" in self.kafka_db.list_collection_names():
-            return
-
-        self.kafka_db.create_collection(
-            "market_breadth",
-            timeseries={
-                "timeField": "timestamp",
-                "metaField": "source",
-                "granularity": "hours",
-            },
-        )
-        logging.info("Created time-series collection market_breadth")
-
-    def migrate_adrs(self) -> int:
-        self._ensure_market_breadth_collection()
-
-        legacy_collection = self.kafka_db.advancers_decliners
-        target_collection = self.kafka_db.market_breadth
-
-        if target_collection.estimated_document_count() > 0:
-            logging.info(
-                "Skipping ADR migration because market_breadth already contains data"
-            )
-            return 0
-
-        documents_to_insert = []
-        for document in legacy_collection.find({}):
-            document["source"] = document.get("source") or ExchangeId.BINANCE.value
-            documents_to_insert.append(document)
-
-        if not documents_to_insert:
-            logging.info("No ADR documents needed migration into market_breadth")
-            return 0
-
-        try:
-            result = target_collection.insert_many(documents_to_insert, ordered=False)
-            migrated_count = len(result.inserted_ids)
-        except BulkWriteError as exc:
-            write_errors = exc.details.get("writeErrors", [])
-            duplicate_errors = [
-                error for error in write_errors if error.get("code") == 11000
-            ]
-            non_duplicate_errors = [
-                error for error in write_errors if error.get("code") != 11000
-            ]
-
-            if non_duplicate_errors:
-                raise
-
-            migrated_count = len(
-                exc.details.get("writeResult", {}).get("insertedIds", [])
-            )
-            if not migrated_count:
-                attempted = len(documents_to_insert)
-                migrated_count = max(attempted - len(duplicate_errors), 0)
-
-        if migrated_count:
-            logging.info(
-                "Migrated %s ADR documents into market_breadth", migrated_count
-            )
-        else:
-            logging.info("No ADR documents needed migration into market_breadth")
-
-        return migrated_count
 
     def _normalize_market_breadth_ticker(
         self, item: GetSymbolResp, fallback_timestamp: datetime | None = None
@@ -132,8 +70,8 @@ class MarketDominationController(Database):
         advancers = 0
         decliners = 0
         total_volume = 0.0
-        gains = []
-        losses = []
+        gains: list[float] = []
+        losses: list[float] = []
         timestamp = fallback_timestamp
 
         for raw_item in market_tickers:
@@ -168,132 +106,122 @@ class MarketDominationController(Database):
         else:
             strength_index = 0.0
 
+        if (advancers + decliners) > 0:
+            adp = (advancers - decliners) / (advancers + decliners)
+        else:
+            adp = 0.0
+
         timestamp = timestamp or datetime.now(timezone.utc)
 
         return AdrSeriesDb(
-            timestamp=timestamp.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
+            timestamp=timestamp,
+            source=self.exchange.value,
             advancers=advancers,
             decliners=decliners,
-            total_volume=total_volume,
-            strength_index=strength_index,
+            adp=adp,
             avg_gain=avg_gain,
             avg_loss=avg_loss,
-            source=self.exchange.value,
+            total_volume=total_volume,
+            strength_index=strength_index,
         )
 
-    def ingest_adp_data(self):
+    def ingest_adp_data(self) -> dict[str, Any] | None:
         """
-        Store ticker 24 data every 30 min
-        and calculate ADR + Strength Index
+        Capture one market-breadth sample. Called every 30 min by the cron.
         """
-        self._ensure_market_breadth_collection()
         if self.exchange == ExchangeId.KUCOIN:
             response = self.kucoin_api.spot_api.get_all_tickers()
             ticker = response.common_response.data["ticker"]
-            time = response.common_response.data["time"]
-            timestamp = datetime.fromtimestamp(time / 1000, tz=timezone.utc)
-
+            time_ms = response.common_response.data["time"]
+            fallback_timestamp = datetime.fromtimestamp(time_ms / 1000, tz=timezone.utc)
             market_tickers = ticker or []
-            fallback_timestamp = timestamp
         else:
             ticker_data = self.binance_api.ticker_24()
             market_tickers = ticker_data or []
             fallback_timestamp = None
 
         adr_data = self._calculate_adr_series_data(market_tickers, fallback_timestamp)
-        response = self.kafka_db.market_breadth.insert_one(adr_data.model_dump())
-        return response
+        payload = adr_data.model_dump()
+
+        row = MarketBreadthTable(**payload)
+        self.session.add(row)
+        try:
+            self.session.commit()
+        except IntegrityError as exc:
+            # (timestamp, source) already exists — duplicate cron tick.
+            self.session.rollback()
+            logging.warning(
+                "market_breadth integrity error for ts=%s src=%s: %s",
+                adr_data.timestamp,
+                adr_data.source,
+                exc,
+            )
+            return None
+        return payload
 
     def get_adrs(
         self, size: int = 7, window: int = 3, exchange: ExchangeId | None = None
-    ) -> dict | None:
+    ) -> dict[str, list] | None:
         """
-        Get ADRs historical data with moving average of 'adr', using ObjectId _id for date.
+        Return parallel arrays (newest-first) for the last `size + window - 1`
+        samples. Every field is read straight from storage; adp_ma is a rolling
+        average over the previous `window` samples computed in SQL.
+        """
+        fetch_size = size + max(int(window) - 1, 0)
+        win_preceding = max(int(window) - 1, 0)
 
-        Args:
-            size (int, optional): Number of data points to retrieve. Defaults to 7 (1 week).
-            window (int, optional): Window size for moving average. Defaults to 3.
-            exchange (ExchangeId, optional): Exchange ID to filter data. Defaults to None.
-        Returns:
-            list: A list of ADR data points with moving average.
-        """
-        self._ensure_market_breadth_collection()
-        fetch_size = size + window - 1
-        pipeline = [
-            {"$addFields": {"timestamp_dt": "$timestamp"}},
-            {"$sort": {"timestamp_dt": 1}},
-            {  # Compute adp before window function
-                "$addFields": {
-                    "adp": {
-                        "$cond": [
-                            {"$ne": [{"$add": ["$advancers", "$decliners"]}, 0]},
-                            {
-                                "$divide": [
-                                    {"$subtract": ["$advancers", "$decliners"]},
-                                    {"$add": ["$advancers", "$decliners"]},
-                                ]
-                            },
-                            None,
-                        ]
-                    }
-                }
-            },
+        sql = text(
+            f"""
+            WITH recent AS (
+                SELECT timestamp, advancers, decliners, total_volume,
+                       strength_index, adp, avg_gain, avg_loss
+                FROM market_breadth
+                WHERE (:source IS NULL OR source = :source)
+                ORDER BY timestamp DESC
+                LIMIT :fetch_size
+            )
+            SELECT timestamp, advancers, decliners, total_volume, strength_index,
+                   adp, avg_gain, avg_loss,
+                   AVG(adp) OVER (
+                       ORDER BY timestamp
+                       ROWS BETWEEN {win_preceding} PRECEDING AND CURRENT ROW
+                   ) AS adp_ma
+            FROM recent
+            ORDER BY timestamp DESC
+            """
+        )
+
+        result = self.session.execute(
+            sql,
             {
-                "$setWindowFields": {
-                    "sortBy": {"timestamp_dt": 1},
-                    "output": {
-                        "adp_ma": {
-                            "$avg": "$adp",
-                            "window": {"documents": [-(window - 1), 0]},
-                        }
-                    },
-                }
+                "source": exchange.value if exchange else None,
+                "fetch_size": fetch_size,
             },
-            {"$sort": {"timestamp_dt": -1}},
-            {"$limit": fetch_size},
-            {
-                "$project": {
-                    "_id": 0,
-                    "timestamp": "$timestamp_dt",
-                    "adp_ma": 1,
-                    "advancers": 1,
-                    "decliners": 1,
-                    "strength_index": 1,
-                    "total_volume": 1,
-                    "adp": 1,
-                }
-            },
-            {
-                "$addFields": {
-                    "timestamp": {
-                        "$dateToString": {
-                            "format": "%Y-%m-%d %H:%M:%S",
-                            "date": "$timestamp",
-                        }
-                    }
-                }
-            },
-            {
-                "$group": {
-                    "_id": None,
-                    "timestamp": {"$push": "$timestamp"},
-                    "adp_ma": {"$push": "$adp_ma"},
-                    "advancers": {"$push": "$advancers"},
-                    "decliners": {"$push": "$decliners"},
-                    "total_volume": {"$push": "$total_volume"},
-                    "adp": {"$push": "$adp"},
-                    "strength_index": {"$push": "$strength_index"},
-                }
-            },
-            {"$project": {"_id": 0}},
-        ]
-        if exchange:
-            pipeline.insert(0, {"$match": {"source": exchange.value}})
-        results = self.kafka_db.market_breadth.aggregate(pipeline)
-        data = list(results)
-        if len(data) > 0:
-            return data[0]
-        return None
+        )
+        rows = result.mappings().all()
+
+        if not rows:
+            return None
+
+        def _format_ts(ts):
+            # Postgres returns datetime, SQLite returns ISO-format str.
+            if isinstance(ts, str):
+                ts = datetime.fromisoformat(ts)
+            return ts.strftime("%Y-%m-%d %H:%M:%S")
+
+        return AdrSeries(
+            timestamp=[_format_ts(r["timestamp"]) for r in rows],
+            advancers=[r["advancers"] for r in rows],
+            decliners=[r["decliners"] for r in rows],
+            adp=[float(r["adp"]) for r in rows],
+            adp_ma=[
+                float(r["adp_ma"]) if r["adp_ma"] is not None else None for r in rows
+            ],
+            avg_gain=[float(r["avg_gain"]) for r in rows],
+            avg_loss=[float(r["avg_loss"]) for r in rows],
+            total_volume=[float(r["total_volume"]) for r in rows],
+            strength_index=[float(r["strength_index"]) for r in rows],
+        ).model_dump()
 
     def gainers_losers(self) -> tuple[Iterable[Any], Iterable[Any]]:
         """

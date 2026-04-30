@@ -1,9 +1,10 @@
 import logging
-from charts.controllers import MarketDominationController
+from datetime import datetime, timezone, timedelta
 from databases.tables.inquiry_table import InquiryTable
 from databases.symbols_etl import SymbolDataEtl
 from databases.tables.autotrade_table import AutotradeTable, TestAutotradeTable
 from databases.tables.deal_table import DealTable
+from databases.tables.market_breadth_table import MarketBreadthTable
 from databases.tables.order_table import ExchangeOrderTable, FakeOrderTable
 from databases.tables.user_table import UserTable
 from databases.tables.bot_table import BotTable, PaperTradingTable
@@ -25,7 +26,6 @@ from databases.utils import engine
 from exchange_apis.binance.assets import Assets
 from databases.crud.symbols_crud import SymbolsCrud
 from databases.crud.asset_index_crud import AssetIndexCrud
-from databases.db import setup_kafka_db
 from tools.config import Config as AppConfig
 
 
@@ -36,7 +36,6 @@ class ApiDb:
 
     def __init__(self):
         self.session = Session(engine)
-        self.kafka_db = setup_kafka_db()
         self.config = AppConfig()
         pass
 
@@ -55,8 +54,40 @@ class ApiDb:
         logging.info("Finishing db operations")
 
     def init_market_breadth(self):
-        controller = MarketDominationController()
-        controller.migrate_adrs()
+        """
+        Seed a placeholder market_breadth row on a fresh install so the
+        dashboard has something to render before the first cron tick. Skips
+        if any row already exists.
+        """
+        existing = self.session.exec(select(MarketBreadthTable).limit(1)).first()
+        if existing:
+            return
+
+        autotrade = self.session.exec(
+            select(AutotradeTable).where(
+                AutotradeTable.id == AutotradeSettingsDocument.settings
+            )
+        ).first()
+        source = (
+            ExchangeId(autotrade.exchange_id).value
+            if autotrade
+            else ExchangeId.BINANCE.value
+        )
+        now = datetime.now(timezone.utc).replace(microsecond=0) - timedelta(minutes=30)
+        seed = MarketBreadthTable(
+            timestamp=now,
+            source=source,
+            advancers=0,
+            decliners=0,
+            adp=0.0,
+            avg_gain=0.0,
+            avg_loss=0.0,
+            total_volume=0.0,
+            strength_index=0.0,
+        )
+        self.session.add(seed)
+        self.session.commit()
+        logging.info("Seeded initial market_breadth row for %s", source)
 
     def run_migrations(self):
         """
