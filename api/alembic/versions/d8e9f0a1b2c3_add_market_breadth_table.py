@@ -23,7 +23,9 @@ def upgrade() -> None:
     """Upgrade schema."""
     op.create_table(
         "market_breadth",
-        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True, nullable=False),
+        sa.Column(
+            "id", sa.Integer(), primary_key=True, autoincrement=True, nullable=False
+        ),
         sa.Column("timestamp", sa.DateTime(timezone=True), nullable=False),
         sa.Column("source", sa.String(length=32), nullable=False),
         sa.Column("advancers", sa.Integer(), nullable=False),
@@ -33,9 +35,7 @@ def upgrade() -> None:
         sa.Column("avg_loss", sa.Float(), nullable=False),
         sa.Column("total_volume", sa.Float(), nullable=False),
         sa.Column("strength_index", sa.Float(), nullable=False),
-        sa.UniqueConstraint(
-            "timestamp", "source", name="uq_market_breadth_ts_source"
-        ),
+        sa.UniqueConstraint("timestamp", "source", name="uq_market_breadth_ts_source"),
     )
     op.create_index(
         "ix_market_breadth_timestamp", "market_breadth", ["timestamp"], unique=False

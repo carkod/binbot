@@ -42,7 +42,7 @@ def _clean_market_breadth():
 def test_ingest_adp_data_uses_binance_ticker_payload():
     session = _make_session()
     controller = _make_controller(ExchangeId.BINANCE, session)
-    controller.binance_api = SimpleNamespace(
+    controller.binance_api = SimpleNamespace(  # type: ignore[assignment]
         ticker_24=lambda: [
             {
                 "symbol": "BTCUSDC",
@@ -90,7 +90,7 @@ def test_ingest_adp_data_uses_binance_ticker_payload():
 def test_ingest_adp_data_uses_kucoin_all_tickers_payload():
     session = _make_session()
     controller = _make_controller(ExchangeId.KUCOIN, session)
-    controller.kucoin_api = SimpleNamespace(
+    controller.kucoin_api = SimpleNamespace(  # type: ignore[assignment]
         spot_api=SimpleNamespace(
             get_all_tickers=lambda: SimpleNamespace(
                 common_response=SimpleNamespace(
@@ -136,16 +136,19 @@ def test_ingest_adp_data_uses_kucoin_all_tickers_payload():
 def test_ingest_adp_data_skips_duplicate_timestamp_source():
     session = _make_session()
     controller = _make_controller(ExchangeId.BINANCE, session)
-    payload_factory = lambda: [
-        {
-            "symbol": "BTCUSDC",
-            "lastPrice": "100",
-            "priceChangePercent": "10",
-            "volume": "5",
-            "closeTime": 1710000000000,
-        }
-    ]
-    controller.binance_api = SimpleNamespace(ticker_24=payload_factory)
+
+    def payload_factory():
+        return [
+            {
+                "symbol": "BTCUSDC",
+                "lastPrice": "100",
+                "priceChangePercent": "10",
+                "volume": "5",
+                "closeTime": 1710000000000,
+            }
+        ]
+
+    controller.binance_api = SimpleNamespace(ticker_24=payload_factory)  # type: ignore[assignment]
 
     first = controller.ingest_adp_data()
     second = controller.ingest_adp_data()
