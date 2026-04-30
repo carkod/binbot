@@ -10,7 +10,6 @@ from databases.tables.user_table import UserTable
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from sqlmodel import SQLModel, Session, select, text
 from pybinbot import (
-    AutotradeSettingsDocument,
     BinanceKlineIntervals,
     ExchangeId,
     Status,
@@ -19,6 +18,7 @@ from pybinbot import (
     Position,
     DealType,
 )
+from pybinbot.shared.enums import AutotradeSettingsDocument
 from alembic import command
 from alembic.script import ScriptDirectory
 from alembic.config import Config

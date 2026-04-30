@@ -14,7 +14,7 @@
 
 `docker compose up -d`
 
-This should create and set up the Mongo and Postgres databases.
+This should create and set up the Postgres database.
 
 > Open source note:
 > you'll need data for the entire project to work,
@@ -74,8 +74,8 @@ In production:
 
 If issues are encountered downloading prod DB to local
 
-1. Dump database: `docker exec binbot_db sh -c 'mongodump --authenticationDatabase admin -u <user> -p <password> --db binbot --archive' > db.dump`
-2. On local, restore `docker exec -i binbot_db sh -c 'mongorestore --archive -u <MONGO_AUTH_USERNAME> -p <MONGO_AUTH_PASSWORD> --authenticationDatabase <MONGO_AUTH_DATABASE> ' < db.dump`
+1. Dump database from the source Postgres instance.
+2. Restore it into your local Postgres instance.
 
 
 ## API DB updates using Alembic
@@ -107,4 +107,3 @@ where 113eb73ebba8 is the supposed last "good" migration that you want to revert
 ## Detailed documentation
 
 https://carkod.github.io/binbot/
-

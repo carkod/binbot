@@ -7,7 +7,7 @@ from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Float, Date
 from sqlalchemy.sql import func
 
 engine = create_engine(
-    f"postgresql://{os.environ['MONGO_USER']}:{os.environ['MONGO_PASSWORD']}@{os.environ['MONGO_HOST']}/{os.environ['MONGO_DB']}"
+    f"postgresql://{os.environ['POSTGRES_USER']}:{os.environ['POSTGRES_PASSWORD']}@{os.environ['POSTGRES_HOSTNAME']}/{os.environ['POSTGRES_DB']}"
 )
 session = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 Base = declarative_base()

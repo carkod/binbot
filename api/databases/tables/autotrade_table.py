@@ -3,11 +3,11 @@ from typing import Optional
 from sqlalchemy import Column, Enum
 from sqlmodel import Field, SQLModel
 from pybinbot import (
-    AutotradeSettingsDocument,
     BinanceKlineIntervals,
     ExchangeId,
     CloseConditions,
 )
+from pybinbot.shared.enums import AutotradeSettingsDocument
 
 
 class SettingsDocument(SQLModel):

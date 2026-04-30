@@ -1,4 +1,4 @@
-"""Add market_breadth table (replaces Mongo kafka_db.market_breadth)
+"""Add market_breadth table
 
 Revision ID: d8e9f0a1b2c3
 Revises: e4a3a439c266

@@ -38,7 +38,7 @@ class BalancesTable(SQLModel, table=True):
 
 class ConsolidatedBalancesTable(SQLModel, table=True):
     """
-      Replacement of old MongoDB balances collection
+      Balance snapshot stored in Postgres
       future plans include consolidation with all connected exchanges.
 
       Should return the same as previous balances collection

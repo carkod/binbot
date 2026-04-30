@@ -32,7 +32,7 @@ class KucoinBalance(BaseBalance):
 
 class BalanceSchema(BaseBalance):
     """
-    Blueprint of the bots collection on MongoDB
+    Blueprint of the bots payload
     All validation and database fields new or old handled here
     """
 
