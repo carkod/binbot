@@ -9,3 +9,4 @@ from .symbol_table import *  # noqa
 from .asset_index_table import *  # noqa
 from .symbol_exchange_table import *  # noqa
 from .market_breadth_table import *  # noqa
+from .signals_table import *  # noqa
