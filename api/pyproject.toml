@@ -14,15 +14,12 @@ dependencies = [
     "py3cw>=0.0.39",
     "apscheduler>=3.6.3",
     "requests-cache>=1.2.0",
-    "kafka-python>=2.0.2",
     "py4j>=0.10.9",
     "sqlalchemy>=2.0.30",
     "alembic>=1.18.4",
     "alembic-postgresql-enum",
     "pydantic-settings>=2.10.1",
-    "confluent-kafka>=2.11.1",
-    "aiokafka>=0.12.0",
-    "pybinbot>=1.8.2",
+    "pybinbot>=1.8.4",
 ]
 
 [project.urls]
