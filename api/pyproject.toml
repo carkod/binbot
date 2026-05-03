@@ -20,7 +20,7 @@ dependencies = [
     "alembic>=1.18.4",
     "alembic-postgresql-enum",
     "pydantic-settings>=2.10.1",
-    "confluent-kafka>=2.11.1",
+    "confluent-kafka>=2.14.0",
     "aiokafka>=0.12.0",
     "pybinbot>=1.8.2",
 ]
