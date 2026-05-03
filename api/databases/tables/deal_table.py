@@ -1,8 +1,7 @@
-from datetime import datetime
 from uuid import uuid4, UUID
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, TYPE_CHECKING
-from sqlalchemy import Column, BigInteger, DateTime, Float
+from sqlalchemy import Column, BigInteger, Float
 from pydantic import field_validator
 
 # avoids circular imports
@@ -66,15 +65,6 @@ class DealBase(SQLModel):
     closing_timestamp: int = Field(
         default=0,
         sa_column=Column(BigInteger()),
-    )
-
-    # Links the deal back to the originating signal record. Combined with
-    # bot.name (= signals.algorithm_name) and bot.pair (= signals.symbol) it
-    # forms the natural composite key into signals — no surrogate id needed.
-    signal_generated_at: datetime | None = Field(
-        default=None,
-        description="generated_at of the originating signals row",
-        sa_column=Column(DateTime(timezone=True), nullable=True),
     )
 
 

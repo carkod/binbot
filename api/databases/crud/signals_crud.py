@@ -76,18 +76,3 @@ class SignalsCrud:
             .limit(limit)
         )
         return self.session.exec(stmt).all()
-
-    def get_for_deal(
-        self,
-        algorithm_name: str,
-        symbol: str,
-        signal_generated_at: datetime,
-    ) -> SignalsTable | None:
-        """Lookup the originating signal for a given deal's stored triple."""
-        stmt = (
-            select(SignalsTable)
-            .where(SignalsTable.algorithm_name == algorithm_name)
-            .where(SignalsTable.symbol == symbol)
-            .where(SignalsTable.generated_at == signal_generated_at)
-        )
-        return self.session.exec(stmt).first()

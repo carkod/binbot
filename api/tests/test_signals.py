@@ -106,33 +106,6 @@ def test_query_orders_newest_first():
     assert rows[0].generated_at > rows[1].generated_at > rows[2].generated_at
 
 
-def test_get_for_deal_returns_matching_signal():
-    session = _make_session()
-    crud = SignalsCrud(session)
-    ts = datetime(2026, 4, 30, 12, 0, tzinfo=timezone.utc)
-    crud.create(
-        algorithm_name="spike_hunter_v3",
-        symbol="BTCUSDC",
-        generated_at=ts,
-        direction="LONG",
-    )
-
-    found = crud.get_for_deal(
-        algorithm_name="spike_hunter_v3",
-        symbol="BTCUSDC",
-        signal_generated_at=ts,
-    )
-    assert found is not None
-    assert found.algorithm_name == "spike_hunter_v3"
-
-    missing = crud.get_for_deal(
-        algorithm_name="spike_hunter_v3",
-        symbol="ETHUSDC",
-        signal_generated_at=ts,
-    )
-    assert missing is None
-
-
 def test_post_signal_endpoint(client):
     response = client.post(
         "/signals",
