@@ -144,9 +144,12 @@ class PositionMarket(KucoinPositionDeal):
         LONG trailing logic.
 
         Rules:
-        - stop_loss is a fixed safety net (handled elsewhere, never trailed)
-        - trailing_profit is a ceiling trigger only
-        - trailing_deviation is the real stop once trailing starts
+        - stop_loss is the emergency safety net. It is initialised once
+          (when the bot has no SL yet) and then left fixed — it is never
+          trailed by bb_spread.
+        - trailing_profit is a ceiling trigger only.
+        - trailing_deviation is the real stop once trailing starts; it can
+          tighten/widen freely, since it lives in the bot, not the exchange.
         """
         raw_trail_profit = top_spread * trail_tighten_mult * expansion_multiplier
 
@@ -167,12 +170,20 @@ class PositionMarket(KucoinPositionDeal):
             self.MAX_TRAILING_DEVIATION,
         )
 
-        opening_price = float(self.active_bot.deal.opening_price or 0)
-        if is_aggressive_momo and opening_price > 0:
-            stop_loss = ((expansion_range * 0.5) / opening_price) * 100
+        # Emergency SL: pin to existing value if already set, otherwise derive
+        # an initial one. Never re-trail it from market state.
+        existing_stop_loss = float(self.active_bot.stop_loss or 0)
+        if existing_stop_loss > 0:
+            stop_loss = clamp(
+                existing_stop_loss, self.MIN_STOP_LOSS, self.MAX_STOP_LOSS
+            )
         else:
-            stop_loss = 3.0
-        stop_loss = clamp(stop_loss, self.MIN_STOP_LOSS, self.MAX_STOP_LOSS)
+            opening_price = float(self.active_bot.deal.opening_price or 0)
+            if is_aggressive_momo and opening_price > 0:
+                stop_loss = ((expansion_range * 0.5) / opening_price) * 100
+            else:
+                stop_loss = 3.0
+            stop_loss = clamp(stop_loss, self.MIN_STOP_LOSS, self.MAX_STOP_LOSS)
 
         pullback_metrics = self.build_pullback_metrics(current_price=current_price)
         if (
@@ -181,11 +192,9 @@ class PositionMarket(KucoinPositionDeal):
         ):
             pullback_pct = pullback_metrics["pullback_pct"]
             if pullback_pct < self.SHALLOW_PULLBACK:
-                stop_loss += 0.25
                 trailing_profit += 0.25
                 trailing_deviation += 0.05
             elif pullback_pct >= self.DEEP_PULLBACK:
-                stop_loss -= 0.50
                 trailing_profit -= 0.30
                 trailing_deviation -= 0.10
 

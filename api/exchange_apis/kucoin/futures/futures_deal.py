@@ -35,6 +35,13 @@ class KucoinPositionDeal(KucoinBaseBalance):
     - SL / TP are reduce-only orders
     """
 
+    # SL replacement gating — stop loss is "emergency only", we only
+    # touch the on-exchange order when it materially changes, and even
+    # then no more often than the cooldown.
+    STOP_LOSS_REPLACE_MIN_MOVE_RATIO = 0.0015  # 0.15% of price
+    STOP_LOSS_REPLACE_MIN_TICKS = 2
+    STOP_LOSS_REPLACE_COOLDOWN_MS = 30_000
+
     def __init__(
         self,
         bot: BotModel,
@@ -376,6 +383,170 @@ class KucoinPositionDeal(KucoinBaseBalance):
         else:
             self.remove_stale_orders()
 
+    def _bot_known_stop_loss(self) -> tuple[float | None, int | None]:
+        """
+        Source of truth from the bot's local order list:
+        return (price, timestamp_ms) of the most recent open SL order, or
+        (None, None) if there is no open SL recorded.
+        """
+        for order in reversed(self.active_bot.orders):
+            if order.deal_type != DealType.stop_loss:
+                continue
+            if order.status in {
+                OrderStatus.FILLED,
+                OrderStatus.CANCELED,
+                OrderStatus.EXPIRED,
+                OrderStatus.REJECTED,
+            }:
+                continue
+            order_price = float(order.price or 0)
+            ts = int(order.timestamp or 0)
+            if order_price > 0:
+                return order_price, ts
+            sl_price = float(self.active_bot.deal.stop_loss_price or 0)
+            if sl_price > 0:
+                return sl_price, ts
+        return None, None
+
+    def _exchange_stop_loss_price(self) -> tuple[bool, float | None]:
+        """
+        Source of truth from the exchange.
+
+        Returns ``(ok, price)``:
+          - ``ok=True, price=float``  → exchange has an SL at this price
+          - ``ok=True, price=None``   → exchange confirmed no SL exists
+          - ``ok=False, price=None``  → query failed; caller must NOT treat
+            this as "no SL", or it will cancel/replace a still-valid one.
+        """
+        try:
+            stop_orders = self.kucoin_futures_api.get_all_stop_loss_orders(
+                self.kucoin_symbol
+            )
+        except Exception as exc:
+            self.active_bot.add_log(f"Could not query exchange stop orders: {exc}")
+            return False, None
+
+        if not stop_orders:
+            return True, None
+
+        for order in stop_orders:
+            stop_price = float(getattr(order, "stop_price", 0) or 0)
+            if stop_price > 0:
+                return True, stop_price
+        return True, None
+
+    def should_replace_stop_loss_order(
+        self,
+        current_stop_price: float | None,
+        new_stop_price: float,
+        last_replace_ts_ms: int | None = None,
+    ) -> bool:
+        """
+        Decide whether the on-exchange SL needs replacing.
+
+        Replace only when:
+          - we have a meaningful new price, and
+          - either there's no current SL, or the new one is *better* by more
+            than the min-move threshold, and
+          - the cooldown since the last replace has elapsed.
+        """
+        if new_stop_price <= 0:
+            return False
+
+        if current_stop_price is None or current_stop_price <= 0:
+            return True
+
+        direction = self._direction_multiplier()
+        improvement = (new_stop_price - current_stop_price) * direction
+        if improvement <= 0:
+            return False
+
+        tick_size = 10 ** (-self.price_precision)
+        min_replace_move = max(
+            abs(current_stop_price) * self.STOP_LOSS_REPLACE_MIN_MOVE_RATIO,
+            tick_size * self.STOP_LOSS_REPLACE_MIN_TICKS,
+        )
+        if improvement < min_replace_move:
+            return False
+
+        if last_replace_ts_ms and last_replace_ts_ms > 0:
+            now_ms = int(time() * 1000)
+            if now_ms - last_replace_ts_ms < self.STOP_LOSS_REPLACE_COOLDOWN_MS:
+                return False
+
+        return True
+
+    def reconcile_exchange_sl(self) -> None:
+        """
+        Reconcile the on-exchange emergency stop loss with what the bot
+        thinks should be there.
+
+        Cases handled:
+          1. Bot expects SL but exchange has none — re-place (it was cancelled
+             externally, expired, or never made it through).
+          2. Exchange has an SL at a price that disagrees with the bot's
+             local record — adopt the exchange price as truth (someone moved
+             it manually) and only replace if it's now unsafe.
+          3. Bot wants to ratchet SL closer to entry — only replace if the
+             move is material and the cooldown has elapsed.
+
+        Skipped when:
+          - margin_short_reversal is active (handled elsewhere)
+          - trailing has armed (trailing_stop_loss_price != 0); in that
+            mode the exit is bot-side, the emergency SL is left alone.
+        """
+        if self.active_bot.stop_loss <= 0:
+            return
+        if self.active_bot.margin_short_reversal:
+            return
+        if float(self.active_bot.deal.trailing_stop_loss_price or 0) != 0:
+            return
+
+        intended_price = float(self.active_bot.deal.stop_loss_price or 0)
+        if intended_price <= 0:
+            return
+
+        exchange_ok, exchange_price = self._exchange_stop_loss_price()
+        if not exchange_ok:
+            # API blip — we don't know what's on the exchange. Bail out and
+            # try again next tick rather than risk cancelling/duplicating
+            # a still-valid emergency SL.
+            return
+
+        bot_known_price, last_replace_ts_ms = self._bot_known_stop_loss()
+
+        # Case 1: exchange confirmed no SL exists — re-place.
+        if exchange_price is None:
+            if bot_known_price is not None:
+                self.active_bot.add_log(
+                    "Exchange SL missing — re-placing emergency stop."
+                )
+            self.cancel_current_sl()  # cleans local stale records, no-op on empty
+            self.place_stop_loss()
+            return
+
+        # Case 2: exchange disagrees with our local record. The exchange
+        # is authoritative — adopt it. Only replace if it's now unsafe vs.
+        # the bot's intended (ratcheted) price.
+        if bot_known_price is not None and abs(exchange_price - bot_known_price) > (
+            10**-self.price_precision
+        ):
+            self.active_bot.add_log(
+                f"Exchange SL drift detected: bot={bot_known_price} exchange={exchange_price}; trusting exchange."
+            )
+            self.active_bot.deal.stop_loss_price = round_numbers(
+                exchange_price, self.price_precision
+            )
+
+        # Case 3: ratchet — replace only if materially better and not on cooldown.
+        if self.should_replace_stop_loss_order(
+            current_stop_price=exchange_price,
+            new_stop_price=intended_price,
+            last_replace_ts_ms=last_replace_ts_ms,
+        ):
+            self.cancel_current_sl()
+            self.place_stop_loss()
+
     def base_order(self) -> BotModel:
         """
         Futures have positions intrinsically built, the base order can be either LONG or SHORT, we don't need to deal with loans, we simply set the position as an order
@@ -492,11 +663,11 @@ class KucoinPositionDeal(KucoinBaseBalance):
             log_message=f"Stop loss set @ {stop_price}",
         )
 
-    def update_parameters(self) -> BotModel:
+    def recompute_derived_prices(self) -> BotModel:
         """
-        Updates stop loss and take profit orders based on the current bot parameters.
-
-        direction is determined by the strategy (long or short) and is used to calculate the correct stop loss price.
+        Pure in-memory recomputation of derived deal prices from the bot's
+        percent parameters and opening price. Safe to call every tick — does
+        no exchange I/O, places no orders.
         """
         direction = self._direction_multiplier()
 
@@ -516,11 +687,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self.active_bot.deal.stop_loss_price = round_numbers(
                 stop_loss_price, self.price_precision
             )
-            self.cancel_current_sl()
-
-            # stop loss placed in the market will reduce the position to 0
-            if not self.active_bot.margin_short_reversal:
-                self.place_stop_loss()
 
         if (
             self.active_bot.trailing
@@ -529,24 +695,31 @@ class KucoinPositionDeal(KucoinBaseBalance):
         ):
             entry_price = float(self.active_bot.deal.opening_price)
             trailing_profit_price = entry_price * (
-                1 + direction * (float(self.active_bot.take_profit) / 100)
+                1 + direction * (float(self.active_bot.trailing_profit) / 100)
             )
             self.active_bot.deal.trailing_profit_price = round_numbers(
                 trailing_profit_price, self.price_precision
             )
+            # NOTE: trailing_stop_loss_price is intentionally preserved here.
+            # Resetting an armed trail every tick would (a) defeat dynamic
+            # trailing and (b) bypass the trailing-armed guard in
+            # reconcile_exchange_sl(). The "Update Deal" flow that needs to
+            # disarm the trail does so explicitly in open_deal().
 
-            # trailing_stop_loss_price and trailing_profit should be updated during streaming
-            # This resets it after "Update deal" because parameters have changed
-            if self.active_bot.trailing_profit != 0:
-                new_trailing_profit_price = self.active_bot.deal.opening_price * (
-                    1 + direction * (float(self.active_bot.trailing_profit) / 100)
-                )
-                self.active_bot.deal.trailing_profit_price = round_numbers(
-                    new_trailing_profit_price, self.price_precision
-                )
-            if self.active_bot.deal.trailing_stop_loss_price != 0:
-                self.active_bot.deal.trailing_stop_loss_price = 0
+        return self.active_bot
 
+    def update_parameters(self) -> BotModel:
+        """
+        Update derived prices in-memory and reconcile the on-exchange
+        emergency SL with what the bot now expects. The two halves are
+        deliberately separated:
+
+          - recompute_derived_prices() is pure and tick-safe.
+          - reconcile_exchange_sl() touches the exchange and is gated by
+            drift detection + min-move + cooldown to avoid order churn.
+        """
+        self.recompute_derived_prices()
+        self.reconcile_exchange_sl()
         return self.active_bot
 
     def update_parameters_with_activation(self) -> BotModel:
@@ -645,7 +818,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self.active_bot.status == Status.active
             or self.active_bot.deal.opening_price > 0
         ):
-            # Update bot no activation required
+            # Update bot, no activation required. This path is the user-driven
+            # "Update Deal" flow — disarm any active trail since the parameters
+            # it was computed against may have just changed.
+            self.active_bot.deal.trailing_stop_loss_price = 0
             self.active_bot = self.update_parameters()
         else:
             # Activation required

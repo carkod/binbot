@@ -97,6 +97,7 @@ def test_market_trailing_analytics_keeps_stop_loss_percent_when_pullback_missing
 
 
 def test_derive_dynamic_trailing_params_widens_gap_on_shallow_pullback():
+    """Shallow pullback widens trailing only — emergency SL is never trailed."""
     market = make_position_market(bot_profit=4.0)
 
     stop_loss, trailing_profit, trailing_deviation = (
@@ -112,13 +113,14 @@ def test_derive_dynamic_trailing_params_widens_gap_on_shallow_pullback():
         )
     )
 
-    assert stop_loss == 3.25
+    assert stop_loss == 3.0
     assert trailing_profit == 3.25
     assert trailing_deviation == 1.45
     assert trailing_deviation < trailing_profit
 
 
 def test_derive_dynamic_trailing_params_tightens_on_deep_pullback():
+    """Deep pullback tightens trailing only — emergency SL is never trailed."""
     market = make_position_market(bot_profit=4.0)
 
     stop_loss, trailing_profit, trailing_deviation = (
@@ -134,17 +136,38 @@ def test_derive_dynamic_trailing_params_tightens_on_deep_pullback():
         )
     )
 
-    assert stop_loss == 2.5
+    assert stop_loss == 3.0
     assert trailing_profit == 2.7
     assert trailing_deviation == 1.29
     assert trailing_deviation < trailing_profit
 
 
+def test_derive_dynamic_trailing_params_pins_existing_stop_loss():
+    """Once a bot has a stop_loss set, derive must return it as-is."""
+    market = make_position_market(bot_profit=4.0)
+    market.active_bot.stop_loss = 2.5
+
+    stop_loss, _, _ = market.derive_dynamic_trailing_params(
+        top_spread=5.66,
+        bottom_spread=2.0,
+        bot_profit=4.0,
+        expansion_multiplier=1.0,
+        is_aggressive_momo=True,
+        expansion_range=10.0,
+        trail_tighten_mult=0.7,
+        current_price=105.6,
+    )
+
+    assert stop_loss == 2.5
+
+
 def test_update_parameters_translates_percent_values_into_prices():
+    """Per-tick update: derived prices recomputed, armed trail preserved."""
     deal = cast(Any, KucoinPositionDeal.__new__(KucoinPositionDeal))
     deal.price_precision = 2
     deal.cancel_current_sl = lambda: None
     deal.place_stop_loss = lambda: None
+    deal.reconcile_exchange_sl = lambda: None
     deal.active_bot = BotModel(
         pair="BEATUSDT",
         market_type=MarketType.FUTURES,
@@ -166,4 +189,43 @@ def test_update_parameters_translates_percent_values_into_prices():
 
     assert updated_bot.deal.stop_loss_price == 97.5
     assert updated_bot.deal.trailing_profit_price == 102.69
-    assert updated_bot.deal.trailing_stop_loss_price == 0
+    # Trail must be preserved on per-tick recompute, otherwise dynamic
+    # trailing would disarm itself every tick and bypass the trailing-armed
+    # guard in reconcile_exchange_sl.
+    assert updated_bot.deal.trailing_stop_loss_price == 95.0
+
+
+def test_update_parameters_trailing_armed_skips_exchange_reconcile():
+    """When trail is armed, update_parameters must not touch the exchange SL."""
+    deal = cast(Any, KucoinPositionDeal.__new__(KucoinPositionDeal))
+    deal.price_precision = 2
+    calls: list[str] = []
+    deal.cancel_current_sl = lambda: calls.append("cancel")
+    deal.place_stop_loss = lambda: calls.append("place")
+
+    # Spy on the inner exchange query — must NOT be invoked.
+    def spy_query() -> tuple[bool, float | None]:
+        calls.append("query")
+        return True, None
+
+    deal._exchange_stop_loss_price = spy_query
+    deal.active_bot = BotModel(
+        pair="BEATUSDT",
+        market_type=MarketType.FUTURES,
+        position=Position.long,
+        stop_loss=2.5,
+        trailing=True,
+        trailing_profit=2.7,
+        trailing_deviation=1.3,
+        margin_short_reversal=False,
+        deal=DealModel(
+            opening_price=100.0,
+            opening_qty=1.0,
+            trailing_stop_loss_price=95.0,
+        ),
+    )
+
+    KucoinPositionDeal.update_parameters(deal)
+
+    assert calls == []
+    assert deal.active_bot.deal.trailing_stop_loss_price == 95.0
