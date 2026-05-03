@@ -408,11 +408,15 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 return sl_price, ts
         return None, None
 
-    def _exchange_stop_loss_price(self) -> float | None:
+    def _exchange_stop_loss_price(self) -> tuple[bool, float | None]:
         """
-        Source of truth from the exchange. Returns the stop trigger price
-        of the resting reduce-only stop order, or None if there is none.
-        Catches errors so a flaky API call doesn't bring down the tick.
+        Source of truth from the exchange.
+
+        Returns ``(ok, price)``:
+          - ``ok=True, price=float``  → exchange has an SL at this price
+          - ``ok=True, price=None``   → exchange confirmed no SL exists
+          - ``ok=False, price=None``  → query failed; caller must NOT treat
+            this as "no SL", or it will cancel/replace a still-valid one.
         """
         try:
             stop_orders = self.kucoin_futures_api.get_all_stop_loss_orders(
@@ -420,16 +424,16 @@ class KucoinPositionDeal(KucoinBaseBalance):
             )
         except Exception as exc:
             self.active_bot.add_log(f"Could not query exchange stop orders: {exc}")
-            return None
+            return False, None
 
         if not stop_orders:
-            return None
+            return True, None
 
         for order in stop_orders:
             stop_price = float(getattr(order, "stop_price", 0) or 0)
             if stop_price > 0:
-                return stop_price
-        return None
+                return True, stop_price
+        return True, None
 
     def should_replace_stop_loss_order(
         self,
@@ -502,10 +506,16 @@ class KucoinPositionDeal(KucoinBaseBalance):
         if intended_price <= 0:
             return
 
-        exchange_price = self._exchange_stop_loss_price()
+        exchange_ok, exchange_price = self._exchange_stop_loss_price()
+        if not exchange_ok:
+            # API blip — we don't know what's on the exchange. Bail out and
+            # try again next tick rather than risk cancelling/duplicating
+            # a still-valid emergency SL.
+            return
+
         bot_known_price, last_replace_ts_ms = self._bot_known_stop_loss()
 
-        # Case 1: bot expected an SL, exchange has none
+        # Case 1: exchange confirmed no SL exists — re-place.
         if exchange_price is None:
             if bot_known_price is not None:
                 self.active_bot.add_log(
@@ -690,8 +700,11 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self.active_bot.deal.trailing_profit_price = round_numbers(
                 trailing_profit_price, self.price_precision
             )
-            if self.active_bot.deal.trailing_stop_loss_price != 0:
-                self.active_bot.deal.trailing_stop_loss_price = 0
+            # NOTE: trailing_stop_loss_price is intentionally preserved here.
+            # Resetting an armed trail every tick would (a) defeat dynamic
+            # trailing and (b) bypass the trailing-armed guard in
+            # reconcile_exchange_sl(). The "Update Deal" flow that needs to
+            # disarm the trail does so explicitly in open_deal().
 
         return self.active_bot
 
@@ -805,7 +818,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self.active_bot.status == Status.active
             or self.active_bot.deal.opening_price > 0
         ):
-            # Update bot no activation required
+            # Update bot, no activation required. This path is the user-driven
+            # "Update Deal" flow — disarm any active trail since the parameters
+            # it was computed against may have just changed.
+            self.active_bot.deal.trailing_stop_loss_price = 0
             self.active_bot = self.update_parameters()
         else:
             # Activation required

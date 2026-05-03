@@ -202,6 +202,40 @@ def test_reconcile_exchange_sl_places_when_exchange_missing():
     assert calls == ["cancel", "place"]
 
 
+def test_reconcile_exchange_sl_skips_on_api_failure():
+    """API blip must not cancel/replace a possibly-still-valid SL."""
+    calls: list[str] = []
+    deal = _make_deal()
+    deal.active_bot.orders = [
+        OrderModel(
+            order_id="sl-1",
+            order_type="market",
+            pair="BEATUSDT",
+            order_side="sell",
+            qty=1,
+            price=98.0,
+            status=OrderStatus.NEW,
+            timestamp=int(time() * 1000),
+            time_in_force="GTC",
+            deal_type=DealType.stop_loss,
+        )
+    ]
+
+    def boom(symbol):
+        raise RuntimeError("transient 5xx")
+
+    deal.kucoin_futures_api = types.SimpleNamespace(
+        get_all_stop_loss_orders=boom,
+        batch_cancel_stop_loss_orders=lambda ids: None,
+    )
+    deal.cancel_current_sl = lambda: calls.append("cancel")
+    deal.place_stop_loss = lambda: calls.append("place")
+
+    KucoinPositionDeal.reconcile_exchange_sl(deal)
+
+    assert calls == []
+
+
 def test_reconcile_exchange_sl_adopts_exchange_drift_without_replacing():
     """If exchange SL drifts but is still valid, adopt the exchange price as truth."""
     calls: list[str] = []
