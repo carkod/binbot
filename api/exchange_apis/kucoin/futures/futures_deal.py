@@ -35,6 +35,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
     - SL / TP are reduce-only orders
     """
 
+    STOP_LOSS_REPLACE_MIN_MOVE_RATIO = 0.0015
+    STOP_LOSS_REPLACE_MIN_TICKS = 2
+
     def __init__(
         self,
         bot: BotModel,
@@ -80,7 +83,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         if balance <= 0 or price <= 0:
             return 0.0
 
-        stop_loss_percent = float(self.active_bot.stop_loss or 0)
+        stop_loss_percent = self.active_bot.stop_loss
         if stop_loss_percent <= 0:
             return 0.0
 
@@ -184,7 +187,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         if contracts <= 0 or price <= 0:
             return 0.0
 
-        stop_loss_percent = float(self.active_bot.stop_loss or 0)
+        stop_loss_percent = self.active_bot.stop_loss
         if stop_loss_percent <= 0:
             return 0.0
 
@@ -376,6 +379,70 @@ class KucoinPositionDeal(KucoinBaseBalance):
         else:
             self.remove_stale_orders()
 
+    def _current_stop_loss_order_price(self) -> float | None:
+        if hasattr(self, "kucoin_futures_api") and hasattr(
+            self.kucoin_futures_api, "get_all_stop_loss_orders"
+        ):
+            stop_orders = self.kucoin_futures_api.get_all_stop_loss_orders(
+                self.kucoin_symbol
+            )
+            stop_prices = [
+                float(order.stop_price or 0)
+                for order in stop_orders
+                if float(order.stop_price or 0) > 0
+            ]
+            if not stop_prices:
+                return None
+            return (
+                max(stop_prices)
+                if self._direction_multiplier() == 1
+                else min(stop_prices)
+            )
+
+        found_stop_loss_order = False
+        for order in reversed(self.active_bot.orders):
+            if order.deal_type != DealType.stop_loss:
+                continue
+            if order.status in {
+                OrderStatus.FILLED,
+                OrderStatus.CANCELED,
+                OrderStatus.EXPIRED,
+                OrderStatus.REJECTED,
+            }:
+                continue
+            found_stop_loss_order = True
+            order_price = float(order.price or 0)
+            if order_price > 0:
+                return order_price
+
+        stop_loss_price = float(self.active_bot.deal.stop_loss_price or 0)
+        if found_stop_loss_order and stop_loss_price > 0:
+            return stop_loss_price
+        return None
+
+    def should_replace_stop_loss_order(
+        self,
+        current_stop_price: float | None,
+        new_stop_price: float,
+    ) -> bool:
+        if new_stop_price <= 0:
+            return False
+
+        if current_stop_price is None or current_stop_price <= 0:
+            return True
+
+        direction = self._direction_multiplier()
+        improvement = (new_stop_price - current_stop_price) * direction
+        if improvement <= 0:
+            return False
+
+        tick_size = 10 ** (-self.price_precision)
+        min_replace_move = max(
+            abs(current_stop_price) * self.STOP_LOSS_REPLACE_MIN_MOVE_RATIO,
+            tick_size * self.STOP_LOSS_REPLACE_MIN_TICKS,
+        )
+        return improvement >= min_replace_move
+
     def base_order(self) -> BotModel:
         """
         Futures have positions intrinsically built, the base order can be either LONG or SHORT, we don't need to deal with loans, we simply set the position as an order
@@ -484,6 +551,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         order_response.deal_type = DealType.stop_loss
         order_model = OrderModel(**order_response.model_dump())
+        order_model.price = stop_price
         self.active_bot.orders.append(order_model)
         self.active_bot.deal.stop_loss_price = stop_price
 
@@ -510,16 +578,25 @@ class KucoinPositionDeal(KucoinBaseBalance):
                     break
 
         if self.active_bot.stop_loss > 0:
+            current_stop_price = self._current_stop_loss_order_price()
             entry_price = float(self.active_bot.deal.opening_price)
             delta = entry_price * (self.active_bot.stop_loss / 100)
             stop_loss_price = entry_price - (delta * direction)
             self.active_bot.deal.stop_loss_price = round_numbers(
                 stop_loss_price, self.price_precision
             )
-            self.cancel_current_sl()
+            should_replace_stop_loss_order = self.should_replace_stop_loss_order(
+                current_stop_price,
+                self.active_bot.deal.stop_loss_price,
+            )
 
             # stop loss placed in the market will reduce the position to 0
-            if not self.active_bot.margin_short_reversal:
+            if (
+                not self.active_bot.margin_short_reversal
+                and float(self.active_bot.deal.trailing_stop_loss_price) == 0
+                and should_replace_stop_loss_order
+            ):
+                self.cancel_current_sl()
                 self.place_stop_loss()
 
         if (
