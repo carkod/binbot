@@ -114,7 +114,7 @@ describe("Dashboard page", () => {
     expect(rtlScreen.getByText("1.27 BTC")).toBeInTheDocument();
   });
 
-  it("renders signals ranked by algorithm count", () => {
+  it("renders signals collapsed and ranked by algorithm count", () => {
     vi.mocked(useGetSignalsQuery).mockReturnValueOnce({
       data: [
         {
@@ -169,15 +169,16 @@ describe("Dashboard page", () => {
       within(signalCard as HTMLElement).getByText("bull"),
     ).toBeInTheDocument();
     expect(
-      within(signalCard as HTMLElement).getByText("BTCUSDC"),
-    ).toBeInTheDocument();
+      within(signalCard as HTMLElement).queryByText("Symbol"),
+    ).not.toBeInTheDocument();
+    expect(
+      within(signalCard as HTMLElement).queryByText("BTCUSDC"),
+    ).not.toBeInTheDocument();
 
     const rows = within(signalCard as HTMLElement).getAllByRole("row");
     expect(within(rows[1]).getByText("apex_flow")).toBeInTheDocument();
     expect(within(rows[1]).getByText("2")).toBeInTheDocument();
-    expect(within(rows[2]).getByText("apex_flow")).toBeInTheDocument();
-    expect(within(rows[2]).getByText("2")).toBeInTheDocument();
-    expect(within(rows[3]).getByText("mean_reversion")).toBeInTheDocument();
-    expect(within(rows[3]).getByText("1")).toBeInTheDocument();
+    expect(within(rows[2]).getByText("mean_reversion")).toBeInTheDocument();
+    expect(within(rows[2]).getByText("1")).toBeInTheDocument();
   });
 });

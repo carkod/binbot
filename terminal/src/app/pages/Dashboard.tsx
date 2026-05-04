@@ -126,31 +126,48 @@ export const DashboardPage: FC<{}> = () => {
       .sort((a, b) => b - a)
       .slice(0, 3) ?? [],
   );
-  const signalAlgorithmCounts = useMemo(() => {
-    const counts = new Map<string, number>();
+  const rankedSignalAlgorithms = useMemo(() => {
+    const algorithms = new Map<
+      string,
+      {
+        algorithm_name: string;
+        generated_at: string;
+        current_regime?: string | null;
+        count: number;
+      }
+    >();
 
-    signals?.forEach(({ algorithm_name }) => {
-      counts.set(algorithm_name, (counts.get(algorithm_name) ?? 0) + 1);
+    signals?.forEach(({ algorithm_name, generated_at, current_regime }) => {
+      const algorithm = algorithms.get(algorithm_name);
+
+      if (!algorithm) {
+        algorithms.set(algorithm_name, {
+          algorithm_name,
+          generated_at,
+          current_regime,
+          count: 1,
+        });
+        return;
+      }
+
+      algorithm.count += 1;
+      if (new Date(generated_at) > new Date(algorithm.generated_at)) {
+        algorithm.generated_at = generated_at;
+        algorithm.current_regime = current_regime;
+      }
     });
 
-    return counts;
-  }, [signals]);
-  const rankedSignals = useMemo(() => {
-    return [...(signals ?? [])].sort((left, right) => {
-      const countDifference =
-        (signalAlgorithmCounts.get(right.algorithm_name) ?? 0) -
-        (signalAlgorithmCounts.get(left.algorithm_name) ?? 0);
+    return [...algorithms.values()].sort((left, right) => {
+      const countDifference = right.count - left.count;
 
-      if (countDifference !== 0) {
-        return countDifference;
-      }
+      if (countDifference !== 0) return countDifference;
 
       return (
         new Date(right.generated_at).getTime() -
         new Date(left.generated_at).getTime()
       );
     });
-  }, [signalAlgorithmCounts, signals]);
+  }, [signals]);
 
   useEffect(() => {
     if (activeBotEntities) {
@@ -421,121 +438,107 @@ export const DashboardPage: FC<{}> = () => {
           )}
         </Col>
       </Row>
-      {((algoRanking && algoRanking.length > 0) ||
-        rankedSignals.length > 0) && (
-        <Row>
-          {algoRanking && algoRanking.length > 0 && (
-            <Col lg="6" md="12">
-              <Card>
-                <Card.Header>
-                  <Card.Title
-                    as="h5"
-                    className="d-flex align-items-center gap-2"
-                  >
-                    <i className="fa-solid fa-trophy text-warning" />
-                    <span>Algorithm Ranking</span>
-                  </Card.Title>
-                  <Card.Text className="text-body-secondary">
-                    These are the algorithms executed by Binquant through
-                    autotrade
-                  </Card.Text>
-                </Card.Header>
-                <Card.Body>
-                  <Table hover responsive size="sm">
-                    <thead>
-                      <tr>
-                        <th>#</th>
-                        <th>Name</th>
-                        <th className="text-end">Count</th>
-                        <th className="text-end">
-                          Profit ({accountData?.fiat_currency})
-                        </th>
-                        <th className="text-end">Performance</th>
+      <Row>
+        {algoRanking && algoRanking.length > 0 && (
+          <Col lg="6" md="12">
+            <Card>
+              <Card.Header>
+                <Card.Title as="h5" className="d-flex align-items-center gap-2">
+                  <i className="fa-solid fa-trophy text-warning" />
+                  <span>Algorithm Ranking</span>
+                </Card.Title>
+                <Card.Text className="text-body-secondary">
+                  These are the algorithms executed by Binquant through
+                  autotrade
+                </Card.Text>
+              </Card.Header>
+              <Card.Body>
+                <Table hover responsive size="sm">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Name</th>
+                      <th className="text-end">Count</th>
+                      <th className="text-end">
+                        Profit ({accountData?.fiat_currency})
+                      </th>
+                      <th className="text-end">Performance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {algoRanking.map(({ name, count, bot_profit }, index) => (
+                      <tr
+                        key={name}
+                        className={
+                          topAlgoCounts.has(count)
+                            ? "table-secondary text-white"
+                            : ""
+                        }
+                      >
+                        <td>{index + 1}</td>
+                        <td>{name}</td>
+                        <td className="text-end">{count}</td>
+                        <td className="text-end">
+                          {roundDecimals(bot_profit, 2)}%
+                        </td>
+                        <td className="text-end">
+                          {count > 0
+                            ? ((bot_profit / count) * 100).toFixed(2) + "%"
+                            : ""}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {algoRanking.map(({ name, count, bot_profit }, index) => (
-                        <tr
-                          key={name}
-                          className={
-                            topAlgoCounts.has(count)
-                              ? "table-secondary text-white"
-                              : ""
-                          }
-                        >
-                          <td>{index + 1}</td>
-                          <td>{name}</td>
+                    ))}
+                  </tbody>
+                </Table>
+              </Card.Body>
+            </Card>
+          </Col>
+        )}
+        {rankedSignalAlgorithms.length > 0 && (
+          <Col lg="6" md="12">
+            <Card>
+              <Card.Header>
+                <Card.Title as="h5" className="d-flex align-items-center gap-2">
+                  <i className="fa-solid fa-signal text-info" />
+                  <span>Signal Ranking</span>
+                </Card.Title>
+                <Card.Text className="text-body-secondary">
+                  Latest strategy signals ranked by algorithm frequency
+                </Card.Text>
+              </Card.Header>
+              <Card.Body>
+                <Table hover responsive size="sm">
+                  <thead>
+                    <tr>
+                      <th>Algorithm</th>
+                      <th>Generated</th>
+                      <th>Regime</th>
+                      <th className="text-end">Count</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rankedSignalAlgorithms.map(
+                      ({
+                        algorithm_name,
+                        generated_at,
+                        current_regime,
+                        count,
+                      }) => (
+                        <tr key={algorithm_name}>
+                          <td>{algorithm_name}</td>
+                          <td>{formatTimestamp(generated_at)}</td>
+                          <td>{current_regime || "-"}</td>
                           <td className="text-end">{count}</td>
-                          <td className="text-end">
-                            {roundDecimals(bot_profit, 2)}%
-                          </td>
-                          <td className="text-end">
-                            {count > 0
-                              ? ((bot_profit / count) * 100).toFixed(2) + "%"
-                              : ""}
-                          </td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </Table>
-                </Card.Body>
-              </Card>
-            </Col>
-          )}
-          {rankedSignals.length > 0 && (
-            <Col lg="6" md="12">
-              <Card>
-                <Card.Header>
-                  <Card.Title
-                    as="h5"
-                    className="d-flex align-items-center gap-2"
-                  >
-                    <i className="fa-solid fa-signal text-info" />
-                    <span>Signal Ranking</span>
-                  </Card.Title>
-                  <Card.Text className="text-body-secondary">
-                    Latest strategy signals ranked by algorithm frequency
-                  </Card.Text>
-                </Card.Header>
-                <Card.Body>
-                  <Table hover responsive size="sm">
-                    <thead>
-                      <tr>
-                        <th>Algorithm</th>
-                        <th>Generated</th>
-                        <th>Regime</th>
-                        <th>Symbol</th>
-                        <th className="text-end">Count</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rankedSignals.map(
-                        ({
-                          id,
-                          algorithm_name,
-                          generated_at,
-                          current_regime,
-                          symbol,
-                        }) => (
-                          <tr key={id}>
-                            <td>{algorithm_name}</td>
-                            <td>{formatTimestamp(generated_at)}</td>
-                            <td>{current_regime || "-"}</td>
-                            <td>{symbol}</td>
-                            <td className="text-end">
-                              {signalAlgorithmCounts.get(algorithm_name) ?? 0}
-                            </td>
-                          </tr>
-                        ),
-                      )}
-                    </tbody>
-                  </Table>
-                </Card.Body>
-              </Card>
-            </Col>
-          )}
-        </Row>
-      )}
+                      ),
+                    )}
+                  </tbody>
+                </Table>
+              </Card.Body>
+            </Card>
+          </Col>
+        )}
+      </Row>
     </div>
   );
 };
