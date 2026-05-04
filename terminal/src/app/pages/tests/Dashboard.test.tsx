@@ -1,10 +1,11 @@
 import "@testing-library/jest-dom";
-import { screen as rtlScreen } from "@testing-library/react";
+import { screen as rtlScreen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 import DashboardPage from "../Dashboard";
 import { SpinnerContext } from "../../Layout";
 import { renderWithProviders } from "../../../utils/test-utils";
+import { useGetSignalsQuery } from "../../../features/signalsApiSlice";
 
 vi.mock("../../../features/balanceApiSlice", () => ({
   useGetBalanceQuery: vi.fn(() => ({
@@ -61,6 +62,13 @@ vi.mock("../../../features/marketApiSlice", () => ({
   })),
 }));
 
+vi.mock("../../../features/signalsApiSlice", () => ({
+  useGetSignalsQuery: vi.fn(() => ({
+    data: [],
+    isLoading: false,
+  })),
+}));
+
 vi.mock("../../filter-gainers-losers", () => ({
   useFilteredGainerLosers: vi.fn(() => ({
     combined: [],
@@ -85,7 +93,7 @@ vi.mock("../../components/AdrCard", () => ({
 }));
 
 describe("Dashboard page", () => {
-  it("renders BTC sharpe in the risk efficiency section", () => {
+  const renderDashboard = () =>
     renderWithProviders(
       <MemoryRouter>
         <SpinnerContext.Provider
@@ -96,10 +104,80 @@ describe("Dashboard page", () => {
       </MemoryRouter>,
     );
 
+  it("renders BTC sharpe in the risk efficiency section", () => {
+    renderDashboard();
+
     expect(
       rtlScreen.getByText("(How efficient are we with risk?)"),
     ).toBeInTheDocument();
     expect(rtlScreen.getByText("110 USDC")).toBeInTheDocument();
     expect(rtlScreen.getByText("1.27 BTC")).toBeInTheDocument();
+  });
+
+  it("renders signals ranked by algorithm count", () => {
+    vi.mocked(useGetSignalsQuery).mockReturnValueOnce({
+      data: [
+        {
+          id: 1,
+          algorithm_name: "mean_reversion",
+          symbol: "ETHUSDC",
+          generated_at: "2026-05-01T09:00:00",
+          direction: "long",
+          autotrade: false,
+          current_regime: "range",
+          context: {},
+          bot_params: {},
+          indicators: {},
+        },
+        {
+          id: 2,
+          algorithm_name: "apex_flow",
+          symbol: "BTCUSDC",
+          generated_at: "2026-05-01T10:00:00",
+          direction: "long",
+          autotrade: true,
+          current_regime: "bull",
+          context: {},
+          bot_params: {},
+          indicators: {},
+        },
+        {
+          id: 3,
+          algorithm_name: "apex_flow",
+          symbol: "SOLUSDC",
+          generated_at: "2026-05-01T08:00:00",
+          direction: "short",
+          autotrade: false,
+          current_regime: "bear",
+          context: {},
+          bot_params: {},
+          indicators: {},
+        },
+      ],
+      isLoading: false,
+    } as ReturnType<typeof useGetSignalsQuery>);
+
+    renderDashboard();
+
+    const signalCard = rtlScreen.getByText("Signal Ranking").closest(".card");
+
+    expect(signalCard).toBeInTheDocument();
+    expect(
+      within(signalCard as HTMLElement).getByText("1 May, 10:00"),
+    ).toBeInTheDocument();
+    expect(
+      within(signalCard as HTMLElement).getByText("bull"),
+    ).toBeInTheDocument();
+    expect(
+      within(signalCard as HTMLElement).getByText("BTCUSDC"),
+    ).toBeInTheDocument();
+
+    const rows = within(signalCard as HTMLElement).getAllByRole("row");
+    expect(within(rows[1]).getByText("apex_flow")).toBeInTheDocument();
+    expect(within(rows[1]).getByText("2")).toBeInTheDocument();
+    expect(within(rows[2]).getByText("apex_flow")).toBeInTheDocument();
+    expect(within(rows[2]).getByText("2")).toBeInTheDocument();
+    expect(within(rows[3]).getByText("mean_reversion")).toBeInTheDocument();
+    expect(within(rows[3]).getByText("1")).toBeInTheDocument();
   });
 });

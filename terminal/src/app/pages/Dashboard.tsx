@@ -1,4 +1,10 @@
-import React, { useContext, useEffect, useState, type FC } from "react";
+import React, {
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type FC,
+} from "react";
 import { Card, Col, Row, Table } from "react-bootstrap";
 import {
   useGetBalanceQuery,
@@ -9,12 +15,14 @@ import {
   useGetAlgoRankingQuery,
 } from "../../features/bots/botsApiSlice";
 import { useAdSeriesQuery } from "../../features/marketApiSlice";
+import { useGetSignalsQuery } from "../../features/signalsApiSlice";
 import type {
   BalanceData,
   BenchmarkCollection,
 } from "../../features/features.types";
 import { BotStatus } from "../../utils/enums";
 import { roundDecimals } from "../../utils/math";
+import { formatTimestamp } from "../../utils/time";
 import GainersLosers from "../components/GainersLosers";
 import PortfolioBenchmarkChart from "../components/PortfolioBenchmark";
 import { SpinnerContext } from "../Layout";
@@ -99,6 +107,9 @@ export const DashboardPage: FC<{}> = () => {
 
   const { data: algoRanking, isLoading: loadingAlgoRanking } =
     useGetAlgoRankingQuery();
+  const { data: signals, isLoading: loadingSignals } = useGetSignalsQuery({
+    limit: 1000,
+  });
 
   const [activeBotsCount, setActiveBotsCount] = useState(0);
   const [errorBotsCount, setErrorBotsCount] = useState(0);
@@ -115,6 +126,31 @@ export const DashboardPage: FC<{}> = () => {
       .sort((a, b) => b - a)
       .slice(0, 3) ?? [],
   );
+  const signalAlgorithmCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    signals?.forEach(({ algorithm_name }) => {
+      counts.set(algorithm_name, (counts.get(algorithm_name) ?? 0) + 1);
+    });
+
+    return counts;
+  }, [signals]);
+  const rankedSignals = useMemo(() => {
+    return [...(signals ?? [])].sort((left, right) => {
+      const countDifference =
+        (signalAlgorithmCounts.get(right.algorithm_name) ?? 0) -
+        (signalAlgorithmCounts.get(left.algorithm_name) ?? 0);
+
+      if (countDifference !== 0) {
+        return countDifference;
+      }
+
+      return (
+        new Date(right.generated_at).getTime() -
+        new Date(left.generated_at).getTime()
+      );
+    });
+  }, [signalAlgorithmCounts, signals]);
 
   useEffect(() => {
     if (activeBotEntities) {
@@ -130,7 +166,8 @@ export const DashboardPage: FC<{}> = () => {
       !loadingCombined &&
       !loadingFuturesRankings &&
       !loadingAdpSeries &&
-      !loadingAlgoRanking
+      !loadingAlgoRanking &&
+      !loadingSignals
     ) {
       setSpinner(false);
     } else {
@@ -151,6 +188,7 @@ export const DashboardPage: FC<{}> = () => {
     loadingAdpSeries,
     loadingFuturesRankings,
     loadingAlgoRanking,
+    loadingSignals,
   ]);
 
   return (
@@ -383,61 +421,119 @@ export const DashboardPage: FC<{}> = () => {
           )}
         </Col>
       </Row>
-      {algoRanking && algoRanking.length > 0 && (
+      {((algoRanking && algoRanking.length > 0) ||
+        rankedSignals.length > 0) && (
         <Row>
-          <Col lg="6" md="12">
-            <Card>
-              <Card.Header>
-                <Card.Title as="h5" className="d-flex align-items-center gap-2">
-                  <i className="fa-solid fa-trophy text-warning" />
-                  <span>Algorithm Ranking</span>
-                </Card.Title>
-                <Card.Text className="text-body-secondary">
-                  These are the algorithms executed by Binquant through
-                  autotrade
-                </Card.Text>
-              </Card.Header>
-              <Card.Body>
-                <Table hover responsive size="sm">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Name</th>
-                      <th className="text-end">Count</th>
-                      <th className="text-end">
-                        Profit ({accountData?.fiat_currency})
-                      </th>
-                      <th className="text-end">Performance</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {algoRanking.map(({ name, count, bot_profit }, index) => (
-                      <tr
-                        key={name}
-                        className={
-                          topAlgoCounts.has(count)
-                            ? "table-secondary text-white"
-                            : ""
-                        }
-                      >
-                        <td>{index + 1}</td>
-                        <td>{name}</td>
-                        <td className="text-end">{count}</td>
-                        <td className="text-end">
-                          {roundDecimals(bot_profit, 2)}%
-                        </td>
-                        <td className="text-end">
-                          {count > 0
-                            ? ((bot_profit / count) * 100).toFixed(2) + "%"
-                            : ""}
-                        </td>
+          {algoRanking && algoRanking.length > 0 && (
+            <Col lg="6" md="12">
+              <Card>
+                <Card.Header>
+                  <Card.Title
+                    as="h5"
+                    className="d-flex align-items-center gap-2"
+                  >
+                    <i className="fa-solid fa-trophy text-warning" />
+                    <span>Algorithm Ranking</span>
+                  </Card.Title>
+                  <Card.Text className="text-body-secondary">
+                    These are the algorithms executed by Binquant through
+                    autotrade
+                  </Card.Text>
+                </Card.Header>
+                <Card.Body>
+                  <Table hover responsive size="sm">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Name</th>
+                        <th className="text-end">Count</th>
+                        <th className="text-end">
+                          Profit ({accountData?.fiat_currency})
+                        </th>
+                        <th className="text-end">Performance</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              </Card.Body>
-            </Card>
-          </Col>
+                    </thead>
+                    <tbody>
+                      {algoRanking.map(({ name, count, bot_profit }, index) => (
+                        <tr
+                          key={name}
+                          className={
+                            topAlgoCounts.has(count)
+                              ? "table-secondary text-white"
+                              : ""
+                          }
+                        >
+                          <td>{index + 1}</td>
+                          <td>{name}</td>
+                          <td className="text-end">{count}</td>
+                          <td className="text-end">
+                            {roundDecimals(bot_profit, 2)}%
+                          </td>
+                          <td className="text-end">
+                            {count > 0
+                              ? ((bot_profit / count) * 100).toFixed(2) + "%"
+                              : ""}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </Card.Body>
+              </Card>
+            </Col>
+          )}
+          {rankedSignals.length > 0 && (
+            <Col lg="6" md="12">
+              <Card>
+                <Card.Header>
+                  <Card.Title
+                    as="h5"
+                    className="d-flex align-items-center gap-2"
+                  >
+                    <i className="fa-solid fa-signal text-info" />
+                    <span>Signal Ranking</span>
+                  </Card.Title>
+                  <Card.Text className="text-body-secondary">
+                    Latest strategy signals ranked by algorithm frequency
+                  </Card.Text>
+                </Card.Header>
+                <Card.Body>
+                  <Table hover responsive size="sm">
+                    <thead>
+                      <tr>
+                        <th>Algorithm</th>
+                        <th>Generated</th>
+                        <th>Regime</th>
+                        <th>Symbol</th>
+                        <th className="text-end">Count</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rankedSignals.map(
+                        ({
+                          id,
+                          algorithm_name,
+                          generated_at,
+                          current_regime,
+                          symbol,
+                        }) => (
+                          <tr key={id}>
+                            <td>{algorithm_name}</td>
+                            <td>{formatTimestamp(generated_at)}</td>
+                            <td>{current_regime || "-"}</td>
+                            <td>{symbol}</td>
+                            <td className="text-end">
+                              {signalAlgorithmCounts.get(algorithm_name) ?? 0}
+                            </td>
+                          </tr>
+                        ),
+                      )}
+                    </tbody>
+                  </Table>
+                </Card.Body>
+              </Card>
+            </Col>
+          )}
         </Row>
       )}
     </div>
