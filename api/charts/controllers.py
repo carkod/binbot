@@ -1,9 +1,10 @@
 import logging
 from datetime import datetime, timezone
-from typing import Any, Iterable
+from typing import Any, Iterable, cast
 
+from sqlalchemy import Table
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import Session, text
+from sqlmodel import Session, func
 
 from charts.models import AdrSeries, AdrSeriesDb
 from databases.crud.autotrade_crud import AutotradeCrud
@@ -169,35 +170,40 @@ class MarketDominationController:
         """
         fetch_size = size + max(int(window) - 1, 0)
         win_preceding = max(int(window) - 1, 0)
+        market_breadth = cast(Table, getattr(MarketBreadthTable, "__table__"))
 
-        sql = text(
-            f"""
-            WITH recent AS (
-                SELECT timestamp, advancers, decliners, total_volume,
-                       strength_index, adp, avg_gain, avg_loss
-                FROM market_breadth
-                WHERE (:source IS NULL OR source = :source)
-                ORDER BY timestamp DESC
-                LIMIT :fetch_size
+        recent_columns = (
+            market_breadth.c.timestamp,
+            market_breadth.c.advancers,
+            market_breadth.c.decliners,
+            market_breadth.c.total_volume,
+            market_breadth.c.strength_index,
+            market_breadth.c.adp,
+            market_breadth.c.avg_gain,
+            market_breadth.c.avg_loss,
+        )
+
+        recent_stmt = market_breadth.select().with_only_columns(*recent_columns)
+        if exchange:
+            recent_stmt = recent_stmt.where(market_breadth.c.source == exchange.value)
+
+        recent = (
+            recent_stmt.order_by(market_breadth.c.timestamp.desc())
+            .limit(fetch_size)
+            .subquery("recent")
+        )
+
+        stmt = (
+            recent.select()
+            .add_columns(
+                func.avg(recent.c.adp)
+                .over(order_by=recent.c.timestamp, rows=(-win_preceding, 0))
+                .label("adp_ma"),
             )
-            SELECT timestamp, advancers, decliners, total_volume, strength_index,
-                   adp, avg_gain, avg_loss,
-                   AVG(adp) OVER (
-                       ORDER BY timestamp
-                       ROWS BETWEEN {win_preceding} PRECEDING AND CURRENT ROW
-                   ) AS adp_ma
-            FROM recent
-            ORDER BY timestamp DESC
-            """
+            .order_by(recent.c.timestamp.desc())
         )
 
-        result = self.session.execute(
-            sql,
-            {
-                "source": exchange.value if exchange else None,
-                "fetch_size": fetch_size,
-            },
-        )
+        result = self.session.execute(stmt)
         rows = result.mappings().all()
 
         if not rows:

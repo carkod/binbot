@@ -39,19 +39,25 @@ class ApiDb:
         self.config = AppConfig()
         pass
 
-    def init_db(self):
-        self.run_migrations()
-        self.init_users()
-        self.init_autotrade_settings()
-        self.init_test_autotrade_settings()
-        self.create_dummy_bot()
-        self.init_symbols()
-        # Depends on autotrade settings
-        self.init_balances()
-        self.init_inquiries()
-        self.init_market_breadth()
+    def close(self):
+        self.session.close()
 
-        logging.info("Finishing db operations")
+    def init_db(self):
+        try:
+            self.run_migrations()
+            self.init_users()
+            self.init_autotrade_settings()
+            self.init_test_autotrade_settings()
+            self.create_dummy_bot()
+            self.init_symbols()
+            # Depends on autotrade settings
+            self.init_balances()
+            self.init_inquiries()
+            self.init_market_breadth()
+
+            logging.info("Finishing db operations")
+        finally:
+            self.close()
 
     def init_market_breadth(self):
         """
