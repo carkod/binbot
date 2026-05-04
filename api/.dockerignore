@@ -14,7 +14,6 @@ mongo_data.old
 api/main/config/*.cfg
 api/tests
 db.dump
-kafka_data
 pg_data
 !terminal/.env
 !.python-version

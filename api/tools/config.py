@@ -61,7 +61,6 @@ class Config:
             "BACKEND_DIRECTORY",
             "BACKEND_DOMAIN",
             "FRONTEND_DOMAIN",
-            "KAFKA_HOST",
             "POSTGRES_USER",
             "POSTGRES_PASSWORD",
             "POSTGRES_DB",
@@ -109,15 +108,6 @@ class Config:
     @property
     def frontend_domain(self) -> str:
         return self._get_required("FRONTEND_DOMAIN")
-
-    # Kafka settings
-    @property
-    def kafka_port(self) -> int:
-        return int(self._get_optional("KAFKA_PORT", "29092"))
-
-    @property
-    def kafka_host(self) -> str:
-        return self._get_required("KAFKA_HOST")
 
     # PostgreSQL settings
     @property
