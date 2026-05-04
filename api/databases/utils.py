@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, pool
+from sqlalchemy import create_engine
 from sqlmodel import Session
 from contextlib import contextmanager
 
@@ -11,12 +11,20 @@ load_dotenv()
 
 # This allows testing/Github action dummy envs
 db_url = f"postgresql+psycopg2://{os.getenv('POSTGRES_USER', 'postgres')}:{os.getenv('POSTGRES_PASSWORD', 'postgres')}@{os.getenv('POSTGRES_HOSTNAME', 'localhost')}:{os.getenv('POSTGRES_PORT', 5432)}/{os.getenv('POSTGRES_DB', 'postgres')}"
-engine = create_engine(url=db_url, poolclass=pool.NullPool)
+engine = create_engine(
+    url=db_url,
+    pool_size=int(os.getenv("POSTGRES_POOL_SIZE", "5")),
+    max_overflow=int(os.getenv("POSTGRES_MAX_OVERFLOW", "5")),
+    pool_timeout=int(os.getenv("POSTGRES_POOL_TIMEOUT", "30")),
+    pool_recycle=int(os.getenv("POSTGRES_POOL_RECYCLE", "1800")),
+    pool_pre_ping=True,
+)
 
 
 def get_session():
-    with Session(engine).no_autoflush as session:
-        yield session
+    with Session(engine) as session:
+        with session.no_autoflush:
+            yield session
 
 
 def independent_session() -> Session:

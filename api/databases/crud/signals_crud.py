@@ -1,10 +1,16 @@
 from datetime import datetime
-from typing import Any, Sequence
+from typing import Any, Generator, Sequence
+from contextlib import AbstractContextManager, contextmanager
 
 from sqlmodel import Session, col, select
 
 from databases.tables.signals_table import SignalsTable
-from databases.utils import independent_session
+from databases.utils import get_db_session as _get_db_session
+
+
+def get_session() -> AbstractContextManager[Session]:
+    """Module-level session factory kept overridable for tests."""
+    return _get_db_session()
 
 
 class SignalsCrud:
@@ -14,9 +20,19 @@ class SignalsCrud:
     """
 
     def __init__(self, session: Session | None = None):
-        if session is None:
-            session = independent_session()
-        self.session = session
+        self._external_session = session
+
+    def _get_session(self) -> AbstractContextManager[Session]:
+        if self._external_session is not None:
+            session = self._external_session
+
+            @contextmanager
+            def external_ctx() -> Generator[Session, None, None]:
+                yield session
+
+            return external_ctx()
+
+        return get_session()
 
     def create(
         self,
@@ -41,9 +57,12 @@ class SignalsCrud:
             bot_params=bot_params or {},
             indicators=indicators or {},
         )
-        self.session.add(row)
-        self.session.commit()
-        self.session.refresh(row)
+        with self._get_session() as session:
+            session.add(row)
+            session.commit()
+            session.refresh(row)
+            if self._external_session is None:
+                session.expunge(row)
         return row
 
     def query(
@@ -75,4 +94,9 @@ class SignalsCrud:
             .offset(offset)
             .limit(limit)
         )
-        return self.session.exec(stmt).all()
+        with self._get_session() as session:
+            rows = session.exec(stmt).all()
+            if self._external_session is None:
+                for row in rows:
+                    session.expunge(row)
+            return rows
