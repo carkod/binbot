@@ -499,11 +499,14 @@ class KucoinPositionDeal(KucoinBaseBalance):
             return
         if self.active_bot.margin_short_reversal:
             return
-        if float(self.active_bot.deal.trailing_stop_loss_price or 0) != 0:
+        if self.active_bot.deal.trailing_stop_loss_price != 0:
+            trailing_reconciler = getattr(self, "reconcile_trailing_stop_loss", None)
+            if callable(trailing_reconciler):
+                trailing_reconciler()
             return
 
-        intended_price = float(self.active_bot.deal.stop_loss_price or 0)
-        if intended_price <= 0:
+        # Intended price
+        if self.active_bot.deal.stop_loss_price <= 0:
             return
 
         exchange_ok, exchange_price = self._exchange_stop_loss_price()
@@ -541,7 +544,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         # Case 3: ratchet — replace only if materially better and not on cooldown.
         if self.should_replace_stop_loss_order(
             current_stop_price=exchange_price,
-            new_stop_price=intended_price,
+            new_stop_price=self.active_bot.deal.stop_loss_price,
             last_replace_ts_ms=last_replace_ts_ms,
         ):
             self.cancel_current_sl()

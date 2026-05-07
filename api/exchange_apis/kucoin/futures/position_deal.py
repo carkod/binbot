@@ -379,6 +379,37 @@ class PositionDeal(KucoinPositionDeal):
         self.controller.save(self.active_bot)
         return self.active_bot
 
+    def reconcile_trailing_stop_loss(self) -> None:
+        """
+        Re-place an armed futures trailing stop if the exchange no longer has
+        a stop order. The bot-side trailing price is the intended exit once
+        trailing has armed.
+        """
+        intended_price = float(self.active_bot.deal.trailing_stop_loss_price)
+        if intended_price <= 0:
+            return
+
+        exchange_ok, exchange_price = self._exchange_stop_loss_price()
+        if not exchange_ok:
+            return
+
+        if exchange_price is not None and not self.should_replace_stop_loss_order(
+            current_stop_price=exchange_price,
+            new_stop_price=intended_price,
+            last_replace_ts_ms=None,
+        ):
+            return
+
+        reason = (
+            "missing"
+            if exchange_price is None
+            else f"at {exchange_price}, expected {intended_price}"
+        )
+        self.active_bot.add_log(
+            f"Exchange trailing SL {reason} — re-placing trailing stop."
+        )
+        self.place_trailing_stop_loss()
+
     # Strategies whose reversal chain has historically compounded losses on chop;
     # for these, a second SL on the same pair within the cooldown closes instead of flipping.
     _NO_REVERSAL_AFTER_LOSS_NAMES = {
@@ -819,6 +850,9 @@ class PositionDeal(KucoinPositionDeal):
 
         # Trailing profit (price going down)
         if self.active_bot.trailing and self.active_bot.deal.opening_price > 0:
+            if self.active_bot.deal.trailing_stop_loss_price != 0:
+                self.reconcile_trailing_stop_loss()
+
             # First activation: derive the next trailing trigger from entry or the last trailing stop.
             if self.active_bot.deal.trailing_stop_loss_price == 0:
                 trailing_price = float(self.active_bot.deal.opening_price) * (
