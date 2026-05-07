@@ -1,8 +1,6 @@
 from datetime import datetime
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session
-
 from databases.crud.signals_crud import SignalsCrud
 from databases.utils import get_session
 from signals.models import (
@@ -12,6 +10,7 @@ from signals.models import (
 )
 from user.models.user import UserTokenData
 from user.services.auth import get_current_user
+from databases.tables.signals_table import SignalsTable
 
 signals_blueprint = APIRouter(tags=["signals"])
 
@@ -60,8 +59,6 @@ def get_signal(
     session: Session = Depends(get_session),
     _: UserTokenData = Depends(get_current_user),
 ):
-    from databases.tables.signals_table import SignalsTable
-
     row = session.get(SignalsTable, signal_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Signal not found")
