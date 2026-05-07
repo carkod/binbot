@@ -4,6 +4,7 @@ import types
 
 from bots.models import BotModel, DealModel, OrderModel
 from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
+from exchange_apis.kucoin.futures.position_deal import PositionDeal
 from pybinbot import OrderBase, OrderStatus, DealType, Position
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import (
     AddOrderReq,
@@ -44,6 +45,13 @@ def _make_deal(
         batch_cancel_stop_loss_orders=lambda ids: None,
         place_futures_order=lambda **kwargs: None,
     )
+    return deal
+
+
+def _make_position_deal(**kwargs) -> Any:
+    base_deal = _make_deal(**kwargs)
+    deal = cast(Any, PositionDeal.__new__(PositionDeal))
+    deal.__dict__.update(base_deal.__dict__)
     return deal
 
 
@@ -91,6 +99,7 @@ def test_place_stop_loss_for_margin_short_uses_price_above_entry():
     assert captured["side"] == AddOrderReq.SideEnum.BUY
     assert captured["stop"] == AddOrderReq.StopEnum.UP
     assert captured["stop_price"] == 102.0
+    assert captured["leverage"] == 1
 
 
 def test_should_replace_stop_loss_order_blocks_immaterial_move():
@@ -152,13 +161,63 @@ def test_should_replace_stop_loss_order_blocks_worse_move():
     )
 
 
-def test_reconcile_exchange_sl_skips_when_trailing_armed():
+def test_reconcile_exchange_sl_skips_armed_trailing_in_base_deal():
     calls: list[str] = []
     deal = _make_deal(trailing_stop_loss_price=99.0)
     deal.cancel_current_sl = lambda: calls.append("cancel")
     deal.place_stop_loss = lambda: calls.append("place")
 
     KucoinPositionDeal.reconcile_exchange_sl(deal)
+
+    assert calls == []
+
+
+def test_reconcile_exchange_sl_keeps_existing_armed_trailing_stop():
+    calls: list[str] = []
+    deal = _make_position_deal(trailing_stop_loss_price=99.0)
+    deal.kucoin_futures_api = types.SimpleNamespace(
+        get_all_stop_loss_orders=lambda symbol: [
+            types.SimpleNamespace(stop_price="99.0", id="trail-1")
+        ],
+        batch_cancel_stop_loss_orders=lambda ids: None,
+    )
+    deal.cancel_current_sl = lambda: calls.append("cancel")
+    deal.place_stop_loss = lambda: calls.append("place")
+    deal.place_trailing_stop_loss = lambda: calls.append("trailing")
+
+    KucoinPositionDeal.reconcile_exchange_sl(deal)
+
+    assert calls == []
+
+
+def test_reconcile_trailing_stop_loss_replaces_worse_exchange_stop():
+    calls: list[str] = []
+    deal = _make_position_deal(trailing_stop_loss_price=99.0)
+    deal.kucoin_futures_api = types.SimpleNamespace(
+        get_all_stop_loss_orders=lambda symbol: [
+            types.SimpleNamespace(stop_price="97.0", id="stale-emergency-sl")
+        ],
+        batch_cancel_stop_loss_orders=lambda ids: None,
+    )
+    deal.place_trailing_stop_loss = lambda: calls.append("trailing")
+
+    PositionDeal.reconcile_trailing_stop_loss(deal)
+
+    assert calls == ["trailing"]
+
+
+def test_reconcile_trailing_stop_loss_keeps_better_exchange_stop():
+    calls: list[str] = []
+    deal = _make_position_deal(trailing_stop_loss_price=99.0)
+    deal.kucoin_futures_api = types.SimpleNamespace(
+        get_all_stop_loss_orders=lambda symbol: [
+            types.SimpleNamespace(stop_price="100.0", id="manual-tighter-sl")
+        ],
+        batch_cancel_stop_loss_orders=lambda ids: None,
+    )
+    deal.place_trailing_stop_loss = lambda: calls.append("trailing")
+
+    PositionDeal.reconcile_trailing_stop_loss(deal)
 
     assert calls == []
 

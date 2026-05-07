@@ -4,6 +4,7 @@ import time
 import pandas as pd
 import pytest
 from bots.models import OrderModel
+from kucoin_universal_sdk.model.common import RestError
 from typing import Any, cast
 from pybinbot import MarketType
 from streaming.position_manager import PositionManager
@@ -696,3 +697,132 @@ class TestPositionManager:
         assert bot.status == Status.completed
         assert bot.deal.closing_price > 0
         assert bot.deal.closing_qty == 70
+
+    def test_futures_order_updates_does_not_expire_protective_stop(self, monkeypatch):
+        base = self._make_base_streaming(monkeypatch, active_pairs=["BTCUSDT"])
+        base.exchange = ExchangeId.KUCOIN
+        base.interval = types.SimpleNamespace(get_ms=lambda: 15 * 60 * 1000)
+
+        bot = self._make_bot(
+            pair="BTCUSDT",
+            position=Position.long,
+            market_type=MarketType.FUTURES,
+        )
+        bot.orders = [
+            OrderModel(
+                order_id="trail-stop-1",
+                order_type="market",
+                pair="BTCUSDTM",
+                timestamp=int(time.time() * 1000) - (60 * 60 * 1000),
+                order_side="sell",
+                qty=116,
+                price=0.0713,
+                status=OrderStatus.NEW,
+                time_in_force="GTC",
+                deal_type=DealType.trailing_profit,
+            )
+        ]
+
+        deleted: list[str] = []
+        saved: list[Any] = []
+        updated: list[OrderModel] = []
+
+        monkeypatch.setattr(
+            OrderStatus,
+            "map_from_kucoin_status",
+            staticmethod(lambda _: OrderStatus.NEW),
+        )
+        monkeypatch.setattr(
+            "streaming.futures_position.convert_to_kucoin_symbol",
+            lambda _bot: "BTCUSDTM",
+        )
+
+        base.kucoin_futures_api.retrieve_order = lambda order_id: types.SimpleNamespace(
+            status=types.SimpleNamespace(value="active"),
+            filled_size=0,
+            avg_deal_price=0,
+            created_at=int(time.time() * 1000),
+            price=0,
+        )
+        base.bot_controller.update_order = lambda order: updated.append(order)
+        base.bot_controller.save = lambda *args, **kwargs: saved.append(
+            kwargs.get("data") if "data" in kwargs else args[0]
+        )
+
+        fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
+        fp.base_streaming = base
+        fp.active_bot = bot
+        fp.price_precision = 4
+        fp.qty_precision = 4
+        fp.bot_crud = types.SimpleNamespace(
+            delete_order=lambda order_id, bot_id: deleted.append(order_id)
+        )
+        fp.cancel_current_sl = lambda: deleted.append("cancel_current_sl")
+
+        FuturesPosition.order_updates(fp)
+
+        assert deleted == []
+        assert updated == []
+        assert saved == []
+        assert bot.orders[0].qty == 116
+
+    def test_futures_order_updates_does_not_cancel_live_stops_for_missing_protective_order(
+        self, monkeypatch
+    ):
+        base = self._make_base_streaming(monkeypatch, active_pairs=["BTCUSDT"])
+        base.exchange = ExchangeId.KUCOIN
+        base.interval = types.SimpleNamespace(get_ms=lambda: 15 * 60 * 1000)
+
+        bot = self._make_bot(
+            pair="BTCUSDT",
+            position=Position.long,
+            market_type=MarketType.FUTURES,
+        )
+        bot.id = "bot-1"
+        bot.orders = [
+            OrderModel(
+                order_id="missing-trail-stop",
+                order_type="market",
+                pair="BTCUSDTM",
+                timestamp=int(time.time() * 1000) - (60 * 60 * 1000),
+                order_side="sell",
+                qty=116,
+                price=0.0713,
+                status=OrderStatus.NEW,
+                time_in_force="GTC",
+                deal_type=DealType.trailing_profit,
+            )
+        ]
+
+        deleted: list[str] = []
+        saved: list[Any] = []
+
+        monkeypatch.setattr(
+            "streaming.futures_position.convert_to_kucoin_symbol",
+            lambda _bot: "BTCUSDTM",
+        )
+        base.kucoin_futures_api.retrieve_order = lambda order_id: (_ for _ in ()).throw(
+            RestError(
+                msg="not found",
+                response=types.SimpleNamespace(code=100001, message="not found"),
+            )
+        )
+        base.bot_controller.save = lambda *args, **kwargs: saved.append(
+            kwargs.get("data") if "data" in kwargs else args[0]
+        )
+
+        fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
+        fp.base_streaming = base
+        fp.active_bot = bot
+        fp.price_precision = 4
+        fp.qty_precision = 4
+        fp.bot_crud = types.SimpleNamespace(
+            delete_order=lambda order_id, bot_id: deleted.append(order_id)
+        )
+        fp.cancel_current_sl = lambda: deleted.append("cancel_current_sl")
+
+        FuturesPosition.order_updates(fp)
+
+        assert deleted == ["missing-trail-stop"]
+        assert [order.order_id for order in bot.orders] == []
+        assert saved == [bot]

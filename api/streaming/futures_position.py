@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Type
 
-from bots.models import BotModel
+from bots.models import BotModel, OrderModel
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from exchange_apis.kucoin.futures.position_market import PositionMarket
 from kucoin_universal_sdk.model.common import RestError
@@ -38,6 +38,20 @@ class FuturesPosition(PositionMarket):
         self.kucoin_benchmark_symbol = "XBTUSDTM"
         self.api = self.base_streaming.kucoin_futures_api
         self.active_bot: BotModel = bot
+
+    def should_expire_order_by_age(self, order: OrderModel) -> bool:
+        """
+        Futures protective orders must remain on exchange until they trigger or
+        the exchange reports a terminal state. A candle-age cutoff is useful for
+        entry orders, but dangerous for stop-market exits.
+        """
+        is_not_base = order.deal_type not in {
+            DealType.stop_loss,
+            DealType.trailing_profit,
+            DealType.take_profit,
+            DealType.panic_close,
+        }
+        return is_not_base
 
     def confirm_close_from_position(self, filled_size: float) -> bool:
         kucoin_symbol = convert_to_kucoin_symbol(self.active_bot)
@@ -83,7 +97,7 @@ class FuturesPosition(PositionMarket):
                             str(order.order_id)
                         )
                     )
-                    if is_expired:
+                    if is_expired and self.should_expire_order_by_age(order):
                         self.bot_crud.delete_order(
                             order_id=str(order.order_id), bot_id=str(self.active_bot.id)
                         )
@@ -108,10 +122,13 @@ class FuturesPosition(PositionMarket):
                         )
 
                     previous_qty = float(order.qty)
-                    if order.status == status and previous_qty == filled_size:
+                    if order.status == status and (
+                        filled_size == 0 or previous_qty == filled_size
+                    ):
                         continue
 
-                    order.qty = round_numbers(filled_size, self.qty_precision)
+                    if status == OrderStatus.FILLED or filled_size > 0:
+                        order.qty = round_numbers(filled_size, self.qty_precision)
                     order.status = status
                     order.timestamp = timestamp
                     order.price = round_numbers(price_used, self.price_precision)
@@ -152,8 +169,8 @@ class FuturesPosition(PositionMarket):
                 except RestError as e:
                     if float(e.response.code) == 100001:
                         try:
-                            self.cancel_current_sl()
                             if order.deal_type == DealType.base_order:
+                                self.cancel_current_sl()
                                 self.active_bot.status = Status.inactive
                                 self.active_bot.add_log(
                                     f"Order {order.order_id} expired and cancelled. Bot set to inactive.",
@@ -161,9 +178,26 @@ class FuturesPosition(PositionMarket):
                                 self.base_streaming.bot_controller.save(
                                     data=self.active_bot
                                 )
-                            else:
+                            elif self.should_expire_order_by_age(order):
+                                self.cancel_current_sl()
                                 self.active_bot.add_log(
                                     f"Order {order.order_id} expired and cancelled.",
+                                )
+                                self.base_streaming.bot_controller.save(
+                                    data=self.active_bot
+                                )
+                            else:
+                                self.bot_crud.delete_order(
+                                    order_id=str(order.order_id),
+                                    bot_id=str(self.active_bot.id),
+                                )
+                                self.active_bot.orders = [
+                                    active_order
+                                    for active_order in self.active_bot.orders
+                                    if str(active_order.order_id) != str(order.order_id)
+                                ]
+                                self.active_bot.add_log(
+                                    f"Protective order {order.order_id} was not found on exchange. Removed stale local record.",
                                 )
                                 self.base_streaming.bot_controller.save(
                                     data=self.active_bot

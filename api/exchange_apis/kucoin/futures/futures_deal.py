@@ -41,6 +41,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
     STOP_LOSS_REPLACE_MIN_MOVE_RATIO = 0.0015  # 0.15% of price
     STOP_LOSS_REPLACE_MIN_TICKS = 2
     STOP_LOSS_REPLACE_COOLDOWN_MS = 30_000
+    DEFAULT_FUTURES_LEVERAGE = 1
 
     def __init__(
         self,
@@ -56,6 +57,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             secret=self.config.kucoin_secret,
             passphrase=self.config.kucoin_passphrase,
         )
+        self.kucoin_futures_api.DEFAULT_LEVERAGE = self.DEFAULT_FUTURES_LEVERAGE
         self.controller: BotTableCrud | PaperTradingTableCrud
 
         if db_table == PaperTradingTable:
@@ -83,13 +85,20 @@ class KucoinPositionDeal(KucoinBaseBalance):
         else:
             return BotTableCrud()
 
-    def _calculate_contracts_for_balance(self, balance: float, price: float) -> float:
-        if balance <= 0 or price <= 0:
-            return 0.0
+    def calculate_contracts(self, balance: float, price: float) -> int:
+        """
+        Size futures positions from a fiat risk budget.
 
-        stop_loss_percent = float(self.active_bot.stop_loss or 0)
-        if stop_loss_percent <= 0:
-            return 0.0
+        For futures bots, ``fiat_order_size`` is the max fiat loss budget at
+        the configured stop, not the margin to spend. KuCoin PnL is determined
+        by notional move, so leverage does not change the loss at stop.
+        """
+        if balance <= 0 or price <= 0:
+            return 0
+
+        stop_loss_ratio = float(self.active_bot.stop_loss or 0) / 100
+        if stop_loss_ratio <= 0:
+            return 0
 
         symbol_data = getattr(self, "kucoin_symbol_data", None)
         multiplier = float(
@@ -97,12 +106,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
             or getattr(self.kucoin_futures_api, "DEFAULT_MULTIPLIER", 1)
             or 1
         )
-        leverage = float(
-            getattr(self.kucoin_futures_api, "DEFAULT_LEVERAGE", 100) or 100
-        )
 
-        contracts = (balance * leverage) / (stop_loss_percent * price * multiplier)
-        return round_numbers(contracts, self.symbol_info.qty_precision)
+        contracts = balance / (stop_loss_ratio * price * multiplier)
+        return int(round_numbers(contracts, self.symbol_info.qty_precision))
 
     def _is_reversal_possible(
         self, mark_price: float, current_contracts: float
@@ -115,7 +121,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         min_contract_step = float(self.kucoin_symbol_data.lot_size or 1)
         taker_fee_rate = float(self.kucoin_symbol_data.taker_fee_rate or 0)
         available_balance = float(self.compute_available_balance())
-        leverage = float(self.kucoin_futures_api.DEFAULT_LEVERAGE)
+        leverage = self.DEFAULT_FUTURES_LEVERAGE
 
         per_contract_notional = mark_price * multiplier
         per_contract_buffer = (per_contract_notional / leverage) + (
@@ -158,7 +164,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
             side=side,
             size=1,
         )
-        estimated_contracts = self.calculate_contracts(estimated_price)
+        estimated_contracts = self.calculate_contracts(
+            self.active_bot.fiat_order_size, estimated_price
+        )
 
         if estimated_contracts <= 0:
             return False
@@ -168,21 +176,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
         )
         return available_contracts > estimated_contracts
 
-    def calculate_contracts(self, price: float) -> int:
-        """
-        Calculate the number of futures contracts the current bot can open
-        from `active_bot.fiat_order_size` at the given price.
-
-        Uses the shared balance-based sizing formula in
-        `_calculate_contracts_for_balance(...)` and floors the result to the
-        symbol qty precision before returning it as an integer contract count.
-        """
-        contracts = self._calculate_contracts_for_balance(
-            self.active_bot.fiat_order_size, price
-        )
-
-        return int(contracts)
-
     def contracts_to_fiat_order_size(self, contracts: float, price: float) -> float:
         """
         Invert calculate_contracts() so fiat_order_size reflects the actual
@@ -191,8 +184,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
         if contracts <= 0 or price <= 0:
             return 0.0
 
-        stop_loss_percent = float(self.active_bot.stop_loss or 0)
-        if stop_loss_percent <= 0:
+        stop_loss_ratio = float(self.active_bot.stop_loss or 0) / 100
+        if stop_loss_ratio <= 0:
             return 0.0
 
         symbol_data = getattr(self, "kucoin_symbol_data", None)
@@ -200,10 +193,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
             getattr(symbol_data, "multiplier", 0)
             or getattr(self.kucoin_futures_api, "DEFAULT_MULTIPLIER", 1)
         )
-        leverage = float(getattr(self.kucoin_futures_api, "DEFAULT_LEVERAGE", 100))
 
         return round_numbers(
-            contracts * price * multiplier * stop_loss_percent / leverage,
+            contracts * price * multiplier * stop_loss_ratio,
             8,
         )
 
@@ -254,7 +246,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         maintenance_margin = self.kucoin_symbol_data.maintain_margin
         notional = price * min_qty * multiplier
 
-        initial_margin = notional / self.kucoin_futures_api.DEFAULT_LEVERAGE
+        initial_margin = notional / self.DEFAULT_FUTURES_LEVERAGE
         fees = 2 * notional * taker_fee_rate
 
         required_balance = initial_margin + maintenance_margin + fees
@@ -499,11 +491,14 @@ class KucoinPositionDeal(KucoinBaseBalance):
             return
         if self.active_bot.margin_short_reversal:
             return
-        if float(self.active_bot.deal.trailing_stop_loss_price or 0) != 0:
+        if self.active_bot.deal.trailing_stop_loss_price != 0:
+            trailing_reconciler = getattr(self, "reconcile_trailing_stop_loss", None)
+            if callable(trailing_reconciler):
+                trailing_reconciler()
             return
 
-        intended_price = float(self.active_bot.deal.stop_loss_price or 0)
-        if intended_price <= 0:
+        # Intended price
+        if self.active_bot.deal.stop_loss_price <= 0:
             return
 
         exchange_ok, exchange_price = self._exchange_stop_loss_price()
@@ -541,7 +536,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         # Case 3: ratchet — replace only if materially better and not on cooldown.
         if self.should_replace_stop_loss_order(
             current_stop_price=exchange_price,
-            new_stop_price=intended_price,
+            new_stop_price=self.active_bot.deal.stop_loss_price,
             last_replace_ts_ms=last_replace_ts_ms,
         ):
             self.cancel_current_sl()
@@ -570,7 +565,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             size=available_balance,
         )
 
-        contracts = self.calculate_contracts(price)
+        contracts = self.calculate_contracts(self.active_bot.fiat_order_size, price)
 
         if contracts <= 0:
             raise BinbotErrors(
@@ -581,6 +576,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             order: OrderBase = self.kucoin_futures_api.sell(
                 symbol=self.kucoin_symbol,
                 qty=contracts,
+                leverage=self.DEFAULT_FUTURES_LEVERAGE,
             )
         else:
             order = self.kucoin_futures_api.buy(
@@ -645,6 +641,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             stop_price_type=AddOrderReq.StopPriceTypeEnum.MARK_PRICE,
             reduce_only=True,
             size=self.active_bot.deal.opening_qty,
+            leverage=self.DEFAULT_FUTURES_LEVERAGE,
         )
 
         if order_response.price and order_response.qty:
@@ -778,6 +775,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                     symbol=self.kucoin_symbol,
                     qty=abs(int(position.current_qty)),
                     reduce_only=True,
+                    leverage=self.DEFAULT_FUTURES_LEVERAGE,
                 )
 
             order_model = OrderModel(**order_response.model_dump())
