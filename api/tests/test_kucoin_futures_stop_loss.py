@@ -99,6 +99,7 @@ def test_place_stop_loss_for_margin_short_uses_price_above_entry():
     assert captured["side"] == AddOrderReq.SideEnum.BUY
     assert captured["stop"] == AddOrderReq.StopEnum.UP
     assert captured["stop_price"] == 102.0
+    assert captured["leverage"] == 1
 
 
 def test_should_replace_stop_loss_order_blocks_immaterial_move():

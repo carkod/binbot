@@ -38,7 +38,7 @@ class DummyFuturesApi:
             return self._positions.pop(0)
         return None
 
-    def sell(self, symbol, qty, reduce_only):
+    def sell(self, symbol, qty, reduce_only, leverage=None):
         self.sell_calls.append(qty)
         return OrderModel(
             order_id=f"flip-order-{len(self.sell_calls)}",
@@ -90,7 +90,7 @@ class DummyFuturesApiInsufficientBalance(DummyFuturesApi):
             type("pos", (object,), {"current_qty": -54, "mark_price": 1.267})(),
         ]
 
-    def sell(self, symbol, qty, reduce_only):
+    def sell(self, symbol, qty, reduce_only, leverage=None):
         self.sell_calls.append(qty)
         if len(self.sell_calls) == 2:
             raise RestError(
