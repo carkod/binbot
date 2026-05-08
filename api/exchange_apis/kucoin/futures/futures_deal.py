@@ -116,12 +116,12 @@ class KucoinPositionDeal(KucoinBaseBalance):
         reversal_buffer = 1.40
         min_contract_step = float(self.kucoin_symbol_data.lot_size or 1)
         available_balance = float(self.compute_available_balance())
-        per_contract_buffer = self.required_margin_for_contracts(
+        min_step_margin = self.required_margin_for_contracts(
             min_contract_step, mark_price
         )
         estimated_available_buffer = available_balance - reversal_buffer
 
-        if estimated_available_buffer <= 0 or per_contract_buffer <= 0:
+        if estimated_available_buffer <= 0 or min_step_margin <= 0:
             return float(current_contracts)
 
         minimum_flip_contracts = round_numbers(
@@ -129,7 +129,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self.symbol_info.qty_precision,
         )
 
-        if estimated_available_buffer < (min_contract_step * per_contract_buffer):
+        if estimated_available_buffer < min_step_margin:
             return float(current_contracts)
 
         return float(minimum_flip_contracts)

@@ -14,6 +14,7 @@ def make_sizing_deal(
     stop_loss: float = 6.43252,
     multiplier: float = 10.0,
     qty_precision: int = 0,
+    lot_size: float = 1,
 ) -> Any:
     deal = cast(Any, KucoinPositionDeal.__new__(KucoinPositionDeal))
     deal.active_bot = BotModel(
@@ -29,7 +30,7 @@ def make_sizing_deal(
     deal.kucoin_symbol_data = types.SimpleNamespace(
         multiplier=multiplier,
         taker_fee_rate=0.0006,
-        lot_size=1,
+        lot_size=lot_size,
         mark_price=0.93269,
     )
     deal.kucoin_futures_api = types.SimpleNamespace(
@@ -123,6 +124,13 @@ def test_required_margin_uses_position_notional_and_leverage():
     deal = make_sizing_deal(multiplier=10)
 
     assert deal.required_margin_for_contracts(contracts=100, price=10) == 10012
+
+
+def test_reversal_margin_check_does_not_double_count_lot_size():
+    deal = make_sizing_deal(multiplier=1, lot_size=5)
+    deal.compute_available_balance = lambda: 60
+
+    assert deal._is_reversal_possible(mark_price=10, current_contracts=10) == 15
 
 
 def test_base_order_downsizes_when_risk_size_exceeds_available_margin():
