@@ -1,10 +1,9 @@
 from typing import Any, cast
 import types
 
-import pytest
 from bots.models import BotModel
 from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
-from pybinbot import BinbotErrors, Position
+from pybinbot import DealType, OrderBase, OrderStatus, Position
 
 
 def make_sizing_deal(
@@ -62,23 +61,51 @@ def test_required_margin_uses_position_notional_and_leverage():
     assert deal.required_margin_for_contracts(contracts=100, price=10) == 10012
 
 
-def test_base_order_rejects_when_required_margin_exceeds_available_balance():
+def test_base_order_downsizes_when_risk_size_exceeds_available_margin():
     class DummyFuturesApi:
         DEFAULT_MULTIPLIER = 1
         DEFAULT_LEVERAGE = 1
+
+        def __init__(self):
+            self.sell_calls: list[int] = []
 
         def matching_engine(self, symbol, side, size):
             return 10
 
         def sell(self, symbol, qty, leverage):
-            raise AssertionError("base_order should reject before placing an order")
+            self.sell_calls.append(qty)
+            return OrderBase(
+                order_id="base-order-1",
+                order_type="limit",
+                pair=symbol,
+                timestamp=1775008219262,
+                order_side="sell",
+                qty=qty,
+                price=10,
+                status=OrderStatus.FILLED,
+                time_in_force="GTC",
+                deal_type=DealType.base_order,
+            )
+
+        def get_futures_position(self, symbol):
+            return types.SimpleNamespace(mark_price=10)
 
     deal = make_sizing_deal(fiat_order_size=100, stop_loss=1, multiplier=10)
     deal.active_bot.fiat = "USDT"
     deal.fiat = "USDT"
     deal.kucoin_symbol = "TESTUSDTM"
     deal.kucoin_futures_api = DummyFuturesApi()
+    deal.controller = types.SimpleNamespace(
+        update_logs=lambda **kwargs: None,
+        save=lambda bot: bot,
+    )
     deal.compute_available_balance = lambda: 1000
 
-    with pytest.raises(BinbotErrors, match="Required futures margin"):
-        KucoinPositionDeal.base_order(deal)
+    opened_bot = KucoinPositionDeal.base_order(deal)
+
+    assert deal.kucoin_futures_api.sell_calls == [9]
+    assert opened_bot.deal.base_order_size == 9
+    assert opened_bot.deal.opening_qty == 9
+    assert any(
+        "Futures order downsized from 100 to 9" in log for log in opened_bot.logs
+    )
