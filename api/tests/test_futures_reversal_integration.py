@@ -166,6 +166,7 @@ def test_reverse_position_closes_previous_and_opens_new_bot(monkeypatch):
     position_deal.controller = controller
     position_deal.kucoin_futures_api = futures_api
     position_deal.kucoin_symbol = "BTCUSDTM"
+    position_deal.symbol_info = type("SymbolInfo", (), {"futures_leverage": 1})()
     position_deal.price_precision = 4
     position_deal.qty_precision = 0
     position_deal._is_reversal_possible = lambda mark, current: 80
@@ -222,6 +223,7 @@ def test_reverse_position_retries_second_order_after_insufficient_balance(
     position_deal.controller = controller
     position_deal.kucoin_futures_api = futures_api
     position_deal.kucoin_symbol = "BTCUSDTM"
+    position_deal.symbol_info = type("SymbolInfo", (), {"futures_leverage": 1})()
     position_deal.price_precision = 4
     position_deal.qty_precision = 0
     position_deal._is_reversal_possible = lambda mark, current: 80
@@ -267,6 +269,7 @@ def test_reverse_position_normalizes_sdk_enum_values_in_second_order(monkeypatch
     position_deal.controller = controller
     position_deal.kucoin_futures_api = futures_api
     position_deal.kucoin_symbol = "BTCUSDTM"
+    position_deal.symbol_info = type("SymbolInfo", (), {"futures_leverage": 1})()
     position_deal.price_precision = 4
     position_deal.qty_precision = 0
     position_deal._is_reversal_possible = lambda mark, current: 80

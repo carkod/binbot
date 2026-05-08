@@ -83,7 +83,7 @@ class PositionDeal(KucoinPositionDeal):
                     symbol=self.kucoin_symbol,
                     qty=adjusted_contracts,
                     reduce_only=False,
-                    leverage=self.DEFAULT_FUTURES_LEVERAGE,
+                    leverage=self.symbol_info.futures_leverage,
                 )
 
             return self.kucoin_futures_api.buy(
@@ -180,7 +180,7 @@ class PositionDeal(KucoinPositionDeal):
                     size=qty,
                     order_type=OrderType.market,
                     reduce_only=True,
-                    leverage=self.DEFAULT_FUTURES_LEVERAGE,
+                    leverage=self.symbol_info.futures_leverage,
                 )
 
             order_base.deal_type = DealType.take_profit
@@ -246,7 +246,7 @@ class PositionDeal(KucoinPositionDeal):
                         symbol=self.kucoin_symbol,
                         qty=qty,
                         reduce_only=True,
-                        leverage=self.DEFAULT_FUTURES_LEVERAGE,
+                        leverage=self.symbol_info.futures_leverage,
                     )
 
             except RestError as e:
@@ -351,7 +351,7 @@ class PositionDeal(KucoinPositionDeal):
                     stop_price_type=AddOrderReq.StopPriceTypeEnum.MARK_PRICE,
                     stop=AddOrderReq.StopEnum.UP,
                     stop_price=self.active_bot.deal.trailing_stop_loss_price,
-                    leverage=self.DEFAULT_FUTURES_LEVERAGE,
+                    leverage=self.symbol_info.futures_leverage,
                 )
             else:
                 order_base = self.kucoin_futures_api.place_futures_order(
@@ -363,7 +363,7 @@ class PositionDeal(KucoinPositionDeal):
                     stop_price_type=AddOrderReq.StopPriceTypeEnum.MARK_PRICE,
                     stop=AddOrderReq.StopEnum.DOWN,
                     stop_price=self.active_bot.deal.trailing_stop_loss_price,
-                    leverage=self.DEFAULT_FUTURES_LEVERAGE,
+                    leverage=self.symbol_info.futures_leverage,
                 )
 
             order_base.deal_type = DealType.trailing_profit
@@ -569,7 +569,7 @@ class PositionDeal(KucoinPositionDeal):
                     symbol=self.kucoin_symbol,
                     qty=flip_contracts,
                     reduce_only=False,
-                    leverage=self.DEFAULT_FUTURES_LEVERAGE,
+                    leverage=self.symbol_info.futures_leverage,
                 )
             else:
                 order = self.kucoin_futures_api.buy(

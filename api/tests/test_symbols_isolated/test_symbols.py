@@ -46,6 +46,7 @@ def test_one_symbol(client: TestClient):
     assert content["data"]["price_precision"] == 7
     assert content["data"]["qty_precision"] == 1
     assert content["data"]["is_margin_trading_allowed"] is False
+    assert content["data"]["futures_leverage"] == 1
 
 
 def test_get_one_symbol_not_found(client: TestClient):
@@ -87,6 +88,7 @@ def test_add_symbol(client: TestClient):
     print("content of content", content)
     assert content["message"] == "Symbol added"
     assert content["data"]["id"] == test_new_symbol
+    assert content["data"]["futures_leverage"] == 1
 
 
 def test_delete_symbol(client: TestClient):

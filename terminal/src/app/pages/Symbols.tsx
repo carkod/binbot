@@ -24,6 +24,10 @@ const SymbolsPage: FC = () => {
       active: true,
       cooldown: 0,
       cooldown_start_ts: 0,
+      futures_leverage: 1,
+      exchange_id: "",
+      base_asset: "",
+      quote_asset: "",
     });
   const [confirmDelete, setConfirmDelete] = useState<boolean>(false);
 
@@ -70,6 +74,10 @@ const SymbolsPage: FC = () => {
                         active: symbol.active,
                         cooldown: symbol.cooldown,
                         cooldown_start_ts: symbol.cooldown_start_ts,
+                        futures_leverage: symbol.futures_leverage,
+                        exchange_id: symbol.exchange_id,
+                        base_asset: symbol.base_asset,
+                        quote_asset: symbol.quote_asset,
                       });
                     }
                   }}
@@ -168,12 +176,18 @@ const SymbolsPage: FC = () => {
                             if (seletedSymbolsItem.id !== "") {
                               updateSymbol({
                                 id: seletedSymbolsItem.id,
+                                symbol: seletedSymbolsItem.id,
                                 blacklist_reason:
                                   seletedSymbolsItem.blacklist_reason,
                                 active: seletedSymbolsItem.active,
                                 cooldown: seletedSymbolsItem.cooldown,
                                 cooldown_start_ts:
                                   seletedSymbolsItem.cooldown_start_ts,
+                                futures_leverage:
+                                  seletedSymbolsItem.futures_leverage,
+                                exchange_id: seletedSymbolsItem.exchange_id,
+                                base_asset: seletedSymbolsItem.base_asset,
+                                quote_asset: seletedSymbolsItem.quote_asset,
                               });
                             }
                             return false;
