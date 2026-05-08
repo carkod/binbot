@@ -24,6 +24,7 @@ def _make_deal(
     deal = cast(Any, KucoinPositionDeal.__new__(KucoinPositionDeal))
     deal.price_precision = 2
     deal.kucoin_symbol = "BEATUSDTM"
+    deal.symbol_info = types.SimpleNamespace(futures_leverage=1)
     deal.active_bot = BotModel(
         pair="BEATUSDT",
         position=position,
@@ -76,6 +77,7 @@ def test_place_stop_loss_for_margin_short_uses_price_above_entry():
     deal = cast(Any, KucoinPositionDeal.__new__(KucoinPositionDeal))
     deal.price_precision = 4
     deal.kucoin_symbol = "BEATUSDTM"
+    deal.symbol_info = types.SimpleNamespace(futures_leverage=1)
     deal.kucoin_futures_api = types.SimpleNamespace(
         place_futures_order=fake_place_futures_order
     )

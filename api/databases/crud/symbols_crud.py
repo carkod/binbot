@@ -66,6 +66,7 @@ class SymbolsCrud(SymbolsCrudUtils):
         min_notional: float = 0,
         cooldown: int = 0,
         cooldown_start_ts: int = 0,
+        futures_leverage: int = 1,
         is_margin_trading_allowed: bool = False,
     ) -> SymbolModel:
         # use a fresh session to avoid blockers from long-live transactions
@@ -76,6 +77,7 @@ class SymbolsCrud(SymbolsCrudUtils):
                 active=active,
                 cooldown=cooldown,
                 cooldown_start_ts=cooldown_start_ts,
+                futures_leverage=futures_leverage,
                 quote_asset=quote_asset,
                 base_asset=base_asset,
             )
@@ -101,6 +103,7 @@ class SymbolsCrud(SymbolsCrudUtils):
                 blacklist_reason=symbol_table.blacklist_reason,
                 cooldown=symbol_table.cooldown,
                 cooldown_start_ts=symbol_table.cooldown_start_ts,
+                futures_leverage=symbol_table.futures_leverage,
                 quote_asset=symbol_table.quote_asset,
                 base_asset=symbol_table.base_asset,
                 exchange_id=exchange_link.exchange_id,
@@ -148,6 +151,7 @@ class SymbolsCrud(SymbolsCrudUtils):
                     blacklist_reason=result.blacklist_reason,
                     cooldown=result.cooldown,
                     cooldown_start_ts=result.cooldown_start_ts,
+                    futures_leverage=result.futures_leverage,
                     id=result.id,
                     quote_asset=result.quote_asset,
                     base_asset=result.base_asset,
@@ -188,6 +192,7 @@ class SymbolsCrud(SymbolsCrudUtils):
                     blacklist_reason=result.blacklist_reason,
                     cooldown=result.cooldown,
                     cooldown_start_ts=result.cooldown_start_ts,
+                    futures_leverage=result.futures_leverage,
                     id=result.id,
                     quote_asset=result.quote_asset,
                     base_asset=result.base_asset,
@@ -220,6 +225,7 @@ class SymbolsCrud(SymbolsCrudUtils):
                 symbol_table.cooldown = data.cooldown
             if data.cooldown_start_ts:
                 symbol_table.cooldown_start_ts = data.cooldown_start_ts
+            symbol_table.futures_leverage = data.futures_leverage
 
             s.add(symbol_table)
             s.flush()
@@ -231,6 +237,7 @@ class SymbolsCrud(SymbolsCrudUtils):
                 blacklist_reason=symbol_table.blacklist_reason,
                 cooldown=symbol_table.cooldown,
                 cooldown_start_ts=symbol_table.cooldown_start_ts,
+                futures_leverage=symbol_table.futures_leverage,
                 quote_asset=symbol_table.quote_asset,
                 base_asset=symbol_table.base_asset,
                 exchange_id=data.exchange_id,

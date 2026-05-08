@@ -35,6 +35,12 @@ class SymbolTable(SQLModel, table=True):
         description="Timestamp when cooldown started in milliseconds",
         sa_type=BigInteger,
     )
+    futures_leverage: int = Field(
+        default=1,
+        ge=1,
+        le=3,
+        description="Default leverage to use for this symbol when trading futures",
+    )
     exchange_values: list["SymbolExchangeTable"] = Relationship(
         back_populates="symbol",
         sa_relationship_kwargs={

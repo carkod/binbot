@@ -4,12 +4,15 @@ import { userApiSlice } from "./userApiSlice";
 
 export interface SymbolRequestPayload {
   id: string;
+  symbol?: string;
   // If symbols blacklisted active = false
   active: boolean;
   blacklist_reason: string;
   cooldown?: number;
   cooldown_start_ts?: number;
+  futures_leverage: number;
   asset_indices?: number[];
+  exchange_id: string;
   base_asset: string;
   description?: string;
   is_margin_trading_allowed?: boolean;
@@ -29,12 +32,14 @@ export interface ISymbol {
   blacklist_reason: string;
   quote_asset: string;
   base_asset: string;
+  exchange_id: string;
   price_precision: number;
   qty_precision: number;
   min_qty: number;
   min_notional: number;
   cooldown: number;
   cooldown_start_ts: number;
+  futures_leverage: number;
 }
 
 export interface SymbolResponse extends StandardResponse {

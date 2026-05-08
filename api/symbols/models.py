@@ -38,6 +38,12 @@ class SymbolModel(BaseModel):
         default=0,
         description="Timestamp when cooldown started in milliseconds",
     )
+    futures_leverage: int = Field(
+        default=1,
+        ge=1,
+        le=3,
+        description="Default leverage to use for this symbol when trading futures",
+    )
     asset_indices: list[AssetIndexModel] = Field(
         default=[], description="list of asset indices e.g. memecoin"
     )
@@ -95,6 +101,12 @@ class SymbolRequestPayload(BaseModel):
     cooldown_start_ts: Optional[int] = Field(
         default=0,
         description="Timestamp to indicate when cooldown should start in milliseconds. Combined with cooldown this will put the symbol in inactive for that period of time.",
+    )
+    futures_leverage: int = Field(
+        default=1,
+        ge=1,
+        le=3,
+        description="Default leverage to use for this symbol when trading futures",
     )
     exchange_id: ExchangeId = Field(
         description="Exchange name where this symbol belongs to",

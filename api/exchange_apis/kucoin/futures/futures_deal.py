@@ -41,7 +41,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
     STOP_LOSS_REPLACE_MIN_MOVE_RATIO = 0.0015  # 0.15% of price
     STOP_LOSS_REPLACE_MIN_TICKS = 2
     STOP_LOSS_REPLACE_COOLDOWN_MS = 30_000
-    DEFAULT_FUTURES_LEVERAGE = 1
 
     def __init__(
         self,
@@ -57,7 +56,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
             secret=self.config.kucoin_secret,
             passphrase=self.config.kucoin_passphrase,
         )
-        self.kucoin_futures_api.DEFAULT_LEVERAGE = self.DEFAULT_FUTURES_LEVERAGE
         self.controller: BotTableCrud | PaperTradingTableCrud
 
         if db_table == PaperTradingTable:
@@ -66,6 +64,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self.controller = BotTableCrud()
 
         self.symbol_info = SymbolsCrud().get_symbol(bot.pair)
+        self.kucoin_futures_api.DEFAULT_LEVERAGE = self.symbol_info.futures_leverage
         self.kucoin_symbol = convert_to_kucoin_symbol(bot)
         self.kucoin_symbol_data = self.kucoin_futures_api.get_symbol_info(
             self.kucoin_symbol
@@ -96,7 +95,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         if balance <= 0 or price <= 0:
             return 0
 
-        stop_loss_ratio = float(self.active_bot.stop_loss or 0) / 100
+        stop_loss_ratio = self.active_bot.stop_loss / 100
         if stop_loss_ratio <= 0:
             return 0
 
@@ -114,18 +113,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
         self, mark_price: float, current_contracts: float
     ) -> float:
         reversal_buffer = 1.40
-        multiplier = float(
-            self.kucoin_symbol_data.multiplier
-            or self.kucoin_futures_api.DEFAULT_MULTIPLIER
-        )
         min_contract_step = float(self.kucoin_symbol_data.lot_size or 1)
-        taker_fee_rate = float(self.kucoin_symbol_data.taker_fee_rate or 0)
         available_balance = float(self.compute_available_balance())
-        leverage = self.DEFAULT_FUTURES_LEVERAGE
-
-        per_contract_notional = mark_price * multiplier
-        per_contract_buffer = (per_contract_notional / leverage) + (
-            per_contract_notional * taker_fee_rate
+        per_contract_buffer = self.required_margin_for_contracts(
+            min_contract_step, mark_price
         )
         estimated_available_buffer = available_balance - reversal_buffer
 
@@ -184,7 +175,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         if contracts <= 0 or price <= 0:
             return 0.0
 
-        stop_loss_ratio = float(self.active_bot.stop_loss or 0) / 100
+        stop_loss_ratio = self.active_bot.stop_loss / 100
         if stop_loss_ratio <= 0:
             return 0.0
 
@@ -234,23 +225,27 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         return available_balance
 
-    def min_required_balance(self) -> float:
-        """
-        Calculate the minimum required balance to place a futures order based on stop loss and risk settings.
-        """
-        multiplier = self.kucoin_symbol_data.multiplier
-        min_qty = self.kucoin_symbol_data.lot_size
-        price = self.kucoin_symbol_data.mark_price
-        taker_fee_rate = self.kucoin_symbol_data.taker_fee_rate
-        self.kucoin_symbol_data
-        maintenance_margin = self.kucoin_symbol_data.maintain_margin
-        notional = price * min_qty * multiplier
+    def notional_for_contracts(self, contracts: float, price: float) -> float:
+        multiplier = (
+            self.kucoin_symbol_data.multiplier
+            or self.kucoin_futures_api.DEFAULT_MULTIPLIER
+        )
+        return contracts * price * multiplier
 
-        initial_margin = notional / self.DEFAULT_FUTURES_LEVERAGE
-        fees = 2 * notional * taker_fee_rate
+    def required_margin_for_contracts(self, contracts: float, price: float) -> float:
+        """
+        Estimate the margin needed for a futures order before submitting it.
 
-        required_balance = initial_margin + maintenance_margin + fees
-        return required_balance
+        `fiat_order_size` is the planned stop-loss risk, so it can be far
+        smaller than the margin required to carry the calculated position.
+        """
+        if contracts <= 0 or price <= 0:
+            return 0.0
+
+        notional = self.notional_for_contracts(contracts, price)
+        initial_margin = notional / self.symbol_info.futures_leverage
+        fees = 2 * notional * (self.kucoin_symbol_data.taker_fee_rate or 0)
+        return round_numbers(initial_margin + fees, 8)
 
     def backfill_position_from_fills(self) -> BotModel:
         self.active_bot.add_log(
@@ -550,15 +545,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
             raise BinbotErrors("Fiat order size must be set.")
 
         available_balance = self.compute_available_balance()
-        if self.active_bot.fiat_order_size > available_balance:
-            required_balance = self.min_required_balance()
-
-            if required_balance > available_balance:
-                raise BinbotErrors(
-                    f"Requested base order size {self.active_bot.fiat_order_size} {self.fiat} "
-                    f"exceeds available balance {available_balance} {self.fiat}."
-                )
-
         price = self.kucoin_futures_api.matching_engine(
             symbol=self.kucoin_symbol,
             side=AddOrderReq.SideEnum.BUY,
@@ -572,11 +558,18 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 "Calculated contracts is 0. Check if the order size, stop loss, and risk settings are correct."
             )
 
+        required_margin = self.required_margin_for_contracts(contracts, price)
+        if required_margin > available_balance:
+            raise BinbotErrors(
+                f"Required futures margin {required_margin} {self.fiat} for {contracts} contracts "
+                f"exceeds available balance {available_balance} {self.fiat}."
+            )
+
         if self.active_bot.position == Position.short:
             order: OrderBase = self.kucoin_futures_api.sell(
                 symbol=self.kucoin_symbol,
                 qty=contracts,
-                leverage=self.DEFAULT_FUTURES_LEVERAGE,
+                leverage=self.symbol_info.futures_leverage,
             )
         else:
             order = self.kucoin_futures_api.buy(
@@ -641,7 +634,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             stop_price_type=AddOrderReq.StopPriceTypeEnum.MARK_PRICE,
             reduce_only=True,
             size=self.active_bot.deal.opening_qty,
-            leverage=self.DEFAULT_FUTURES_LEVERAGE,
+            leverage=self.symbol_info.futures_leverage,
         )
 
         if order_response.price and order_response.qty:
@@ -775,7 +768,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                     symbol=self.kucoin_symbol,
                     qty=abs(int(position.current_qty)),
                     reduce_only=True,
-                    leverage=self.DEFAULT_FUTURES_LEVERAGE,
+                    leverage=self.symbol_info.futures_leverage,
                 )
 
             order_model = OrderModel(**order_response.model_dump())
