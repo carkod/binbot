@@ -29,3 +29,5 @@ This repository favors direct, explicit code over thin indirection.
 
 - Add small regression tests for sizing, rounding, stop placement, and reversal logic whenever those calculations change.
 - Prefer tests that name the business rule being protected, especially for trading risk behavior.
+- Run `make format` from `api/` to check formatting, linting, and mypy.
+- Run `make test` from `api/` to run pytest.

@@ -2,12 +2,15 @@ from exchange_apis.kucoin.deals.long_deal import KucoinLongDeal
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from pybinbot import ExchangeId, MarketType, Position
 from bots.models import BotModel
-from typing import Union, Type
+from typing import TYPE_CHECKING, Union, Type
 from exchange_apis.kucoin.deals.short_deal import KucoinShortDeal
 from databases.crud.autotrade_crud import AutotradeCrud
 from exchange_apis.binance.deals.short import BinanceShortDeal
 from exchange_apis.binance.deals.long import BinanceLongDeal
 from exchange_apis.kucoin.futures.position_deal import PositionDeal
+
+if TYPE_CHECKING:
+    from streaming.base import BaseStreaming
 
 
 class DealGateway:
@@ -19,7 +22,10 @@ class DealGateway:
     """
 
     def __init__(
-        self, bot: BotModel, db_table: Type[BotTable] | Type[PaperTradingTable]
+        self,
+        bot: BotModel,
+        db_table: Type[BotTable] | Type[PaperTradingTable],
+        base_streaming: "BaseStreaming | None" = None,
     ) -> None:
         self.autotrade_settings = AutotradeCrud().get_settings()
         self.bot = bot
@@ -33,13 +39,17 @@ class DealGateway:
         ]
         if self.autotrade_settings.exchange_id == ExchangeId.KUCOIN:
             if bot.market_type == MarketType.FUTURES:
-                self.deal = PositionDeal(bot, db_table=db_table)
+                self.deal = PositionDeal(
+                    bot, db_table=db_table, base_streaming=base_streaming
+                )
             else:
                 if bot.position == Position.short:
                     self.deal = KucoinShortDeal(bot, db_table=db_table)
                 else:
                     if bot.market_type == MarketType.FUTURES:
-                        self.deal = PositionDeal(bot, db_table=db_table)
+                        self.deal = PositionDeal(
+                            bot, db_table=db_table, base_streaming=base_streaming
+                        )
                     else:
                         raise NotImplementedError(
                             "Spot trading is not supported for Kucoin exchange"

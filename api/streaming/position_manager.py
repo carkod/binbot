@@ -85,7 +85,11 @@ class PositionManager:
         if bot is None:
             return
 
-        deal = DealGateway(bot=bot, db_table=db_table)
+        deal = DealGateway(
+            bot=bot,
+            db_table=db_table,
+            base_streaming=self.base_streaming,
+        )
 
         if self.base_streaming.exchange != ExchangeId.KUCOIN:
             raise NotImplementedError("Order updates only implemented for Kucoin")

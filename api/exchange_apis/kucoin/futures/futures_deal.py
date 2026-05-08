@@ -46,9 +46,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
         self,
         bot: BotModel,
         db_table: Type[BotTable] | Type[PaperTradingTable] = BotTable,
+        base_streaming: BaseStreaming | None = None,
     ) -> None:
         super().__init__()
-        self.base_streaming = BaseStreaming()
+        self.base_streaming = base_streaming or BaseStreaming()
         self.active_bot = bot
         self.db_table = db_table
         self.kucoin_futures_api = KucoinFutures(

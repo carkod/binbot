@@ -2,8 +2,10 @@ from typing import Any, cast
 import types
 
 from bots.models import BotModel
+from exchange_apis.kucoin.deals.base import KucoinBaseBalance
 from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from pybinbot import DealType, OrderBase, OrderStatus, Position
+from streaming.base import BaseStreaming
 
 
 def make_sizing_deal(
@@ -41,6 +43,68 @@ def test_calculate_contracts_uses_stop_loss_as_percent_risk_budget():
     deal = make_sizing_deal()
 
     assert deal.calculate_contracts(balance=15, price=0.93269) == 25
+
+
+def test_constructor_reuses_injected_base_streaming(monkeypatch):
+    """Streaming deal construction must not create another BaseStreaming."""
+
+    def base_balance_init(self):
+        self.config = types.SimpleNamespace(
+            kucoin_key="key",
+            kucoin_secret="secret",
+            kucoin_passphrase="passphrase",
+        )
+        self.autotrade_settings = types.SimpleNamespace(fiat="USDT")
+        self.fiat = "USDT"
+
+    class DummyFuturesApi:
+        DEFAULT_LEVERAGE = 1
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def get_symbol_info(self, symbol):
+            return types.SimpleNamespace(multiplier=1, lot_size=1)
+
+    class DummySymbolsCrud:
+        def get_symbol(self, symbol):
+            return types.SimpleNamespace(
+                futures_leverage=1,
+                price_precision=4,
+                qty_precision=0,
+            )
+
+    class DummyBotCrud:
+        pass
+
+    class ExplodingBaseStreaming:
+        def __init__(self):
+            raise AssertionError("unexpected BaseStreaming construction")
+
+    monkeypatch.setattr(KucoinBaseBalance, "__init__", base_balance_init)
+    monkeypatch.setattr(
+        "exchange_apis.kucoin.futures.futures_deal.KucoinFutures",
+        DummyFuturesApi,
+    )
+    monkeypatch.setattr(
+        "exchange_apis.kucoin.futures.futures_deal.SymbolsCrud",
+        DummySymbolsCrud,
+    )
+    monkeypatch.setattr(
+        "exchange_apis.kucoin.futures.futures_deal.BotTableCrud",
+        DummyBotCrud,
+    )
+    monkeypatch.setattr(
+        "exchange_apis.kucoin.futures.futures_deal.BaseStreaming",
+        ExplodingBaseStreaming,
+    )
+
+    base_streaming = cast(BaseStreaming, types.SimpleNamespace())
+    bot = BotModel(pair="SIRENUSDTM", position=Position.short)
+
+    deal = KucoinPositionDeal(bot=bot, base_streaming=base_streaming)
+
+    assert deal.base_streaming is base_streaming
 
 
 def test_contracts_to_fiat_order_size_is_inverse_risk_budget():
