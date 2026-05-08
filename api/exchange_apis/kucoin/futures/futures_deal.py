@@ -719,7 +719,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         self.reconcile_exchange_sl()
         return self.active_bot
 
-    def update_parameters_with_activation(self) -> BotModel:
+    def update_parameters_activation(self) -> BotModel:
         """
         update_parameters with some additional logic for activation:
         - If the bot is already active, it means we are updating parameters without changing the position, so we just call update_parameters.
@@ -823,7 +823,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self.active_bot = self.update_parameters()
         else:
             # Activation required
-            self.active_bot = self.update_parameters_with_activation()
+            self.active_bot = self.update_parameters_activation()
 
         self.controller.save(self.active_bot)
         return self.active_bot
