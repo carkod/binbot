@@ -3,7 +3,7 @@ from databases.tables.autotrade_table import (
     TestAutotradeTable,
     SettingsDocument,
 )
-from databases.utils import independent_session
+from databases.utils import get_db_session
 from sqlmodel import Session, select
 from sqlmodel.sql._expression_select_cls import SelectOfScalar
 from pybinbot.shared.enums import AutotradeSettingsDocument
@@ -23,9 +23,7 @@ class AutotradeCrud:
         document_id: AutotradeSettingsDocument = AutotradeSettingsDocument.settings,
     ):
         self.document_id = document_id
-        if session is None:
-            session = independent_session()
-        self.session = session
+        self._external_session = session
 
     def get_settings(self) -> AutotradeTable | TestAutotradeTable:
         """
@@ -42,14 +40,15 @@ class AutotradeCrud:
                 TestAutotradeTable.id == self.document_id
             )
 
-        results = self.session.exec(statement)
-        # Should always return one result
-        settings = results.first()
-        assert settings is not None, (
-            f"No autotrade settings found for id {self.document_id}"
-        )
-        self.session.close()
-        return settings
+        with get_db_session(self._external_session) as s:
+            results = s.exec(statement)
+            # Should always return one result
+            settings = results.first()
+            assert settings is not None, (
+                f"No autotrade settings found for id {self.document_id}"
+            )
+            s.expunge(settings)
+            return settings
 
     def edit_settings(
         self, data: AutotradeSettingsSchema | TestAutotradeSettingsSchema
@@ -63,18 +62,18 @@ class AutotradeCrud:
             table_class = AutotradeTable
 
         settings_data = table_class.model_validate(data)
-        settings = self.session.get(table_class, settings_data.id)
+        with get_db_session(self._external_session) as s:
+            settings = s.get(table_class, settings_data.id)
 
-        assert settings is not None, (
-            f"No autotrade settings found for id {self.document_id}"
-        )
-        # start db operations
-        settings.sqlmodel_update(data.model_dump())
-        self.session.add(settings)
-        self.session.commit()
-        self.session.refresh(settings)
-        self.session.close()
-        return settings
+            assert settings is not None, (
+                f"No autotrade settings found for id {self.document_id}"
+            )
+            settings.sqlmodel_update(data.model_dump())
+            s.add(settings)
+            s.commit()
+            s.refresh(settings)
+            s.expunge(settings)
+            return settings
 
     def get_fiat(self):
         data = self.get_settings()

@@ -1,7 +1,6 @@
-from typing import Any, List, Sequence, Generator, cast
+from typing import Any, List, Sequence, cast
 import re
 from uuid import UUID
-from contextlib import contextmanager, AbstractContextManager
 
 from sqlmodel import Session, select, asc, desc, case, func
 from sqlalchemy.orm import QueryableAttribute, selectinload
@@ -11,7 +10,7 @@ from bots.models import BotModel, OrderModel, AlgoRankingItem
 from databases.tables.bot_table import BotTable
 from databases.tables.deal_table import DealTable
 from databases.tables.order_table import ExchangeOrderTable
-from databases.utils import get_db_session as _get_db_session
+from databases.utils import detach_bot_graph, get_db_session
 
 from pybinbot import (
     Status,
@@ -22,11 +21,6 @@ from pybinbot import (
     BotBase,
     Position,
 )
-
-
-def get_session() -> AbstractContextManager[Session]:
-    """Module-level session factory kept overridable for tests."""
-    return _get_db_session()
 
 
 # Deal with SQLModel vs mypy issues
@@ -45,21 +39,6 @@ class BotTableCrud:
 
     def __init__(self, session: Session | None = None):
         self._external_session = session
-
-    def _get_session(self) -> AbstractContextManager[Session]:
-        """
-        Session handling
-        """
-        if self._external_session is not None:
-            session = self._external_session  # <-- bind locally
-
-            @contextmanager
-            def external_ctx() -> Generator[Session, None, None]:
-                yield session
-
-            return external_ctx()
-
-        return get_session()
 
     @staticmethod
     def _order_field_names() -> list[str]:
@@ -132,7 +111,7 @@ class BotTableCrud:
 
         ts = ts_to_humandate(ts=timestamp())
 
-        with self._get_session() as s:
+        with get_db_session(self._external_session) as s:
             # Get the managed bot instance from the session
             bot_row = s.get(BotTable, UUID(str(bot.id)))
             if not bot_row:
@@ -193,10 +172,10 @@ class BotTableCrud:
             .offset(offset)
         )
 
-        with self._get_session() as s:
+        with get_db_session(self._external_session) as s:
             bots = s.exec(stmt).unique().all()
             for bot in bots:
-                s.expunge(bot)
+                detach_bot_graph(s, bot)
             return bots
 
     def get_one(
@@ -207,7 +186,7 @@ class BotTableCrud:
         position: Position | None = None,
     ) -> BotTable:
 
-        with self._get_session() as s:
+        with get_db_session(self._external_session) as s:
             stmt = select(BotTable).options(
                 selectinload(BOT_DEAL_REL),
                 selectinload(BOT_ORDERS_REL),
@@ -232,7 +211,7 @@ class BotTableCrud:
             if not bot:
                 raise BinbotErrors("Bot not found")
 
-            s.expunge(bot)
+            detach_bot_graph(s, bot)
             return bot
 
     # --------------------------------------------------
@@ -246,7 +225,7 @@ class BotTableCrud:
             orders=[],
         )
 
-        with self._get_session() as s:
+        with get_db_session(self._external_session) as s:
             s.add(new_bot)
             s.commit()
             s.refresh(new_bot)
@@ -255,7 +234,7 @@ class BotTableCrud:
         return new_bot
 
     def save(self, data: BotModel | BotTable) -> BotTable:
-        with self._get_session() as s:
+        with get_db_session(self._external_session) as s:
             # Fetch the existing bot from DB (already attached to session)
             bot_row = s.get(BotTable, UUID(str(data.id)))
             if not bot_row:
@@ -305,7 +284,7 @@ class BotTableCrud:
             return bot_row
 
     def delete(self, bot_ids: List[str]) -> List[str]:
-        with self._get_session() as s:
+        with get_db_session(self._external_session) as s:
             for id_str in bot_ids:
                 bot = s.get(BotTable, UUID(id_str))
                 if bot:
@@ -318,7 +297,7 @@ class BotTableCrud:
     # Orders
     # --------------------------------------------------
     def get_order(self, order_id: str) -> ExchangeOrderTable:
-        with self._get_session() as s:
+        with get_db_session(self._external_session) as s:
             order = s.exec(
                 select(ExchangeOrderTable).where(
                     ExchangeOrderTable.order_id == order_id
@@ -332,7 +311,7 @@ class BotTableCrud:
             return order
 
     def update_order(self, order: OrderModel) -> ExchangeOrderTable:
-        with self._get_session() as s:
+        with get_db_session(self._external_session) as s:
             existing = s.exec(
                 select(ExchangeOrderTable).where(
                     ExchangeOrderTable.order_id == str(order.order_id)
@@ -352,7 +331,7 @@ class BotTableCrud:
             return existing
 
     def delete_order(self, order_id: str, bot_id: str | None = None) -> str:
-        with self._get_session() as s:
+        with get_db_session(self._external_session) as s:
             stmt = select(ExchangeOrderTable).where(
                 ExchangeOrderTable.order_id == order_id
             )
@@ -395,7 +374,7 @@ class BotTableCrud:
             .order_by(desc("bot_profit"))
         )
 
-        with self._get_session() as s:
+        with get_db_session(self._external_session) as s:
             rows = s.exec(stmt).all()
 
         return [
@@ -406,5 +385,5 @@ class BotTableCrud:
     def get_active_pairs(self) -> Sequence[str]:
         stmt = select(BotTable.pair).where(BotTable.status == Status.active)
 
-        with self._get_session() as s:
+        with get_db_session(self._external_session) as s:
             return s.exec(stmt).all()

@@ -202,6 +202,11 @@ class TestPositionManager:
         bot.add_log = lambda msg: None
         return bot
 
+    def test_base_streaming_bot_controller_uses_short_lived_sessions(self, monkeypatch):
+        base = self._make_base_streaming(monkeypatch)
+
+        assert base.bot_controller.session is None
+
     def test_build_bb_spreads_minimum_length(self, monkeypatch):
         base = self._make_base_streaming(monkeypatch)
 
@@ -280,10 +285,12 @@ class TestPositionManager:
 
         class FakeDealGateway:
             exit_calls: list[tuple[float, float]] = []
+            base_streaming = None
 
-            def __init__(self, bot, db_table):
+            def __init__(self, bot, db_table, base_streaming=None):
                 self.bot = bot
                 self.db_table = db_table
+                FakeDealGateway.base_streaming = base_streaming
 
             def deal_exit_orchestration(self, close_price, open_price):
                 FakeDealGateway.exit_calls.append((close_price, open_price))
@@ -301,6 +308,7 @@ class TestPositionManager:
         assert FakeDealGateway.exit_calls, (
             "Expected deal_exit_orchestration to be called"
         )
+        assert FakeDealGateway.base_streaming is base
 
     def test_process_deal_calls_deal_exit_orchestration_for_active_pair(
         self, monkeypatch
@@ -333,9 +341,10 @@ class TestPositionManager:
         class FakeDealGateway:
             exit_calls: list[tuple[float, float]] = []
 
-            def __init__(self, bot, db_table):
+            def __init__(self, bot, db_table, base_streaming=None):
                 self.bot = bot
                 self.db_table = db_table
+                self.base_streaming = base_streaming
 
             def deal_exit_orchestration(self, close_price, open_price):
                 FakeDealGateway.exit_calls.append((close_price, open_price))
@@ -388,9 +397,10 @@ class TestPositionManager:
         )
 
         class ErrorDealGateway:
-            def __init__(self, bot, db_table):
+            def __init__(self, bot, db_table, base_streaming=None):
                 self.bot = bot
                 self.db_table = db_table
+                self.base_streaming = base_streaming
 
             def deal_exit_orchestration(self, close_price, open_price):
                 # Raise BinanceErrors with code -2010 to hit error path
@@ -578,9 +588,10 @@ class TestPositionManager:
         )
 
         class FakeDealGateway:
-            def __init__(self, bot, db_table):
+            def __init__(self, bot, db_table, base_streaming=None):
                 self.bot = bot
                 self.db_table = db_table
+                self.base_streaming = base_streaming
 
             def deal_exit_orchestration(self, close_price, open_price):
                 fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
@@ -665,9 +676,10 @@ class TestPositionManager:
         backfill_called = {"value": False}
 
         class FakeDealGateway:
-            def __init__(self, bot, db_table):
+            def __init__(self, bot, db_table, base_streaming=None):
                 self.bot = bot
                 self.db_table = db_table
+                self.base_streaming = base_streaming
 
             def deal_exit_orchestration(self, close_price, open_price):
                 fp = cast(Any, FuturesPosition.__new__(FuturesPosition))

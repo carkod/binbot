@@ -46,9 +46,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
         self,
         bot: BotModel,
         db_table: Type[BotTable] | Type[PaperTradingTable] = BotTable,
+        base_streaming: BaseStreaming | None = None,
     ) -> None:
         super().__init__()
-        self.base_streaming = BaseStreaming()
+        self.base_streaming = base_streaming or BaseStreaming()
         self.active_bot = bot
         self.db_table = db_table
         self.kucoin_futures_api = KucoinFutures(
@@ -115,12 +116,12 @@ class KucoinPositionDeal(KucoinBaseBalance):
         reversal_buffer = 1.40
         min_contract_step = float(self.kucoin_symbol_data.lot_size or 1)
         available_balance = float(self.compute_available_balance())
-        per_contract_buffer = self.required_margin_for_contracts(
+        min_step_margin = self.required_margin_for_contracts(
             min_contract_step, mark_price
         )
         estimated_available_buffer = available_balance - reversal_buffer
 
-        if estimated_available_buffer <= 0 or per_contract_buffer <= 0:
+        if estimated_available_buffer <= 0 or min_step_margin <= 0:
             return float(current_contracts)
 
         minimum_flip_contracts = round_numbers(
@@ -128,7 +129,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self.symbol_info.qty_precision,
         )
 
-        if estimated_available_buffer < (min_contract_step * per_contract_buffer):
+        if estimated_available_buffer < min_step_margin:
             return float(current_contracts)
 
         return float(minimum_flip_contracts)
@@ -246,6 +247,33 @@ class KucoinPositionDeal(KucoinBaseBalance):
         initial_margin = notional / self.symbol_info.futures_leverage
         fees = 2 * notional * (self.kucoin_symbol_data.taker_fee_rate or 0)
         return round_numbers(initial_margin + fees, 8)
+
+    def max_contracts_for_margin(self, available_balance: float, price: float) -> int:
+        if available_balance <= 0 or price <= 0:
+            return 0
+
+        min_contract_step = self.kucoin_symbol_data.lot_size or 1
+        per_contract_margin = self.required_margin_for_contracts(
+            min_contract_step, price
+        )
+        if per_contract_margin <= 0:
+            return 0
+
+        contracts = round_numbers(
+            (available_balance / per_contract_margin) * min_contract_step,
+            self.symbol_info.qty_precision,
+        )
+
+        while (
+            contracts > 0
+            and self.required_margin_for_contracts(contracts, price) > available_balance
+        ):
+            contracts = round_numbers(
+                contracts - min_contract_step,
+                self.symbol_info.qty_precision,
+            )
+
+        return int(contracts)
 
     def backfill_position_from_fills(self) -> BotModel:
         self.active_bot.add_log(
@@ -551,11 +579,25 @@ class KucoinPositionDeal(KucoinBaseBalance):
             size=available_balance,
         )
 
-        contracts = self.calculate_contracts(self.active_bot.fiat_order_size, price)
+        risk_sized_contracts = self.calculate_contracts(
+            self.active_bot.fiat_order_size, price
+        )
 
-        if contracts <= 0:
+        if risk_sized_contracts <= 0:
             raise BinbotErrors(
                 "Calculated contracts is 0. Check if the order size, stop loss, and risk settings are correct."
+            )
+
+        affordable_contracts = self.max_contracts_for_margin(available_balance, price)
+        contracts = min(risk_sized_contracts, affordable_contracts)
+
+        if contracts <= 0:
+            min_contract_margin = self.required_margin_for_contracts(
+                self.kucoin_symbol_data.lot_size or 1, price
+            )
+            raise BinbotErrors(
+                f"Required futures margin {min_contract_margin} {self.fiat} for the minimum contract size "
+                f"exceeds available balance {available_balance} {self.fiat}."
             )
 
         required_margin = self.required_margin_for_contracts(contracts, price)
@@ -564,6 +606,22 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 f"Required futures margin {required_margin} {self.fiat} for {contracts} contracts "
                 f"exceeds available balance {available_balance} {self.fiat}."
             )
+
+        actual_risk = self.contracts_to_fiat_order_size(contracts, price)
+        notional = round_numbers(self.notional_for_contracts(contracts, price), 8)
+
+        if contracts < risk_sized_contracts:
+            self.active_bot.add_log(
+                f"Futures order downsized from {risk_sized_contracts} to {contracts} contracts "
+                f"because required margin exceeded available balance."
+            )
+
+        self.active_bot.add_log(
+            f"Futures activation sizing: contracts={contracts}, notional={notional} {self.fiat}, "
+            f"leverage={self.symbol_info.futures_leverage}x, required_margin={required_margin} {self.fiat}, "
+            f"available_balance={available_balance} {self.fiat}, planned_risk={self.active_bot.fiat_order_size} {self.fiat}, "
+            f"actual_risk={actual_risk} {self.fiat}."
+        )
 
         if self.active_bot.position == Position.short:
             order: OrderBase = self.kucoin_futures_api.sell(
@@ -593,9 +651,14 @@ class KucoinPositionDeal(KucoinBaseBalance):
         self.active_bot.deal.current_price = position.mark_price
         self.active_bot.status = Status.active
 
+        position_label = getattr(
+            self.active_bot.position,
+            "name",
+            self.active_bot.position,
+        )
         self.controller.update_logs(
             bot=self.active_bot,
-            log_message=f"Futures {self.active_bot.position.name} opened @ {position.mark_price} with {order.qty} contracts",
+            log_message=f"Futures {position_label} opened @ {position.mark_price} with {order.qty} contracts",
         )
 
         self.controller.save(self.active_bot)

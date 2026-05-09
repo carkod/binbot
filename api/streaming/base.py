@@ -17,7 +17,6 @@ from pybinbot import (
     round_numbers,
 )
 from tools.config import Config
-from databases.utils import independent_session
 
 
 class BaseStreaming:
@@ -27,7 +26,6 @@ class BaseStreaming:
 
     def __init__(self) -> None:
         self.config = Config()
-        self.session = independent_session()
         self.binance_api = BinanceApi(
             key=self.config.binance_key, secret=self.config.binance_secret
         )
@@ -41,7 +39,7 @@ class BaseStreaming:
             secret=self.config.kucoin_secret,
             passphrase=self.config.kucoin_passphrase,
         )
-        self.bot_controller = BotTableCrud(session=self.session)
+        self.bot_controller = BotTableCrud()
         self.paper_trading_controller = PaperTradingTableCrud()
         self.symbols_crud = SymbolsCrud()
         self.autotrade_crud = AutotradeCrud()

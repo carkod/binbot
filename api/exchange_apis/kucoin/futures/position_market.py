@@ -45,7 +45,7 @@ class PositionMarket(KucoinPositionDeal):
         base_streaming: BaseStreaming,
         db_table: Type[BotTable] | Type[PaperTradingTable],
     ) -> None:
-        super().__init__(bot=bot, db_table=db_table)
+        super().__init__(bot=bot, db_table=db_table, base_streaming=base_streaming)
         self.api = api
         self.active_bot = bot
         self.symbol = symbol

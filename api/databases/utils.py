@@ -1,8 +1,11 @@
 import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
+from sqlalchemy.orm import object_session
 from sqlmodel import Session
 from contextlib import contextmanager
+from collections.abc import Generator
+from typing import Any
 
 
 # Load env vars for Alembic
@@ -35,17 +38,42 @@ def independent_session() -> Session:
 
 
 @contextmanager
-def get_db_session():
+def get_db_session(session: Session | None = None) -> Generator[Session, None, None]:
     """
-    Yields a fresh session. Commits on success, rolls back on exception, always closes.
-    Uses your existing independent_session() factory so this integrates with your config.
+    Yields a session for CRUD code.
+
+    If a session is passed in, the caller owns commit/rollback/close.
+    Otherwise this creates a fresh session, commits on success, rolls back on
+    exception, and always closes.
     """
+    if session is not None:
+        yield session
+        return
+
     session = independent_session()
     try:
         yield session
         session.commit()
-    except:
+    except Exception:
         session.rollback()
         raise
     finally:
         session.close()
+
+
+def detach_bot_graph(session: Session, bot: Any) -> None:
+    """
+    Detach a bot with its eagerly loaded deal and orders from a session.
+    """
+    deal = bot.deal
+    orders = list(bot.orders)
+
+    if deal is not None and object_session(deal) is session:
+        session.expunge(deal)
+
+    for order in orders:
+        if object_session(order) is session:
+            session.expunge(order)
+
+    if object_session(bot) is session:
+        session.expunge(bot)

@@ -356,28 +356,16 @@ def create_test_tables():
         session.commit()
 
     # Start patching independent_session for the entire test session
-    # Patch in all locations where it's imported
+    # Patch in locations where it's imported directly.
     patcher1 = patch(
         "databases.utils.independent_session", side_effect=mock_independent_session
     )
     patcher2 = patch(
-        "databases.crud.autotrade_crud.independent_session",
-        side_effect=mock_independent_session,
-    )
-    patcher3 = patch(
         "databases.crud.symbols_crud.independent_session",
         side_effect=mock_independent_session,
     )
-    patcher4 = patch(
-        "databases.crud.bot_crud.get_session",
-        new=get_test_session_manager,
-    )
-    patcher5 = patch(
+    patcher3 = patch(
         "databases.crud.asset_index_crud.independent_session",
-        side_effect=mock_independent_session,
-    )
-    patcher6 = patch(
-        "databases.crud.paper_trading_crud.independent_session",
         side_effect=mock_independent_session,
     )
     patcher_charts = patch(
@@ -452,9 +440,6 @@ def create_test_tables():
     patcher1.start()
     patcher2.start()
     patcher3.start()
-    patcher4.start()
-    patcher5.start()
-    patcher6.start()
     patcher_charts.start()
     patcher7.start()
     patcher8.start()
@@ -470,9 +455,6 @@ def create_test_tables():
     patcher1.stop()
     patcher2.stop()
     patcher3.stop()
-    patcher4.stop()
-    patcher5.stop()
-    patcher6.stop()
     patcher_charts.stop()
     patcher7.stop()
     patcher8.stop()
