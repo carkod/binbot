@@ -4,7 +4,7 @@ from uuid import UUID
 from contextlib import contextmanager, AbstractContextManager
 
 from sqlmodel import Session, select, asc, desc, case, func
-from sqlalchemy.orm import QueryableAttribute, selectinload
+from sqlalchemy.orm import QueryableAttribute, object_session, selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
 from bots.models import BotModel, OrderModel, AlgoRankingItem
@@ -92,6 +92,23 @@ class BotTableCrud:
             timestamp=order.timestamp,
             bot_id=bot_id,
         )
+
+    def _detach_bot_graph(self, session: Session, bot: BotTable) -> None:
+        """
+        Detach eagerly loaded bot relationships before read sessions commit.
+        """
+        deal = bot.deal
+        orders = list(bot.orders)
+
+        if deal is not None and object_session(deal) is session:
+            session.expunge(deal)
+
+        for order in orders:
+            if object_session(order) is session:
+                session.expunge(order)
+
+        if object_session(bot) is session:
+            session.expunge(bot)
 
     def update_table(self, bot: BotModel | BotTable) -> BotTable:
         """
@@ -196,7 +213,7 @@ class BotTableCrud:
         with self._get_session() as s:
             bots = s.exec(stmt).unique().all()
             for bot in bots:
-                s.expunge(bot)
+                self._detach_bot_graph(s, bot)
             return bots
 
     def get_one(
@@ -232,7 +249,7 @@ class BotTableCrud:
             if not bot:
                 raise BinbotErrors("Bot not found")
 
-            s.expunge(bot)
+            self._detach_bot_graph(s, bot)
             return bot
 
     # --------------------------------------------------
