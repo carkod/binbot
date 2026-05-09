@@ -88,15 +88,15 @@ def test_bot_crud_get_one_returns_loaded_deal_after_read_session_commit(monkeypa
         session.commit()
 
     @contextmanager
-    def committing_session():
-        session = Session(engine)
+    def committing_session(session: Session | None = None):
+        session = session or Session(engine)
         try:
             yield session
             session.commit()
         finally:
             session.close()
 
-    monkeypatch.setattr("databases.crud.bot_crud.get_session", committing_session)
+    monkeypatch.setattr("databases.crud.bot_crud.get_db_session", committing_session)
 
     bot = BotTableCrud().get_one(bot_id=str(bot_id))
     model = BotModel.dump_from_table(bot)

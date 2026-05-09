@@ -1,4 +1,5 @@
 import pytest
+from contextlib import contextmanager
 from unittest.mock import patch
 from sqlmodel import SQLModel, create_engine, Session
 from sqlalchemy.pool import StaticPool
@@ -38,8 +39,13 @@ def create_symbol_test_tables():
     SQLModel.metadata.create_all(test_engine)
 
     # Override get_session to use this isolated test database
-    def get_test_session():
+    @contextmanager
+    def get_test_session_manager():
         with Session(test_engine) as session:
+            yield session
+
+    def get_test_session():
+        with get_test_session_manager() as session:
             yield session
 
     app.dependency_overrides[get_session] = get_test_session
@@ -93,22 +99,16 @@ def create_symbol_test_tables():
         "databases.utils.independent_session", side_effect=mock_independent_session
     )
     patcher2 = patch(
-        "databases.crud.autotrade_crud.independent_session",
-        side_effect=mock_independent_session,
-    )
-    patcher3 = patch(
         "databases.crud.symbols_crud.independent_session",
         side_effect=mock_independent_session,
     )
     patcher1.start()
     patcher2.start()
-    patcher3.start()
 
     yield test_engine
 
     # Clean up
     patcher1.stop()
     patcher2.stop()
-    patcher3.stop()
     app.dependency_overrides.clear()
     SQLModel.metadata.drop_all(test_engine)

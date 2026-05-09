@@ -107,10 +107,9 @@ def edit(id: str, bot_item: BotModel, session: Session = Depends(get_session)):
     try:
         controller = PaperTradingTableCrud(session=session)
         bot_table = controller.get_one(id)
-        # update model with ne data
-        bot_table.sqlmodel_update(bot_item.model_dump())
-        # client should not change deal and orders
+        # client should not change id, deal and orders
         # these are internally generated
+        bot_table.sqlmodel_update(bot_item.model_dump(exclude={"id", "deal", "orders"}))
         transform_model = BotModel.dump_from_table(bot_table)
         bot = controller.save(transform_model)
 
