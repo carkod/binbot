@@ -801,10 +801,10 @@ class PositionDeal(KucoinPositionDeal):
             and (int(time() * 1000) - self.active_bot.deal.opening_timestamp)
             >= 3 * 24 * 60 * 60 * 1000
         )
-        # Panic close only low-profit positions after 3 days.
-        if 0 < bot_profit < 1 and is_3_days:
+        # Panic close stale low-conviction positions after 3 days.
+        if -1 <= bot_profit < 1 and is_3_days:
             self.controller.update_logs(
-                f"Panic close triggered for {position_name} due to {'3 days elapsed' if is_3_days else 'unprofitable position'} with profit {bot_profit}. Closing position immediately.",
+                f"Panic close triggered for stale {position_name} position after 3 days with profit {bot_profit}. Closing position immediately.",
                 self.active_bot,
             )
             self.close_all()

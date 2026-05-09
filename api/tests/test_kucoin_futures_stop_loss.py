@@ -5,7 +5,7 @@ import types
 from bots.models import BotModel, DealModel, OrderModel
 from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from exchange_apis.kucoin.futures.position_deal import PositionDeal
-from pybinbot import OrderBase, OrderStatus, DealType, Position
+from pybinbot import MarketType, OrderBase, OrderStatus, DealType, Position
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import (
     AddOrderReq,
 )
@@ -261,6 +261,72 @@ def test_reconcile_exchange_sl_places_when_exchange_missing():
     KucoinPositionDeal.reconcile_exchange_sl(deal)
 
     assert calls == ["cancel", "place"]
+
+
+def test_exit_panic_closes_stale_mild_loser_after_three_days(monkeypatch):
+    deal = cast(Any, PositionDeal.__new__(PositionDeal))
+    deal.price_precision = 2
+    deal.active_bot = BotModel(
+        pair="BEATUSDTM",
+        market_type=MarketType.FUTURES,
+        position=Position.long,
+        stop_loss=0,
+        trailing=False,
+        take_profit=0,
+        deal=DealModel(
+            opening_price=100.0,
+            opening_timestamp=1_000,
+        ),
+    )
+    deal.active_bot.position = Position.long
+    deal.controller = types.SimpleNamespace(
+        save=lambda bot: None,
+        update_logs=lambda *args, **kwargs: None,
+    )
+    closed: list[bool] = []
+    deal.close_all = lambda: closed.append(True)
+
+    monkeypatch.setattr(
+        "exchange_apis.kucoin.futures.position_deal.time",
+        lambda: (1_000 + (4 * 24 * 60 * 60 * 1000)) / 1000,
+    )
+
+    PositionDeal.exit(deal, 99.5)
+
+    assert closed == [True]
+
+
+def test_exit_keeps_stale_loser_below_panic_close_band(monkeypatch):
+    deal = cast(Any, PositionDeal.__new__(PositionDeal))
+    deal.price_precision = 2
+    deal.active_bot = BotModel(
+        pair="BEATUSDTM",
+        market_type=MarketType.FUTURES,
+        position=Position.long,
+        stop_loss=0,
+        trailing=False,
+        take_profit=0,
+        deal=DealModel(
+            opening_price=100.0,
+            opening_timestamp=1_000,
+        ),
+    )
+    deal.active_bot.position = Position.long
+    deal.controller = types.SimpleNamespace(
+        save=lambda bot: None,
+        update_logs=lambda *args, **kwargs: None,
+    )
+    closed: list[bool] = []
+    deal.close_all = lambda: closed.append(True)
+
+    monkeypatch.setattr(
+        "exchange_apis.kucoin.futures.position_deal.time",
+        lambda: (1_000 + (4 * 24 * 60 * 60 * 1000)) / 1000,
+    )
+
+    PositionDeal.exit(deal, 98.9)
+
+    assert closed == []
 
 
 def test_reconcile_exchange_sl_skips_on_api_failure():
