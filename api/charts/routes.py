@@ -13,25 +13,6 @@ from charts.models import AdrSeriesResponse
 charts_blueprint = APIRouter()
 
 
-@charts_blueprint.get("/top-gainers", tags=["charts"])
-def top_gainers(session: Session = Depends(get_session)):
-    try:
-        gainers, losers = MarketDominationController().gainers_losers()
-        if gainers:
-            return json_response(
-                {
-                    "data": gainers,
-                    "message": "Successfully retrieved top gainers data.",
-                    "error": 0,
-                }
-            )
-        else:
-            raise HTTPException(404, detail="No data found")
-
-    except Exception as error:
-        return json_response_error(f"Failed to retrieve top gainers data: {error}")
-
-
 @charts_blueprint.get("/top-losers", tags=["charts"])
 def top_losers(
     session: Session = Depends(get_session),
