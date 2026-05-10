@@ -1,0 +1,42 @@
+name: Deploy to Staging (home server)
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+env:
+  ACTIONS_RUNNER_DEBUG: false
+
+jobs:
+  full-stack-deploy:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 20
+
+    steps:
+      - name: Connect to Tailscale
+        continue-on-error: true
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TAILSCALE_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TAILSCALE_CLIENT_SECRET }}
+          tags: tag:ci
+
+      - name: Install SSH key
+        continue-on-error: true
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          echo "${{ secrets.STAGING_DEPLOY }}" > ~/.ssh/home_server_key
+          chmod 600 ~/.ssh/home_server_key
+
+          ssh-keyscan -p 2222 100.64.83.67 >> ~/.ssh/known_hosts
+
+      - name: Deploy stack
+        continue-on-error: true
+        run: |
+          ssh -i ~/.ssh/home_server_key \
+            -p 2222 \
+            "carkod@100.64.83.67" \
+            'cd /var/www/terminal.binbot.in && docker compose up --pull always -d && docker image prune -f'
