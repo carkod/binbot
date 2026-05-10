@@ -58,7 +58,6 @@ class Config:
             "TZ",
             "SECRET_KEY",
             "ENV",
-            "BACKEND_DIRECTORY",
             "BACKEND_DOMAIN",
             "FRONTEND_DOMAIN",
             "POSTGRES_USER",
@@ -96,10 +95,6 @@ class Config:
     @property
     def env(self) -> str:
         return self._get_required("ENV")
-
-    @property
-    def backend_directory(self) -> str:
-        return self._get_required("BACKEND_DIRECTORY")
 
     @property
     def backend_domain(self) -> str:
