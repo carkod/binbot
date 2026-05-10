@@ -10,9 +10,9 @@ export type SignalRecord = {
   direction: string;
   autotrade: boolean;
   current_regime?: string | null;
-  context: Record<string, unknown>;
-  bot_params: Record<string, unknown>;
-  indicators: Record<string, unknown>;
+  context?: Record<string, unknown> | null;
+  bot_params?: Record<string, unknown> | null;
+  indicators?: Record<string, unknown> | null;
 };
 
 export type GetSignalsParams = {
@@ -20,6 +20,7 @@ export type GetSignalsParams = {
   offset?: number;
   since?: string | number | Date;
   until?: string | number | Date;
+  include_payload?: boolean;
 };
 
 type SignalsListResponse = {
@@ -44,6 +45,7 @@ export const signalsApiSlice = userApiSlice.injectEndpoints({
           offset = 0,
           since = weekAgo(),
           until = new Date(),
+          include_payload = false,
         } = params;
 
         return {
@@ -54,6 +56,7 @@ export const signalsApiSlice = userApiSlice.injectEndpoints({
             offset,
             since: formatDateQueryParam(since),
             until: formatDateQueryParam(until),
+            include_payload,
           },
         };
       },

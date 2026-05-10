@@ -1,6 +1,7 @@
 from datetime import datetime
-from typing import Any, Sequence
+from typing import Any, Sequence, cast
 
+from sqlalchemy.orm import load_only
 from sqlmodel import Session, col, select
 
 from databases.tables.signals_table import SignalsTable
@@ -58,6 +59,85 @@ class SignalsCrud:
         limit: int = 100,
         offset: int = 0,
     ) -> Sequence[SignalsTable]:
+        stmt = self._filtered_query(
+            algorithm_name=algorithm_name,
+            symbol=symbol,
+            current_regime=current_regime,
+            autotrade=autotrade,
+            since=since,
+            until=until,
+        )
+        stmt = (
+            stmt.order_by(col(SignalsTable.generated_at).desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        with get_db_session(self._external_session) as session:
+            rows = session.exec(stmt).all()
+            if self._external_session is None:
+                for row in rows:
+                    session.expunge(row)
+            return rows
+
+    def query_summary(
+        self,
+        algorithm_name: str | None = None,
+        symbol: str | None = None,
+        current_regime: str | None = None,
+        autotrade: bool | None = None,
+        since: datetime | None = None,
+        until: datetime | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        stmt = self._filtered_query(
+            algorithm_name=algorithm_name,
+            symbol=symbol,
+            current_regime=current_regime,
+            autotrade=autotrade,
+            since=since,
+            until=until,
+        )
+        stmt = (
+            stmt.options(
+                load_only(
+                    cast(Any, SignalsTable.id),
+                    cast(Any, SignalsTable.algorithm_name),
+                    cast(Any, SignalsTable.symbol),
+                    cast(Any, SignalsTable.generated_at),
+                    cast(Any, SignalsTable.direction),
+                    cast(Any, SignalsTable.autotrade),
+                    cast(Any, SignalsTable.current_regime),
+                )
+            )
+            .order_by(col(SignalsTable.generated_at).desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        with get_db_session(self._external_session) as session:
+            rows = session.exec(stmt).all()
+            return [
+                {
+                    "id": row.id,
+                    "algorithm_name": row.algorithm_name,
+                    "symbol": row.symbol,
+                    "generated_at": row.generated_at,
+                    "direction": row.direction,
+                    "autotrade": row.autotrade,
+                    "current_regime": row.current_regime,
+                }
+                for row in rows
+            ]
+
+    def _filtered_query(
+        self,
+        algorithm_name: str | None = None,
+        symbol: str | None = None,
+        current_regime: str | None = None,
+        autotrade: bool | None = None,
+        since: datetime | None = None,
+        until: datetime | None = None,
+    ) -> Any:
         stmt = select(SignalsTable)
         if algorithm_name is not None:
             stmt = stmt.where(SignalsTable.algorithm_name == algorithm_name)
@@ -71,14 +151,4 @@ class SignalsCrud:
             stmt = stmt.where(SignalsTable.generated_at >= since)
         if until is not None:
             stmt = stmt.where(SignalsTable.generated_at <= until)
-        stmt = (
-            stmt.order_by(col(SignalsTable.generated_at).desc())
-            .offset(offset)
-            .limit(limit)
-        )
-        with get_db_session(self._external_session) as session:
-            rows = session.exec(stmt).all()
-            if self._external_session is None:
-                for row in rows:
-                    session.expunge(row)
-            return rows
+        return stmt

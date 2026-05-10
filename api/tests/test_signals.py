@@ -106,6 +106,33 @@ def test_query_orders_newest_first():
     assert rows[0].generated_at > rows[1].generated_at > rows[2].generated_at
 
 
+def test_query_can_skip_payload_columns():
+    session = _make_session()
+    crud = SignalsCrud(session)
+    crud.create(
+        algorithm_name="apex_flow",
+        symbol="BTCUSDC",
+        generated_at=datetime(2026, 4, 30, 12, 0, tzinfo=timezone.utc),
+        direction="LONG",
+        context={"large": "payload"},
+        bot_params={"pair": "BTCUSDC"},
+        indicators={"score": 0.83},
+    )
+
+    rows = crud.query_summary()
+
+    assert len(rows) == 1
+    assert rows[0]["algorithm_name"] == "apex_flow"
+    assert rows[0]["symbol"] == "BTCUSDC"
+    assert rows[0]["generated_at"] == datetime(2026, 4, 30, 12, 0)
+    assert rows[0]["direction"] == "LONG"
+    assert rows[0]["autotrade"] is False
+    assert rows[0]["current_regime"] is None
+    assert "context" not in rows[0]
+    assert "bot_params" not in rows[0]
+    assert "indicators" not in rows[0]
+
+
 def test_post_signal_endpoint(client):
     response = client.post(
         "/signals",
@@ -151,3 +178,26 @@ def test_get_signals_endpoint_filters(client):
     payload = response.json()["data"]
     assert len(payload) == 1
     assert payload[0]["algorithm_name"] == "spike_hunter_v3"
+
+
+def test_get_signals_endpoint_can_skip_payload(client):
+    session = _make_session()
+    crud = SignalsCrud(session)
+    crud.create(
+        algorithm_name="spike_hunter_v3",
+        symbol="BTCUSDC",
+        generated_at=datetime(2026, 4, 30, 12, 0, tzinfo=timezone.utc),
+        direction="LONG",
+        context={"large": "payload"},
+        bot_params={"pair": "BTCUSDC"},
+        indicators={"score": 0.83},
+    )
+
+    response = client.get("/signals?include_payload=false")
+
+    assert response.status_code == 200
+    signal = response.json()["data"][0]
+    assert signal["algorithm_name"] == "spike_hunter_v3"
+    assert signal["context"] is None
+    assert signal["bot_params"] is None
+    assert signal["indicators"] is None

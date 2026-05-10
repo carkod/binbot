@@ -36,20 +36,33 @@ def list_signals(
     until: datetime | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=1000),
     offset: int = Query(default=0, ge=0),
+    include_payload: bool = Query(default=True),
     session: Session = Depends(get_session),
     _: UserTokenData = Depends(get_current_user),
 ):
     crud = SignalsCrud(session)
-    rows = crud.query(
-        algorithm_name=algorithm_name,
-        symbol=symbol,
-        current_regime=current_regime,
-        autotrade=autotrade,
-        since=since,
-        until=until,
-        limit=limit,
-        offset=offset,
-    )
+    if include_payload:
+        rows = crud.query(
+            algorithm_name=algorithm_name,
+            symbol=symbol,
+            current_regime=current_regime,
+            autotrade=autotrade,
+            since=since,
+            until=until,
+            limit=limit,
+            offset=offset,
+        )
+    else:
+        rows = crud.query_summary(
+            algorithm_name=algorithm_name,
+            symbol=symbol,
+            current_regime=current_regime,
+            autotrade=autotrade,
+            since=since,
+            until=until,
+            limit=limit,
+            offset=offset,
+        )
     return {"message": "Signals retrieved", "data": rows, "error": 0}
 
 
