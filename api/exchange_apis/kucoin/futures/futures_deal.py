@@ -176,6 +176,38 @@ class KucoinPositionDeal(KucoinBaseBalance):
         )
         return available_contracts > estimated_contracts
 
+    def affordable_contracts(self, price: float, available_balance: float) -> int:
+        """
+        Maximum contracts the configured leverage and available balance can
+        margin, after reserving round-trip taker fees. Returns 0 when even one
+        contract is unaffordable.
+
+        At 1x leverage notional == margin, so the risk-budget sizing in
+        ``calculate_contracts`` can demand a notional far larger than the
+        wallet (notional = fiat_order_size / stop_loss_ratio). This is the
+        cap that keeps the order placeable.
+        """
+        if price <= 0 or available_balance <= 0:
+            return 0
+
+        symbol_data = getattr(self, "kucoin_symbol_data", None)
+        multiplier = float(
+            getattr(symbol_data, "multiplier", 0)
+            or getattr(self.kucoin_futures_api, "DEFAULT_MULTIPLIER", 1)
+            or 1
+        )
+        taker_fee_rate = float(getattr(symbol_data, "taker_fee_rate", 0) or 0)
+        leverage = self.DEFAULT_FUTURES_LEVERAGE
+
+        per_contract_notional = price * multiplier
+        per_contract_cost = (per_contract_notional / leverage) + (
+            2 * per_contract_notional * taker_fee_rate
+        )
+        if per_contract_cost <= 0:
+            return 0
+
+        return int(available_balance / per_contract_cost)
+
     def contracts_to_fiat_order_size(self, contracts: float, price: float) -> float:
         """
         Invert calculate_contracts() so fiat_order_size reflects the actual
@@ -550,14 +582,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
             raise BinbotErrors("Fiat order size must be set.")
 
         available_balance = self.compute_available_balance()
-        if self.active_bot.fiat_order_size > available_balance:
-            required_balance = self.min_required_balance()
-
-            if required_balance > available_balance:
-                raise BinbotErrors(
-                    f"Requested base order size {self.active_bot.fiat_order_size} {self.fiat} "
-                    f"exceeds available balance {available_balance} {self.fiat}."
-                )
 
         price = self.kucoin_futures_api.matching_engine(
             symbol=self.kucoin_symbol,
@@ -571,6 +595,23 @@ class KucoinPositionDeal(KucoinBaseBalance):
             raise BinbotErrors(
                 "Calculated contracts is 0. Check if the order size, stop loss, and risk settings are correct."
             )
+
+        # Risk-budget sizing assumes the wallet can margin the resulting
+        # notional. At 1x leverage notional == margin, so a small balance
+        # combined with a small stop_loss easily produces a notional KuCoin
+        # rejects with code 300003. Cap contracts to what the balance affords.
+        affordable = self.affordable_contracts(price, available_balance)
+        if affordable <= 0:
+            raise BinbotErrors(
+                f"Insufficient balance to open any {self.kucoin_symbol} contract: "
+                f"{available_balance} {self.fiat} available."
+            )
+        if affordable < contracts:
+            self.active_bot.add_log(
+                f"Order capped from {contracts} to {affordable} contracts to fit "
+                f"available balance ({available_balance} {self.fiat})."
+            )
+            contracts = affordable
 
         if self.active_bot.position == Position.short:
             order: OrderBase = self.kucoin_futures_api.sell(
@@ -719,7 +760,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         self.reconcile_exchange_sl()
         return self.active_bot
 
-    def update_parameters_activation(self) -> BotModel:
+    def update_parameters_with_activation(self) -> BotModel:
         """
         update_parameters with some additional logic for activation:
         - If the bot is already active, it means we are updating parameters without changing the position, so we just call update_parameters.
@@ -823,7 +864,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self.active_bot = self.update_parameters()
         else:
             # Activation required
-            self.active_bot = self.update_parameters_activation()
+            self.active_bot = self.update_parameters_with_activation()
 
         self.controller.save(self.active_bot)
         return self.active_bot
