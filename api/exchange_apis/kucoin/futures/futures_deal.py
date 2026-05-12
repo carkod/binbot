@@ -85,19 +85,19 @@ class KucoinPositionDeal(KucoinBaseBalance):
         else:
             return BotTableCrud()
 
-    def calculate_contracts(self, balance: float, price: float) -> int:
+    def calculate_contracts(self, fiat_order_size: float, price: float) -> int:
         """
-        Size futures positions from a fiat risk budget.
+        Size futures positions so ``fiat_order_size`` is the initial margin
+        the bot commits, leaving the rest of the wallet free for stop-loss
+        absorption and a same-size reversal.
 
-        For futures bots, ``fiat_order_size`` is the max fiat loss budget at
-        the configured stop, not the margin to spend. KuCoin PnL is determined
-        by notional move, so leverage does not change the loss at stop.
+        notional = fiat_order_size * leverage
+        contracts = notional / (price * multiplier)
         """
-        if balance <= 0 or price <= 0:
+        if fiat_order_size <= 0 or price <= 0:
             return 0
 
-        stop_loss_ratio = float(self.active_bot.stop_loss or 0) / 100
-        if stop_loss_ratio <= 0:
+        if float(self.active_bot.stop_loss or 0) <= 0:
             return 0
 
         symbol_data = getattr(self, "kucoin_symbol_data", None)
@@ -106,8 +106,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
             or getattr(self.kucoin_futures_api, "DEFAULT_MULTIPLIER", 1)
             or 1
         )
+        leverage = float(self.DEFAULT_FUTURES_LEVERAGE)
 
-        contracts = balance / (stop_loss_ratio * price * multiplier)
+        contracts = fiat_order_size * leverage / (price * multiplier)
         return int(round_numbers(contracts, self.symbol_info.qty_precision))
 
     def _is_reversal_possible(
@@ -182,10 +183,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
         margin, after reserving round-trip taker fees. Returns 0 when even one
         contract is unaffordable.
 
-        At 1x leverage notional == margin, so the risk-budget sizing in
-        ``calculate_contracts`` can demand a notional far larger than the
-        wallet (notional = fiat_order_size / stop_loss_ratio). This is the
-        cap that keeps the order placeable.
+        Defensive cap: with margin-based sizing in ``calculate_contracts``,
+        contracts only exceed wallet capacity when ``fiat_order_size`` is set
+        larger than the available balance. This trims the order down so it can
+        still be placed rather than rejected by the exchange.
         """
         if price <= 0 or available_balance <= 0:
             return 0
@@ -210,14 +211,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
     def contracts_to_fiat_order_size(self, contracts: float, price: float) -> float:
         """
-        Invert calculate_contracts() so fiat_order_size reflects the actual
-        risk budget used to open an existing futures position.
+        Invert calculate_contracts() so fiat_order_size reflects the initial
+        margin actually committed by an open futures position.
         """
         if contracts <= 0 or price <= 0:
-            return 0.0
-
-        stop_loss_ratio = float(self.active_bot.stop_loss or 0) / 100
-        if stop_loss_ratio <= 0:
             return 0.0
 
         symbol_data = getattr(self, "kucoin_symbol_data", None)
@@ -225,9 +222,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
             getattr(symbol_data, "multiplier", 0)
             or getattr(self.kucoin_futures_api, "DEFAULT_MULTIPLIER", 1)
         )
+        leverage = float(self.DEFAULT_FUTURES_LEVERAGE)
 
         return round_numbers(
-            contracts * price * multiplier * stop_loss_ratio,
+            contracts * price * multiplier / leverage,
             8,
         )
 
@@ -596,10 +594,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 "Calculated contracts is 0. Check if the order size, stop loss, and risk settings are correct."
             )
 
-        # Risk-budget sizing assumes the wallet can margin the resulting
-        # notional. At 1x leverage notional == margin, so a small balance
-        # combined with a small stop_loss easily produces a notional KuCoin
-        # rejects with code 300003. Cap contracts to what the balance affords.
+        # Defensive cap: margin-based sizing only exceeds the wallet when
+        # fiat_order_size is set above the available balance. Trim contracts
+        # so KuCoin doesn't reject the order with code 300003.
         affordable = self.affordable_contracts(price, available_balance)
         if affordable <= 0:
             raise BinbotErrors(

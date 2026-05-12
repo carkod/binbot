@@ -34,39 +34,44 @@ def make_sizing_deal(
     return deal
 
 
-def test_calculate_contracts_uses_stop_loss_as_percent_risk_budget():
+def test_calculate_contracts_treats_fiat_order_size_as_initial_margin():
+    """
+    fiat_order_size is the margin to commit, so contracts = fos*lev/(price*mult).
+    round_numbers floors, so 15/9.3269 ≈ 1.61 → 1.
+    """
     deal = make_sizing_deal()
 
-    assert deal.calculate_contracts(balance=15, price=0.93269) == 25
+    assert deal.calculate_contracts(fiat_order_size=15, price=0.93269) == 1
 
 
-def test_contracts_to_fiat_order_size_is_inverse_risk_budget():
+def test_contracts_to_fiat_order_size_is_inverse_margin():
+    """
+    Inverse of the new sizing: 1 contract × 0.93269 price × 10 mult / 1 lev.
+    """
     deal = make_sizing_deal()
 
-    assert deal.contracts_to_fiat_order_size(contracts=25, price=0.93269) == 14.99886769
+    assert deal.contracts_to_fiat_order_size(contracts=1, price=0.93269) == 9.3269
 
 
-def test_calculate_contracts_returns_zero_when_risk_budget_is_below_one_contract():
-    deal = make_sizing_deal(fiat_order_size=0.5)
+def test_calculate_contracts_returns_zero_when_margin_is_below_one_contract():
+    deal = make_sizing_deal(fiat_order_size=0.05, multiplier=10.0)
 
-    assert deal.calculate_contracts(balance=0.5, price=0.93269) == 0
+    assert deal.calculate_contracts(fiat_order_size=0.05, price=0.93269) == 0
 
 
-def test_affordable_contracts_caps_below_risk_budget_when_balance_is_short():
+def test_affordable_contracts_caps_when_fiat_order_size_exceeds_balance():
     """
-    Reproduction for the prod 300003 "Insufficient balance" storm: a 15 USDT
-    risk budget at a 13.76% stop demands ~109 USDT notional, which at 1x
-    leverage equals 109 USDT margin. With only 56.9 USDT available, the
-    balance can margin at most ~56 USDT notional; the order must be capped
-    rather than sent and rejected.
+    The margin-based sizing only exceeds wallet capacity when fiat_order_size
+    is misconfigured above the available balance. The cap keeps the order
+    placeable rather than rejected by the exchange.
     """
-    deal = make_sizing_deal(stop_loss=13.76, multiplier=1.0)
+    deal = make_sizing_deal(fiat_order_size=100.0, multiplier=1.0)
 
-    desired = deal.calculate_contracts(balance=15.0, price=1.0)
+    desired = deal.calculate_contracts(fiat_order_size=100.0, price=1.0)
     affordable = deal.affordable_contracts(price=1.0, available_balance=56.9)
 
     assert desired > affordable, (
-        "risk-budget sizing must exceed wallet capacity for this regression"
+        "margin sizing must exceed wallet capacity for this regression"
     )
     assert affordable == 56
 
