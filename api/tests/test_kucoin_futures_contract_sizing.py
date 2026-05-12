@@ -40,10 +40,25 @@ def make_sizing_deal(
     return deal
 
 
-def test_calculate_contracts_uses_stop_loss_as_percent_risk_budget():
+def test_calculate_contracts_treats_fiat_order_size_as_initial_margin():
+    """
+    Margin-spend interpretation: contracts = balance × leverage / (price × mult).
+    15 × 1 / (0.93269 × 10) = 1.607 → floored to 1.
+    """
     deal = make_sizing_deal()
 
-    assert deal.calculate_contracts(balance=15, price=0.93269) == 25
+    assert deal.calculate_contracts(balance=15, price=0.93269) == 1
+
+
+def test_calculate_contracts_scales_with_per_symbol_leverage():
+    """
+    Bumping the per-symbol leverage column from 1 to 3 produces a 3x larger
+    contract count for the same margin (and thus a 3x larger notional).
+    """
+    deal = make_sizing_deal()
+    deal.symbol_info.futures_leverage = 3
+
+    assert deal.calculate_contracts(balance=15, price=0.93269) == 4
 
 
 def test_constructor_reuses_injected_base_streaming(monkeypatch):
@@ -108,16 +123,35 @@ def test_constructor_reuses_injected_base_streaming(monkeypatch):
     assert deal.base_streaming is base_streaming
 
 
-def test_contracts_to_fiat_order_size_is_inverse_risk_budget():
+def test_contracts_to_fiat_order_size_inverts_margin_sizing():
+    """
+    Inverse of margin-spend: 1 contract × 0.93269 price × 10 mult / 1 leverage.
+    """
     deal = make_sizing_deal()
 
-    assert deal.contracts_to_fiat_order_size(contracts=25, price=0.93269) == 14.99886769
+    assert deal.contracts_to_fiat_order_size(contracts=1, price=0.93269) == 9.3269
 
 
-def test_calculate_contracts_returns_zero_when_risk_budget_is_below_one_contract():
+def test_calculate_contracts_returns_zero_when_margin_is_below_one_contract():
     deal = make_sizing_deal(fiat_order_size=0.5)
 
     assert deal.calculate_contracts(balance=0.5, price=0.93269) == 0
+
+
+def test_notional_stays_within_thirty_at_autotrade_default_and_two_x_leverage():
+    """
+    Product invariant: with the autotrade default fiat_order_size of 15 USDT
+    and a per-symbol futures_leverage of 2x, notional must not exceed 30 USDT.
+    Guards against accidental drift back to a risk-budget interpretation or
+    silently raising the model's `le=3` leverage cap.
+    """
+    deal = make_sizing_deal(fiat_order_size=15.0, multiplier=1.0)
+    deal.symbol_info.futures_leverage = 2
+
+    contracts = deal.calculate_contracts(balance=15.0, price=1.0)
+    notional = deal.notional_for_contracts(contracts, price=1.0)
+
+    assert notional <= 30.0
 
 
 def test_required_margin_uses_position_notional_and_leverage():
@@ -133,7 +167,7 @@ def test_reversal_margin_check_does_not_double_count_lot_size():
     assert deal._is_reversal_possible(mark_price=10, current_contracts=10) == 15
 
 
-def test_base_order_downsizes_when_risk_size_exceeds_available_margin():
+def test_base_order_downsizes_when_margin_size_exceeds_available_balance():
     class DummyFuturesApi:
         DEFAULT_MULTIPLIER = 1
         DEFAULT_LEVERAGE = 1
@@ -162,7 +196,10 @@ def test_base_order_downsizes_when_risk_size_exceeds_available_margin():
         def get_futures_position(self, symbol):
             return types.SimpleNamespace(mark_price=10)
 
-    deal = make_sizing_deal(fiat_order_size=100, stop_loss=1, multiplier=10)
+    # margin_sized at 1x: 1500 / (10*10) = 15 contracts (notional 1500, margin 1500).
+    # affordable: per-contract margin (100*1 + 2*100*0.0006) = 100.12 → floor(1000/100.12) = 9.
+    # min(15, 9) = 9, downsized from 15 to 9.
+    deal = make_sizing_deal(fiat_order_size=1500, stop_loss=1, multiplier=10)
     deal.active_bot.fiat = "USDT"
     deal.fiat = "USDT"
     deal.kucoin_symbol = "TESTUSDTM"
@@ -179,5 +216,5 @@ def test_base_order_downsizes_when_risk_size_exceeds_available_margin():
     assert opened_bot.deal.base_order_size == 9
     assert opened_bot.deal.opening_qty == 9
     assert any(
-        "Futures order downsized from 100 to 9" in log for log in opened_bot.logs
+        "Futures order downsized from 15 to 9" in log for log in opened_bot.logs
     )

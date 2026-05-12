@@ -16,10 +16,11 @@ This repository favors direct, explicit code over thin indirection.
 
 ## Trading Logic
 
-- Treat futures sizing carefully: `fiat_order_size` is the configured risk budget unless surrounding code explicitly documents a margin-spend interpretation.
+- For KuCoin futures bots, `fiat_order_size` is the **initial margin** the bot commits (margin-spend interpretation), not the risk-at-stop. `KucoinPositionDeal.calculate_contracts(balance, price)` is `balance * symbol_info.futures_leverage / (price * multiplier)`; `contracts_to_fiat_order_size` is its inverse. `notional = fiat_order_size * futures_leverage`.
+- Leverage lives on the symbol row (`SymbolTable.futures_leverage`, bounded `[1, 3]`). It is **per-symbol**, not a global constant. New symbols default to `1x`; dial individual symbols up via the symbols API only as an explicit product decision.
+- `base_order` clamps via `min(margin_sized_contracts, max_contracts_for_margin(available_balance, price))` and re-validates with `required_margin_for_contracts` before sending the order to KuCoin. Anything that places futures orders must keep going through `required_margin_for_contracts` so the affordability check stays exchange-truthful.
 - Percent fields stored as values like `6.5` must be converted to ratios with `/ 100` before arithmetic.
 - Do not apply leverage to PnL or risk-at-stop calculations. Leverage affects margin requirements, not the price move loss for a position.
-- Use `1x` leverage for KuCoin futures orders unless a later product decision explicitly changes this.
 - Keep exchange-specific assumptions near the exchange implementation and cover them with focused tests.
 
 ## Model Fields
