@@ -51,8 +51,13 @@ const BaseOrderTab: FC<{
   const { pathname } = useLocation();
   const isNewRoute = matchNewRoutes(pathname);
   const dispatch: AppDispatch = useAppDispatch();
-  const { symbolsList, quoteAsset, baseAsset, updateQuoteBaseState } =
-    useSymbolData();
+  const {
+    symbolsList,
+    quoteAsset,
+    baseAsset,
+    futuresLeverage,
+    updateQuoteBaseState,
+  } = useSymbolData();
   let { bot } = useAppSelector(selectBot);
   if (botType === BotType.PAPER_TRADING) {
     const testBot = useAppSelector(selectTestBot);
@@ -351,7 +356,7 @@ const BaseOrderTab: FC<{
                 {bot.market_type === MarketType.FUTURES ? (
                   <div>
                     <FormLabel>Leverage:</FormLabel>
-                    <InputGroupText>3x (harcoded)</InputGroupText>
+                    <InputGroupText>{futuresLeverage}x</InputGroupText>
                   </div>
                 ) : (
                   <>

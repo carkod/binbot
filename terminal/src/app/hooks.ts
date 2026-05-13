@@ -49,6 +49,7 @@ interface SymbolContextType {
   symbolsList: string[];
   quoteAsset: string;
   baseAsset: string;
+  futuresLeverage: number;
   updateQuoteBaseState: (pair: string) => void;
   isLoading: boolean;
 }
@@ -73,6 +74,7 @@ export const useSymbolDataProvider = (marketType?: MarketType) => {
   const [symbolsList, setSymbolsList] = useState<string[]>([]);
   const [quoteAsset, setQuoteAsset] = useState<string>("");
   const [baseAsset, setBaseAsset] = useState<string>("");
+  const [futuresLeverage, setFuturesLeverage] = useState<number>(1);
   const [isLoading, setIsLoading] = useState(false);
 
   const updateQuoteBaseState = useCallback(
@@ -83,6 +85,7 @@ export const useSymbolDataProvider = (marketType?: MarketType) => {
         .then((data) => {
           setQuoteAsset(data.quote_asset);
           setBaseAsset(data.base_asset);
+          setFuturesLeverage(data.futures_leverage);
           setIsLoading(false);
         })
         .catch(() => {
@@ -115,6 +118,7 @@ export const useSymbolDataProvider = (marketType?: MarketType) => {
     symbolsList,
     quoteAsset,
     baseAsset,
+    futuresLeverage,
     updateQuoteBaseState,
     isLoading,
   };
