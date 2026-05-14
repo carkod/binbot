@@ -183,7 +183,8 @@ def test_reverse_position_closes_previous_and_opens_new_bot(monkeypatch):
     assert reversed_bot.status == Status.active
     assert reversed_bot.deal.base_order_size == 68
     assert reversed_bot.deal.opening_qty == 68
-    assert reversed_bot.fiat_order_size == 2.58467999
+    # margin-spend inverse: contracts × price × multiplier / leverage = 68 × 1.267 × 1 / 1
+    assert reversed_bot.fiat_order_size == 86.156
     assert len(reversed_bot.orders) == 1
     assert reversed_bot.orders[0].qty == 56
     assert reversed_bot.orders[0].deal_type == DealType.base_order
@@ -240,7 +241,8 @@ def test_reverse_position_retries_second_order_after_insufficient_balance(
     assert reversed_bot.status == Status.active
     assert reversed_bot.deal.base_order_size == 54
     assert reversed_bot.deal.opening_qty == 54
-    assert reversed_bot.fiat_order_size == 6.84179999
+    # margin-spend inverse: contracts × price × multiplier / leverage = 54 × 1.267 × 1 / 1
+    assert reversed_bot.fiat_order_size == 68.41799999
     assert len(reversed_bot.orders) == 1
     assert reversed_bot.orders[0].qty == 42
     assert reversed_bot.orders[0].deal_type == DealType.base_order

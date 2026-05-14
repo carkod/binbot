@@ -87,17 +87,14 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
     def calculate_contracts(self, balance: float, price: float) -> int:
         """
-        Size futures positions from a fiat risk budget.
+        Size futures positions from initial margin (margin-spend interpretation).
 
-        For futures bots, ``fiat_order_size`` is the max fiat loss budget at
-        the configured stop, not the margin to spend. KuCoin PnL is determined
-        by notional move, so leverage does not change the loss at stop.
+        ``fiat_order_size`` is the initial margin the bot commits, not the
+        risk-at-stop. ``notional = balance * symbol_info.futures_leverage`` and
+        ``contracts = notional / (price * multiplier)``. Per-symbol leverage is
+        sourced from the symbol table, capped at ``le=3``.
         """
         if balance <= 0 or price <= 0:
-            return 0
-
-        stop_loss_ratio = self.active_bot.stop_loss / 100
-        if stop_loss_ratio <= 0:
             return 0
 
         symbol_data = getattr(self, "kucoin_symbol_data", None)
@@ -107,7 +104,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             or 1
         )
 
-        contracts = balance / (stop_loss_ratio * price * multiplier)
+        contracts = balance * self.symbol_info.futures_leverage / (price * multiplier)
         return int(round_numbers(contracts, self.symbol_info.qty_precision))
 
     def _is_reversal_possible(
@@ -170,14 +167,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
     def contracts_to_fiat_order_size(self, contracts: float, price: float) -> float:
         """
-        Invert calculate_contracts() so fiat_order_size reflects the actual
-        risk budget used to open an existing futures position.
+        Invert calculate_contracts() so fiat_order_size reflects the initial
+        margin actually committed by an open futures position.
         """
         if contracts <= 0 or price <= 0:
-            return 0.0
-
-        stop_loss_ratio = self.active_bot.stop_loss / 100
-        if stop_loss_ratio <= 0:
             return 0.0
 
         symbol_data = getattr(self, "kucoin_symbol_data", None)
@@ -187,7 +180,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         )
 
         return round_numbers(
-            contracts * price * multiplier * stop_loss_ratio,
+            contracts * price * multiplier / self.symbol_info.futures_leverage,
             8,
         )
 
@@ -237,8 +230,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
         """
         Estimate the margin needed for a futures order before submitting it.
 
-        `fiat_order_size` is the planned stop-loss risk, so it can be far
-        smaller than the margin required to carry the calculated position.
+        Under margin-spend sizing the required margin for a freshly calculated
+        position should equal ``fiat_order_size`` (modulo rounding from
+        integer contracts), but we recompute it from the contracts actually
+        placed so the affordability check uses the exchange-truth notional.
         """
         if contracts <= 0 or price <= 0:
             return 0.0
@@ -579,17 +574,17 @@ class KucoinPositionDeal(KucoinBaseBalance):
             size=available_balance,
         )
 
-        risk_sized_contracts = self.calculate_contracts(
+        margin_sized_contracts = self.calculate_contracts(
             self.active_bot.fiat_order_size, price
         )
 
-        if risk_sized_contracts <= 0:
+        if margin_sized_contracts <= 0:
             raise BinbotErrors(
                 "Calculated contracts is 0. Check if the order size, stop loss, and risk settings are correct."
             )
 
         affordable_contracts = self.max_contracts_for_margin(available_balance, price)
-        contracts = min(risk_sized_contracts, affordable_contracts)
+        contracts = min(margin_sized_contracts, affordable_contracts)
 
         if contracts <= 0:
             min_contract_margin = self.required_margin_for_contracts(
@@ -607,20 +602,20 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 f"exceeds available balance {available_balance} {self.fiat}."
             )
 
-        actual_risk = self.contracts_to_fiat_order_size(contracts, price)
+        actual_margin = self.contracts_to_fiat_order_size(contracts, price)
         notional = round_numbers(self.notional_for_contracts(contracts, price), 8)
 
-        if contracts < risk_sized_contracts:
+        if contracts < margin_sized_contracts:
             self.active_bot.add_log(
-                f"Futures order downsized from {risk_sized_contracts} to {contracts} contracts "
+                f"Futures order downsized from {margin_sized_contracts} to {contracts} contracts "
                 f"because required margin exceeded available balance."
             )
 
         self.active_bot.add_log(
             f"Futures activation sizing: contracts={contracts}, notional={notional} {self.fiat}, "
             f"leverage={self.symbol_info.futures_leverage}x, required_margin={required_margin} {self.fiat}, "
-            f"available_balance={available_balance} {self.fiat}, planned_risk={self.active_bot.fiat_order_size} {self.fiat}, "
-            f"actual_risk={actual_risk} {self.fiat}."
+            f"available_balance={available_balance} {self.fiat}, planned_margin={self.active_bot.fiat_order_size} {self.fiat}, "
+            f"actual_margin={actual_margin} {self.fiat}."
         )
 
         if self.active_bot.position == Position.short:
