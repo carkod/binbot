@@ -159,6 +159,98 @@ def test_ingest_adp_data_skips_duplicate_timestamp_source():
     assert len(rows) == 1
 
 
+def test_gainers_losers_uses_coingecko_kucoin_futures_usdt_perpetuals():
+    session = _make_session()
+    controller = _make_controller(ExchangeId.KUCOIN, session, fiat="USDT")
+    controller.coingecko_api = SimpleNamespace(  # type: ignore[assignment]
+        get_kucoin_futures_tickers=lambda: [
+            {
+                "symbol": "ETHUSDTM",
+                "base": "ETH",
+                "target": "USDT",
+                "contract_type": "perpetual",
+                "last": 3000.0,
+                "h24_percentage_change": 8.0,
+                "open_interest_usd": 1000000.0,
+                "h24_volume": 2000000.0,
+                "funding_rate": 0.01,
+                "last_traded": 1710000000,
+                "expired_at": None,
+            },
+            {
+                "symbol": "BTCUSDTM",
+                "base": "BTC",
+                "target": "USDT",
+                "contract_type": "perpetual",
+                "last": 65000.0,
+                "h24_percentage_change": 12.0,
+                "open_interest_usd": 5000000.0,
+                "h24_volume": 9000000.0,
+                "funding_rate": 0.02,
+                "last_traded": 1710000000,
+                "expired_at": None,
+            },
+            {
+                "symbol": "SOLUSDTM",
+                "base": "SOL",
+                "target": "USDT",
+                "contract_type": "perpetual",
+                "last": 150.0,
+                "h24_percentage_change": -5.0,
+                "open_interest_usd": 700000.0,
+                "h24_volume": 600000.0,
+                "funding_rate": -0.01,
+                "last_traded": 1710000000,
+                "expired_at": None,
+            },
+            {
+                "symbol": "XBTUSDM",
+                "base": "XBT",
+                "target": "USD",
+                "contract_type": "perpetual",
+                "last": 65000.0,
+                "h24_percentage_change": 50.0,
+                "open_interest_usd": 100000.0,
+                "h24_volume": 100000.0,
+                "funding_rate": 0.0,
+                "last_traded": 1710000000,
+                "expired_at": None,
+            },
+            {
+                "symbol": "ADAUSDT-20240628",
+                "base": "ADA",
+                "target": "USDT",
+                "contract_type": "futures",
+                "last": 0.5,
+                "h24_percentage_change": 40.0,
+                "open_interest_usd": 100000.0,
+                "h24_volume": 100000.0,
+                "funding_rate": 0.0,
+                "last_traded": 1710000000,
+                "expired_at": None,
+            },
+            {
+                "symbol": "OLDUSDTM",
+                "base": "OLD",
+                "target": "USDT",
+                "contract_type": "perpetual",
+                "last": 1.0,
+                "h24_percentage_change": 30.0,
+                "open_interest_usd": 100000.0,
+                "h24_volume": 100000.0,
+                "funding_rate": 0.0,
+                "last_traded": 1710000000,
+                "expired_at": 1710000000,
+            },
+        ]
+    )
+
+    gainers, losers = controller.gainers_losers()
+
+    assert [item["symbol"] for item in gainers] == ["BTCUSDTM", "ETHUSDTM"]
+    assert [item["symbol"] for item in losers] == ["SOLUSDTM"]
+
+
 def _seed_rows(session: Session, source: str, count: int):
     base = datetime(2026, 4, 1, 0, 0, 0, tzinfo=timezone.utc)
     for i in range(count):
