@@ -11,7 +11,7 @@ class CoinGecko:
 
     def get_all_categories(self) -> list:
         url = f"{self.base_url}/coins/categories"
-        r = requests.get(url)
+        r = requests.get(url, timeout=10)
         r.raise_for_status()
         return [cat["id"] for cat in r.json()]
 
@@ -24,7 +24,7 @@ class CoinGecko:
             "per_page": str(250),
             "page": str(1),
         }
-        r = requests.get(url, params=params)
+        r = requests.get(url, params=params, timeout=10)
         r.raise_for_status()
         page = 1
         all_coins = []
@@ -37,7 +37,7 @@ class CoinGecko:
                 "per_page": str(250),
                 "page": str(page),
             }
-            r = requests.get(url, params=params)
+            r = requests.get(url, params=params, timeout=10)
             r.raise_for_status()
             data = r.json()
             if not data:
@@ -45,3 +45,10 @@ class CoinGecko:
             all_coins.extend(data)
             page += 1
         return all_coins
+
+    def get_kucoin_futures_tickers(self) -> list[dict]:
+        url = f"{self.base_url}/derivatives/exchanges/kumex"
+        params = {"include_tickers": "unexpired"}
+        r = requests.get(url, params=params, timeout=10)
+        r.raise_for_status()
+        return r.json()["tickers"]
