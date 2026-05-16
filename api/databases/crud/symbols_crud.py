@@ -10,7 +10,7 @@ from databases.tables.asset_index_table import AssetIndexTable, SymbolIndexLink
 from databases.tables.symbol_exchange_table import SymbolExchangeTable
 from databases.tables.symbol_table import SymbolTable
 from databases.utils import independent_session, engine
-from symbols.models import SymbolModel, SymbolRequestPayload
+from symbols.models import SymbolRequestPayload
 from pybinbot import (
     ExchangeId,
     BinanceApi,
@@ -18,6 +18,7 @@ from pybinbot import (
     KucoinApi,
     MarketType,
     KucoinFutures,
+    SymbolModel,
 )
 from sqlalchemy.sql import delete
 from databases.utils import get_db_session
