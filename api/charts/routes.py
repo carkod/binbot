@@ -18,8 +18,8 @@ charts_blueprint = APIRouter()
     response_model=AdrSeriesResponse,
 )
 def get_adr_series(size: int = 14, session: Session = Depends(get_session)):
-    data = MarketDominationController().get_adrs(size)
     try:
+        data = MarketDominationController(session=session).get_adrs(size)
         if not data:
             raise HTTPException(404, detail="No ADR data found")
 
