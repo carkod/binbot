@@ -2,6 +2,18 @@
 
 This repository favors direct, explicit code over thin indirection.
 
+## Workspace Map
+
+This VS Code workspace spans several connected projects. When discussing or changing code, keep the project boundary clear:
+
+- `~/binbot/api` is the **binbot FastAPI app**. It owns the API, database models, CRUD layer, exchange integrations, and backend trading execution behavior.
+- `~/binbot/terminal` is the **binbot React dashboard app**. It is the operational UI for bots, symbols, account state, and API-driven workflows.
+- `~/binquant` is the **crypto analytics, bot update, and signal system**. It produces and analyzes strategy signals, live bot updates, and performance context that can feed into binbot workflows.
+- `pybinbot` is the **shared PyPI module** used by both `~/binquant` and `~/binbot/api`. Shared models, clients, and reusable domain modules belong here when they genuinely need to be consumed by both projects.
+- `~/binbot.in` is the **brochure site**, a Next.js app for the public-facing website rather than the trading operations product.
+
+These projects are interconnected, and Codex conversations often refer across them. Prefer naming the project or path explicitly when a change crosses boundaries, especially when touching shared contracts between `binbot/api`, `binbot/terminal`, `binquant`, and `pybinbot`.
+
 ## Function Shape
 
 - Do not add wrapper methods whose only job is to pass instance state into another method.
