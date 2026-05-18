@@ -36,6 +36,10 @@ class PositionMarket(KucoinPositionDeal):
     PULLBACK_ARM_PROFIT = 1.0
     SHALLOW_PULLBACK = 0.75
     DEEP_PULLBACK = 1.5
+    # Algo name match: see binquant/strategies/coinrule/bb_extreme_reversion.py
+    BB_EXTREME_REVERSION_ALGO = "bb_extreme_reversion"
+    BB_EXTREME_ATR_WINDOW = 14
+    BB_EXTREME_ATR_SL_MULTIPLIER = 2.0
 
     def __init__(
         self,
@@ -290,6 +294,107 @@ class PositionMarket(KucoinPositionDeal):
 
         return self.active_bot
 
+    def _atr_pct(self, current_price: float) -> float | None:
+        """ATR over the last `BB_EXTREME_ATR_WINDOW` candles, expressed as a
+        percentage of the current price. Mirrors Indicators.atr inline so we
+        don't mutate self.df."""
+        if len(self.klines) < self.BB_EXTREME_ATR_WINDOW + 1 or current_price <= 0:
+            return None
+        true_ranges = []
+        for i in range(len(self.klines) - self.BB_EXTREME_ATR_WINDOW, len(self.klines)):
+            if i <= 0:
+                continue
+            prev_close = float(self.klines[i - 1][4])
+            high = float(self.klines[i][2])
+            low = float(self.klines[i][3])
+            true_ranges.append(
+                max(high - low, abs(high - prev_close), abs(low - prev_close))
+            )
+        if not true_ranges:
+            return None
+        atr = sum(true_ranges) / len(true_ranges)
+        return (atr / current_price) * 100
+
+    def bb_extreme_reversion_trailing_analytics(self, current_price: float) -> None:
+        """
+        ATR-based SL with BB-derived trailing for bb_extreme_reversion bots.
+        Works for both long and short — the percentages are direction-agnostic
+        and the downstream `exit()` applies the direction multiplier when
+        placing orders.
+
+        - stop_loss: derived once from ATR (then pinned, like the long path).
+        - trailing_profit / trailing_deviation: BB-derived per tick, same
+          formulas as build_bb_metrics.
+        """
+        original_bot = deepcopy(self.active_bot)
+        market_type = getattr(
+            self.active_bot.market_type, "value", self.active_bot.market_type
+        )
+        position = getattr(self.active_bot.position, "value", self.active_bot.position)
+        position_value = str(position).lower()
+        if (
+            str(market_type).lower() != MarketType.FUTURES.value.lower()
+            or position_value
+            not in {Position.long.value.lower(), Position.short.value.lower()}
+            or float(self.active_bot.deal.opening_price or 0) <= 0
+        ):
+            return
+
+        # ─────────────────────────────
+        # ATR-based stop loss (emergency only; pinned once set)
+        # ─────────────────────────────
+        existing_stop_loss = float(self.active_bot.stop_loss or 0)
+        if existing_stop_loss > 0:
+            stop_loss = clamp(
+                existing_stop_loss, self.MIN_STOP_LOSS, self.MAX_STOP_LOSS
+            )
+        else:
+            atr_pct = self._atr_pct(current_price)
+            if atr_pct is None:
+                stop_loss = 3.0
+            else:
+                stop_loss = clamp(
+                    self.BB_EXTREME_ATR_SL_MULTIPLIER * atr_pct,
+                    self.MIN_STOP_LOSS,
+                    self.MAX_STOP_LOSS,
+                )
+
+        # ─────────────────────────────
+        # BB-derived trailing (re-derived each tick, direction-agnostic)
+        # ─────────────────────────────
+        bb_metrics = self.build_bb_metrics()
+        if bb_metrics:
+            top_spread, bottom_spread = bb_metrics
+            trailing_profit = clamp(
+                top_spread, self.MIN_TRAILING_PROFIT, self.MAX_TRAILING_PROFIT
+            )
+            trailing_deviation = clamp(
+                bottom_spread,
+                self.MIN_TRAILING_DEVIATION,
+                self.MAX_TRAILING_DEVIATION,
+            )
+            max_deviation = min(
+                self.MAX_TRAILING_DEVIATION, trailing_profit - self.MIN_TRAIL_GAP
+            )
+            trailing_deviation = clamp(
+                trailing_deviation, self.MIN_TRAILING_DEVIATION, max_deviation
+            )
+        else:
+            trailing_profit = float(self.active_bot.trailing_profit or 2.3)
+            trailing_deviation = float(self.active_bot.trailing_deviation or 1.63)
+
+        self.active_bot.stop_loss = round_numbers(stop_loss, 2)
+        self.active_bot.trailing_profit = round_numbers(trailing_profit, 2)
+        self.active_bot.trailing_deviation = round_numbers(trailing_deviation, 2)
+
+        if (
+            self.active_bot.trailing_profit != original_bot.trailing_profit
+            or self.active_bot.trailing_deviation != original_bot.trailing_deviation
+            or self.active_bot.stop_loss != original_bot.stop_loss
+        ):
+            self.active_bot = self.update_parameters()
+            self.controller.save(data=self.active_bot)
+
     def market_trailing_analytics(
         self,
         current_price: float,
@@ -304,6 +409,11 @@ class PositionMarket(KucoinPositionDeal):
         - trailing_profit = trigger, never exit
         """
         self.apex_flow_closing = ApexFlowClose(self.df, self.btc_df)
+
+        # Strategy-specific dispatch: bb_extreme_reversion bots use ATR-based
+        # SL instead of the BB-derived path below.
+        if self.active_bot.name == self.BB_EXTREME_REVERSION_ALGO:
+            return self.bb_extreme_reversion_trailing_analytics(current_price)
 
         original_bot = deepcopy(self.active_bot)
         market_type = getattr(

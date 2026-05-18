@@ -215,6 +215,4 @@ def test_base_order_downsizes_when_margin_size_exceeds_available_balance():
     assert deal.kucoin_futures_api.sell_calls == [9]
     assert opened_bot.deal.base_order_size == 9
     assert opened_bot.deal.opening_qty == 9
-    assert any(
-        "Futures order downsized from 15 to 9" in log for log in opened_bot.logs
-    )
+    assert any("Futures order downsized from 15 to 9" in log for log in opened_bot.logs)
