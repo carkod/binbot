@@ -421,6 +421,7 @@ class PositionDeal(KucoinPositionDeal):
     _NO_REVERSAL_AFTER_LOSS_NAMES = {
         "coinrule_buy_the_dip",
         "coinrule_price_tracker",
+        "bb_extreme_reversion",
     }
 
     def _prior_leg_was_loss(self) -> bool:

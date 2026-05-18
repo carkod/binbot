@@ -26,30 +26,37 @@ def make_position_market(
     bot_profit: float = 4.0,
     opening_timestamp: int = 2_000,
     name: str = "test bot",
+    position: Position = Position.long,
+    opening_price: float = 100.0,
+    klines: list[list[float]] | None = None,
 ):
     market = cast(Any, PositionMarket.__new__(PositionMarket))
     market.active_bot = BotModel(
         pair="BTCUSDT",
         name=name,
         market_type=MarketType.FUTURES,
-        position=Position.long,
+        position=position,
         dynamic_trailing=True,
         trailing=True,
         trailing_profit=0.0,
         trailing_deviation=0.0,
         stop_loss=0.0,
         deal=DealModel(
-            opening_price=100.0,
+            opening_price=opening_price,
             opening_timestamp=opening_timestamp,
             opening_qty=1.0,
             base_order_size=1.0,
         ),
     )
-    market.klines = [
-        [1_000, 99.0, 101.0, 98.0, 100.0],
-        [2_000, 100.0, 102.0, 99.0, 101.0],
-        [3_000, 101.0, 106.0, 100.0, 105.0],
-    ]
+    market.klines = (
+        klines
+        if klines is not None
+        else [
+            [1_000, 99.0, 101.0, 98.0, 100.0],
+            [2_000, 100.0, 102.0, 99.0, 101.0],
+            [3_000, 101.0, 106.0, 100.0, 105.0],
+        ]
+    )
     market.df = pd.DataFrame(
         [
             {
@@ -193,6 +200,109 @@ def test_update_parameters_translates_percent_values_into_prices():
     # trailing would disarm itself every tick and bypass the trailing-armed
     # guard in reconcile_exchange_sl.
     assert updated_bot.deal.trailing_stop_loss_price == 95.0
+
+
+def _make_klines_with_range(
+    n: int, price: float, range_pct: float
+) -> list[list[float]]:
+    """Helper: n candles all with the same range_pct intracandle move and
+    no inter-candle gaps. ATR percentage = range_pct."""
+    klines = []
+    half = price * range_pct / 200  # half-range each side of close
+    for i in range(n):
+        ts = (i + 1) * 1_000
+        klines.append([ts, price, price + half, price - half, price, 0.0])
+    return klines
+
+
+def test_bb_extreme_reversion_uses_atr_based_stop_loss(monkeypatch):
+    """bb_extreme_reversion must dispatch to the ATR path; SL = 2x ATR%."""
+    monkeypatch.setattr(
+        "exchange_apis.kucoin.futures.position_market.ApexFlowClose",
+        FakeApexFlowClose,
+    )
+    # 20 candles each with 1.5% range; ATR_pct ≈ 1.5; SL = 2.0 * 1.5 = 3.0
+    klines = _make_klines_with_range(n=20, price=100.0, range_pct=1.5)
+    market = make_position_market(
+        opening_timestamp=20_000,
+        position=Position.short,
+        klines=klines,
+        name=PositionMarket.BB_EXTREME_REVERSION_ALGO,
+    )
+    # Stub bb_metrics so the trailing path uses known clamped values
+    market.build_bb_metrics = lambda: (2.0, 1.5)
+
+    market.market_trailing_analytics(current_price=100.0)
+
+    assert market.active_bot.stop_loss == 3.0  # 2.0 * 1.5 = 3.0
+    assert market.active_bot.trailing_profit == 2.0
+    assert market.active_bot.trailing_deviation == 1.5
+
+
+def test_bb_extreme_reversion_atr_sl_pins_to_existing_when_set(monkeypatch):
+    """Once a bb_extreme_reversion bot has SL, it stays pinned even if ATR
+    derives differently."""
+    monkeypatch.setattr(
+        "exchange_apis.kucoin.futures.position_market.ApexFlowClose",
+        FakeApexFlowClose,
+    )
+    klines = _make_klines_with_range(n=20, price=100.0, range_pct=1.5)
+    market = make_position_market(
+        opening_timestamp=20_000,
+        position=Position.long,
+        klines=klines,
+        name=PositionMarket.BB_EXTREME_REVERSION_ALGO,
+    )
+    market.active_bot.stop_loss = 2.5  # already set
+    market.build_bb_metrics = lambda: (2.0, 1.5)
+
+    market.market_trailing_analytics(current_price=100.0)
+
+    assert market.active_bot.stop_loss == 2.5  # pinned, not re-derived
+
+
+def test_bb_extreme_reversion_atr_sl_works_for_short(monkeypatch):
+    """bb_extreme_reversion shorts must reach the ATR path (no long-only gate)."""
+    monkeypatch.setattr(
+        "exchange_apis.kucoin.futures.position_market.ApexFlowClose",
+        FakeApexFlowClose,
+    )
+    klines = _make_klines_with_range(n=20, price=100.0, range_pct=2.0)
+    market = make_position_market(
+        opening_timestamp=20_000,
+        position=Position.short,
+        klines=klines,
+        name=PositionMarket.BB_EXTREME_REVERSION_ALGO,
+    )
+    market.build_bb_metrics = lambda: (1.8, 1.2)
+
+    market.market_trailing_analytics(current_price=100.0)
+
+    # ATR ≈ 2.0% → SL = 2.0 * 2.0 = 4.0 (also the MAX_STOP_LOSS clamp)
+    assert market.active_bot.stop_loss == 4.0
+    assert market.active_bot.trailing_profit == 1.8
+    assert market.active_bot.trailing_deviation == 1.2
+
+
+def test_non_bb_extreme_bot_still_uses_bb_path(monkeypatch):
+    """Non-bb_extreme bots must NOT take the ATR path; the existing long-only
+    BB flow stays unchanged."""
+    monkeypatch.setattr(
+        "exchange_apis.kucoin.futures.position_market.ApexFlowClose",
+        FakeApexFlowClose,
+    )
+    market = make_position_market(
+        bot_profit=1.5,
+        opening_timestamp=9_999,
+        name="aggressive momo bot",
+    )
+
+    market.market_trailing_analytics(current_price=104.0)
+
+    # Same values as test_market_trailing_analytics_keeps_stop_loss_percent_when_pullback_missing
+    assert market.active_bot.stop_loss == 4.0
+    assert market.active_bot.trailing_profit == 3.5
+    assert market.active_bot.trailing_deviation == 2.0
 
 
 def test_update_parameters_trailing_armed_skips_exchange_reconcile():

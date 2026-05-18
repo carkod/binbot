@@ -42,7 +42,7 @@ def list_signals(
 ):
     crud = SignalsCrud(session)
     if include_payload:
-        rows = crud.query(
+        data = crud.query(
             algorithm_name=algorithm_name,
             symbol=symbol,
             current_regime=current_regime,
@@ -52,8 +52,14 @@ def list_signals(
             limit=limit,
             offset=offset,
         )
-    else:
-        rows = crud.query_summary(
+        return {
+            "message": "Signals retrieved",
+            "data": data,
+            "error": 0,
+        }
+    return {
+        "message": "Signals retrieved",
+        "data": crud.query_summary(
             algorithm_name=algorithm_name,
             symbol=symbol,
             current_regime=current_regime,
@@ -62,8 +68,9 @@ def list_signals(
             until=until,
             limit=limit,
             offset=offset,
-        )
-    return {"message": "Signals retrieved", "data": rows, "error": 0}
+        ),
+        "error": 0,
+    }
 
 
 @signals_blueprint.get("/signals/{signal_id}", response_model=SignalResponse)
