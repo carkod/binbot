@@ -6,7 +6,6 @@ from sqlmodel import Session
 
 from account.controller import ConsolidatedAccounts
 from databases.crud.grid_ladder_crud import GridLadderCrud
-from databases.tables.symbol_exchange_table import SymbolExchangeTable
 from databases.tables.symbol_table import SymbolTable
 from databases.utils import get_session
 from pybinbot import ExchangeId, GridLadderStatus, KucoinFutures, MarketType
