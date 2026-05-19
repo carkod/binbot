@@ -4,6 +4,7 @@ from uuid import UUID
 
 from pybinbot import GridLadderStatus, timestamp
 from sqlalchemy.orm import QueryableAttribute, selectinload
+from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session, select, desc
 
 from databases.tables.grid_ladder_table import GridLadderTable, GridLevelTable
@@ -202,6 +203,7 @@ class GridLadderCrud:
         ladder_id: UUID,
         *,
         status: GridLadderStatus = GridLadderStatus.closed,
+        context_updates: dict | None = None,
     ) -> GridLadderTable | None:
         ladder = self.session.get(GridLadderTable, ladder_id)
         if ladder is None:
@@ -210,6 +212,13 @@ class GridLadderCrud:
         ladder.status = status
         ladder.closed_at = timestamp()
         ladder.updated_at = ladder.closed_at
+        if context_updates:
+            merged = dict(ladder.context or {})
+            merged.update(context_updates)
+            ladder.context = merged
+            # JSON columns don't auto-detect in-place dict mutation; flag it
+            # so SQLAlchemy emits an UPDATE.
+            flag_modified(ladder, "context")
         self.session.add(ladder)
         self.session.commit()
         self.session.refresh(ladder)

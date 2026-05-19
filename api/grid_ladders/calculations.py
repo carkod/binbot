@@ -46,11 +46,11 @@ def calculate_grid_levels(
         margin_required = 0.0
         if side != "neutral":
             contracts = sizer.max_contracts_for_margin(per_level_margin, price)
-            margin_required = sizer.required_margin_for_contracts(contracts, price)
-            if contracts <= 0 or margin_required <= 0:
+            if contracts == 0:
                 raise ValueError(
                     f"Grid level {level_index} cannot afford the exchange minimum contract size"
                 )
+            margin_required = sizer.required_margin_for_contracts(contracts, price)
 
         levels.append(
             CalculatedGridLevel(

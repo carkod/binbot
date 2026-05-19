@@ -1,13 +1,33 @@
-from typing import Optional
 from uuid import UUID, uuid4
 
 from pybinbot import ExchangeId, GridLadderStatus, MarketType, timestamp
-from sqlalchemy import JSON, Column, Enum
+from sqlalchemy import JSON, Column, Enum, Index, text
 from sqlmodel import Field, Relationship, SQLModel
+
+_ACTIVE_GRID_LADDER_WHERE = text(
+    "status IN ('"
+    + "', '".join(
+        (
+            GridLadderStatus.pending.value,
+            GridLadderStatus.active.value,
+            GridLadderStatus.closing.value,
+        )
+    )
+    + "')"
+)
 
 
 class GridLadderTable(SQLModel, table=True):
     __tablename__ = "grid_ladder"
+    __table_args__ = (
+        Index(
+            "ix_grid_ladder_active_symbol",
+            "symbol",
+            unique=True,
+            postgresql_where=_ACTIVE_GRID_LADDER_WHERE,
+            sqlite_where=_ACTIVE_GRID_LADDER_WHERE,
+        ),
+    )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True, index=True, unique=True)
     symbol: str = Field(index=True)
@@ -42,7 +62,7 @@ class GridLadderTable(SQLModel, table=True):
     breakout_high: float = Field(gt=0)
     created_at: float = Field(default_factory=timestamp)
     updated_at: float = Field(default_factory=timestamp)
-    closed_at: Optional[float] = Field(default=None)
+    closed_at: float | None = Field(default=None)
     context: dict = Field(default_factory=dict, sa_column=Column(JSON))
 
     levels: list["GridLevelTable"] = Relationship(
@@ -75,9 +95,9 @@ class GridLevelTable(SQLModel, table=True):
     status: str = Field(default="pending", index=True)
     entry_order_id: str | None = Field(default=None, index=True)
     take_profit_order_id: str | None = Field(default=None, index=True)
-    filled_entry_price: Optional[float] = Field(default=None)
+    filled_entry_price: float | None = Field(default=None)
     filled_entry_qty: float = Field(default=0, ge=0)
-    take_profit_price: Optional[float] = Field(default=None)
+    take_profit_price: float | None = Field(default=None)
     realized_pnl: float = Field(default=0)
     created_at: float = Field(default_factory=timestamp)
     updated_at: float = Field(default_factory=timestamp)
@@ -98,7 +118,7 @@ class GridOrderTable(SQLModel, table=True):
     ladder_id: UUID = Field(
         foreign_key="grid_ladder.id", ondelete="CASCADE", index=True
     )
-    level_id: Optional[UUID] = Field(
+    level_id: UUID | None = Field(
         default=None, foreign_key="grid_level.id", ondelete="SET NULL", index=True
     )
     exchange_order_id: str = Field(index=True)
@@ -109,12 +129,12 @@ class GridOrderTable(SQLModel, table=True):
     contracts: int = Field(ge=0)
     status: str = Field(default="open", index=True)
     filled_qty: float = Field(default=0, ge=0)
-    filled_price: Optional[float] = Field(default=None)
+    filled_price: float | None = Field(default=None)
     created_at: float = Field(default_factory=timestamp)
     updated_at: float = Field(default_factory=timestamp)
     raw_response: dict = Field(default_factory=dict, sa_column=Column(JSON))
 
     ladder: GridLadderTable = Relationship(back_populates="orders")
-    level: Optional[GridLevelTable] = Relationship(back_populates="orders")
+    level: GridLevelTable | None = Relationship(back_populates="orders")
 
     model_config = {"from_attributes": True}

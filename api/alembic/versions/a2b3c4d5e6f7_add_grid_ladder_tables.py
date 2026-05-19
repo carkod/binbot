@@ -79,6 +79,14 @@ def upgrade() -> None:
         "ix_grid_ladder_algorithm_name", "grid_ladder", ["algorithm_name"], unique=False
     )
     op.create_index("ix_grid_ladder_status", "grid_ladder", ["status"], unique=False)
+    # Only one active/pending/closing ladder per symbol at a time.
+    op.create_index(
+        "ix_grid_ladder_active_symbol",
+        "grid_ladder",
+        ["symbol"],
+        unique=True,
+        postgresql_where=sa.text("status IN ('pending', 'active', 'closing')"),
+    )
 
     op.create_table(
         "grid_level",
@@ -183,6 +191,7 @@ def downgrade() -> None:
     op.drop_index("ix_grid_level_id", table_name="grid_level")
     op.drop_table("grid_level")
 
+    op.drop_index("ix_grid_ladder_active_symbol", table_name="grid_ladder")
     op.drop_index("ix_grid_ladder_status", table_name="grid_ladder")
     op.drop_index("ix_grid_ladder_algorithm_name", table_name="grid_ladder")
     op.drop_index("ix_grid_ladder_fiat", table_name="grid_ladder")

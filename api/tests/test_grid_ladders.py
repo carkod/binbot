@@ -13,7 +13,37 @@ from databases.tables.grid_ladder_table import (
 from grid_ladders.calculations import calculate_grid_levels, calculate_grid_step
 from grid_ladders.capital import evaluate_grid_capital
 from grid_ladders.models import GridLadderCreate
+from grid_ladders.routes import GridContractMeta
 from grid_ladders.sizing import KucoinGridMarginRules
+
+
+def _fake_meta(
+    multiplier: float = 1.0,
+    lot_size: float = 1.0,
+    qty_precision: int = 0,
+    taker_fee_rate: float = 0.0,
+    min_notional: float = 0.0,
+) -> GridContractMeta:
+    return GridContractMeta(
+        multiplier=multiplier,
+        lot_size=lot_size,
+        qty_precision=qty_precision,
+        taker_fee_rate=taker_fee_rate,
+        min_notional=min_notional,
+    )
+
+
+def _patch_contract_meta(monkeypatch, meta: GridContractMeta | None = None) -> None:
+    monkeypatch.setattr(
+        "grid_ladders.routes._fetch_kucoin_futures_contract_meta",
+        lambda symbol_row: meta or _fake_meta(),
+    )
+
+
+def _patch_balance(monkeypatch, fiat_available: float) -> None:
+    balance = type("Balance", (), {"fiat_available": fiat_available})()
+    accounts = type("Accounts", (), {"get_balance": lambda self: balance})
+    monkeypatch.setattr("grid_ladders.routes.ConsolidatedAccounts", accounts)
 
 
 @pytest.fixture(autouse=True)
@@ -154,9 +184,8 @@ def test_rejects_ladder_when_per_level_margin_is_too_small():
 
 
 def test_post_grid_ladder_persists_ladder_and_levels(client, monkeypatch):
-    balance = type("Balance", (), {"fiat_available": 10_000})()
-    accounts = type("Accounts", (), {"get_balance": lambda self: balance})
-    monkeypatch.setattr("grid_ladders.routes.ConsolidatedAccounts", accounts)
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
 
     response = client.post("/grid-ladders", json=_payload())
 
@@ -179,9 +208,8 @@ def test_post_grid_ladder_persists_ladder_and_levels(client, monkeypatch):
 def test_post_grid_ladder_rejects_second_active_ladder_for_same_symbol(
     client, monkeypatch
 ):
-    balance = type("Balance", (), {"fiat_available": 10_000})()
-    accounts = type("Accounts", (), {"get_balance": lambda self: balance})
-    monkeypatch.setattr("grid_ladders.routes.ConsolidatedAccounts", accounts)
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
 
     first = client.post("/grid-ladders", json=_payload())
     second = client.post("/grid-ladders", json=_payload())
@@ -192,9 +220,8 @@ def test_post_grid_ladder_rejects_second_active_ladder_for_same_symbol(
 
 
 def test_post_grid_ladder_rejects_default_third_active_ladder(client, monkeypatch):
-    balance = type("Balance", (), {"fiat_available": 20_000})()
-    accounts = type("Accounts", (), {"get_balance": lambda self: balance})
-    monkeypatch.setattr("grid_ladders.routes.ConsolidatedAccounts", accounts)
+    _patch_balance(monkeypatch, 20_000)
+    _patch_contract_meta(monkeypatch)
 
     first = client.post("/grid-ladders", json=_payload("ADAUSDC", 1000))
     second = client.post("/grid-ladders", json=_payload("ADXUSDC", 1000))
@@ -204,3 +231,108 @@ def test_post_grid_ladder_rejects_default_third_active_ladder(client, monkeypatc
     assert second.status_code == 200
     assert third.status_code == 400
     assert "max_active_ladders=2" in third.json()["detail"]
+
+
+def test_post_grid_ladder_uses_per_symbol_contract_metadata(client, monkeypatch):
+    """
+    The sizer must use the real lot_size / multiplier from the symbol,
+    not hard-coded 1's — otherwise contract sizing is off by 10–100x
+    on KuCoin futures pairs.
+    """
+    _patch_balance(monkeypatch, 40_000)
+    _patch_contract_meta(
+        monkeypatch,
+        _fake_meta(multiplier=10.0, lot_size=1.0),
+    )
+
+    # total_margin=5000 → per_level_margin=1250. With multiplier=10,
+    # leverage=1, the most-expensive level (price 110) needs 1100 margin
+    # per contract → 1 contract per active level.
+    response = client.post("/grid-ladders", json=_payload(total_margin=5000))
+
+    assert response.status_code == 200, response.json()
+    levels = response.json()["detail"]["levels"]
+    buy_level = next(level for level in levels if level["side"] == "buy")
+    # Notional reflects the multiplier (1 contract * 90 price * 10 mult = 900).
+    assert buy_level["contracts"] == 1
+    assert buy_level["margin_required"] == 900
+
+
+def test_sizer_snaps_contracts_to_lot_size():
+    """
+    KuCoin rejects partial lots. Sizer must floor to a multiple of lot_size.
+    """
+    sizer = KucoinGridMarginRules(
+        futures_leverage=1,
+        multiplier=1,
+        lot_size=100,
+    )
+
+    # 250 budget at price 90, lot=100: per-lot margin = 9000, so 0 lots fit.
+    assert sizer.max_contracts_for_margin(250, 90) == 0
+
+    # 18000 budget: 2 lots @ 9000 each fit exactly.
+    assert sizer.max_contracts_for_margin(18_000, 90) == 200
+
+
+def test_sizer_rejects_when_below_min_notional():
+    sizer = KucoinGridMarginRules(
+        futures_leverage=1,
+        multiplier=1,
+        lot_size=1,
+        min_notional=1_000,
+    )
+
+    # 1 contract at price 100 = notional 100 < 1000 min_notional.
+    assert sizer.max_contracts_for_margin(500, 100) == 0
+
+
+def test_post_grid_ladder_close_persists_reason(client, monkeypatch):
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+
+    created = client.post("/grid-ladders", json=_payload())
+    assert created.status_code == 200
+    ladder_id = created.json()["detail"]["id"]
+
+    closed = client.post(
+        f"/grid-ladders/{ladder_id}/close",
+        json={"reason": "breakout_high_hit"},
+    )
+
+    assert closed.status_code == 200
+    detail = closed.json()["detail"]
+    assert detail["status"] == "closed"
+    assert detail["closed_at"] is not None
+    assert detail["context"]["close_reason"] == "breakout_high_hit"
+
+
+def test_grid_ladder_active_unique_constraint(create_test_tables):
+    """
+    Two ladders in active statuses for the same symbol must violate the
+    partial unique index even if the API-level check is bypassed.
+    """
+    from sqlalchemy.exc import IntegrityError
+
+    with Session(create_test_tables) as session:
+        session.add(_active_ladder("ZZZUSDC"))
+        session.commit()
+
+        session.add(_active_ladder("ZZZUSDC"))
+        with pytest.raises(IntegrityError):
+            session.commit()
+        session.rollback()
+
+
+def test_grid_ladder_active_unique_allows_reopen_after_close(create_test_tables):
+    """
+    A closed ladder must not block a new active ladder on the same symbol.
+    """
+    with Session(create_test_tables) as session:
+        closed = _active_ladder("ZZYUSDC")
+        closed.status = GridLadderStatus.closed
+        session.add(closed)
+        session.commit()
+
+        session.add(_active_ladder("ZZYUSDC"))
+        session.commit()
