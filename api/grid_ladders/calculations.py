@@ -13,6 +13,12 @@ class CalculatedGridLevel:
     take_profit_price: float | None
 
 
+@dataclass(frozen=True)
+class CalculatedGrid:
+    grid_step: float
+    levels: list[CalculatedGridLevel]
+
+
 def calculate_grid_step(range_low: float, range_high: float, level_count: int) -> float:
     return (range_high - range_low) / (level_count - 1)
 
@@ -23,7 +29,7 @@ def calculate_grid_levels(
     level_count: int,
     total_margin: float,
     sizer: GridMarginSizer,
-) -> list[CalculatedGridLevel]:
+) -> CalculatedGrid:
     grid_step = calculate_grid_step(range_low, range_high, level_count)
     midpoint_index = level_count // 2
     active_entry_level_count = level_count - 1
@@ -63,4 +69,4 @@ def calculate_grid_levels(
             )
         )
 
-    return levels
+    return CalculatedGrid(grid_step=grid_step, levels=levels)

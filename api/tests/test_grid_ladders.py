@@ -10,7 +10,7 @@ from databases.tables.grid_ladder_table import (
     GridLevelTable,
     GridOrderTable,
 )
-from grid_ladders.calculations import calculate_grid_levels, calculate_grid_step
+from grid_ladders.calculations import calculate_grid_levels
 from grid_ladders.capital import evaluate_grid_capital
 from grid_ladders.models import GridLadderCreate
 from grid_ladders.routes import GridContractMeta
@@ -156,20 +156,32 @@ def test_reserves_only_allowed_portion_of_available_balance():
 def test_calculates_fixed_grid_levels_correctly():
     sizer = KucoinGridMarginRules(futures_leverage=1)
 
-    levels = calculate_grid_levels(90, 110, 5, 1000, sizer)
+    calculated = calculate_grid_levels(90, 110, 5, 1000, sizer)
 
-    assert calculate_grid_step(90, 110, 5) == 5
-    assert [level.price for level in levels] == [90, 95, 100, 105, 110]
-    assert [level.side for level in levels] == ["buy", "buy", "neutral", "sell", "sell"]
-    assert [level.take_profit_price for level in levels] == [95, 100, None, 100, 105]
+    assert calculated.grid_step == 5
+    assert [level.price for level in calculated.levels] == [90, 95, 100, 105, 110]
+    assert [level.side for level in calculated.levels] == [
+        "buy",
+        "buy",
+        "neutral",
+        "sell",
+        "sell",
+    ]
+    assert [level.take_profit_price for level in calculated.levels] == [
+        95,
+        100,
+        None,
+        100,
+        105,
+    ]
 
 
 def test_sizes_level_contracts_using_margin_spend_interpretation():
     sizer = KucoinGridMarginRules(futures_leverage=2, multiplier=1, lot_size=1)
 
-    levels = calculate_grid_levels(90, 110, 5, 1000, sizer)
+    calculated = calculate_grid_levels(90, 110, 5, 1000, sizer)
 
-    buy_level = levels[0]
+    buy_level = calculated.levels[0]
     assert buy_level.contracts == 5
     assert buy_level.margin_required == 225
 
@@ -336,3 +348,38 @@ def test_grid_ladder_active_unique_allows_reopen_after_close(create_test_tables)
 
         session.add(_active_ladder("ZZYUSDC"))
         session.commit()
+
+
+@pytest.mark.parametrize("even_count", [4, 6, 8])
+def test_grid_ladder_create_rejects_even_level_count(even_count):
+    data = _payload()
+    data["level_count"] = even_count
+
+    with pytest.raises(ValidationError, match="level_count must be odd"):
+        GridLadderCreate(**data)
+
+
+def test_post_grid_ladder_rejects_spot_market_type(client, monkeypatch):
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+
+    payload = _payload()
+    payload["market_type"] = "SPOT"
+
+    response = client.post("/grid-ladders", json=payload)
+
+    assert response.status_code == 400
+    assert "FUTURES" in response.json()["detail"]
+
+
+def test_post_grid_ladder_rejects_non_kucoin_exchange(client, monkeypatch):
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+
+    payload = _payload()
+    payload["exchange"] = "binance"
+
+    response = client.post("/grid-ladders", json=payload)
+
+    assert response.status_code == 400
+    assert "KuCoin" in response.json()["detail"]
