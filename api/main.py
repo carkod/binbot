@@ -19,6 +19,7 @@ from asset_index.routes import asset_index_blueprint
 from inquiries.routes import inquiries_router
 from portfolio.routes import portfolio_blueprint
 from signals.routes import signals_blueprint
+from grid_ladders.routes import grid_ladder_blueprint
 from pybinbot import configure_logging
 from databases.tables import *  # noqa
 
@@ -69,6 +70,7 @@ app.include_router(asset_index_blueprint, prefix="/asset-index")
 app.include_router(inquiries_router)
 app.include_router(portfolio_blueprint)
 app.include_router(signals_blueprint)
+app.include_router(grid_ladder_blueprint)
 
 
 @app.exception_handler(RequestValidationError)

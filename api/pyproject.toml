@@ -19,7 +19,7 @@ dependencies = [
     "alembic>=1.18.4",
     "alembic-postgresql-enum",
     "pydantic-settings>=2.10.1",
-    "pybinbot>=1.8.18",
+    "pybinbot>=1.8.22",
 ]
 
 [project.urls]
@@ -29,6 +29,9 @@ Repository = "https://github.com/carkod/binbot"
 
 [tool.uv]
 package = false
+
+[tool.uv.sources]
+pybinbot = { git = "https://github.com/carkod/pybinbot.git", rev = "dae7cbb21cc3dba1a4aca93277fb3b5df3dac664" }
 
 
 [project.optional-dependencies]
