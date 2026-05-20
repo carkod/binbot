@@ -32,6 +32,10 @@ class GridLadderCreate(BaseModel):
             raise ValueError("breakout_low must be less than range_low")
         if self.breakout_high <= self.range_high:
             raise ValueError("breakout_high must be greater than range_high")
+        # Even level_count produces an asymmetric grid (more buys than sells, or
+        # vice versa), which breaks the mean-reversion assumption. Require odd.
+        if self.level_count % 2 == 0:
+            raise ValueError("level_count must be odd for a symmetric grid")
         return self
 
 

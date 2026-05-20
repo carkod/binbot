@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from typing import Any, cast
 from uuid import UUID
 
-from pybinbot import GridLadderStatus, timestamp
+from pybinbot import ExchangeId, GridLadderStatus, MarketType, timestamp
 from sqlalchemy.orm import QueryableAttribute, selectinload
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session, select, desc
@@ -32,8 +32,8 @@ class GridLadderCrud:
         *,
         symbol: str,
         fiat: str,
-        exchange: str,
-        market_type: str,
+        exchange: ExchangeId | str,
+        market_type: MarketType | str,
         algorithm_name: str,
         range_low: float,
         range_high: float,

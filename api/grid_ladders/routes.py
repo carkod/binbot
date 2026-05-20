@@ -9,7 +9,7 @@ from databases.crud.grid_ladder_crud import GridLadderCrud
 from databases.tables.symbol_table import SymbolTable
 from databases.utils import get_session
 from pybinbot import ExchangeId, GridLadderStatus, KucoinFutures, MarketType
-from grid_ladders.calculations import calculate_grid_levels, calculate_grid_step
+from grid_ladders.calculations import calculate_grid_levels
 from grid_ladders.capital import evaluate_grid_capital
 from grid_ladders.models import (
     GridLadderCloseRequest,
@@ -142,7 +142,7 @@ def post_grid_ladder(
         payload.market_type,
     )
     try:
-        calculated_levels = calculate_grid_levels(
+        calculated = calculate_grid_levels(
             range_low=payload.range_low,
             range_high=payload.range_high,
             level_count=payload.level_count,
@@ -152,12 +152,7 @@ def post_grid_ladder(
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
-    grid_step = calculate_grid_step(
-        payload.range_low,
-        payload.range_high,
-        payload.level_count,
-    )
-    reserved_margin = sum(level.margin_required for level in calculated_levels)
+    reserved_margin = sum(level.margin_required for level in calculated.levels)
     ladder = grid_ladder_crud.create(
         symbol=payload.symbol,
         fiat=payload.fiat,
@@ -166,7 +161,7 @@ def post_grid_ladder(
         algorithm_name=payload.algorithm_name,
         range_low=payload.range_low,
         range_high=payload.range_high,
-        grid_step=grid_step,
+        grid_step=calculated.grid_step,
         level_count=payload.level_count,
         total_margin=payload.total_margin,
         reserved_margin=reserved_margin,
@@ -185,7 +180,7 @@ def post_grid_ladder(
                 "margin_required": level.margin_required,
                 "take_profit_price": level.take_profit_price,
             }
-            for level in calculated_levels
+            for level in calculated.levels
         ],
     )
     created_ladder = grid_ladder_crud.get(ladder.id)

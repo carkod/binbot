@@ -34,11 +34,15 @@ class GridLadderTable(SQLModel, table=True):
     fiat: str = Field(default="USDC", index=True)
     exchange: ExchangeId = Field(
         default=ExchangeId.KUCOIN,
-        sa_column=Column(Enum(ExchangeId, name="grid_ladder_exchange_enum")),
+        sa_column=Column(
+            Enum(ExchangeId, name="grid_ladder_exchange_enum"), nullable=False
+        ),
     )
     market_type: MarketType = Field(
         default=MarketType.FUTURES,
-        sa_column=Column(Enum(MarketType, name="grid_ladder_market_type_enum")),
+        sa_column=Column(
+            Enum(MarketType, name="grid_ladder_market_type_enum"), nullable=False
+        ),
     )
     algorithm_name: str = Field(default="fixed_grid", index=True)
     status: GridLadderStatus = Field(
