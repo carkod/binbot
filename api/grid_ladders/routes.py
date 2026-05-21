@@ -2,22 +2,24 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.encoders import jsonable_encoder
 from sqlmodel import Session
 
 from account.controller import ConsolidatedAccounts
 from databases.crud.grid_ladder_crud import GridLadderCrud
+from databases.tables.grid_ladder_table import GridLadderTable
 from databases.tables.symbol_table import SymbolTable
 from databases.utils import get_session
 from pybinbot import ExchangeId, GridLadderStatus, KucoinFutures, MarketType
-from grid_ladders.calculations import calculate_grid_levels
-from grid_ladders.capital import evaluate_grid_capital
-from grid_ladders.models import (
+from pybinbot.models.grid_ladder import (
     GridLadderCloseRequest,
-    GridLadderCreate,
     GridLadderListResponse,
     GridLadderRecord,
     GridLadderResponse,
 )
+from grid_ladders.calculations import calculate_grid_levels
+from grid_ladders.capital import evaluate_grid_capital
+from grid_ladders.models import GridLadderCreate
 from grid_ladders.sizing import KucoinGridMarginRules
 from tools.config import Config
 from user.models.user import UserTokenData
@@ -27,6 +29,13 @@ from user.services.auth import get_current_user
 grid_ladder_blueprint = APIRouter(prefix="/grid-ladders", tags=["grid-ladders"])
 
 
+def _grid_ladder_record(ladder: GridLadderTable) -> GridLadderRecord:
+    data = ladder.model_dump()
+    data["levels"] = [level.model_dump() for level in ladder.levels]
+    data["orders"] = [order.model_dump() for order in ladder.orders]
+    return GridLadderRecord.model_validate(jsonable_encoder(data))
+
+
 @dataclass(frozen=True)
 class GridContractMeta:
     multiplier: float
@@ -34,11 +43,6 @@ class GridContractMeta:
     qty_precision: int
     taker_fee_rate: float
     min_notional: float
-
-
-def _get_available_fiat_balance() -> float:
-    balance = ConsolidatedAccounts().get_balance()
-    return balance.fiat_available
 
 
 def _fetch_kucoin_futures_contract_meta(symbol_row: SymbolTable) -> GridContractMeta:
@@ -125,7 +129,9 @@ def post_grid_ladder(
         )
 
     active_ladders = grid_ladder_crud.get_active()
-    available_fiat_balance = _get_available_fiat_balance()
+
+    balance = ConsolidatedAccounts(session=session).get_balance()
+    available_fiat_balance = balance.fiat_available
     try:
         evaluate_grid_capital(
             active_ladders,
@@ -188,7 +194,7 @@ def post_grid_ladder(
         raise HTTPException(status_code=500, detail="Grid ladder was not created")
 
     return GridLadderResponse(
-        detail=GridLadderRecord.model_validate(created_ladder),
+        detail=_grid_ladder_record(created_ladder),
     )
 
 
@@ -202,7 +208,7 @@ def list_grid_ladders(
     grid_ladder_crud = GridLadderCrud(session)
     ladders = grid_ladder_crud.get_all(limit=limit, offset=offset)
     return GridLadderListResponse(
-        detail=[GridLadderRecord.model_validate(ladder) for ladder in ladders],
+        detail=[_grid_ladder_record(ladder) for ladder in ladders],
     )
 
 
@@ -214,7 +220,7 @@ def list_active_grid_ladders(
     grid_ladder_crud = GridLadderCrud(session)
     ladders = grid_ladder_crud.get_active()
     return GridLadderListResponse(
-        detail=[GridLadderRecord.model_validate(ladder) for ladder in ladders],
+        detail=[_grid_ladder_record(ladder) for ladder in ladders],
     )
 
 
@@ -230,7 +236,7 @@ def get_grid_ladder_by_id(
         raise HTTPException(status_code=404, detail="Grid ladder not found")
 
     return GridLadderResponse(
-        detail=GridLadderRecord.model_validate(ladder),
+        detail=_grid_ladder_record(ladder),
     )
 
 
@@ -251,5 +257,5 @@ def close_grid_ladder_by_id(
         raise HTTPException(status_code=404, detail="Grid ladder not found")
 
     return GridLadderResponse(
-        detail=GridLadderRecord.model_validate(ladder),
+        detail=_grid_ladder_record(ladder),
     )

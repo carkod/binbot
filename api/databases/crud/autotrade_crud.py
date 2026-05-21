@@ -6,8 +6,11 @@ from databases.tables.autotrade_table import (
 from databases.utils import get_db_session
 from sqlmodel import Session, select
 from sqlmodel.sql._expression_select_cls import SelectOfScalar
+from pybinbot.models.autotrade_settings import (
+    AutotradeSettingsSchema,
+    TestAutotradeSettingsSchema,
+)
 from pybinbot.shared.enums import AutotradeSettingsDocument
-from autotrade.schemas import AutotradeSettingsSchema, TestAutotradeSettingsSchema
 
 
 class AutotradeCrud:

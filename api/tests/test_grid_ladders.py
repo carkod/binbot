@@ -42,8 +42,15 @@ def _patch_contract_meta(monkeypatch, meta: GridContractMeta | None = None) -> N
 
 def _patch_balance(monkeypatch, fiat_available: float) -> None:
     balance = type("Balance", (), {"fiat_available": fiat_available})()
-    accounts = type("Accounts", (), {"get_balance": lambda self: balance})
-    monkeypatch.setattr("grid_ladders.routes.ConsolidatedAccounts", accounts)
+
+    class Accounts:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def get_balance(self):
+            return balance
+
+    monkeypatch.setattr("grid_ladders.routes.ConsolidatedAccounts", Accounts)
 
 
 @pytest.fixture(autouse=True)

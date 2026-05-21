@@ -3,15 +3,11 @@ import { userApiSlice } from "../userApiSlice";
 import type { GridLadder } from "./types";
 
 type GridLadderResponse = {
-  data: GridLadder;
-  message: string;
-  error: number;
+  detail: GridLadder;
 };
 
 type GridLaddersResponse = {
-  data: GridLadder[];
-  message: string;
-  error: number;
+  detail: GridLadder[];
 };
 
 type CloseGridLadderParams = {
@@ -21,7 +17,10 @@ type CloseGridLadderParams = {
 
 export const gridLaddersApiSlice = userApiSlice.injectEndpoints({
   endpoints: (build) => ({
-    getGridLadders: build.query<GridLadder[], { limit?: number; offset?: number }>({
+    getGridLadders: build.query<
+      GridLadder[],
+      { limit?: number; offset?: number }
+    >({
       query: ({ limit = 100, offset = 0 } = {}) => ({
         url: "/grid-ladders",
         method: "GET",
@@ -29,14 +28,12 @@ export const gridLaddersApiSlice = userApiSlice.injectEndpoints({
       }),
       providesTags: (result) => [
         "grid-ladders",
-        ...(result ?? []).map((ladder) => ({ type: "grid-ladder" as const, id: ladder.id })),
+        ...(result ?? []).map((ladder) => ({
+          type: "grid-ladder" as const,
+          id: ladder.id,
+        })),
       ],
-      transformResponse: ({ data, message, error }: GridLaddersResponse) => {
-        if (error === 1) {
-          notifification("error", message);
-        }
-        return data;
-      },
+      transformResponse: ({ detail }: GridLaddersResponse) => detail,
     }),
     getActiveGridLadders: build.query<GridLadder[], void>({
       query: () => ({
@@ -45,27 +42,22 @@ export const gridLaddersApiSlice = userApiSlice.injectEndpoints({
       }),
       providesTags: (result) => [
         "grid-ladders",
-        ...(result ?? []).map((ladder) => ({ type: "grid-ladder" as const, id: ladder.id })),
+        ...(result ?? []).map((ladder) => ({
+          type: "grid-ladder" as const,
+          id: ladder.id,
+        })),
       ],
-      transformResponse: ({ data, message, error }: GridLaddersResponse) => {
-        if (error === 1) {
-          notifification("error", message);
-        }
-        return data;
-      },
+      transformResponse: ({ detail }: GridLaddersResponse) => detail,
     }),
     getGridLadder: build.query<GridLadder, string>({
       query: (id) => ({
         url: `/grid-ladders/${id}`,
         method: "GET",
       }),
-      providesTags: (result, error, id) => [{ type: "grid-ladder", id: result?.id ?? id }],
-      transformResponse: ({ data, message, error }: GridLadderResponse) => {
-        if (error === 1) {
-          notifification("error", message);
-        }
-        return data;
-      },
+      providesTags: (result, error, id) => [
+        { type: "grid-ladder", id: result?.id ?? id },
+      ],
+      transformResponse: ({ detail }: GridLadderResponse) => detail,
     }),
     closeGridLadder: build.mutation<GridLadder, CloseGridLadderParams>({
       query: ({ id, reason }) => ({
@@ -73,14 +65,13 @@ export const gridLaddersApiSlice = userApiSlice.injectEndpoints({
         method: "POST",
         body: { reason },
       }),
-      invalidatesTags: (result, error, arg) => ["grid-ladders", { type: "grid-ladder", id: arg.id }],
-      transformResponse: ({ data, message, error }: GridLadderResponse) => {
-        if (error === 1) {
-          notifification("error", message);
-        } else {
-          notifification("success", message);
-        }
-        return data;
+      invalidatesTags: (result, error, arg) => [
+        "grid-ladders",
+        { type: "grid-ladder", id: arg.id },
+      ],
+      transformResponse: ({ detail }: GridLadderResponse) => {
+        notifification("success", "Grid ladder closed");
+        return detail;
       },
     }),
   }),

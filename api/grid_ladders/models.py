@@ -1,8 +1,7 @@
 from typing import Any
-from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
-from pybinbot import ExchangeId, GridLadderStatus, MarketType
+from pybinbot import ExchangeId, MarketType
 
 
 class GridLadderCreate(BaseModel):
@@ -37,64 +36,3 @@ class GridLadderCreate(BaseModel):
         if self.level_count % 2 == 0:
             raise ValueError("level_count must be odd for a symmetric grid")
         return self
-
-
-class GridLadderCloseRequest(BaseModel):
-    reason: str = Field(default="manual_close")
-
-
-class GridLevelRecord(BaseModel):
-    id: UUID
-    ladder_id: UUID
-    level_index: int
-    price: float
-    side: str
-    contracts: int
-    margin_required: float
-    status: str
-    entry_order_id: str | None = None
-    take_profit_order_id: str | None = None
-    filled_entry_price: float | None = None
-    filled_entry_qty: float
-    take_profit_price: float | None = None
-    realized_pnl: float
-    created_at: float
-    updated_at: float
-
-    model_config = {"from_attributes": True}
-
-
-class GridLadderRecord(BaseModel):
-    id: UUID
-    symbol: str
-    fiat: str
-    exchange: ExchangeId
-    market_type: MarketType
-    algorithm_name: str
-    status: GridLadderStatus
-    range_low: float
-    range_high: float
-    grid_step: float
-    level_count: int
-    total_margin: float
-    reserved_margin: float
-    used_margin: float
-    realized_pnl: float
-    unrealized_pnl: float
-    breakout_low: float
-    breakout_high: float
-    created_at: float
-    updated_at: float
-    closed_at: float | None = None
-    context: dict[str, Any]
-    levels: list[GridLevelRecord] = Field(default_factory=list)
-
-    model_config = {"from_attributes": True}
-
-
-class GridLadderResponse(BaseModel):
-    detail: GridLadderRecord | None = None
-
-
-class GridLadderListResponse(BaseModel):
-    detail: list[GridLadderRecord] = Field(default_factory=list)

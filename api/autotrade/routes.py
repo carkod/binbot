@@ -5,7 +5,7 @@ from user.services.auth import get_current_user
 from databases.crud.autotrade_crud import AutotradeCrud
 from pybinbot.shared.enums import AutotradeSettingsDocument
 from databases.utils import get_session
-from autotrade.schemas import (
+from pybinbot.models.autotrade_settings import (
     AutotradeSettingsResponse,
     AutotradeSettingsSchema,
     TestAutotradeSettingsSchema,
