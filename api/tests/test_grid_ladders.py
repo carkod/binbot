@@ -140,7 +140,7 @@ def test_rejects_fourth_active_ladder_when_hard_max_is_used():
         )
 
 
-def test_reserves_only_allowed_portion_of_available_balance():
+def test_allows_full_grid_budget_while_keeping_per_ladder_cap():
     active_ladders = [_active_ladder("BTCUSDC", reserved_margin=100)]
 
     decision = evaluate_grid_capital(
@@ -149,7 +149,8 @@ def test_reserves_only_allowed_portion_of_available_balance():
         requested_margin=200,
     )
 
-    assert decision.allowed_grid_margin == 500
+    assert decision.available_after_cash_reserve == 1000
+    assert decision.allowed_grid_margin == 1000
     assert decision.allowed_margin_for_new_ladder == 250
 
     with pytest.raises(ValueError, match="exceeds allowed margin 250"):
