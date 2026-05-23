@@ -11,6 +11,8 @@ import BotDetail from "./app/pages/BotDetail";
 import FuturesBotDetail from "./app/pages/FuturesBotDetail";
 import BotsPage from "./app/pages/Bots";
 import DashboardPage from "./app/pages/Dashboard";
+import GridLaddersPage from "./app/pages/GridLadders";
+import GridLadderDetail from "./app/pages/GridLadderDetail";
 import LoginPage from "./app/pages/Login";
 import NotFound from "./app/pages/NotFound";
 import { store } from "./app/store";
@@ -49,6 +51,24 @@ export const routes = [
     element: <BotsPage />,
     id: "bots",
     nav: true,
+  },
+  {
+    path: "grid-ladders",
+    link: "/grid-ladders",
+    name: "Grid Ladders",
+    icon: "fas fa-border-all",
+    element: <GridLaddersPage />,
+    id: "grid-ladders",
+    nav: true,
+  },
+  {
+    path: "grid-ladders/:id",
+    link: "/grid-ladders/:id",
+    name: "Grid Ladder Detail",
+    icon: null,
+    element: <GridLadderDetail />,
+    id: "grid-ladder-detail",
+    nav: false,
   },
   {
     path: "bots/futures/new/:symbol?",

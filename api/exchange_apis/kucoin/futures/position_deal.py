@@ -797,15 +797,15 @@ class PositionDeal(KucoinPositionDeal):
             if opening_price > 0
             else 0
         )
-        is_3_days = (
+        is_1_5_days = (
             self.active_bot.deal.opening_timestamp
             and (int(time() * 1000) - self.active_bot.deal.opening_timestamp)
-            >= 3 * 24 * 60 * 60 * 1000
+            >= 1.5 * 24 * 60 * 60 * 1000
         )
-        # Panic close stale low-conviction positions after 3 days.
-        if -1 <= bot_profit < 1 and is_3_days:
+        # Panic close stale low-conviction positions after 1.5 days.
+        if -1 <= bot_profit < 1 and is_1_5_days:
             self.controller.update_logs(
-                f"Panic close triggered for stale {position_name} position after 3 days with profit {bot_profit}. Closing position immediately.",
+                f"Panic close triggered for stale {position_name} position after 1.5 days with profit {bot_profit}. Closing position immediately.",
                 self.active_bot,
             )
             self.close_all()
