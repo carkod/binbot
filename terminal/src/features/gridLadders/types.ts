@@ -66,6 +66,7 @@ export type GridLadder = {
   updated_at: number;
   closed_at?: number | null;
   context: Record<string, unknown>;
+  logs?: unknown[] | null;
   levels: GridLevel[];
   orders: GridOrder[];
 };

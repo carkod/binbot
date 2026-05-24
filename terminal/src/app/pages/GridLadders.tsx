@@ -117,7 +117,17 @@ const GridLaddersPage: FC = () => {
 
   return (
     <Container fluid>
-      <Stack direction="horizontal" gap={4} className="my-6 flex-wrap">
+      <Stack direction="horizontal" gap={4} className="flex-wrap">
+        <AlertHeading>
+          <Badge bg={summary.realized >= 0 ? "success" : "danger"}>
+            Realized PnL: {summary.realized.toFixed(4)}
+          </Badge>
+        </AlertHeading>
+        <AlertHeading>
+          <Badge bg={summary.unrealized >= 0 ? "success" : "danger"}>
+            Unrealized PnL: {summary.unrealized.toFixed(4)}
+          </Badge>
+        </AlertHeading>
         <AlertHeading>
           <Badge bg="success">Active ladders: {summary.active} / 3</Badge>
         </AlertHeading>
@@ -132,19 +142,11 @@ const GridLaddersPage: FC = () => {
           </Badge>
         </AlertHeading>
         <AlertHeading>
-          <Badge bg={summary.realized >= 0 ? "success" : "danger"}>
-            Realized PnL: {summary.realized.toFixed(4)}
-          </Badge>
-        </AlertHeading>
-        <AlertHeading>
-          <Badge bg={summary.unrealized >= 0 ? "success" : "danger"}>
-            Unrealized PnL: {summary.unrealized.toFixed(4)}
-          </Badge>
-        </AlertHeading>
-        <AlertHeading>
           <Badge bg="info">Open levels: {summary.openLevels}</Badge>
         </AlertHeading>
       </Stack>
+
+      <hr />
 
       <Row className="mb-3">
         <Col md={3}>

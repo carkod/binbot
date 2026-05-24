@@ -2,8 +2,18 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
+from kucoin_universal_sdk.generate.futures.order.model_get_order_by_order_id_resp import (
+    GetOrderByOrderIdResp,
+)
 from pydantic import ValidationError
-from pybinbot import DealType, ExchangeId, GridLadderStatus, MarketType, OrderBase
+from pybinbot import (
+    DealType,
+    ExchangeId,
+    GridLadderStatus,
+    MarketType,
+    OrderBase,
+    OrderStatus,
+)
 from sqlmodel import Session, delete
 
 from databases.crud.grid_ladder_crud import GridLadderCrud
@@ -18,6 +28,21 @@ from grid_ladders.lifecycle import GridLadderLifecycle
 from grid_ladders.models import GridLadderCreate
 from grid_ladders.routes import GridContractMeta
 from grid_ladders.sizing import KucoinGridMarginRules
+
+
+def _order_details(
+    *,
+    status: GetOrderByOrderIdResp.StatusEnum = GetOrderByOrderIdResp.StatusEnum.OPEN,
+    filled_size: int = 0,
+    avg_deal_price: float = 0,
+    price: float = 0,
+) -> GetOrderByOrderIdResp:
+    return GetOrderByOrderIdResp(
+        status=status,
+        filled_size=filled_size,
+        avg_deal_price=str(avg_deal_price),
+        price=str(price),
+    )
 
 
 def _fake_meta(
@@ -115,7 +140,7 @@ class FakeFuturesApi:
         self.raise_on_order = False
         self.fail_on_call: int | None = None
         self._counter = 0
-        self.order_details: dict[str, SimpleNamespace] = {}
+        self.order_details: dict[str, GetOrderByOrderIdResp] = {}
 
     def place_futures_order(self, **kwargs):
         if self.raise_on_order or self.fail_on_call == self._counter + 1:
@@ -139,12 +164,7 @@ class FakeFuturesApi:
     def retrieve_order(self, order_id: str):
         return self.order_details.get(
             order_id,
-            SimpleNamespace(
-                status=SimpleNamespace(value="open"),
-                filled_size=0,
-                avg_deal_price=0,
-                price=0,
-            ),
+            _order_details(),
         )
 
     def cancel_all_futures_orders(self, symbol: str):
@@ -355,8 +375,11 @@ def test_grid_lifecycle_places_initial_entry_orders(
     assert detail["status"] == "active"
     entry_levels = [level for level in detail["levels"] if level["side"] != "neutral"]
     assert len(detail["orders"]) == 4
+    assert "raw" + "_response" not in detail["orders"][0]
     assert all(level["status"] == "open" for level in entry_levels)
     assert all(level["entry_order_id"] for level in entry_levels)
+    assert len(detail["logs"]) == 4
+    assert "Placed entry order grid-order-1" in detail["logs"][0]
 
 
 def test_grid_lifecycle_places_take_profit_after_entry_fill(
@@ -374,8 +397,8 @@ def test_grid_lifecycle_places_take_profit_after_entry_fill(
         assert ladder is not None
         entry_order = next(order for order in ladder.orders if order.side == "buy")
         entry_order_id = entry_order.exchange_order_id
-        fake_api.order_details[entry_order.exchange_order_id] = SimpleNamespace(
-            status=SimpleNamespace(value="done"),
+        fake_api.order_details[entry_order.exchange_order_id] = _order_details(
+            status=GetOrderByOrderIdResp.StatusEnum.DONE,
             filled_size=entry_order.contracts,
             avg_deal_price=entry_order.price,
             price=entry_order.price,
@@ -392,6 +415,8 @@ def test_grid_lifecycle_places_take_profit_after_entry_fill(
     assert filled_level["status"] == "take_profit_open"
     assert filled_level["take_profit_order_id"] == tp_order["order_id"]
     assert tp_order["side"].value == "sell"
+    assert any("filled" in log for log in detail["logs"])
+    assert any("Placed take-profit order" in log for log in detail["logs"])
 
 
 def test_grid_lifecycle_marks_level_completed_after_take_profit_fill(
@@ -409,8 +434,8 @@ def test_grid_lifecycle_marks_level_completed_after_take_profit_fill(
         assert ladder is not None
         entry_order = next(order for order in ladder.orders if order.side == "buy")
         entry_order_id = entry_order.exchange_order_id
-        fake_api.order_details[entry_order.exchange_order_id] = SimpleNamespace(
-            status=SimpleNamespace(value="done"),
+        fake_api.order_details[entry_order.exchange_order_id] = _order_details(
+            status=GetOrderByOrderIdResp.StatusEnum.DONE,
             filled_size=entry_order.contracts,
             avg_deal_price=entry_order.price,
             price=entry_order.price,
@@ -421,8 +446,8 @@ def test_grid_lifecycle_marks_level_completed_after_take_profit_fill(
         tp_order = next(
             order for order in ladder.orders if order.order_role == "take_profit"
         )
-        fake_api.order_details[tp_order.exchange_order_id] = SimpleNamespace(
-            status=SimpleNamespace(value="done"),
+        fake_api.order_details[tp_order.exchange_order_id] = _order_details(
+            status=GetOrderByOrderIdResp.StatusEnum.DONE,
             filled_size=tp_order.contracts,
             avg_deal_price=tp_order.price,
             price=tp_order.price,
@@ -457,7 +482,10 @@ def test_grid_lifecycle_cancels_partial_initial_orders_on_failure(
     assert detail["status"] == "error"
     assert detail["context"]["execution_error"] == "exchange rejected order"
     assert fake_api.cancelled_symbols == ["ADAUSDCM"]
-    assert detail["orders"][0]["status"] == "cancelled"
+    assert detail["orders"][0]["status"] == OrderStatus.CANCELED.value
+    assert detail["logs"][-1]["event"] == "error"
+    assert detail["logs"][-1]["error_type"] == "RuntimeError"
+    assert detail["logs"][-1]["message"] == "exchange rejected order"
 
 
 def test_sizer_snaps_contracts_to_lot_size():

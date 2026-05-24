@@ -2,7 +2,13 @@ from collections.abc import Sequence
 from typing import Any, cast
 from uuid import UUID
 
-from pybinbot import ExchangeId, GridLadderStatus, MarketType, timestamp
+from pybinbot import (
+    ExchangeId,
+    GridLadderStatus,
+    MarketType,
+    timestamp,
+    ts_to_humandate,
+)
 from sqlalchemy.orm import QueryableAttribute, selectinload
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session, select, desc
@@ -169,6 +175,52 @@ class GridLadderCrud:
         self.session.refresh(ladder)
         return self.get(ladder_id)
 
+    def update_logs(
+        self,
+        ladder_id: UUID,
+        log_message: Any | list[Any],
+    ) -> GridLadderTable | None:
+        ladder = self.session.get(GridLadderTable, ladder_id)
+        if ladder is None:
+            return None
+
+        ts = ts_to_humandate(ts=timestamp())
+        messages = log_message if isinstance(log_message, list) else [log_message]
+        logs = list(ladder.logs or [])
+        for message in messages:
+            if isinstance(message, dict):
+                logs.append({"timestamp": ts, **message})
+            else:
+                logs.append(f"[{ts}] {message}")
+
+        ladder.logs = logs
+        ladder.updated_at = timestamp()
+        flag_modified(ladder, "logs")
+        self.session.add(ladder)
+        self.session.commit()
+        self.session.refresh(ladder)
+        return ladder
+
+    def update_error_logs(
+        self,
+        ladder_id: UUID,
+        error: Exception | str,
+    ) -> GridLadderTable | None:
+        error_message = str(error)
+        if isinstance(error, Exception):
+            error_type = error.__class__.__name__
+        else:
+            error_type = "error"
+
+        return self.update_logs(
+            ladder_id,
+            {
+                "event": "error",
+                "error_type": error_type,
+                "message": error_message,
+            },
+        )
+
     def create_levels(
         self,
         ladder_id: UUID,
@@ -219,7 +271,6 @@ class GridLadderCrud:
         status: str = "open",
         filled_qty: float = 0,
         filled_price: float | None = None,
-        raw_response: dict | None = None,
     ) -> GridOrderTable:
         order = GridOrderTable(
             ladder_id=ladder_id,
@@ -233,7 +284,6 @@ class GridLadderCrud:
             status=status,
             filled_qty=filled_qty,
             filled_price=filled_price,
-            raw_response=raw_response or {},
         )
         self.session.add(order)
         self.session.commit()
@@ -247,7 +297,6 @@ class GridLadderCrud:
         status: str | None = None,
         filled_qty: float | None = None,
         filled_price: float | None = None,
-        raw_response: dict | None = None,
     ) -> GridOrderTable | None:
         order = self.session.get(GridOrderTable, order_id)
         if order is None:
@@ -259,9 +308,6 @@ class GridLadderCrud:
             order.filled_qty = filled_qty
         if filled_price is not None:
             order.filled_price = filled_price
-        if raw_response is not None:
-            order.raw_response = raw_response
-            flag_modified(order, "raw_response")
         order.updated_at = timestamp()
         self.session.add(order)
         self.session.commit()

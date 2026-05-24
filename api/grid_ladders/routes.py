@@ -32,7 +32,25 @@ grid_ladder_blueprint = APIRouter(prefix="/grid-ladders", tags=["grid-ladders"])
 def _grid_ladder_record(ladder: GridLadderTable) -> GridLadderRecord:
     data = ladder.model_dump()
     data["levels"] = [level.model_dump() for level in ladder.levels]
-    data["orders"] = [order.model_dump() for order in ladder.orders]
+    data["orders"] = [
+        {
+            "id": order.id,
+            "ladder_id": order.ladder_id,
+            "level_id": order.level_id,
+            "exchange_order_id": order.exchange_order_id,
+            "client_oid": order.client_oid,
+            "order_role": order.order_role,
+            "status": order.status,
+            "side": order.side,
+            "price": order.price,
+            "contracts": order.contracts,
+            "filled_qty": order.filled_qty,
+            "filled_price": order.filled_price,
+            "created_at": order.created_at,
+            "updated_at": order.updated_at,
+        }
+        for order in ladder.orders
+    ]
     return GridLadderRecord.model_validate(jsonable_encoder(data))
 
 
@@ -59,10 +77,10 @@ def _fetch_kucoin_futures_contract_meta(symbol_row: SymbolTable) -> GridContract
     )
     info = futures_api.get_symbol_info(symbol_row.get_futures_symbol())
     return GridContractMeta(
-        multiplier=float(getattr(info, "multiplier", 1) or 1),
-        lot_size=float(getattr(info, "lot_size", 1) or 1),
+        multiplier=float(info.multiplier or 1),
+        lot_size=float(info.lot_size or 1),
         qty_precision=0,
-        taker_fee_rate=float(getattr(info, "taker_fee_rate", 0) or 0),
+        taker_fee_rate=float(info.taker_fee_rate or 0),
         min_notional=0.0,
     )
 

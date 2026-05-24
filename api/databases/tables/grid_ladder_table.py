@@ -68,6 +68,7 @@ class GridLadderTable(SQLModel, table=True):
     updated_at: float = Field(default_factory=timestamp)
     closed_at: float | None = Field(default=None)
     context: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    logs: list = Field(default_factory=list, sa_column=Column(JSON))
 
     levels: list["GridLevelTable"] = Relationship(
         back_populates="ladder",

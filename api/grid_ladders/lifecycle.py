@@ -1,4 +1,4 @@
-from typing import Any
+from enum import Enum
 
 from databases.crud.grid_ladder_crud import GridLadderCrud
 from databases.tables.grid_ladder_table import (
@@ -13,17 +13,29 @@ from pybinbot import (
     GridLadderStatus,
     GridLevelStatus,
     GridOrderRole,
-    OrderBase,
     OrderStatus,
     OrderType,
     round_numbers,
     timestamp,
 )
+from kucoin_universal_sdk.generate.futures.order.model_get_order_by_order_id_resp import (
+    GetOrderByOrderIdResp,
+)
 from sqlmodel import Session
 from streaming.base import BaseStreaming
 
 
-OPEN_ORDER_STATUSES = ("open", "new", OrderStatus.NEW.value)
+GRID_ORDER_OPEN_STATUS = OrderStatus.NEW.value
+GRID_ORDER_FILLED_STATUS = OrderStatus.FILLED.value
+GRID_ORDER_CANCELLED_STATUS = OrderStatus.CANCELED.value
+GRID_ORDER_ERROR_STATUS = OrderStatus.REJECTED.value
+OPEN_ORDER_STATUSES = (GRID_ORDER_OPEN_STATUS,)
+TERMINAL_GRID_ORDER_STATUSES = {
+    GRID_ORDER_FILLED_STATUS,
+    GRID_ORDER_CANCELLED_STATUS,
+    GRID_ORDER_ERROR_STATUS,
+    OrderStatus.EXPIRED.value,
+}
 
 
 class GridLadderLifecycle:
@@ -56,8 +68,10 @@ class GridLadderLifecycle:
         if status == GridLadderStatus.closing.value:
             self._close_ladder(ladder)
 
-    def _status_value(self, status: Any) -> str:
-        return str(getattr(status, "value", status))
+    def _status_value(self, status: GridLadderStatus | str) -> str:
+        if isinstance(status, GridLadderStatus):
+            return status.value
+        return str(status)
 
     def _symbol_row(self, symbol: str) -> SymbolTable:
         symbol_row = self.session.get(SymbolTable, symbol)
@@ -65,31 +79,21 @@ class GridLadderLifecycle:
             raise ValueError(f"Symbol not found: {symbol}")
         return symbol_row
 
-    def _order_payload(self, order: OrderBase | None) -> dict[str, Any]:
-        if order is None:
-            return {}
-        return order.model_dump(mode="json")
+    def _order_status(self, value: Enum | str | None) -> str:
+        if value is None:
+            return OrderStatus.REJECTED.value
 
-    def _order_status(self, value: Any) -> str:
-        raw = getattr(value, "value", value)
-        return OrderStatus.map_from_kucoin_status(str(raw)).value
+        raw_status = str(value.value if isinstance(value, Enum) else value)
+        try:
+            return OrderStatus(raw_status).value
+        except ValueError:
+            return OrderStatus.map_from_kucoin_status(raw_status.lower()).value
 
-    def _order_details_payload(self, details: Any) -> dict[str, Any]:
-        if hasattr(details, "model_dump"):
-            return details.model_dump(mode="json")
-        if hasattr(details, "to_dict"):
-            return details.to_dict()
-        return {}
+    def _filled_size(self, details: GetOrderByOrderIdResp) -> float:
+        return float(details.filled_size or 0)
 
-    def _filled_size(self, details: Any) -> float:
-        return float(getattr(details, "filled_size", 0) or 0)
-
-    def _filled_price(self, details: Any, fallback: float) -> float:
-        price = (
-            getattr(details, "avg_deal_price", 0)
-            or getattr(details, "price", 0)
-            or fallback
-        )
+    def _filled_price(self, details: GetOrderByOrderIdResp, fallback: float) -> float:
+        price = details.avg_deal_price or details.price or fallback
         return float(price)
 
     def _side_enum(self, side: str) -> AddOrderReq.SideEnum:
@@ -135,8 +139,15 @@ class GridLadderLifecycle:
                     side=level.side,
                     price=level.price,
                     contracts=level.contracts,
-                    status="open",
-                    raw_response=self._order_payload(order),
+                    status=GRID_ORDER_OPEN_STATUS,
+                )
+                self.crud.update_logs(
+                    ladder.id,
+                    (
+                        f"Placed entry order {order.order_id} for level "
+                        f"{level.level_index}: {level.side} {level.contracts} "
+                        f"contracts @ {level.price}"
+                    ),
                 )
                 self.crud.update_level_order(
                     level.id,
@@ -150,7 +161,7 @@ class GridLadderLifecycle:
             self.crud.update_orders_for_ladder(
                 ladder.id,
                 current_statuses=OPEN_ORDER_STATUSES,
-                new_status="cancelled",
+                new_status=GRID_ORDER_CANCELLED_STATUS,
             )
             self.crud.update_status_with_context(
                 ladder.id,
@@ -160,10 +171,11 @@ class GridLadderLifecycle:
                     "cancelled_order_ids": placed_order_ids,
                 },
             )
+            self.crud.update_error_logs(ladder.id, error)
 
     def _reconcile_active_ladder(self, ladder: GridLadderTable) -> None:
         for order in ladder.orders:
-            if order.status in {"filled", "cancelled", "error"}:
+            if order.status in TERMINAL_GRID_ORDER_STATUSES:
                 continue
 
             try:
@@ -171,35 +183,39 @@ class GridLadderLifecycle:
                     order.exchange_order_id
                 )
             except RestError as error:
-                self._mark_order_error(ladder, order, str(error))
+                self._mark_order_error(ladder, order, error)
                 continue
             except Exception as error:
-                self._mark_order_error(ladder, order, str(error))
+                self._mark_order_error(ladder, order, error)
                 continue
 
-            status = self._order_status(getattr(details, "status", None))
+            status = self._order_status(details.status)
             filled_qty = self._filled_size(details)
             filled_price = self._filled_price(details, order.price)
-            raw_response = self._order_details_payload(details)
 
             if status == OrderStatus.FILLED.value or filled_qty > 0:
                 self.crud.update_order(
                     order.id,
-                    status="filled",
+                    status=GRID_ORDER_FILLED_STATUS,
                     filled_qty=filled_qty,
                     filled_price=filled_price,
-                    raw_response=raw_response,
+                )
+                self.crud.update_logs(
+                    ladder.id,
+                    (
+                        f"Order {order.exchange_order_id} filled: "
+                        f"{order.order_role} {filled_qty} contracts @ {filled_price}"
+                    ),
                 )
                 try:
                     self._handle_filled_order(ladder, order, filled_qty, filled_price)
                 except Exception as error:
-                    self._mark_order_error(ladder, order, str(error))
+                    self._mark_order_error(ladder, order, error)
                 continue
 
             self.crud.update_order(
                 order.id,
-                status="open",
-                raw_response=raw_response,
+                status=GRID_ORDER_OPEN_STATUS,
             )
 
     def _handle_filled_order(
@@ -254,8 +270,16 @@ class GridLadderLifecycle:
             side="sell" if level.side == "buy" else "buy",
             price=level.take_profit_price,
             contracts=int(level.filled_entry_qty or level.contracts),
-            status="open",
-            raw_response=self._order_payload(order),
+            status=GRID_ORDER_OPEN_STATUS,
+        )
+        self.crud.update_logs(
+            ladder.id,
+            (
+                f"Placed take-profit order {order.order_id} for level "
+                f"{level.level_index}: {'sell' if level.side == 'buy' else 'buy'} "
+                f"{int(level.filled_entry_qty or level.contracts)} contracts "
+                f"@ {level.take_profit_price}"
+            ),
         )
         self.crud.update_level_order(
             level.id,
@@ -273,7 +297,7 @@ class GridLadderLifecycle:
         contract = self.base_streaming.kucoin_futures_api.get_symbol_info(
             symbol_row.get_futures_symbol()
         )
-        multiplier = float(getattr(contract, "multiplier", 1) or 1)
+        multiplier = float(contract.multiplier or 1)
         entry_price = float(level.filled_entry_price or level.price)
         qty = float(level.filled_entry_qty or level.contracts)
         direction = 1 if level.side == "buy" else -1
@@ -283,9 +307,10 @@ class GridLadderLifecycle:
         self,
         ladder: GridLadderTable,
         order: GridOrderTable,
-        message: str,
+        error: Exception | str,
     ) -> None:
-        self.crud.update_order(order.id, status="error")
+        message = str(error)
+        self.crud.update_order(order.id, status=GRID_ORDER_ERROR_STATUS)
         if order.level_id:
             self.crud.update_level_order(
                 order.level_id,
@@ -296,13 +321,14 @@ class GridLadderLifecycle:
             GridLadderStatus.error,
             context_updates={"execution_error": message},
         )
+        self.crud.update_error_logs(ladder.id, error)
 
     def _close_ladder(self, ladder: GridLadderTable) -> None:
         self._cancel_ladder_orders(ladder.symbol)
         self.crud.update_orders_for_ladder(
             ladder.id,
             current_statuses=OPEN_ORDER_STATUSES,
-            new_status="cancelled",
+            new_status=GRID_ORDER_CANCELLED_STATUS,
         )
         for level in ladder.levels:
             if level.status in {
@@ -320,6 +346,7 @@ class GridLadderLifecycle:
             GridLadderStatus.closed,
             closed_at=timestamp(),
         )
+        self.crud.update_logs(ladder.id, {"event": "ladder_closed"})
 
     def _cancel_ladder_orders(self, symbol: str) -> None:
         symbol_row = self._symbol_row(symbol)
@@ -333,7 +360,7 @@ class GridLadderLifecycle:
         position = self.base_streaming.kucoin_futures_api.get_futures_position(
             futures_symbol
         )
-        current_qty = abs(float(getattr(position, "current_qty", 0) or 0))
+        current_qty = abs(float(position.current_qty or 0))
         if current_qty <= 0:
             return
 
