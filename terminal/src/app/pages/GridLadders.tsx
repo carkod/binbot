@@ -1,5 +1,6 @@
 import { useContext, useEffect, useMemo, useState, type FC } from "react";
 import {
+  AlertHeading,
   Badge,
   Button,
   Col,
@@ -116,23 +117,36 @@ const GridLaddersPage: FC = () => {
 
   return (
     <Container fluid>
-      <h3 className="mb-3">Grid Ladders</h3>
-      <Stack direction="horizontal" gap={2} className="mb-3 flex-wrap">
-        <Badge bg="success">Active ladders: {summary.active} / 3</Badge>
-        <Badge bg="secondary">
-          Reserved margin: {summary.reserved.toFixed(2)} {fiat}
-        </Badge>
-        <Badge bg="secondary">
-          Used margin: {summary.used.toFixed(2)} {fiat}
-        </Badge>
-        <Badge bg={summary.realized >= 0 ? "success" : "danger"}>
-          Realized PnL: {summary.realized.toFixed(4)}
-        </Badge>
-        <Badge bg={summary.unrealized >= 0 ? "success" : "danger"}>
-          Unrealized PnL: {summary.unrealized.toFixed(4)}
-        </Badge>
-        <Badge bg="info">Open levels: {summary.openLevels}</Badge>
+      <Stack direction="horizontal" gap={4} className="flex-wrap">
+        <AlertHeading>
+          <Badge bg={summary.realized >= 0 ? "success" : "danger"}>
+            Realized PnL: {summary.realized.toFixed(4)}
+          </Badge>
+        </AlertHeading>
+        <AlertHeading>
+          <Badge bg={summary.unrealized >= 0 ? "success" : "danger"}>
+            Unrealized PnL: {summary.unrealized.toFixed(4)}
+          </Badge>
+        </AlertHeading>
+        <AlertHeading>
+          <Badge bg="success">Active ladders: {summary.active} / 3</Badge>
+        </AlertHeading>
+        <AlertHeading>
+          <Badge bg="secondary">
+            Reserved margin: {summary.reserved.toFixed(2)} {fiat}
+          </Badge>
+        </AlertHeading>
+        <AlertHeading>
+          <Badge bg="secondary">
+            Used margin: {summary.used.toFixed(2)} {fiat}
+          </Badge>
+        </AlertHeading>
+        <AlertHeading>
+          <Badge bg="info">Open levels: {summary.openLevels}</Badge>
+        </AlertHeading>
       </Stack>
+
+      <hr />
 
       <Row className="mb-3">
         <Col md={3}>

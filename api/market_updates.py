@@ -1,4 +1,6 @@
 from time import sleep
+from databases.utils import get_db_session
+from grid_ladders.lifecycle import GridLadderLifecycle
 from streaming.position_manager import (
     PositionManager,
     BaseStreaming,
@@ -24,6 +26,8 @@ def main():
         symbol = bs.active_bot_pairs[index]
         sc = PositionManager(bs, symbol)
         sc.process_deal()
+        with get_db_session() as session:
+            GridLadderLifecycle(bs, session).process_symbol(symbol)
         index += 1
         sleep(15)
 
