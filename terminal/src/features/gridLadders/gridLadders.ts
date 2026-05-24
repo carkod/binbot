@@ -4,7 +4,11 @@ export { GridLadderStatus } from "./types";
 export type { GridLevel, GridLadder } from "./types";
 
 export const isActiveGridLadder = (status: GridLadderStatus): boolean =>
-  [GridLadderStatus.PENDING, GridLadderStatus.ACTIVE, GridLadderStatus.CLOSING].includes(status);
+  [
+    GridLadderStatus.PENDING,
+    GridLadderStatus.ACTIVE,
+    GridLadderStatus.CLOSING,
+  ].includes(status);
 
 export const calculateGridPnl = (ladder: GridLadder): number =>
   ladder.realized_pnl + ladder.unrealized_pnl;
@@ -21,4 +25,6 @@ export const calculateFilledLevelCount = (ladder: GridLadder): number =>
   ladder.levels.filter((level) => level.filled_entry_qty > 0).length;
 
 export const calculateOpenOrderCount = (ladder: GridLadder): number =>
-  ladder.levels.filter((level) => level.entry_order_id || level.take_profit_order_id).length;
+  ladder.levels.filter(
+    (level) => level.entry_order_id || level.take_profit_order_id,
+  ).length;

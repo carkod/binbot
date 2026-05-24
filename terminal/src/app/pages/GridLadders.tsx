@@ -38,7 +38,7 @@ const GridLaddersPage: FC = () => {
     refetch,
   } = useGetGridLaddersQuery(
     { limit: 100, offset: 0 },
-    { refetchOnFocus: true }
+    { refetchOnFocus: true },
   );
   const { data: autotradeSettings } = useGetSettingsQuery();
   const { data: activeLadders = [] } = useGetActiveGridLaddersQuery(undefined, {
@@ -73,7 +73,7 @@ const GridLaddersPage: FC = () => {
         acc.realized += ladder.realized_pnl;
         acc.unrealized += ladder.unrealized_pnl;
         acc.openLevels += ladder.levels.filter(
-          (level) => level.entry_order_id || level.take_profit_order_id
+          (level) => level.entry_order_id || level.take_profit_order_id,
         ).length;
         return acc;
       },
@@ -84,7 +84,7 @@ const GridLaddersPage: FC = () => {
         realized: 0,
         unrealized: 0,
         openLevels: 0,
-      }
+      },
     );
   }, [filteredLadders]);
 
@@ -96,7 +96,7 @@ const GridLaddersPage: FC = () => {
     setSelectedCards((prev) =>
       prev.includes(id)
         ? prev.filter((cardId) => cardId !== id)
-        : prev.concat(id)
+        : prev.concat(id),
     );
   };
 
@@ -181,7 +181,7 @@ const GridLaddersPage: FC = () => {
             variant="outline-secondary"
             onClick={() =>
               setSelectedCards(
-                filteredLadders.map((ladder: GridLadder) => ladder.id)
+                filteredLadders.map((ladder: GridLadder) => ladder.id),
               )
             }
           >
