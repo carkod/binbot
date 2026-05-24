@@ -149,6 +149,22 @@ class GridLadderCrud:
         self.session.refresh(ladder)
         return ladder
 
+    def update_unrealized_pnl(
+        self,
+        ladder_id: UUID,
+        unrealized_pnl: float,
+    ) -> GridLadderTable | None:
+        ladder = self.session.get(GridLadderTable, ladder_id)
+        if ladder is None:
+            return None
+
+        ladder.unrealized_pnl = unrealized_pnl
+        ladder.updated_at = timestamp()
+        self.session.add(ladder)
+        self.session.commit()
+        self.session.refresh(ladder)
+        return ladder
+
     def update_status_with_context(
         self,
         ladder_id: UUID,

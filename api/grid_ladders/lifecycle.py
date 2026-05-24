@@ -63,6 +63,7 @@ class GridLadderLifecycle:
 
         if status == GridLadderStatus.active.value:
             self._reconcile_active_ladder(ladder)
+            self._refresh_unrealized_pnl(ladder)
             return
 
         if status == GridLadderStatus.closing.value:
@@ -323,6 +324,25 @@ class GridLadderLifecycle:
         )
         self.crud.update_error_logs(ladder.id, error)
 
+    def _refresh_unrealized_pnl(self, ladder: GridLadderTable) -> None:
+        symbol_row = self._symbol_row(ladder.symbol)
+        position = self.base_streaming.kucoin_futures_api.get_futures_position(
+            symbol_row.get_futures_symbol()
+        )
+        raw_pnl = None
+        for field_name in (
+            "unrealized_pnl",
+            "unrealised_pnl",
+            "unrealizedPnl",
+            "unrealisedPnl",
+        ):
+            raw_pnl = getattr(position, field_name, None)
+            if raw_pnl is not None:
+                break
+
+        unrealized_pnl = round_numbers(float(raw_pnl or 0), 8)
+        self.crud.update_unrealized_pnl(ladder.id, unrealized_pnl)
+
     def _close_ladder(self, ladder: GridLadderTable) -> None:
         self._cancel_ladder_orders(ladder.symbol)
         self.crud.update_orders_for_ladder(
@@ -346,6 +366,7 @@ class GridLadderLifecycle:
             GridLadderStatus.closed,
             closed_at=timestamp(),
         )
+        self.crud.update_unrealized_pnl(ladder.id, 0)
         self.crud.update_logs(ladder.id, {"event": "ladder_closed"})
 
     def _cancel_ladder_orders(self, symbol: str) -> None:
