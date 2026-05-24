@@ -26,6 +26,23 @@ export type GridLevel = {
   updated_at: number;
 };
 
+export type GridOrder = {
+  id: string;
+  ladder_id: string;
+  level_id?: string | null;
+  exchange_order_id: string;
+  client_oid: string;
+  order_role: string;
+  status?: string | null;
+  side?: string | null;
+  price?: number | null;
+  contracts: number;
+  filled_qty: number;
+  filled_price?: number | null;
+  created_at: number;
+  updated_at: number;
+};
+
 export type GridLadder = {
   id: string;
   symbol: string;
@@ -50,4 +67,5 @@ export type GridLadder = {
   closed_at?: number | null;
   context: Record<string, unknown>;
   levels: GridLevel[];
+  orders: GridOrder[];
 };

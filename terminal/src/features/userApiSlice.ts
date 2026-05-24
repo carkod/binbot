@@ -31,6 +31,7 @@ export interface LoginResponse {
 export const userApiSlice = createApi({
   baseQuery: binbotBaseQuery,
   reducerPath: "api",
+  tagTypes: ["grid-ladders", "grid-ladder"],
   endpoints: (build) => ({
     postLogin: build.mutation<LoginResponsePayload, FormData>({
       query: (body) => ({

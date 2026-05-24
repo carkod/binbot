@@ -1,5 +1,6 @@
 import { useContext, useEffect, useMemo, useState, type FC } from "react";
 import {
+  AlertHeading,
   Badge,
   Button,
   Col,
@@ -37,7 +38,7 @@ const GridLaddersPage: FC = () => {
     refetch,
   } = useGetGridLaddersQuery(
     { limit: 100, offset: 0 },
-    { refetchOnFocus: true },
+    { refetchOnFocus: true }
   );
   const { data: autotradeSettings } = useGetSettingsQuery();
   const { data: activeLadders = [] } = useGetActiveGridLaddersQuery(undefined, {
@@ -72,7 +73,7 @@ const GridLaddersPage: FC = () => {
         acc.realized += ladder.realized_pnl;
         acc.unrealized += ladder.unrealized_pnl;
         acc.openLevels += ladder.levels.filter(
-          (level) => level.entry_order_id || level.take_profit_order_id,
+          (level) => level.entry_order_id || level.take_profit_order_id
         ).length;
         return acc;
       },
@@ -83,7 +84,7 @@ const GridLaddersPage: FC = () => {
         realized: 0,
         unrealized: 0,
         openLevels: 0,
-      },
+      }
     );
   }, [filteredLadders]);
 
@@ -95,7 +96,7 @@ const GridLaddersPage: FC = () => {
     setSelectedCards((prev) =>
       prev.includes(id)
         ? prev.filter((cardId) => cardId !== id)
-        : prev.concat(id),
+        : prev.concat(id)
     );
   };
 
@@ -116,22 +117,33 @@ const GridLaddersPage: FC = () => {
 
   return (
     <Container fluid>
-      <h3 className="mb-3">Grid Ladders</h3>
-      <Stack direction="horizontal" gap={2} className="mb-3 flex-wrap">
-        <Badge bg="success">Active ladders: {summary.active} / 3</Badge>
-        <Badge bg="secondary">
-          Reserved margin: {summary.reserved.toFixed(2)} {fiat}
-        </Badge>
-        <Badge bg="secondary">
-          Used margin: {summary.used.toFixed(2)} {fiat}
-        </Badge>
-        <Badge bg={summary.realized >= 0 ? "success" : "danger"}>
-          Realized PnL: {summary.realized.toFixed(4)}
-        </Badge>
-        <Badge bg={summary.unrealized >= 0 ? "success" : "danger"}>
-          Unrealized PnL: {summary.unrealized.toFixed(4)}
-        </Badge>
-        <Badge bg="info">Open levels: {summary.openLevels}</Badge>
+      <Stack direction="horizontal" gap={4} className="my-6 flex-wrap">
+        <AlertHeading>
+          <Badge bg="success">Active ladders: {summary.active} / 3</Badge>
+        </AlertHeading>
+        <AlertHeading>
+          <Badge bg="secondary">
+            Reserved margin: {summary.reserved.toFixed(2)} {fiat}
+          </Badge>
+        </AlertHeading>
+        <AlertHeading>
+          <Badge bg="secondary">
+            Used margin: {summary.used.toFixed(2)} {fiat}
+          </Badge>
+        </AlertHeading>
+        <AlertHeading>
+          <Badge bg={summary.realized >= 0 ? "success" : "danger"}>
+            Realized PnL: {summary.realized.toFixed(4)}
+          </Badge>
+        </AlertHeading>
+        <AlertHeading>
+          <Badge bg={summary.unrealized >= 0 ? "success" : "danger"}>
+            Unrealized PnL: {summary.unrealized.toFixed(4)}
+          </Badge>
+        </AlertHeading>
+        <AlertHeading>
+          <Badge bg="info">Open levels: {summary.openLevels}</Badge>
+        </AlertHeading>
       </Stack>
 
       <Row className="mb-3">
@@ -169,7 +181,7 @@ const GridLaddersPage: FC = () => {
             variant="outline-secondary"
             onClick={() =>
               setSelectedCards(
-                filteredLadders.map((ladder: GridLadder) => ladder.id),
+                filteredLadders.map((ladder: GridLadder) => ladder.id)
               )
             }
           >

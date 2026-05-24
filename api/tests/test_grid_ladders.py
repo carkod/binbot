@@ -1,10 +1,12 @@
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
-from pybinbot import ExchangeId, GridLadderStatus, MarketType
+from pybinbot import DealType, ExchangeId, GridLadderStatus, MarketType, OrderBase
 from sqlmodel import Session, delete
 
+from databases.crud.grid_ladder_crud import GridLadderCrud
 from databases.tables.grid_ladder_table import (
     GridLadderTable,
     GridLevelTable,
@@ -12,6 +14,7 @@ from databases.tables.grid_ladder_table import (
 )
 from grid_ladders.calculations import calculate_grid_levels
 from grid_ladders.capital import evaluate_grid_capital
+from grid_ladders.lifecycle import GridLadderLifecycle
 from grid_ladders.models import GridLadderCreate
 from grid_ladders.routes import GridContractMeta
 from grid_ladders.sizing import KucoinGridMarginRules
@@ -102,6 +105,61 @@ def _active_ladder(symbol: str, reserved_margin: float = 100) -> GridLadderTable
         breakout_low=85,
         breakout_high=115,
     )
+
+
+class FakeFuturesApi:
+    def __init__(self):
+        self.orders: list[dict] = []
+        self.cancelled_symbols: list[str] = []
+        self.position_qty = 0
+        self.raise_on_order = False
+        self.fail_on_call: int | None = None
+        self._counter = 0
+        self.order_details: dict[str, SimpleNamespace] = {}
+
+    def place_futures_order(self, **kwargs):
+        if self.raise_on_order or self.fail_on_call == self._counter + 1:
+            raise RuntimeError("exchange rejected order")
+        self._counter += 1
+        order_id = f"grid-order-{self._counter}"
+        self.orders.append({"order_id": order_id, **kwargs})
+        return OrderBase(
+            order_type=kwargs["order_type"].value,
+            time_in_force="GTC",
+            timestamp=123,
+            order_id=order_id,
+            order_side=kwargs["side"].value,
+            pair=kwargs["symbol"],
+            qty=kwargs["size"],
+            status="NEW",
+            price=kwargs.get("price") or 0,
+            deal_type=DealType.base_order,
+        )
+
+    def retrieve_order(self, order_id: str):
+        return self.order_details.get(
+            order_id,
+            SimpleNamespace(
+                status=SimpleNamespace(value="open"),
+                filled_size=0,
+                avg_deal_price=0,
+                price=0,
+            ),
+        )
+
+    def cancel_all_futures_orders(self, symbol: str):
+        self.cancelled_symbols.append(symbol)
+        return ["cancelled"]
+
+    def get_futures_position(self, symbol: str):
+        return SimpleNamespace(current_qty=self.position_qty)
+
+    def get_symbol_info(self, symbol: str):
+        return SimpleNamespace(multiplier=1)
+
+
+def _grid_base(fake_api: FakeFuturesApi):
+    return SimpleNamespace(kucoin_futures_api=fake_api)
 
 
 @pytest.mark.parametrize(
@@ -278,6 +336,130 @@ def test_post_grid_ladder_uses_per_symbol_contract_metadata(client, monkeypatch)
     assert buy_level["margin_required"] == 900
 
 
+def test_grid_lifecycle_places_initial_entry_orders(
+    client, monkeypatch, create_test_tables
+):
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+    response = client.post("/grid-ladders", json=_payload())
+    assert response.status_code == 200
+
+    fake_api = FakeFuturesApi()
+    with Session(create_test_tables) as session:
+        GridLadderLifecycle(_grid_base(fake_api), session).process_symbol("ADAUSDC")
+
+    assert len(fake_api.orders) == 4
+
+    refreshed = client.get(f"/grid-ladders/{response.json()['detail']['id']}")
+    detail = refreshed.json()["detail"]
+    assert detail["status"] == "active"
+    entry_levels = [level for level in detail["levels"] if level["side"] != "neutral"]
+    assert len(detail["orders"]) == 4
+    assert all(level["status"] == "open" for level in entry_levels)
+    assert all(level["entry_order_id"] for level in entry_levels)
+
+
+def test_grid_lifecycle_places_take_profit_after_entry_fill(
+    client, monkeypatch, create_test_tables
+):
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+    created = client.post("/grid-ladders", json=_payload())
+    fake_api = FakeFuturesApi()
+
+    with Session(create_test_tables) as session:
+        lifecycle = GridLadderLifecycle(_grid_base(fake_api), session)
+        lifecycle.process_symbol("ADAUSDC")
+        ladder = GridLadderCrud(session).get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        entry_order = next(order for order in ladder.orders if order.side == "buy")
+        entry_order_id = entry_order.exchange_order_id
+        fake_api.order_details[entry_order.exchange_order_id] = SimpleNamespace(
+            status=SimpleNamespace(value="done"),
+            filled_size=entry_order.contracts,
+            avg_deal_price=entry_order.price,
+            price=entry_order.price,
+        )
+        lifecycle.process_symbol("ADAUSDC")
+
+    detail = client.get(f"/grid-ladders/{created.json()['detail']['id']}").json()[
+        "detail"
+    ]
+    filled_level = next(
+        level for level in detail["levels"] if level["entry_order_id"] == entry_order_id
+    )
+    tp_order = next(order for order in fake_api.orders if order["reduce_only"])
+    assert filled_level["status"] == "take_profit_open"
+    assert filled_level["take_profit_order_id"] == tp_order["order_id"]
+    assert tp_order["side"].value == "sell"
+
+
+def test_grid_lifecycle_marks_level_completed_after_take_profit_fill(
+    client, monkeypatch, create_test_tables
+):
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+    created = client.post("/grid-ladders", json=_payload())
+    fake_api = FakeFuturesApi()
+
+    with Session(create_test_tables) as session:
+        lifecycle = GridLadderLifecycle(_grid_base(fake_api), session)
+        lifecycle.process_symbol("ADAUSDC")
+        ladder = GridLadderCrud(session).get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        entry_order = next(order for order in ladder.orders if order.side == "buy")
+        entry_order_id = entry_order.exchange_order_id
+        fake_api.order_details[entry_order.exchange_order_id] = SimpleNamespace(
+            status=SimpleNamespace(value="done"),
+            filled_size=entry_order.contracts,
+            avg_deal_price=entry_order.price,
+            price=entry_order.price,
+        )
+        lifecycle.process_symbol("ADAUSDC")
+        ladder = GridLadderCrud(session).get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        tp_order = next(
+            order for order in ladder.orders if order.order_role == "take_profit"
+        )
+        fake_api.order_details[tp_order.exchange_order_id] = SimpleNamespace(
+            status=SimpleNamespace(value="done"),
+            filled_size=tp_order.contracts,
+            avg_deal_price=tp_order.price,
+            price=tp_order.price,
+        )
+        lifecycle.process_symbol("ADAUSDC")
+
+    detail = client.get(f"/grid-ladders/{created.json()['detail']['id']}").json()[
+        "detail"
+    ]
+    completed_level = next(
+        level for level in detail["levels"] if level["entry_order_id"] == entry_order_id
+    )
+    assert completed_level["status"] == "completed"
+    assert completed_level["realized_pnl"] > 0
+
+
+def test_grid_lifecycle_cancels_partial_initial_orders_on_failure(
+    client, monkeypatch, create_test_tables
+):
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+    created = client.post("/grid-ladders", json=_payload())
+    fake_api = FakeFuturesApi()
+    fake_api.fail_on_call = 2
+
+    with Session(create_test_tables) as session:
+        GridLadderLifecycle(_grid_base(fake_api), session).process_symbol("ADAUSDC")
+
+    detail = client.get(f"/grid-ladders/{created.json()['detail']['id']}").json()[
+        "detail"
+    ]
+    assert detail["status"] == "error"
+    assert detail["context"]["execution_error"] == "exchange rejected order"
+    assert fake_api.cancelled_symbols == ["ADAUSDCM"]
+    assert detail["orders"][0]["status"] == "cancelled"
+
+
 def test_sizer_snaps_contracts_to_lot_size():
     """
     KuCoin rejects partial lots. Sizer must floor to a multiple of lot_size.
@@ -322,9 +504,39 @@ def test_post_grid_ladder_close_persists_reason(client, monkeypatch):
 
     assert closed.status_code == 200
     detail = closed.json()["detail"]
+    assert detail["status"] == "closing"
+    assert detail["closed_at"] is None
+    assert detail["context"]["close_reason"] == "breakout_high_hit"
+
+
+def test_grid_lifecycle_closes_ladder_and_position(
+    client, monkeypatch, create_test_tables
+):
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+    created = client.post("/grid-ladders", json=_payload())
+    ladder_id = created.json()["detail"]["id"]
+    fake_api = FakeFuturesApi()
+    fake_api.position_qty = 2
+
+    with Session(create_test_tables) as session:
+        lifecycle = GridLadderLifecycle(_grid_base(fake_api), session)
+        lifecycle.process_symbol("ADAUSDC")
+
+    close = client.post(
+        f"/grid-ladders/{ladder_id}/close",
+        json={"reason": "manual_close"},
+    )
+    assert close.status_code == 200
+
+    with Session(create_test_tables) as session:
+        GridLadderLifecycle(_grid_base(fake_api), session).process_symbol("ADAUSDC")
+
+    detail = client.get(f"/grid-ladders/{ladder_id}").json()["detail"]
     assert detail["status"] == "closed"
     assert detail["closed_at"] is not None
-    assert detail["context"]["close_reason"] == "breakout_high_hit"
+    assert fake_api.cancelled_symbols == ["ADAUSDCM"]
+    assert any(order["reduce_only"] for order in fake_api.orders)
 
 
 def test_grid_ladder_active_unique_constraint(create_test_tables):

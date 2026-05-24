@@ -3,8 +3,10 @@ from typing import Union
 from bots.models import BotModel
 from databases.crud.autotrade_crud import AutotradeCrud
 from databases.crud.bot_crud import BotTableCrud
+from databases.crud.grid_ladder_crud import GridLadderCrud
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
+from databases.utils import get_db_session
 from pybinbot import (
     BinanceApi,
     BinanceKlineIntervals,
@@ -42,6 +44,8 @@ class BaseStreaming:
         self.bot_controller = BotTableCrud()
         self.paper_trading_controller = PaperTradingTableCrud()
         self.symbols_crud = SymbolsCrud()
+        with get_db_session() as session:
+            self.active_grid_ladder_pairs = GridLadderCrud(session).get_active_symbols()
         self.autotrade_crud = AutotradeCrud()
         self.autotrade_settings = self.autotrade_crud.get_settings()
         self.exchange = ExchangeId(self.autotrade_settings.exchange_id)
@@ -77,7 +81,14 @@ class BaseStreaming:
         paper_trading_active_pairs = list(
             self.paper_trading_controller.get_active_pairs()
         )
-        active_pairs = list(set(bot_active_pairs + paper_trading_active_pairs))
+        with get_db_session() as session:
+            grid_ladder_active_pairs = GridLadderCrud(session).get_active_symbols()
+        self.active_grid_ladder_pairs = grid_ladder_active_pairs
+        active_pairs = list(
+            set(
+                bot_active_pairs + paper_trading_active_pairs + grid_ladder_active_pairs
+            )
+        )
         active_pairs.extend(["BTCUSDC", "ETHUSDC"])
         self.active_bot_pairs = active_pairs
         return active_pairs

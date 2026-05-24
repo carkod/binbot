@@ -7,7 +7,11 @@ from sqlalchemy.orm import QueryableAttribute, selectinload
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session, select, desc
 
-from databases.tables.grid_ladder_table import GridLadderTable, GridLevelTable
+from databases.tables.grid_ladder_table import (
+    GridLadderTable,
+    GridLevelTable,
+    GridOrderTable,
+)
 
 ACTIVE_GRID_LADDER_STATUSES = (
     GridLadderStatus.pending,
@@ -15,8 +19,11 @@ ACTIVE_GRID_LADDER_STATUSES = (
     GridLadderStatus.closing,
 )
 GRID_LADDER_LEVELS_REL = cast(QueryableAttribute[Any], GridLadderTable.levels)
+GRID_LADDER_ORDERS_REL = cast(QueryableAttribute[Any], GridLadderTable.orders)
 GRID_LADDER_STATUS_COL = cast(Any, GridLadderTable.status)
 GRID_LADDER_CREATED_AT_COL = cast(Any, GridLadderTable.created_at)
+GRID_LADDER_SYMBOL_COL = cast(Any, GridLadderTable.symbol)
+GRID_ORDER_STATUS_COL = cast(Any, GridOrderTable.status)
 
 
 class GridLadderCrud:
@@ -72,6 +79,7 @@ class GridLadderCrud:
             select(GridLadderTable)
             .where(GridLadderTable.id == ladder_id)
             .options(selectinload(GRID_LADDER_LEVELS_REL))
+            .options(selectinload(GRID_LADDER_ORDERS_REL))
         )
         return self.session.exec(stmt).first()
 
@@ -84,6 +92,7 @@ class GridLadderCrud:
         stmt = (
             select(GridLadderTable)
             .options(selectinload(GRID_LADDER_LEVELS_REL))
+            .options(selectinload(GRID_LADDER_ORDERS_REL))
             .order_by(desc(GRID_LADDER_CREATED_AT_COL))
             .limit(limit)
             .offset(offset)
@@ -95,9 +104,18 @@ class GridLadderCrud:
             select(GridLadderTable)
             .where(GRID_LADDER_STATUS_COL.in_(ACTIVE_GRID_LADDER_STATUSES))
             .options(selectinload(GRID_LADDER_LEVELS_REL))
+            .options(selectinload(GRID_LADDER_ORDERS_REL))
             .order_by(desc(GRID_LADDER_CREATED_AT_COL))
         )
         return self.session.exec(stmt).unique().all()
+
+    def get_active_symbols(self) -> list[str]:
+        stmt = (
+            select(GRID_LADDER_SYMBOL_COL)
+            .where(GRID_LADDER_STATUS_COL.in_(ACTIVE_GRID_LADDER_STATUSES))
+            .distinct()
+        )
+        return list(self.session.exec(stmt).all())
 
     def get_active_for_symbol(self, symbol: str) -> GridLadderTable | None:
         stmt = (
@@ -105,6 +123,7 @@ class GridLadderCrud:
             .where(GridLadderTable.symbol == symbol)
             .where(GRID_LADDER_STATUS_COL.in_(ACTIVE_GRID_LADDER_STATUSES))
             .options(selectinload(GRID_LADDER_LEVELS_REL))
+            .options(selectinload(GRID_LADDER_ORDERS_REL))
         )
         return self.session.exec(stmt).first()
 
@@ -123,6 +142,32 @@ class GridLadderCrud:
         self.session.commit()
         self.session.refresh(ladder)
         return ladder
+
+    def update_status_with_context(
+        self,
+        ladder_id: UUID,
+        status: GridLadderStatus,
+        *,
+        context_updates: dict | None = None,
+        closed_at: float | None = None,
+    ) -> GridLadderTable | None:
+        ladder = self.session.get(GridLadderTable, ladder_id)
+        if ladder is None:
+            return None
+
+        ladder.status = status
+        ladder.updated_at = timestamp()
+        if closed_at is not None:
+            ladder.closed_at = closed_at
+        if context_updates:
+            merged = dict(ladder.context or {})
+            merged.update(context_updates)
+            ladder.context = merged
+            flag_modified(ladder, "context")
+        self.session.add(ladder)
+        self.session.commit()
+        self.session.refresh(ladder)
+        return self.get(ladder_id)
 
     def create_levels(
         self,
@@ -160,6 +205,87 @@ class GridLadderCrud:
         self.session.refresh(level)
         return level
 
+    def create_order(
+        self,
+        *,
+        ladder_id: UUID,
+        level_id: UUID | None,
+        exchange_order_id: str,
+        client_oid: str = "",
+        order_role: str,
+        side: str,
+        price: float,
+        contracts: int,
+        status: str = "open",
+        filled_qty: float = 0,
+        filled_price: float | None = None,
+        raw_response: dict | None = None,
+    ) -> GridOrderTable:
+        order = GridOrderTable(
+            ladder_id=ladder_id,
+            level_id=level_id,
+            exchange_order_id=exchange_order_id,
+            client_oid=client_oid,
+            order_role=order_role,
+            side=side,
+            price=price,
+            contracts=contracts,
+            status=status,
+            filled_qty=filled_qty,
+            filled_price=filled_price,
+            raw_response=raw_response or {},
+        )
+        self.session.add(order)
+        self.session.commit()
+        self.session.refresh(order)
+        return order
+
+    def update_order(
+        self,
+        order_id: UUID,
+        *,
+        status: str | None = None,
+        filled_qty: float | None = None,
+        filled_price: float | None = None,
+        raw_response: dict | None = None,
+    ) -> GridOrderTable | None:
+        order = self.session.get(GridOrderTable, order_id)
+        if order is None:
+            return None
+
+        if status is not None:
+            order.status = status
+        if filled_qty is not None:
+            order.filled_qty = filled_qty
+        if filled_price is not None:
+            order.filled_price = filled_price
+        if raw_response is not None:
+            order.raw_response = raw_response
+            flag_modified(order, "raw_response")
+        order.updated_at = timestamp()
+        self.session.add(order)
+        self.session.commit()
+        self.session.refresh(order)
+        return order
+
+    def update_orders_for_ladder(
+        self,
+        ladder_id: UUID,
+        *,
+        current_statuses: Sequence[str],
+        new_status: str,
+    ) -> None:
+        stmt = (
+            select(GridOrderTable)
+            .where(GridOrderTable.ladder_id == ladder_id)
+            .where(GRID_ORDER_STATUS_COL.in_(current_statuses))
+        )
+        for order in self.session.exec(stmt).all():
+            order.status = new_status
+            order.updated_at = timestamp()
+            self.session.add(order)
+        self.session.commit()
+
     def mark_level_entry_filled(
         self,
         level_id: UUID,
@@ -173,7 +299,7 @@ class GridLadderCrud:
 
         level.filled_entry_price = filled_entry_price
         level.filled_entry_qty = filled_entry_qty
-        level.status = "entry_filled"
+        level.status = "filled"
         level.updated_at = timestamp()
         self.session.add(level)
         self.session.commit()
@@ -190,7 +316,7 @@ class GridLadderCrud:
         if level is None:
             return None
 
-        level.status = "take_profit_filled"
+        level.status = "completed"
         level.realized_pnl = realized_pnl
         level.updated_at = timestamp()
         self.session.add(level)
@@ -210,8 +336,8 @@ class GridLadderCrud:
             return None
 
         ladder.status = status
-        ladder.closed_at = timestamp()
-        ladder.updated_at = ladder.closed_at
+        ladder.closed_at = timestamp() if status == GridLadderStatus.closed else None
+        ladder.updated_at = timestamp()
         if context_updates:
             merged = dict(ladder.context or {})
             merged.update(context_updates)

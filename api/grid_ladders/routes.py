@@ -248,10 +248,16 @@ def close_grid_ladder_by_id(
     _: UserTokenData = Depends(get_current_user),
 ):
     grid_ladder_crud = GridLadderCrud(session)
-    ladder = grid_ladder_crud.close(
+    ladder = grid_ladder_crud.update_status_with_context(
         ladder_id,
-        status=GridLadderStatus.closed,
-        context_updates={"close_reason": payload.reason},
+        GridLadderStatus.closing,
+        context_updates={
+            "close_reason": payload.reason,
+            "cancel_open_orders": payload.cancel_open_orders,
+            "close_positions": payload.close_positions,
+            "reduce_only": payload.reduce_only,
+            **payload.context,
+        },
     )
     if ladder is None:
         raise HTTPException(status_code=404, detail="Grid ladder not found")
