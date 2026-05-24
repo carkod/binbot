@@ -137,6 +137,7 @@ class FakeFuturesApi:
         self.orders: list[dict] = []
         self.cancelled_symbols: list[str] = []
         self.position_qty = 0
+        self.position_unrealized_pnl: float = 0
         self.raise_on_order = False
         self.fail_on_call: int | None = None
         self._counter = 0
@@ -172,7 +173,10 @@ class FakeFuturesApi:
         return ["cancelled"]
 
     def get_futures_position(self, symbol: str):
-        return SimpleNamespace(current_qty=self.position_qty)
+        return SimpleNamespace(
+            current_qty=self.position_qty,
+            unrealized_pnl=self.position_unrealized_pnl,
+        )
 
     def get_symbol_info(self, symbol: str):
         return SimpleNamespace(multiplier=1)
@@ -462,6 +466,27 @@ def test_grid_lifecycle_marks_level_completed_after_take_profit_fill(
     )
     assert completed_level["status"] == "completed"
     assert completed_level["realized_pnl"] > 0
+
+
+def test_grid_lifecycle_updates_unrealized_pnl_on_active_ladder(
+    client, monkeypatch, create_test_tables
+):
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+    created = client.post("/grid-ladders", json=_payload())
+    fake_api = FakeFuturesApi()
+    fake_api.position_unrealized_pnl = 12.3456789
+
+    with Session(create_test_tables) as session:
+        lifecycle = GridLadderLifecycle(_grid_base(fake_api), session)
+        lifecycle.process_symbol("ADAUSDC")
+        lifecycle.process_symbol("ADAUSDC")
+
+    detail = client.get(f"/grid-ladders/{created.json()['detail']['id']}").json()[
+        "detail"
+    ]
+    assert detail["status"] == "active"
+    assert detail["unrealized_pnl"] == 12.3456789
 
 
 def test_grid_lifecycle_cancels_partial_initial_orders_on_failure(

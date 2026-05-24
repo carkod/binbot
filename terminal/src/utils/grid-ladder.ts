@@ -2,7 +2,7 @@ import { Exchange } from "binbot-charts";
 import { calculateGridPnl } from "../features/gridLadders/gridLadders";
 import type { GridLadder, GridLevel } from "../features/gridLadders/types";
 import { dealColors } from "./charting";
-import type { OrderLine } from "./charting/index.d";
+import type { OrderLine, TimescaleMark } from "./charting/index.d";
 import { MarketType } from "./enums";
 import { roundDecimals } from "./math";
 import { capitalizeFirst } from "./strings";
@@ -72,6 +72,54 @@ export const buildGridOrderLines = (ladder: GridLadder): OrderLine[] =>
     return lines;
   });
 
+const matchTsToTimescale = (ts: number | string | null | undefined): number => {
+  const date = new Date(Number(ts));
+  date.setMinutes(0);
+  date.setSeconds(0);
+  date.setMilliseconds(0);
+  return date.getTime() / 1000;
+};
+
+export const buildGridTimescaleMarks = (
+  ladder: GridLadder,
+): TimescaleMark[] => {
+  const orderMarks = ladder.orders
+    .filter((order) => order.created_at && order.side)
+    .map((order): TimescaleMark => {
+      const isBuy = order.side === "buy";
+      return {
+        id: order.id,
+        label: isBuy ? "B" : "S",
+        tooltip: [
+          `${order.order_role}`,
+          `${order.side} ${order.contracts} contracts @ ${order.price ?? "-"}`,
+        ],
+        time: matchTsToTimescale(order.created_at),
+        color: isBuy ? dealColors.base_order : dealColors.take_profit,
+      };
+    });
+
+  if (orderMarks.length > 0) {
+    return orderMarks;
+  }
+
+  return ladder.levels
+    .filter((level) => level.side !== "neutral")
+    .map((level): TimescaleMark => {
+      const isBuy = level.side === "buy";
+      return {
+        id: level.id,
+        label: isBuy ? "B" : "S",
+        tooltip: [
+          `Level ${level.level_index}`,
+          `${level.side} ${level.contracts} contracts @ ${level.price}`,
+        ],
+        time: matchTsToTimescale(level.created_at),
+        color: isBuy ? dealColors.base_order : dealColors.safety_order,
+      };
+    });
+};
+
 export const chartSymbolForLadder = (ladder: GridLadder): string => {
   const exchange = ladder.exchange.toLowerCase();
   const marketType = ladder.market_type.toUpperCase();
@@ -97,8 +145,27 @@ export const isErrorStatus = (status?: string | null): boolean => {
   );
 };
 
-export const statusBadgeBg = (status?: string | null): "success" | "danger" =>
-  isErrorStatus(status) ? "danger" : "success";
+type BadgeBg = "success" | "danger" | "primary" | "secondary" | "warning";
+
+export const statusBadgeBg = (status?: string | null): BadgeBg => {
+  const value = status?.toLowerCase() ?? "";
+  if (isErrorStatus(status)) {
+    return "danger";
+  }
+  if (status === "FILLED") {
+    return "primary";
+  }
+  if (value === "filled") {
+    return "secondary";
+  }
+  if (value === "completed") {
+    return "primary";
+  }
+  if (value === "pending") {
+    return "warning";
+  }
+  return "success";
+};
 
 export const returnBadgeBg = (
   returnPct: number,
@@ -118,4 +185,32 @@ export const calculateGridReturnPct = (ladder: GridLadder): number => {
   }
 
   return roundDecimals((calculateGridPnl(ladder) / ladder.total_margin) * 100);
+};
+
+export const calculateGridLiveUnrealizedPnl = (
+  ladder: GridLadder,
+  currentPrice: number,
+): number => {
+  const openStatuses = new Set(["filled", "take_profit_open", "open"]);
+
+  const unrealized = ladder.levels.reduce((acc, level) => {
+    if (!openStatuses.has(level.status)) {
+      return acc;
+    }
+
+    const quantity = level.filled_entry_qty || level.contracts;
+    if (!quantity) {
+      return acc;
+    }
+
+    const direction = level.side === "buy" ? 1 : level.side === "sell" ? -1 : 0;
+    if (!direction) {
+      return acc;
+    }
+
+    const entryPrice = level.filled_entry_price || level.price;
+    return acc + (currentPrice - entryPrice) * quantity * direction;
+  }, 0);
+
+  return roundDecimals(unrealized, 8);
 };

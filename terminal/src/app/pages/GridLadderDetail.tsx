@@ -1,4 +1,4 @@
-import { useMemo, type FC } from "react";
+import { useMemo, useState, type FC } from "react";
 import { Badge, Card, Col, Container, Row } from "react-bootstrap";
 import { useParams } from "react-router";
 import { useGetGridLadderQuery } from "../../features/gridLadders/gridLaddersApiSlice";
@@ -6,16 +6,19 @@ import TVChartContainer, { Exchange } from "binbot-charts";
 import type { ResolutionString } from "../../../charting_library/charting_library";
 import {
   buildGridOrderLines,
-  calculateGridReturnPct,
+  buildGridTimescaleMarks,
+  calculateGridLiveUnrealizedPnl,
   chartSymbolForLadder,
   formatLogEntry,
   prominentBadgeClass,
   returnBadgeBg,
   statusBadgeBg,
 } from "../../utils/grid-ladder";
+import { roundDecimals } from "../../utils/math";
 
 const GridLadderDetail: FC = () => {
   const { id = "" } = useParams();
+  const [currentPrice, setCurrentPrice] = useState<number | null>(null);
   const { data: ladder } = useGetGridLadderQuery(id, {
     skip: !id,
     refetchOnFocus: true,
@@ -24,12 +27,36 @@ const GridLadderDetail: FC = () => {
     () => (ladder ? buildGridOrderLines(ladder) : []),
     [ladder],
   );
+  const timescaleMarks = useMemo(
+    () => (ladder ? buildGridTimescaleMarks(ladder) : []),
+    [ladder],
+  );
   const exchange =
     ladder?.exchange.toLowerCase() === Exchange.KUCOIN
       ? Exchange.KUCOIN
       : Exchange.BINANCE;
   const chartSymbol = ladder ? chartSymbolForLadder(ladder) : "";
-  const gridReturnPct = ladder ? calculateGridReturnPct(ladder) : 0;
+  const unrealizedPnl = useMemo(() => {
+    if (!ladder) {
+      return 0;
+    }
+    if (currentPrice === null) {
+      return ladder.unrealized_pnl;
+    }
+    return calculateGridLiveUnrealizedPnl(ladder, currentPrice);
+  }, [ladder, currentPrice]);
+  const totalPnl = ladder ? ladder.realized_pnl + unrealizedPnl : 0;
+  const gridReturnPct =
+    ladder && ladder.total_margin > 0
+      ? roundDecimals((totalPnl / ladder.total_margin) * 100)
+      : 0;
+
+  const updateCurrentPrice = (price: number) => {
+    if (!Number.isFinite(price)) {
+      return;
+    }
+    setCurrentPrice(roundDecimals(price, 8));
+  };
 
   if (!ladder) {
     return <Container fluid>Grid ladder not found.</Container>;
@@ -73,8 +100,10 @@ const GridLadderDetail: FC = () => {
                 <TVChartContainer
                   symbol={chartSymbol}
                   interval={"1h" as ResolutionString}
-                  timescaleMarks={[]}
+                  timescaleMarks={timescaleMarks}
                   orderLines={orderLines}
+                  onTick={(tick) => updateCurrentPrice(parseFloat(tick.close))}
+                  getLatestBar={(bar) => updateCurrentPrice(parseFloat(bar[3]))}
                   exchange={exchange}
                   style={{ minHeight: "100%", height: "600px", width: "100%" }}
                 />
@@ -111,6 +140,24 @@ const GridLadderDetail: FC = () => {
                   <Col md={8}>
                     {ladder.breakout_low} / {ladder.breakout_high}
                   </Col>
+                </Row>
+                <Row className="mb-2">
+                  <Col md={4}>
+                    <strong>Current Price</strong>
+                  </Col>
+                  <Col md={8}>{currentPrice ?? "-"}</Col>
+                </Row>
+                <Row className="mb-2">
+                  <Col md={4}>
+                    <strong>Unrealized PnL</strong>
+                  </Col>
+                  <Col md={8}>{unrealizedPnl}</Col>
+                </Row>
+                <Row className="mb-2">
+                  <Col md={4}>
+                    <strong>Total PnL</strong>
+                  </Col>
+                  <Col md={8}>{totalPnl}</Col>
                 </Row>
                 {ladder.orders.length > 0 && (
                   <>
