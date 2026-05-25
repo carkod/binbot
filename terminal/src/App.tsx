@@ -44,15 +44,6 @@ export const routes = [
     nav: false,
   },
   {
-    path: "bots",
-    link: "/bots",
-    name: "Bots",
-    icon: "fas fa-robot",
-    element: <BotsPage />,
-    id: "bots",
-    nav: true,
-  },
-  {
     path: "grid-ladders",
     link: "/grid-ladders",
     name: "Grid Ladders",
@@ -61,14 +52,23 @@ export const routes = [
     id: "grid-ladders",
     nav: true,
   },
-  {
+    {
     path: "grid-ladders/:id",
     link: "/grid-ladders/:id",
-    name: "Grid Ladder Detail",
+    name: "View Grid Ladder",
     icon: null,
     element: <GridLadderDetail />,
     id: "grid-ladder-detail",
     nav: false,
+  },
+  {
+    path: "bots",
+    link: "/bots",
+    name: "Bots",
+    icon: "fas fa-robot",
+    element: <BotsPage />,
+    id: "bots",
+    nav: true,
   },
   {
     path: "bots/futures/new/:symbol?",
