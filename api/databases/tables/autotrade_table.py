@@ -33,6 +33,7 @@ class SettingsDocument(SQLModel):
     grid_total_margin: float = Field(default=1.0)
     grid_level_count: int = Field(default=3)
     grid_max_active_ladders: int = Field(default=3)
+    max_margin_per_ladder_pct: float = Field(default=0.25)
     autoswitch: bool = Field(
         default=True,
         description="Automatically switch between long bot or short bot based on stop loss a.k.a. margin_short_reversal in bots",

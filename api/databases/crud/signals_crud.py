@@ -1,8 +1,9 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any, Sequence, cast
 
 from sqlalchemy.orm import load_only
-from sqlmodel import Session, col, select
+from sqlmodel import Session, col, delete, select
+from sqlmodel.sql.expression import SelectOfScalar
 
 from databases.tables.signals_table import SignalsTable
 from databases.utils import get_db_session
@@ -129,6 +130,17 @@ class SignalsCrud:
                 for row in rows
             ]
 
+    def delete_entries_older_than_14_days(self) -> int:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=14)
+        stmt = delete(SignalsTable).where(col(SignalsTable.generated_at) < cutoff)
+        if self._external_session is not None:
+            result = self._external_session.exec(stmt)
+            return result.rowcount or 0
+
+        with get_db_session() as session:
+            result = session.exec(stmt)
+            return result.rowcount or 0
+
     def _filtered_query(
         self,
         algorithm_name: str | None = None,
@@ -137,18 +149,18 @@ class SignalsCrud:
         autotrade: bool | None = None,
         since: datetime | None = None,
         until: datetime | None = None,
-    ) -> Any:
+    ) -> SelectOfScalar[SignalsTable]:
         stmt = select(SignalsTable)
         if algorithm_name is not None:
-            stmt = stmt.where(SignalsTable.algorithm_name == algorithm_name)
+            stmt = stmt.where(col(SignalsTable.algorithm_name) == algorithm_name)
         if symbol is not None:
-            stmt = stmt.where(SignalsTable.symbol == symbol)
+            stmt = stmt.where(col(SignalsTable.symbol) == symbol)
         if current_regime is not None:
-            stmt = stmt.where(SignalsTable.current_regime == current_regime)
+            stmt = stmt.where(col(SignalsTable.current_regime) == current_regime)
         if autotrade is not None:
-            stmt = stmt.where(SignalsTable.autotrade == autotrade)
+            stmt = stmt.where(col(SignalsTable.autotrade) == autotrade)
         if since is not None:
-            stmt = stmt.where(SignalsTable.generated_at >= since)
+            stmt = stmt.where(col(SignalsTable.generated_at) >= since)
         if until is not None:
-            stmt = stmt.where(SignalsTable.generated_at <= until)
+            stmt = stmt.where(col(SignalsTable.generated_at) <= until)
         return stmt

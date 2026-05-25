@@ -27,6 +27,7 @@ mocked_db_data = AutotradeTable(
     take_profit=2.3,
     max_request=500,
     max_active_autotrade_bots=1,
+    max_margin_per_ladder_pct=0.25,
 )
 
 

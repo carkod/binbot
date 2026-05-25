@@ -1,6 +1,7 @@
 from apscheduler.schedulers.blocking import BlockingScheduler
 from account.controller import ConsolidatedAccounts
 from exchange_apis.binance.assets import Assets
+from databases.crud.signals_crud import SignalsCrud
 from databases.symbols_etl import SymbolDataEtl
 from charts.controllers import MarketDominationController
 from databases.utils import independent_session
@@ -16,6 +17,7 @@ def main():
     consolidated_accounts = ConsolidatedAccounts(session=independent_session())
     market_domination = MarketDominationController()
     symbols_crud = SymbolDataEtl(session=independent_session())
+    signals_crud = SignalsCrud()
 
     autotrade_settings = assets.autotrade_settings
     exchange = ExchangeId(autotrade_settings.exchange_id)
@@ -27,7 +29,7 @@ def main():
         func=symbols_crud.etl_symbols_ingestion,
         trigger="cron",
         timezone=config.timezone,
-        day_of_week="sat",
+        day_of_week=5,
         hour=4,
         minute=0,
         id="update_symbols",
@@ -39,6 +41,15 @@ def main():
         hour=1,
         minute=1,
         id="store_balance",
+    )
+    scheduler.add_job(
+        func=signals_crud.delete_entries_older_than_14_days,
+        trigger="cron",
+        timezone=config.timezone,
+        day_of_week=6,
+        hour=1,
+        minute=5,
+        id="delete_old_signals",
     )
     if exchange == ExchangeId.BINANCE:
         scheduler.add_job(

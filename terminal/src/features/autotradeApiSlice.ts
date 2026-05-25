@@ -20,6 +20,12 @@ export interface AutotradeSettings {
   max_request: number;
   telegram_signals: boolean;
   max_active_autotrade_bots: number;
+  grid_allocation_pct: number;
+  grid_cash_reserve_pct: number;
+  grid_total_margin: number;
+  grid_level_count: number;
+  grid_max_active_ladders: number;
+  max_margin_per_ladder_pct: number;
   base_order_size: number;
   updated_at: number;
   close_condition: CloseConditions;
