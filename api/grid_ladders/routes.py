@@ -18,7 +18,7 @@ from pybinbot.models.grid_ladder import (
     GridLadderResponse,
 )
 from grid_ladders.calculations import calculate_grid_levels
-from grid_ladders.capital import evaluate_grid_capital
+from grid_ladders.capital import GridCapitalSettings
 from grid_ladders.models import GridLadderCreate
 from grid_ladders.sizing import KucoinGridMarginRules
 from tools.config import Config
@@ -151,7 +151,7 @@ def post_grid_ladder(
     balance = ConsolidatedAccounts(session=session).get_balance()
     available_fiat_balance = balance.fiat_available
     try:
-        evaluate_grid_capital(
+        GridCapitalSettings(session).evaluate_grid_capital(
             active_ladders,
             available_fiat_balance,
             payload.total_margin,

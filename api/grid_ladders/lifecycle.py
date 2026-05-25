@@ -1,4 +1,5 @@
 from enum import Enum
+from time import time
 
 from databases.crud.grid_ladder_crud import GridLadderCrud
 from databases.tables.grid_ladder_table import (
@@ -36,6 +37,10 @@ TERMINAL_GRID_ORDER_STATUSES = {
     GRID_ORDER_ERROR_STATUS,
     OrderStatus.EXPIRED.value,
 }
+# Price must stay outside the breakout zone for this many monitoring ticks
+# before a close is triggered (prevents wicks from exiting the grid prematurely).
+# Each tick corresponds to one process_symbol() call, typically every ~15 m.
+BREACH_CANDLES_REQUIRED = 3
 
 
 class GridLadderLifecycle:
@@ -137,10 +142,60 @@ class GridLadderLifecycle:
         price = self._current_position_price(ladder.symbol)
         if price is None:
             return None
+
+        now_ms = int(time() * 1000)
+        breach_duration_ms = BREACH_CANDLES_REQUIRED * 15 * 60 * 1000
+
         if price < ladder.breakout_low:
-            return "down", price
+            first_breach = (ladder.context or {}).get("first_breach_at")
+            if first_breach is None:
+                self.crud.update_status_with_context(
+                    ladder.id,
+                    GridLadderStatus.active,
+                    context_updates={
+                        "first_breach_at": now_ms,
+                        "first_breach_up_at": None,
+                    },
+                )
+                return None
+            if now_ms - int(first_breach) >= breach_duration_ms:
+                self.crud.update_status_with_context(
+                    ladder.id,
+                    GridLadderStatus.active,
+                    context_updates={"first_breach_at": None},
+                )
+                return "down", price
+            return None
+
         if price > ladder.breakout_high:
-            return "up", price
+            first_breach_up = (ladder.context or {}).get("first_breach_up_at")
+            if first_breach_up is None:
+                self.crud.update_status_with_context(
+                    ladder.id,
+                    GridLadderStatus.active,
+                    context_updates={
+                        "first_breach_up_at": now_ms,
+                        "first_breach_at": None,
+                    },
+                )
+                return None
+            if now_ms - int(first_breach_up) >= breach_duration_ms:
+                self.crud.update_status_with_context(
+                    ladder.id,
+                    GridLadderStatus.active,
+                    context_updates={"first_breach_up_at": None},
+                )
+                return "up", price
+            return None
+
+        # Price recovered inside the breakout zone — reset both counters
+        ctx = ladder.context or {}
+        if ctx.get("first_breach_at") or ctx.get("first_breach_up_at"):
+            self.crud.update_status_with_context(
+                ladder.id,
+                GridLadderStatus.active,
+                context_updates={"first_breach_at": None, "first_breach_up_at": None},
+            )
         return None
 
     def _current_position_price(self, symbol: str) -> float | None:
@@ -389,6 +444,23 @@ class GridLadderLifecycle:
         unrealized_pnl = round_numbers(float(raw_pnl or 0), 8)
         self.crud.update_unrealized_pnl(ladder.id, unrealized_pnl)
 
+    def _forced_close_pnl(
+        self,
+        ladder: GridLadderTable,
+        close_price: float | None,
+        open_levels: list,
+    ) -> float:
+        if close_price is None:
+            return 0.0
+        total = 0.0
+        for level in open_levels:
+            if level.filled_entry_price is None:
+                continue
+            if level.status == GridLevelStatus.completed.value:
+                continue
+            total += self._realized_pnl(ladder, level, close_price)
+        return total
+
     def _close_ladder(
         self,
         ladder: GridLadderTable,
@@ -396,13 +468,17 @@ class GridLadderLifecycle:
         context_updates: dict | None = None,
         log_event: dict | None = None,
     ) -> None:
+        # Snapshot level state before any mutations so PnL computation sees
+        # the original statuses (some will be flipped to "cancelled" below).
+        open_levels = list(ladder.levels)
+
         self._cancel_ladder_orders(ladder.symbol)
         self.crud.update_orders_for_ladder(
             ladder.id,
             current_statuses=OPEN_ORDER_STATUSES,
             new_status=GRID_ORDER_CANCELLED_STATUS,
         )
-        for level in ladder.levels:
+        for level in open_levels:
             if level.status in {
                 GridLevelStatus.pending.value,
                 GridLevelStatus.open.value,
@@ -412,7 +488,12 @@ class GridLadderLifecycle:
                     level.id,
                     status=GridLevelStatus.cancelled.value,
                 )
-        self._close_symbol_position(ladder.symbol)
+
+        close_price = self._close_symbol_position(ladder.symbol)
+        forced_pnl = self._forced_close_pnl(ladder, close_price, open_levels)
+        total_pnl = sum(float(lv.realized_pnl or 0) for lv in open_levels) + forced_pnl
+        self.crud.update_realized_pnl(ladder.id, round_numbers(total_pnl))
+
         self.crud.update_status_with_context(
             ladder.id,
             GridLadderStatus.closed,
@@ -430,22 +511,31 @@ class GridLadderLifecycle:
             symbol_row.get_futures_symbol()
         )
 
-    def _close_symbol_position(self, symbol: str) -> None:
+    def _close_symbol_position(self, symbol: str) -> float | None:
         symbol_row = self._symbol_row(symbol)
         futures_symbol = symbol_row.get_futures_symbol()
         position = self.base_streaming.kucoin_futures_api.get_futures_position(
             futures_symbol
         )
         current_qty = abs(float(position.current_qty or 0))
+
+        # Capture mark price now as a fallback before any orders are placed
+        mark_price: float | None = None
+        for field_name in ("mark_price", "current_price", "price"):
+            raw = getattr(position, field_name, None)
+            if raw is not None:
+                mark_price = float(raw)
+                break
+
         if current_qty <= 0:
-            return
+            return mark_price
 
         side = (
             AddOrderReq.SideEnum.SELL
             if float(position.current_qty) > 0
             else AddOrderReq.SideEnum.BUY
         )
-        self.base_streaming.kucoin_futures_api.place_futures_order(
+        closed_order = self.base_streaming.kucoin_futures_api.place_futures_order(
             symbol=futures_symbol,
             side=side,
             size=current_qty,
@@ -453,3 +543,7 @@ class GridLadderLifecycle:
             order_type=OrderType.market,
             reduce_only=True,
         )
+        # place_futures_order internally calls retrieve_order (5 s delay) and
+        # sets .price = avg_deal_price. Fall back to mark price if unavailable.
+        fill_price = float(closed_order.price) if closed_order.price else mark_price
+        return fill_price

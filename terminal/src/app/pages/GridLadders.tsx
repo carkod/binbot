@@ -15,6 +15,7 @@ import { SpinnerContext } from "../Layout";
 import {
   GridLadderStatus,
   isActiveGridLadder,
+  calculateLevelPnlSum,
   type GridLadder,
 } from "../../features/gridLadders/gridLadders";
 import {
@@ -71,7 +72,12 @@ const GridLaddersPage: FC = () => {
         acc.active += isActiveGridLadder(ladder.status) ? 1 : 0;
         acc.reserved += ladder.reserved_margin;
         acc.used += ladder.used_margin;
-        acc.realized += ladder.realized_pnl;
+        // Active ladders keep realized_pnl=0 until close; surface TP-cycle
+        // profits from individual levels so the summary isn't misleadingly 0.
+        const levelPnl = isActiveGridLadder(ladder.status)
+          ? calculateLevelPnlSum(ladder)
+          : 0;
+        acc.realized += ladder.realized_pnl + levelPnl;
         acc.unrealized += ladder.unrealized_pnl;
         acc.openLevels += ladder.levels.filter(
           (level) => level.entry_order_id || level.take_profit_order_id,

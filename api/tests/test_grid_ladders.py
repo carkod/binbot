@@ -1,3 +1,4 @@
+from time import time
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -23,8 +24,8 @@ from databases.tables.grid_ladder_table import (
     GridOrderTable,
 )
 from grid_ladders.calculations import calculate_grid_levels
-from grid_ladders.capital import evaluate_grid_capital
-from grid_ladders.lifecycle import GridLadderLifecycle
+from grid_ladders.capital import GridCapitalSettings
+from grid_ladders.lifecycle import BREACH_CANDLES_REQUIRED, GridLadderLifecycle
 from grid_ladders.models import GridLadderCreate
 from grid_ladders.routes import GridContractMeta
 from grid_ladders.sizing import KucoinGridMarginRules
@@ -210,26 +211,41 @@ def test_grid_ladder_create_rejects_invalid_business_rules(field, value, error_t
     assert error_text in str(exc_info.value)
 
 
-def test_rejects_fourth_active_ladder_when_hard_max_is_used():
+def test_rejects_fourth_active_ladder_when_hard_max_is_used(monkeypatch):
     active_ladders = [
         _active_ladder("BTCUSDC"),
         _active_ladder("ETHUSDC"),
         _active_ladder("SOLUSDC"),
     ]
-
+    monkeypatch.setattr(
+        "grid_ladders.capital.AutotradeCrud.get_settings",
+        lambda self: SimpleNamespace(
+            grid_max_active_ladders=3,
+            grid_allocation_pct=1.0,
+            grid_cash_reserve_pct=0.0,
+        ),
+    )
     with pytest.raises(ValueError, match="max_active_ladders=3"):
-        evaluate_grid_capital(
+        GridCapitalSettings().evaluate_grid_capital(
             active_ladders,
             available_fiat_balance=10_000,
             requested_margin=100,
-            max_active_ladders=3,
         )
 
 
-def test_allows_full_grid_budget_while_keeping_per_ladder_cap():
+def test_allows_full_grid_budget_while_keeping_per_ladder_cap(monkeypatch):
     active_ladders = [_active_ladder("BTCUSDC", reserved_margin=100)]
+    monkeypatch.setattr(
+        "grid_ladders.capital.AutotradeCrud.get_settings",
+        lambda self: SimpleNamespace(
+            grid_max_active_ladders=3,
+            grid_allocation_pct=1.0,
+            grid_cash_reserve_pct=0.0,
+        ),
+    )
+    settings = GridCapitalSettings()
 
-    decision = evaluate_grid_capital(
+    decision = settings.evaluate_grid_capital(
         active_ladders,
         available_fiat_balance=1_000,
         requested_margin=200,
@@ -240,7 +256,7 @@ def test_allows_full_grid_budget_while_keeping_per_ladder_cap():
     assert decision.allowed_margin_for_new_ladder == 250
 
     with pytest.raises(ValueError, match="exceeds allowed margin 250"):
-        evaluate_grid_capital(
+        settings.evaluate_grid_capital(
             active_ladders,
             available_fiat_balance=1_000,
             requested_margin=251,
@@ -507,6 +523,19 @@ def test_grid_lifecycle_closes_ladder_when_price_breaks_below_range(
         lifecycle = GridLadderLifecycle(_grid_base(fake_api), session)
         lifecycle.process_symbol("ADAUSDC")
         fake_api.position_mark_price = 84
+        # First out-of-range tick: starts the breach timer, does not close yet.
+        lifecycle.process_symbol("ADAUSDC")
+        # Expire the breach timer by backdating first_breach_at.
+        crud = GridLadderCrud(session)
+        ladder = crud.get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        past_ms = int(time() * 1000) - BREACH_CANDLES_REQUIRED * 15 * 60 * 1000 - 1000
+        crud.update_status_with_context(
+            ladder.id,
+            GridLadderStatus.active,
+            context_updates={"first_breach_at": past_ms},
+        )
+        # Second out-of-range tick: timer expired → ladder closes.
         lifecycle.process_symbol("ADAUSDC")
 
     detail = client.get(f"/grid-ladders/{ladder_id}").json()["detail"]
@@ -542,6 +571,19 @@ def test_grid_lifecycle_closes_ladder_when_price_breaks_above_range(
         lifecycle = GridLadderLifecycle(_grid_base(fake_api), session)
         lifecycle.process_symbol("ADAUSDC")
         fake_api.position_mark_price = 116
+        # First out-of-range tick: starts the breach timer, does not close yet.
+        lifecycle.process_symbol("ADAUSDC")
+        # Expire the breach timer by backdating first_breach_up_at.
+        crud = GridLadderCrud(session)
+        ladder = crud.get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        past_ms = int(time() * 1000) - BREACH_CANDLES_REQUIRED * 15 * 60 * 1000 - 1000
+        crud.update_status_with_context(
+            ladder.id,
+            GridLadderStatus.active,
+            context_updates={"first_breach_up_at": past_ms},
+        )
+        # Second out-of-range tick: timer expired → ladder closes.
         lifecycle.process_symbol("ADAUSDC")
 
     detail = client.get(f"/grid-ladders/{ladder_id}").json()["detail"]
@@ -624,6 +666,19 @@ def test_grid_lifecycle_range_break_closes_ladder_with_zero_position_qty(
         lifecycle = GridLadderLifecycle(_grid_base(fake_api), session)
         lifecycle.process_symbol("ADAUSDC")
         fake_api.position_mark_price = 84
+        # First out-of-range tick: starts the breach timer, does not close yet.
+        lifecycle.process_symbol("ADAUSDC")
+        # Expire the breach timer by backdating first_breach_at.
+        crud = GridLadderCrud(session)
+        ladder = crud.get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        past_ms = int(time() * 1000) - BREACH_CANDLES_REQUIRED * 15 * 60 * 1000 - 1000
+        crud.update_status_with_context(
+            ladder.id,
+            GridLadderStatus.active,
+            context_updates={"first_breach_at": past_ms},
+        )
+        # Second out-of-range tick: timer expired → ladder closes.
         lifecycle.process_symbol("ADAUSDC")
 
     detail = client.get(f"/grid-ladders/{ladder_id}").json()["detail"]

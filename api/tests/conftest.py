@@ -115,6 +115,7 @@ def create_test_tables():
             max_request=500,
             max_active_autotrade_bots=1,
             exchange_id="binance",
+            grid_max_active_ladders=2,
         )
         session.add(mock_autotrade)
 
