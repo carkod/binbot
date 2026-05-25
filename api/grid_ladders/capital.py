@@ -16,8 +16,6 @@ class GridCapitalDecision:
 
 
 class GridCapitalSettings:
-    # Hard upper bound — not configurable via autotrade settings.
-    MAX_ACTIVE_LADDERS_HARD = 3
     # Per-ladder margin cap as a fraction of available balance. Not yet in
     # autotrade settings; stored here until a settings field is added.
     MAX_MARGIN_PER_LADDER_PCT = 0.25
@@ -34,11 +32,6 @@ class GridCapitalSettings:
         available_fiat_balance: float,
         requested_margin: float,
     ) -> GridCapitalDecision:
-        if self.max_active_ladders > self.MAX_ACTIVE_LADDERS_HARD:
-            raise ValueError(
-                f"max_active_ladders cannot exceed the hard maximum of {self.MAX_ACTIVE_LADDERS_HARD}"
-            )
-
         active_ladder_count = len(active_ladders)
         if active_ladder_count >= self.max_active_ladders:
             raise ValueError(

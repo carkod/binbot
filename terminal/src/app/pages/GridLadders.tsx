@@ -20,6 +20,7 @@ import {
 } from "../../features/gridLadders/gridLadders";
 import {
   useCloseGridLadderMutation,
+  useDeleteGridLadderMutation,
   useGetActiveGridLaddersQuery,
   useGetGridLaddersQuery,
 } from "../../features/gridLadders/gridLaddersApiSlice";
@@ -30,6 +31,7 @@ const GridLaddersPage: FC = () => {
   const { setSpinner } = useContext(SpinnerContext);
   const [selectedCards, setSelectedCards] = useState<string[]>([]);
   const [ladderToClose, setLadderToClose] = useState<string | null>(null);
+  const [ladderToDelete, setLadderToDelete] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [symbolState, setSymbolState] = useState<string>("");
   const [showActiveOnly, setShowActiveOnly] = useState<boolean>(false);
@@ -51,6 +53,8 @@ const GridLaddersPage: FC = () => {
 
   const [closeGridLadder, { isLoading: isClosing }] =
     useCloseGridLadderMutation();
+  const [deleteGridLadder, { isLoading: isDeleting }] =
+    useDeleteGridLadderMutation();
 
   const fiat = autotradeSettings?.fiat ?? "fiat";
   const sourceLadders = showActiveOnly ? activeLadders : allLadders;
@@ -96,8 +100,8 @@ const GridLaddersPage: FC = () => {
   }, [filteredLadders]);
 
   useEffect(() => {
-    setSpinner(isFetching || isClosing);
-  }, [isFetching, isClosing, setSpinner]);
+    setSpinner(isFetching || isClosing || isDeleting);
+  }, [isFetching, isClosing, isDeleting, setSpinner]);
 
   const handleSelect = (id: string) => {
     setSelectedCards((prev) =>
@@ -105,6 +109,16 @@ const GridLaddersPage: FC = () => {
         ? prev.filter((cardId) => cardId !== id)
         : prev.concat(id),
     );
+  };
+
+  const confirmDelete = async (action: number) => {
+    if (action !== 1 || !ladderToDelete) {
+      setLadderToDelete(null);
+      return;
+    }
+    await deleteGridLadder(ladderToDelete).unwrap();
+    setLadderToDelete(null);
+    await refetch();
   };
 
   const confirmClose = async (action: number) => {
@@ -224,6 +238,7 @@ const GridLaddersPage: FC = () => {
                   selected={selectedCards.includes(ladder.id)}
                   onSelect={handleSelect}
                   onClose={setLadderToClose}
+                  onDelete={setLadderToDelete}
                 />
               </Col>
             );
@@ -239,6 +254,16 @@ const GridLaddersPage: FC = () => {
         Closing a grid ladder should cancel open grid orders and stop the
         ladder. If positions are open, backend close behavior depends on the
         grid manager state.
+      </ConfirmModal>
+
+      <ConfirmModal
+        show={Boolean(ladderToDelete)}
+        handleActions={confirmDelete}
+        primary="Delete record"
+      >
+        This permanently deletes the ladder record and all associated levels
+        and orders from the database. It does not cancel exchange orders or
+        close positions — only use this to clean up local records.
       </ConfirmModal>
     </Container>
   );

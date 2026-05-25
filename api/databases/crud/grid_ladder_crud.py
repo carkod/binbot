@@ -402,6 +402,14 @@ class GridLadderCrud:
         self.session.refresh(level)
         return level
 
+    def delete(self, ladder_id: UUID) -> bool:
+        ladder = self.session.get(GridLadderTable, ladder_id)
+        if ladder is None:
+            return False
+        self.session.delete(ladder)
+        self.session.commit()
+        return True
+
     def close(
         self,
         ladder_id: UUID,

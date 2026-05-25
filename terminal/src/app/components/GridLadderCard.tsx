@@ -19,6 +19,7 @@ interface GridLadderCardProps {
   selected: boolean;
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
+  onDelete: (id: string) => void;
 }
 
 const statusColorMap: Record<GridLadderStatus, string> = {
@@ -36,6 +37,7 @@ const GridLadderCard: FC<GridLadderCardProps> = ({
   selected,
   onSelect,
   onClose,
+  onDelete,
 }) => {
   const navigate = useNavigate();
   const totalPnl = calculateGridPnl(ladder);
@@ -190,6 +192,9 @@ const GridLadderCard: FC<GridLadderCardProps> = ({
         </Button>
         <Button variant="danger" onClick={() => onClose(ladder.id)}>
           Close ladder
+        </Button>
+        <Button variant="outline-danger" onClick={() => onDelete(ladder.id)}>
+          Delete
         </Button>
       </Card.Footer>
     </Card>

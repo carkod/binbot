@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.encoders import jsonable_encoder
 from sqlmodel import Session
 
@@ -256,6 +256,18 @@ def get_grid_ladder_by_id(
     return GridLadderResponse(
         detail=_grid_ladder_record(ladder),
     )
+
+
+@grid_ladder_blueprint.delete("/{ladder_id}", status_code=204)
+def delete_grid_ladder_by_id(
+    ladder_id: UUID,
+    session: Session = Depends(get_session),
+    _: UserTokenData = Depends(get_current_user),
+):
+    deleted = GridLadderCrud(session).delete(ladder_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Grid ladder not found")
+    return Response(status_code=204)
 
 
 @grid_ladder_blueprint.post("/{ladder_id}/close", response_model=GridLadderResponse)

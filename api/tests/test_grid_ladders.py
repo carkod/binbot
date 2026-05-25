@@ -25,7 +25,7 @@ from databases.tables.grid_ladder_table import (
 )
 from grid_ladders.calculations import calculate_grid_levels
 from grid_ladders.capital import GridCapitalSettings
-from grid_ladders.lifecycle import BREACH_CANDLES_REQUIRED, GridLadderLifecycle
+from grid_ladders.lifecycle import GridLadderLifecycle
 from grid_ladders.models import GridLadderCreate
 from grid_ladders.routes import GridContractMeta
 from grid_ladders.sizing import KucoinGridMarginRules
@@ -529,7 +529,11 @@ def test_grid_lifecycle_closes_ladder_when_price_breaks_below_range(
         crud = GridLadderCrud(session)
         ladder = crud.get_active_for_symbol("ADAUSDC")
         assert ladder is not None
-        past_ms = int(time() * 1000) - BREACH_CANDLES_REQUIRED * 15 * 60 * 1000 - 1000
+        past_ms = (
+            int(time() * 1000)
+            - GridLadderLifecycle.BREACH_CANDLES_REQUIRED * 15 * 60 * 1000
+            - 1000
+        )
         crud.update_status_with_context(
             ladder.id,
             GridLadderStatus.active,
@@ -577,7 +581,11 @@ def test_grid_lifecycle_closes_ladder_when_price_breaks_above_range(
         crud = GridLadderCrud(session)
         ladder = crud.get_active_for_symbol("ADAUSDC")
         assert ladder is not None
-        past_ms = int(time() * 1000) - BREACH_CANDLES_REQUIRED * 15 * 60 * 1000 - 1000
+        past_ms = (
+            int(time() * 1000)
+            - GridLadderLifecycle.BREACH_CANDLES_REQUIRED * 15 * 60 * 1000
+            - 1000
+        )
         crud.update_status_with_context(
             ladder.id,
             GridLadderStatus.active,
@@ -672,7 +680,11 @@ def test_grid_lifecycle_range_break_closes_ladder_with_zero_position_qty(
         crud = GridLadderCrud(session)
         ladder = crud.get_active_for_symbol("ADAUSDC")
         assert ladder is not None
-        past_ms = int(time() * 1000) - BREACH_CANDLES_REQUIRED * 15 * 60 * 1000 - 1000
+        past_ms = (
+            int(time() * 1000)
+            - GridLadderLifecycle.BREACH_CANDLES_REQUIRED * 15 * 60 * 1000
+            - 1000
+        )
         crud.update_status_with_context(
             ladder.id,
             GridLadderStatus.active,

@@ -59,6 +59,16 @@ export const gridLaddersApiSlice = userApiSlice.injectEndpoints({
       ],
       transformResponse: ({ detail }: GridLadderResponse) => detail,
     }),
+    deleteGridLadder: build.mutation<void, string>({
+      query: (id) => ({
+        url: `/grid-ladders/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (result, error, id) => [
+        "grid-ladders",
+        { type: "grid-ladder", id },
+      ],
+    }),
     closeGridLadder: build.mutation<GridLadder, CloseGridLadderParams>({
       query: ({ id, reason }) => ({
         url: `/grid-ladders/${id}/close`,
@@ -81,5 +91,6 @@ export const {
   useGetGridLaddersQuery,
   useGetActiveGridLaddersQuery,
   useGetGridLadderQuery,
+  useDeleteGridLadderMutation,
   useCloseGridLadderMutation,
 } = gridLaddersApiSlice;

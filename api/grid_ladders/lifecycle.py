@@ -37,10 +37,22 @@ TERMINAL_GRID_ORDER_STATUSES = {
     GRID_ORDER_ERROR_STATUS,
     OrderStatus.EXPIRED.value,
 }
-# Price must stay outside the breakout zone for this many monitoring ticks
-# before a close is triggered (prevents wicks from exiting the grid prematurely).
-# Each tick corresponds to one process_symbol() call, typically every ~15 m.
-BREACH_CANDLES_REQUIRED = 3
+
+
+def _coerce_breach_ts(value: object) -> int | None:
+    """Return value as int milliseconds, or None if it is absent or non-numeric.
+
+    Treats the result as unset so the breach timer starts fresh rather than
+    crashing the market-update loop on unexpected context data.
+    """
+    if isinstance(value, int):
+        return value
+    if isinstance(value, (float, str)):
+        try:
+            return int(value)
+        except ValueError:
+            return None
+    return None
 
 
 class GridLadderLifecycle:
@@ -50,6 +62,11 @@ class GridLadderLifecycle:
     The API creates a pending ladder plan. This class turns that plan into
     exchange orders and reconciles fills on the same loop as normal bots.
     """
+
+    # Price must stay outside the breakout zone for this many monitoring ticks
+    # before a close is triggered (prevents wicks from exiting prematurely).
+    # Each tick corresponds to one process_symbol() call, typically every ~15 m.
+    BREACH_CANDLES_REQUIRED = 3
 
     def __init__(self, base_streaming: BaseStreaming, session: Session):
         self.base_streaming = base_streaming
@@ -144,10 +161,12 @@ class GridLadderLifecycle:
             return None
 
         now_ms = int(time() * 1000)
-        breach_duration_ms = BREACH_CANDLES_REQUIRED * 15 * 60 * 1000
+        breach_duration_ms = self.BREACH_CANDLES_REQUIRED * 15 * 60 * 1000
 
         if price < ladder.breakout_low:
-            first_breach = (ladder.context or {}).get("first_breach_at")
+            first_breach = _coerce_breach_ts(
+                (ladder.context or {}).get("first_breach_at")
+            )
             if first_breach is None:
                 self.crud.update_status_with_context(
                     ladder.id,
@@ -158,7 +177,7 @@ class GridLadderLifecycle:
                     },
                 )
                 return None
-            if now_ms - int(first_breach) >= breach_duration_ms:
+            if now_ms - first_breach >= breach_duration_ms:
                 self.crud.update_status_with_context(
                     ladder.id,
                     GridLadderStatus.active,
@@ -168,7 +187,9 @@ class GridLadderLifecycle:
             return None
 
         if price > ladder.breakout_high:
-            first_breach_up = (ladder.context or {}).get("first_breach_up_at")
+            first_breach_up = _coerce_breach_ts(
+                (ladder.context or {}).get("first_breach_up_at")
+            )
             if first_breach_up is None:
                 self.crud.update_status_with_context(
                     ladder.id,
@@ -179,7 +200,7 @@ class GridLadderLifecycle:
                     },
                 )
                 return None
-            if now_ms - int(first_breach_up) >= breach_duration_ms:
+            if now_ms - first_breach_up >= breach_duration_ms:
                 self.crud.update_status_with_context(
                     ladder.id,
                     GridLadderStatus.active,
