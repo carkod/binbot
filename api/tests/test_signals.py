@@ -133,6 +133,30 @@ def test_query_can_skip_payload_columns():
     assert "indicators" not in rows[0]
 
 
+def test_delete_entries_older_than_14_days_removes_only_stale_rows():
+    session = _make_session()
+    crud = SignalsCrud(session)
+    now = datetime.now(timezone.utc)
+    crud.create(
+        algorithm_name="stale_strategy",
+        symbol="BTCUSDC",
+        generated_at=now - timedelta(days=15),
+        direction="LONG",
+    )
+    crud.create(
+        algorithm_name="recent_strategy",
+        symbol="ETHUSDC",
+        generated_at=now - timedelta(days=13),
+        direction="LONG",
+    )
+
+    deleted_count = SignalsCrud().delete_entries_older_than_14_days()
+
+    assert deleted_count == 1
+    rows = session.exec(select(SignalsTable)).all()
+    assert {row.algorithm_name for row in rows} == {"recent_strategy"}
+
+
 def test_post_signal_endpoint(client):
     response = client.post(
         "/signals",
