@@ -55,6 +55,12 @@ export const AutotradePage: FC<{}> = () => {
       trailing_profit: settings.trailing_profit,
       autoswitch: settings.autoswitch,
       exchange_id: settings.exchange_id,
+      grid_allocation_pct: settings.grid_allocation_pct,
+      grid_cash_reserve_pct: settings.grid_cash_reserve_pct,
+      grid_total_margin: settings.grid_total_margin,
+      grid_level_count: settings.grid_level_count,
+      grid_max_active_ladders: settings.grid_max_active_ladders,
+      max_margin_per_ladder_pct: settings.max_margin_per_ladder_pct,
     },
   });
 
@@ -106,6 +112,12 @@ export const AutotradePage: FC<{}> = () => {
         trailing_profit: settings.trailing_profit,
         autoswitch: settings.autoswitch,
         exchange_id: settings.exchange_id,
+        grid_allocation_pct: settings.grid_allocation_pct,
+        grid_cash_reserve_pct: settings.grid_cash_reserve_pct,
+        grid_total_margin: settings.grid_total_margin,
+        grid_level_count: settings.grid_level_count,
+        grid_max_active_ladders: settings.grid_max_active_ladders,
+        max_margin_per_ladder_pct: settings.max_margin_per_ladder_pct,
       });
     }
 
@@ -114,279 +126,353 @@ export const AutotradePage: FC<{}> = () => {
 
   return (
     <Container>
-      <Card className="mt-3">
-        <Card.Header>
-          <Row>
-            <Col md="12">
-              <Card.Title>General bot autotrade</Card.Title>
-              <p className="fs-6 fw-light lh-1">
-                These settings trigger Bots automatically given the parameters.
-                They use the same services and endpoints as Bots.
-              </p>
-              <p className="fs-6 fw-light lh-1">
-                Bots that are autotrade will be set with mode: autotrade
-              </p>
-            </Col>
-          </Row>
-        </Card.Header>
-        <Card.Body>
-          <Container>
+      <Form onSubmit={handleSubmit(saveSettings)}>
+        <Card className="mt-3">
+          <Card.Header>
             <Row>
-              <Col md={"12"} sm="12">
-                <Row>
-                  <Col md="3">
-                    <Form.Group>
-                      <Form.Label htmlFor="exchange_id">
-                        Select Exchange
-                      </Form.Label>
+              <Col md="12">
+                <Card.Title>General bot autotrade</Card.Title>
+                <p className="fs-6 fw-light lh-1">
+                  These settings trigger Bots automatically given the
+                  parameters. They use the same services and endpoints as Bots.
+                </p>
+                <p className="fs-6 fw-light lh-1">
+                  Bots that are autotrade will be set with mode: autotrade
+                </p>
+              </Col>
+            </Row>
+          </Card.Header>
+          <Card.Body>
+            <Container>
+              <Row>
+                <Col md={"12"} sm="12">
+                  <Row>
+                    <Col md="3">
+                      <Form.Group>
+                        <Form.Label htmlFor="exchange_id">
+                          Select Exchange
+                        </Form.Label>
+                        <Form.Select
+                          id="exchange_id"
+                          name="exchange_id"
+                          onChange={(e) => {
+                            const { value } = e.target;
+                            dispatch(
+                              setSettingsField({
+                                name: "exchange_id",
+                                value,
+                              }),
+                            );
+                          }}
+                          onBlur={handleBlur}
+                          {...register("exchange_id", {
+                            required: true,
+                          })}
+                        >
+                          {Object.values(ExchangeId).map((exchange, i) => (
+                            <option key={i} value={exchange.toString()}>
+                              {exchange.toString()}
+                            </option>
+                          ))}
+                        </Form.Select>
+                        {errors.exchange_id && (
+                          <Form.Control.Feedback>
+                            {errors.exchange_id.message as string}
+                          </Form.Control.Feedback>
+                        )}
+                        <Form.Control.Feedback tooltip>
+                          <strong>Attention:</strong> Critical setting. If this
+                          is changed bots, balances, symbols/charts will be set
+                          to use this exchange&apos;s data
+                        </Form.Control.Feedback>
+                      </Form.Group>
+                    </Col>
+
+                    <Col md="3">
+                      <label htmlFor="telegram_signals">
+                        Send messages to telegram?
+                      </label>
+                      <br />
+                      <LightSwitch
+                        value={settings.telegram_signals}
+                        name="telegram_signals"
+                        register={register}
+                        toggle={(name, value) => {
+                          setValue(name, !value);
+                          dispatch(
+                            setSettingsToggle({
+                              name: name,
+                              value: !value,
+                            }),
+                          );
+                        }}
+                      />
+                    </Col>
+                    <Col md="3"></Col>
+                  </Row>
+                  <Row>
+                    <Col md="3">
+                      <label htmlFor="autotrade">Autotrade?</label>
+                      <br />
+                      <ButtonGroup>
+                        <ToggleButton
+                          id="autotrade"
+                          className="position-relative"
+                          checked={settings.autotrade}
+                          value={1}
+                          variant={settings.autotrade ? "primary" : "secondary"}
+                          onClick={(e) => {
+                            dispatch(
+                              setSettingsToggle({
+                                name: "autotrade",
+                                value: !settings.autotrade,
+                              }),
+                            );
+                          }}
+                        >
+                          {settings.autotrade ? "On" : "Off"}
+                        </ToggleButton>
+                      </ButtonGroup>
+                    </Col>
+                    <Col md="3">
                       <Form.Select
-                        id="exchange_id"
-                        name="exchange_id"
+                        id="candlestick_interval"
+                        name="candlestick_interval"
                         onChange={(e) => {
                           const { value } = e.target;
                           dispatch(
                             setSettingsField({
-                              name: "exchange_id",
+                              name: "candlestick_interval",
                               value,
                             }),
                           );
                         }}
                         onBlur={handleBlur}
-                        {...register("exchange_id", {
+                        {...register("candlestick_interval", {
                           required: true,
                         })}
                       >
-                        {Object.values(ExchangeId).map((exchange, i) => (
-                          <option key={i} value={exchange.toString()}>
-                            {exchange.toString()}
-                          </option>
-                        ))}
+                        {Object.values(BinanceKlineintervals).map(
+                          (interval, i) => (
+                            <option key={i} value={interval.toString()}>
+                              {interval.toString()}
+                            </option>
+                          ),
+                        )}
                       </Form.Select>
-                      {errors.exchange_id && (
-                        <Form.Control.Feedback>
-                          {errors.exchange_id.message as string}
-                        </Form.Control.Feedback>
-                      )}
-                      <Form.Control.Feedback tooltip>
-                        <strong>Attention:</strong> Critical setting. If this is
-                        changed bots, balances, symbols/charts will be set to
-                        use this exchange&apos;s data
-                      </Form.Control.Feedback>
-                    </Form.Group>
-                  </Col>
-
-                  <Col md="3">
-                    <label htmlFor="telegram_signals">
-                      Send messages to telegram?
-                    </label>
-                    <br />
-                    <LightSwitch
-                      value={settings.telegram_signals}
-                      name="telegram_signals"
-                      register={register}
-                      toggle={(name, value) => {
-                        setValue(name, !value);
-                        dispatch(
-                          setSettingsToggle({
-                            name: name,
-                            value: !value,
-                          }),
-                        );
-                      }}
-                    />
-                  </Col>
-                  <Col md="3"></Col>
-                </Row>
-                <Row>
-                  <Col md="3">
-                    <label htmlFor="autotrade">Autotrade?</label>
-                    <br />
-                    <ButtonGroup>
-                      <ToggleButton
-                        id="autotrade"
-                        className="position-relative"
-                        checked={settings.autotrade}
-                        value={1}
-                        variant={settings.autotrade ? "primary" : "secondary"}
-                        onClick={(e) => {
-                          dispatch(
-                            setSettingsToggle({
-                              name: "autotrade",
-                              value: !settings.autotrade,
-                            }),
-                          );
-                        }}
-                      >
-                        {settings.autotrade ? "On" : "Off"}
-                      </ToggleButton>
-                    </ButtonGroup>
-                  </Col>
-                  <Col md="3">
-                    <Form.Select
-                      id="candlestick_interval"
-                      name="candlestick_interval"
-                      onChange={(e) => {
-                        const { value } = e.target;
-                        dispatch(
-                          setSettingsField({
-                            name: "candlestick_interval",
-                            value,
-                          }),
-                        );
-                      }}
-                      onBlur={handleBlur}
-                      {...register("candlestick_interval", {
-                        required: true,
-                      })}
-                    >
-                      {Object.values(BinanceKlineintervals).map(
-                        (interval, i) => (
-                          <option key={i} value={interval.toString()}>
-                            {interval.toString()}
-                          </option>
-                        ),
-                      )}
-                    </Form.Select>
-                  </Col>
-                  <Col md="3">
-                    <SettingsInput
-                      value={settings.max_active_autotrade_bots}
-                      name={"max_active_autotrade_bots"}
-                      label={"Max active autotrade bots"}
-                      handleBlur={handleBlur}
-                      register={register}
-                    />
-                  </Col>
-                </Row>
-                <Row>
-                  <Col md="3">
-                    <SettingsInput
-                      value={settings.base_order_size}
-                      name={"base_order_size"}
-                      label={"Base order size (quantity)"}
-                      type="text"
-                      register={register}
-                    />
-                  </Col>
-                  <Col md="3">
-                    <SettingsInput
-                      value={settings.fiat}
-                      name={"fiat"}
-                      label={"Fiat currency to use for trading"}
-                      type="text"
-                      register={register}
-                      infoText="Careful! This is a global change of everything, from candlesticks to charts and bots as well as Binquant analytics"
-                    />
-                  </Col>
-                </Row>
-                <hr />
-                <Row>
-                  <Col md="3">
-                    <SettingsInput
-                      value={settings.stop_loss}
-                      name={"stop_loss"}
-                      label={"Stop loss"}
-                      type="number"
-                      register={register}
-                    />
-                  </Col>
-                  <Col md="3">
-                    <label htmlFor="autoswitch">Autoswitch?</label>
-                    <br />
-                    <ButtonGroup>
-                      <ToggleButton
-                        id="autoswitch"
-                        className="position-relative"
-                        checked={settings.autoswitch}
-                        value={1}
-                        variant={settings.autoswitch ? "primary" : "secondary"}
-                        onClick={(e) => {
-                          dispatch(
-                            setSettingsToggle({
-                              name: "autoswitch",
-                              value: !settings.autoswitch,
-                            }),
-                          );
-                        }}
-                      >
-                        {settings.autoswitch ? "On" : "Off"}
-                      </ToggleButton>
-                    </ButtonGroup>
-                  </Col>
-                </Row>
-                <hr />
-                <Row>
-                  <Col md="3">
-                    <label htmlFor="trailing">Trailing</label>
-                    <br />
-                    <LightSwitch
-                      value={settings.trailing}
-                      name="trailing"
-                      register={register}
-                      toggle={(name, value) => {
-                        setValue("trailing", !value);
-                        dispatch(
-                          setSettingsToggle({
-                            name: name,
-                            value: !value,
-                          }),
-                        );
-                      }}
-                    />
-                  </Col>
-                </Row>
-                {settings.trailing ? (
-                  <Row>
-                    <Col md="3">
-                      <SettingsInput
-                        value={settings.trailing_deviation}
-                        name={"trailing_deviation"}
-                        label={"Trailing stop loss"}
-                        type="number"
-                        infoText="Should be kept as small as possible as this will increase funds needed to start base_order_size"
-                        register={register}
-                      />
                     </Col>
                     <Col md="3">
                       <SettingsInput
-                        value={settings.trailing_profit}
-                        name={"trailing_profit"}
-                        label={"Trail profit"}
-                        type="number"
+                        value={settings.max_active_autotrade_bots}
+                        name={"max_active_autotrade_bots"}
+                        label={"Max active autotrade bots"}
+                        handleBlur={handleBlur}
                         register={register}
                       />
                     </Col>
                   </Row>
-                ) : (
                   <Row>
                     <Col md="3">
                       <SettingsInput
-                        value={settings.take_profit}
-                        name={"take_profit"}
-                        label={"Take profit"}
+                        value={settings.base_order_size}
+                        name={"base_order_size"}
+                        label={"Base order size (quantity)"}
+                        type="text"
+                        register={register}
+                      />
+                    </Col>
+                    <Col md="3">
+                      <SettingsInput
+                        value={settings.fiat}
+                        name={"fiat"}
+                        label={"Fiat currency to use for trading"}
+                        type="text"
+                        register={register}
+                        infoText="Careful! This is a global change of everything, from candlesticks to charts and bots as well as Binquant analytics"
+                      />
+                    </Col>
+                  </Row>
+                  <hr />
+                  <Row>
+                    <Col md="3">
+                      <SettingsInput
+                        value={settings.stop_loss}
+                        name={"stop_loss"}
+                        label={"Stop loss"}
                         type="number"
                         register={register}
                       />
                     </Col>
+                    <Col md="3">
+                      <label htmlFor="autoswitch">Autoswitch?</label>
+                      <br />
+                      <ButtonGroup>
+                        <ToggleButton
+                          id="autoswitch"
+                          className="position-relative"
+                          checked={settings.autoswitch}
+                          value={1}
+                          variant={
+                            settings.autoswitch ? "primary" : "secondary"
+                          }
+                          onClick={(e) => {
+                            dispatch(
+                              setSettingsToggle({
+                                name: "autoswitch",
+                                value: !settings.autoswitch,
+                              }),
+                            );
+                          }}
+                        >
+                          {settings.autoswitch ? "On" : "Off"}
+                        </ToggleButton>
+                      </ButtonGroup>
+                    </Col>
                   </Row>
-                )}
-                <br />
-                <Row>
-                  <Col>
-                    <Button
-                      color="primary"
-                      onClick={handleSubmit(saveSettings)}
-                    >
-                      Save
-                    </Button>{" "}
-                  </Col>
-                </Row>
-                <br />
+                  <hr />
+                  <Row>
+                    <Col md="3">
+                      <label htmlFor="trailing">Trailing</label>
+                      <br />
+                      <LightSwitch
+                        value={settings.trailing}
+                        name="trailing"
+                        register={register}
+                        toggle={(name, value) => {
+                          setValue("trailing", !value);
+                          dispatch(
+                            setSettingsToggle({
+                              name: name,
+                              value: !value,
+                            }),
+                          );
+                        }}
+                      />
+                    </Col>
+                  </Row>
+                  {settings.trailing ? (
+                    <Row>
+                      <Col md="3">
+                        <SettingsInput
+                          value={settings.trailing_deviation}
+                          name={"trailing_deviation"}
+                          label={"Trailing stop loss"}
+                          type="number"
+                          infoText="Should be kept as small as possible as this will increase funds needed to start base_order_size"
+                          register={register}
+                        />
+                      </Col>
+                      <Col md="3">
+                        <SettingsInput
+                          value={settings.trailing_profit}
+                          name={"trailing_profit"}
+                          label={"Trail profit"}
+                          type="number"
+                          register={register}
+                        />
+                      </Col>
+                    </Row>
+                  ) : (
+                    <Row>
+                      <Col md="3">
+                        <SettingsInput
+                          value={settings.take_profit}
+                          name={"take_profit"}
+                          label={"Take profit"}
+                          type="number"
+                          register={register}
+                        />
+                      </Col>
+                    </Row>
+                  )}
+                </Col>
+              </Row>
+            </Container>
+          </Card.Body>
+        </Card>
+        <Card className="mt-3">
+          <Card.Header>
+            <Row>
+              <Col md="12">
+                <Card.Title>Grid trading</Card.Title>
+                <p className="fs-6 fw-light lh-1">
+                  Allocation and ladder limits for automatic futures grid
+                  deployments.
+                </p>
               </Col>
             </Row>
-          </Container>
-        </Card.Body>
-      </Card>
+          </Card.Header>
+          <Card.Body>
+            <Container>
+              <Row>
+                <Col md="3">
+                  <SettingsInput
+                    value={settings.grid_allocation_pct}
+                    name={"grid_allocation_pct"}
+                    label={"Grid allocation pct"}
+                    type="number"
+                    register={register}
+                  />
+                </Col>
+                <Col md="3">
+                  <SettingsInput
+                    value={settings.grid_cash_reserve_pct}
+                    name={"grid_cash_reserve_pct"}
+                    label={"Grid cash reserve pct"}
+                    type="number"
+                    register={register}
+                  />
+                </Col>
+                <Col md="3">
+                  <SettingsInput
+                    value={settings.grid_total_margin}
+                    name={"grid_total_margin"}
+                    label={"Grid total margin"}
+                    type="number"
+                    register={register}
+                  />
+                </Col>
+              </Row>
+              <Row>
+                <Col md="3">
+                  <SettingsInput
+                    value={settings.grid_level_count}
+                    name={"grid_level_count"}
+                    label={"Grid level count"}
+                    type="number"
+                    register={register}
+                  />
+                </Col>
+                <Col md="3">
+                  <SettingsInput
+                    value={settings.grid_max_active_ladders}
+                    name={"grid_max_active_ladders"}
+                    label={"Grid max active ladders"}
+                    type="number"
+                    register={register}
+                  />
+                </Col>
+                <Col md="3">
+                  <SettingsInput
+                    value={settings.max_margin_per_ladder_pct}
+                    name={"max_margin_per_ladder_pct"}
+                    label={"Max margin per ladder pct"}
+                    type="number"
+                    register={register}
+                  />
+                </Col>
+              </Row>
+            </Container>
+          </Card.Body>
+        </Card>
+        <Row className="mt-3 mb-3">
+          <Col>
+            <Button color="primary" type="submit">
+              Save
+            </Button>{" "}
+          </Col>
+        </Row>
+      </Form>
     </Container>
   );
 };

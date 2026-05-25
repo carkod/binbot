@@ -20,6 +20,54 @@ vi.mock("../../../features/bots/botInitialState", async () => {
   };
 });
 
+vi.mock("../../../features/bots/botsApiSlice", async () => {
+  const actual = await vi.importActual("../../../features/bots/botsApiSlice");
+  return {
+    ...actual,
+    useGetSingleBotQuery: vi.fn(() => ({
+      data: undefined,
+      isLoading: false,
+    })),
+  };
+});
+
+vi.mock("../../../features/balanceApiSlice", async () => {
+  const actual = await vi.importActual("../../../features/balanceApiSlice");
+  return {
+    ...actual,
+    useGetBalanceQuery: vi.fn(() => ({
+      data: {
+        fiat_available: 0,
+        fiat_currency: "USDT",
+        estimated_total_fiat: 0,
+        balances: {},
+      },
+      isLoading: false,
+    })),
+  };
+});
+
+vi.mock("../../../features/autotradeApiSlice", async () => {
+  const actual = await vi.importActual("../../../features/autotradeApiSlice");
+  return {
+    ...actual,
+    useGetSettingsQuery: vi.fn(() => ({
+      data: { fiat: "USDT" },
+    })),
+  };
+});
+
+vi.mock("../../../features/symbolsApiSlice", async () => {
+  const actual = await vi.importActual("../../../features/symbolsApiSlice");
+  return {
+    ...actual,
+    useGetSymbolsQuery: vi.fn(() => ({
+      data: [{ id: "BTCUSDT" }, { id: "ETHUSDT" }],
+      isFetching: false,
+    })),
+  };
+});
+
 // Lightweight mocks for heavy child components
 vi.mock("../components/ChartContainer", () => {
   const ChartContainer = (_props: any) => <div data-testid="chart-container" />;

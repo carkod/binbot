@@ -1,4 +1,8 @@
-import { BinanceKlineintervals, CloseConditions } from "../utils/enums";
+import {
+  BinanceKlineintervals,
+  CloseConditions,
+  ExchangeId,
+} from "../utils/enums";
 import { createAppSlice } from "../app/createAppSlice";
 import { type PayloadAction } from "@reduxjs/toolkit";
 import type {
@@ -21,9 +25,17 @@ export const initialAutotradeSettings: AutotradeSettings = {
   max_request: 0,
   telegram_signals: true,
   max_active_autotrade_bots: 0,
+  grid_allocation_pct: 1.0,
+  grid_cash_reserve_pct: 0.01,
+  grid_total_margin: 1.0,
+  grid_level_count: 3,
+  grid_max_active_ladders: 3,
+  max_margin_per_ladder_pct: 0.25,
   base_order_size: 0,
   updated_at: 0,
   close_condition: CloseConditions.DYNAMIC_TRAILING,
+  autoswitch: false,
+  exchange_id: ExchangeId.BINANCE,
 };
 
 // In general, this will be unused
@@ -47,7 +59,7 @@ export const testAutotradeSettingsSlice = createAppSlice({
     ),
     setTestSettings: create.reducer(
       (state, { payload }: PayloadAction<AutotradeSettings>) => {
-        state.settings = payload;
+        state.settings = { ...initialAutotradeSettings, ...payload };
       },
     ),
   }),
