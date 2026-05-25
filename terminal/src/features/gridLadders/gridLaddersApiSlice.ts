@@ -1,4 +1,5 @@
 import { notifification } from "../../utils/api";
+import { weekAgo } from "../../utils/time";
 import { userApiSlice } from "../userApiSlice";
 import type { GridLadder } from "./types";
 
@@ -19,12 +20,22 @@ export const gridLaddersApiSlice = userApiSlice.injectEndpoints({
   endpoints: (build) => ({
     getGridLadders: build.query<
       GridLadder[],
-      { limit?: number; offset?: number }
+      { limit?: number; offset?: number; startDate?: number; endDate?: number }
     >({
-      query: ({ limit = 100, offset = 0 } = {}) => ({
+      query: ({
+        limit = 100,
+        offset = 0,
+        startDate = weekAgo(),
+        endDate = new Date().getTime(),
+      } = {}) => ({
         url: "/grid-ladders",
         method: "GET",
-        params: { limit, offset },
+        params: {
+          limit,
+          offset,
+          start_date: startDate,
+          end_date: endDate,
+        },
       }),
       providesTags: (result) => [
         "grid-ladders",

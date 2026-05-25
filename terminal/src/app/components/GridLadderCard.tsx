@@ -44,8 +44,14 @@ const GridLadderCard: FC<GridLadderCardProps> = ({
   const utilization = calculateGridUtilization(ladder);
   const isActive = isActiveGridLadder(ladder.status);
   const levelPnl = calculateLevelPnlSum(ladder);
-  const firstBreachAt = ladder.context.first_breach_at as number | null | undefined;
-  const firstBreachUpAt = ladder.context.first_breach_up_at as number | null | undefined;
+  const firstBreachAt = ladder.context.first_breach_at as
+    | number
+    | null
+    | undefined;
+  const firstBreachUpAt = ladder.context.first_breach_up_at as
+    | number
+    | null
+    | undefined;
 
   return (
     <Card className={selected ? "border border-success" : ""}>

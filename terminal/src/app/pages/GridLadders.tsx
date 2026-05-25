@@ -9,6 +9,7 @@ import {
   Row,
   Stack,
 } from "react-bootstrap";
+import BotsDateFilter from "../components/BotsCalendar";
 import ConfirmModal from "../components/ConfirmModal";
 import GridLadderCard from "../components/GridLadderCard";
 import { SpinnerContext } from "../Layout";
@@ -21,11 +22,11 @@ import {
 import {
   useCloseGridLadderMutation,
   useDeleteGridLadderMutation,
-  useGetActiveGridLaddersQuery,
   useGetGridLaddersQuery,
 } from "../../features/gridLadders/gridLaddersApiSlice";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 import { calculateGridReturnPct } from "../../utils/grid-ladder";
+import { weekAgo } from "../../utils/time";
 
 const GridLaddersPage: FC = () => {
   const { setSpinner } = useContext(SpinnerContext);
@@ -34,22 +35,18 @@ const GridLaddersPage: FC = () => {
   const [ladderToDelete, setLadderToDelete] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [symbolState, setSymbolState] = useState<string>("");
-  const [showActiveOnly, setShowActiveOnly] = useState<boolean>(false);
+  const [startDate, setStartDate] = useState<number>(weekAgo());
+  const [endDate, setEndDate] = useState<number>(new Date().getTime());
 
   const {
     data: allLadders = [],
     isFetching,
     refetch,
   } = useGetGridLaddersQuery(
-    { limit: 100, offset: 0 },
+    { limit: 100, offset: 0, startDate, endDate },
     { refetchOnFocus: true },
   );
   const { data: autotradeSettings } = useGetSettingsQuery();
-  const { data: activeLadders = [] } = useGetActiveGridLaddersQuery(undefined, {
-    skip: !showActiveOnly,
-    refetchOnFocus: true,
-    pollingInterval: showActiveOnly ? 10000 : 0,
-  });
 
   const [closeGridLadder, { isLoading: isClosing }] =
     useCloseGridLadderMutation();
@@ -57,10 +54,9 @@ const GridLaddersPage: FC = () => {
     useDeleteGridLadderMutation();
 
   const fiat = autotradeSettings?.fiat ?? "fiat";
-  const sourceLadders = showActiveOnly ? activeLadders : allLadders;
 
   const filteredLadders = useMemo(() => {
-    return sourceLadders.filter((ladder) => {
+    return allLadders.filter((ladder) => {
       const statusMatches =
         filterStatus === "all" || ladder.status === filterStatus;
       const symbolMatches =
@@ -68,7 +64,7 @@ const GridLaddersPage: FC = () => {
         ladder.symbol.toLowerCase().includes(symbolState.toLowerCase());
       return statusMatches && symbolMatches;
     });
-  }, [sourceLadders, filterStatus, symbolState]);
+  }, [allLadders, filterStatus, symbolState]);
 
   const summary = useMemo(() => {
     return filteredLadders.reduce(
@@ -116,9 +112,17 @@ const GridLaddersPage: FC = () => {
       setLadderToDelete(null);
       return;
     }
-    await deleteGridLadder(ladderToDelete).unwrap();
+    // Capture id and clear state immediately so the modal closes before the
+    // request completes (and even if unwrap() throws).
+    const id = ladderToDelete;
     setLadderToDelete(null);
-    await refetch();
+    try {
+      await deleteGridLadder(id).unwrap();
+    } finally {
+      // invalidatesTags handles cache, but refetch ensures the list updates
+      // even if the tag subscription has a timing gap.
+      await refetch();
+    }
   };
 
   const confirmClose = async (action: number) => {
@@ -169,15 +173,15 @@ const GridLaddersPage: FC = () => {
 
       <hr />
 
-      <Row className="mb-3">
-        <Col md={3}>
+      <Row className="mb-3 g-2 align-items-end">
+        <Col md={2}>
           <Form.Control
             placeholder="Search by symbol"
             value={symbolState}
             onChange={(e) => setSymbolState(e.target.value)}
           />
         </Col>
-        <Col md={3}>
+        <Col md={2}>
           <Form.Select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
@@ -190,16 +194,23 @@ const GridLaddersPage: FC = () => {
             ))}
           </Form.Select>
         </Col>
-        <Col md={3}>
-          <Form.Check
-            type="switch"
-            id="active-only"
-            checked={showActiveOnly}
-            onChange={(e) => setShowActiveOnly(e.target.checked)}
-            label="Show active only"
+        <Col md={2}>
+          <BotsDateFilter
+            title="Start date"
+            controlId="gridStartDate"
+            selectedDate={startDate}
+            handleDateChange={setStartDate}
           />
         </Col>
-        <Col md={3}>
+        <Col md={2}>
+          <BotsDateFilter
+            title="End date"
+            controlId="gridEndDate"
+            selectedDate={endDate}
+            handleDateChange={setEndDate}
+          />
+        </Col>
+        <Col md="auto">
           <Button
             variant="outline-secondary"
             onClick={() =>
@@ -219,12 +230,10 @@ const GridLaddersPage: FC = () => {
         </Col>
       </Row>
 
+      <hr />
+
       {filteredLadders.length === 0 ? (
-        <p>
-          {showActiveOnly
-            ? "No active grid ladders"
-            : "No grid ladders deployed yet"}
-        </p>
+        <p>No grid ladders deployed yet</p>
       ) : (
         <Row>
           {filteredLadders.map((ladder) => {
@@ -261,9 +270,9 @@ const GridLaddersPage: FC = () => {
         handleActions={confirmDelete}
         primary="Delete record"
       >
-        This permanently deletes the ladder record and all associated levels
-        and orders from the database. It does not cancel exchange orders or
-        close positions — only use this to clean up local records.
+        This permanently deletes the ladder record and all associated levels and
+        orders from the database. It does not cancel exchange orders or close
+        positions — only use this to clean up local records.
       </ConfirmModal>
     </Container>
   );

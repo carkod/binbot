@@ -52,7 +52,7 @@ export const routes = [
     id: "grid-ladders",
     nav: true,
   },
-    {
+  {
     path: "grid-ladders/:id",
     link: "/grid-ladders/:id",
     name: "View Grid Ladder",

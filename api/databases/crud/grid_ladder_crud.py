@@ -94,6 +94,8 @@ class GridLadderCrud:
         *,
         limit: int = 100,
         offset: int = 0,
+        start_date: float | None = None,
+        end_date: float | None = None,
     ) -> Sequence[GridLadderTable]:
         stmt = (
             select(GridLadderTable)
@@ -103,6 +105,10 @@ class GridLadderCrud:
             .limit(limit)
             .offset(offset)
         )
+        if start_date is not None:
+            stmt = stmt.where(GRID_LADDER_CREATED_AT_COL >= start_date)
+        if end_date is not None:
+            stmt = stmt.where(GRID_LADDER_CREATED_AT_COL <= end_date)
         return self.session.exec(stmt).unique().all()
 
     def get_active(self) -> Sequence[GridLadderTable]:

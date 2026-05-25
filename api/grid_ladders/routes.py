@@ -220,11 +220,18 @@ def post_grid_ladder(
 def list_grid_ladders(
     limit: int = 100,
     offset: int = 0,
+    start_date: float | None = None,
+    end_date: float | None = None,
     session: Session = Depends(get_session),
     _: UserTokenData = Depends(get_current_user),
 ):
     grid_ladder_crud = GridLadderCrud(session)
-    ladders = grid_ladder_crud.get_all(limit=limit, offset=offset)
+    ladders = grid_ladder_crud.get_all(
+        limit=limit,
+        offset=offset,
+        start_date=start_date,
+        end_date=end_date,
+    )
     return GridLadderListResponse(
         detail=[_grid_ladder_record(ladder) for ladder in ladders],
     )

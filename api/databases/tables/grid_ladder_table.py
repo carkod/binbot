@@ -75,11 +75,17 @@ class GridLadderTable(SQLModel, table=True):
         sa_relationship_kwargs={
             "lazy": "selectin",
             "order_by": "GridLevelTable.level_index",
+            "cascade": "all, delete-orphan",
+            "passive_deletes": True,
         },
     )
     orders: list["GridOrderTable"] = Relationship(
         back_populates="ladder",
-        sa_relationship_kwargs={"lazy": "selectin"},
+        sa_relationship_kwargs={
+            "lazy": "selectin",
+            "cascade": "all, delete-orphan",
+            "passive_deletes": True,
+        },
     )
 
     model_config = {"from_attributes": True, "use_enum_values": True}
