@@ -62,6 +62,28 @@ class GridLadderLifecycle:
             return
 
         if status == GridLadderStatus.active.value:
+            range_break = self._range_break(ladder)
+            if range_break is not None:
+                direction, price = range_break
+                close_reason = f"range_break_{direction}"
+                self._close_ladder(
+                    ladder,
+                    context_updates={
+                        "close_reason": close_reason,
+                        "range_break_price": price,
+                        "breakout_low": ladder.breakout_low,
+                        "breakout_high": ladder.breakout_high,
+                    },
+                    log_event={
+                        "event": "range_break_close",
+                        "direction": direction,
+                        "price": price,
+                        "breakout_low": ladder.breakout_low,
+                        "breakout_high": ladder.breakout_high,
+                    },
+                )
+                return
+
             self._reconcile_active_ladder(ladder)
             self._refresh_unrealized_pnl(ladder)
             return
@@ -110,6 +132,30 @@ class GridLadderLifecycle:
         if side == "sell":
             return AddOrderReq.SideEnum.BUY
         raise ValueError(f"Unsupported grid side: {side}")
+
+    def _range_break(self, ladder: GridLadderTable) -> tuple[str, float] | None:
+        price = self._current_position_price(ladder.symbol)
+        if price is None:
+            return None
+        if price < ladder.breakout_low:
+            return "down", price
+        if price > ladder.breakout_high:
+            return "up", price
+        return None
+
+    def _current_position_price(self, symbol: str) -> float | None:
+        symbol_row = self._symbol_row(symbol)
+        position = self.base_streaming.kucoin_futures_api.get_futures_position(
+            symbol_row.get_futures_symbol()
+        )
+        if position is None:
+            return None
+
+        for field_name in ("mark_price", "current_price", "price"):
+            raw_price = getattr(position, field_name, None)
+            if raw_price is not None:
+                return float(raw_price)
+        return None
 
     def _place_initial_entries(self, ladder: GridLadderTable) -> None:
         symbol_row = self._symbol_row(ladder.symbol)
@@ -343,7 +389,13 @@ class GridLadderLifecycle:
         unrealized_pnl = round_numbers(float(raw_pnl or 0), 8)
         self.crud.update_unrealized_pnl(ladder.id, unrealized_pnl)
 
-    def _close_ladder(self, ladder: GridLadderTable) -> None:
+    def _close_ladder(
+        self,
+        ladder: GridLadderTable,
+        *,
+        context_updates: dict | None = None,
+        log_event: dict | None = None,
+    ) -> None:
         self._cancel_ladder_orders(ladder.symbol)
         self.crud.update_orders_for_ladder(
             ladder.id,
@@ -364,9 +416,12 @@ class GridLadderLifecycle:
         self.crud.update_status_with_context(
             ladder.id,
             GridLadderStatus.closed,
+            context_updates=context_updates,
             closed_at=timestamp(),
         )
         self.crud.update_unrealized_pnl(ladder.id, 0)
+        if log_event is not None:
+            self.crud.update_logs(ladder.id, log_event)
         self.crud.update_logs(ladder.id, {"event": "ladder_closed"})
 
     def _cancel_ladder_orders(self, symbol: str) -> None:

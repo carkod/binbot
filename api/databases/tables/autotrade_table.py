@@ -28,6 +28,11 @@ class SettingsDocument(SQLModel):
     max_request: int = Field(default=950)
     telegram_signals: bool = Field(default=True)
     max_active_autotrade_bots: int = Field(default=1)
+    grid_allocation_pct: float = Field(default=1.0)
+    grid_cash_reserve_pct: float = Field(default=0.0)
+    grid_total_margin: float = Field(default=1.0)
+    grid_level_count: int = Field(default=3)
+    grid_max_active_ladders: int = Field(default=3)
     autoswitch: bool = Field(
         default=True,
         description="Automatically switch between long bot or short bot based on stop loss a.k.a. margin_short_reversal in bots",
