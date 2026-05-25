@@ -11,6 +11,7 @@ from databases.crud.autotrade_crud import AutotradeCrud
 from databases.crud.symbols_crud import SymbolsCrud
 from databases.tables.market_breadth_table import MarketBreadthTable
 from databases.utils import independent_session
+from exchange_apis.coingecko import CoinGecko
 from kucoin_universal_sdk.generate.spot.market.model_get_symbol_resp import (
     GetSymbolResp,
 )
@@ -38,6 +39,7 @@ class MarketDominationController:
             secret=self.config.kucoin_secret,
             passphrase=self.config.kucoin_passphrase,
         )
+        self.coingecko_api = CoinGecko()
 
     def _normalize_market_breadth_ticker(
         self, item: GetSymbolResp, fallback_timestamp: datetime | None = None
@@ -231,33 +233,29 @@ class MarketDominationController:
 
     def gainers_losers(self) -> tuple[Iterable[Any], Iterable[Any]]:
         """
-        Get market top gainers of the day
+        Get KuCoin Futures USDT perpetual top gainers and losers of the day.
 
-        ATTENTION - This is a very heavy weight operation
-        ticker_24() retrieves all tokens
+        CoinGecko is used for discovery/ranking because KuCoin Futures all-tickers
+        does not include per-contract 24h percentage change.
         """
-        fiat = self.autotrade_db.get_fiat()
-        ticker_data = self.binance_api.ticker_24()
+        tickers = [
+            item
+            for item in self.coingecko_api.get_kucoin_futures_tickers()
+            if item["target"] == "USDT"
+            and item["contract_type"] == "perpetual"
+            and item["expired_at"] is None
+            and item["h24_percentage_change"] is not None
+        ]
 
         gainers = sorted(
-            [
-                item
-                for item in ticker_data
-                if float(item["priceChangePercent"]) > 0
-                and item["symbol"].endswith(fiat)
-            ],
-            key=lambda x: float(x["priceChangePercent"]),
+            [item for item in tickers if item["h24_percentage_change"] > 0],
+            key=lambda item: item["h24_percentage_change"],
             reverse=True,
         )
 
         losers = sorted(
-            [
-                item
-                for item in ticker_data
-                if float(item["priceChangePercent"]) < 0
-                and item["symbol"].endswith(fiat)
-            ],
-            key=lambda x: float(x["priceChangePercent"]),
+            [item for item in tickers if item["h24_percentage_change"] < 0],
+            key=lambda item: item["h24_percentage_change"],
         )
 
         return gainers[:10], losers[:10]
