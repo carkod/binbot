@@ -94,6 +94,8 @@ class GridLadderCrud:
         *,
         limit: int = 100,
         offset: int = 0,
+        start_date: float | None = None,
+        end_date: float | None = None,
     ) -> Sequence[GridLadderTable]:
         stmt = (
             select(GridLadderTable)
@@ -103,6 +105,10 @@ class GridLadderCrud:
             .limit(limit)
             .offset(offset)
         )
+        if start_date is not None:
+            stmt = stmt.where(GRID_LADDER_CREATED_AT_COL >= start_date)
+        if end_date is not None:
+            stmt = stmt.where(GRID_LADDER_CREATED_AT_COL <= end_date)
         return self.session.exec(stmt).unique().all()
 
     def get_active(self) -> Sequence[GridLadderTable]:
@@ -159,6 +165,22 @@ class GridLadderCrud:
             return None
 
         ladder.unrealized_pnl = unrealized_pnl
+        ladder.updated_at = timestamp()
+        self.session.add(ladder)
+        self.session.commit()
+        self.session.refresh(ladder)
+        return ladder
+
+    def update_realized_pnl(
+        self,
+        ladder_id: UUID,
+        realized_pnl: float,
+    ) -> GridLadderTable | None:
+        ladder = self.session.get(GridLadderTable, ladder_id)
+        if ladder is None:
+            return None
+
+        ladder.realized_pnl = realized_pnl
         ladder.updated_at = timestamp()
         self.session.add(ladder)
         self.session.commit()
@@ -385,6 +407,14 @@ class GridLadderCrud:
         self.session.commit()
         self.session.refresh(level)
         return level
+
+    def delete(self, ladder_id: UUID) -> bool:
+        ladder = self.session.get(GridLadderTable, ladder_id)
+        if ladder is None:
+            return False
+        self.session.delete(ladder)
+        self.session.commit()
+        return True
 
     def close(
         self,

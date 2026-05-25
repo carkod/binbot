@@ -5,7 +5,9 @@ import {
   calculateFilledLevelCount,
   calculateGridPnl,
   calculateGridUtilization,
+  calculateLevelPnlSum,
   calculateOpenOrderCount,
+  isActiveGridLadder,
   type GridLadder,
 } from "../../features/gridLadders/gridLadders";
 import type { GridLadderStatus } from "../../features/gridLadders/gridLadders";
@@ -17,6 +19,7 @@ interface GridLadderCardProps {
   selected: boolean;
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
+  onDelete: (id: string) => void;
 }
 
 const statusColorMap: Record<GridLadderStatus, string> = {
@@ -34,10 +37,21 @@ const GridLadderCard: FC<GridLadderCardProps> = ({
   selected,
   onSelect,
   onClose,
+  onDelete,
 }) => {
   const navigate = useNavigate();
   const totalPnl = calculateGridPnl(ladder);
   const utilization = calculateGridUtilization(ladder);
+  const isActive = isActiveGridLadder(ladder.status);
+  const levelPnl = calculateLevelPnlSum(ladder);
+  const firstBreachAt = ladder.context.first_breach_at as
+    | number
+    | null
+    | undefined;
+  const firstBreachUpAt = ladder.context.first_breach_up_at as
+    | number
+    | null
+    | undefined;
 
   return (
     <Card className={selected ? "border border-success" : ""}>
@@ -51,6 +65,24 @@ const GridLadderCard: FC<GridLadderCardProps> = ({
             {ladder.status.toUpperCase()}
           </Badge>
           <Badge bg={returnBadgeBg(gridReturnPct)}>{gridReturnPct}%</Badge>
+          {firstBreachAt != null && (
+            <Badge
+              bg="warning"
+              text="dark"
+              title={`Break-down breach started: ${new Date(firstBreachAt).toISOString()}`}
+            >
+              ⚠ BREAK DOWN
+            </Badge>
+          )}
+          {firstBreachUpAt != null && (
+            <Badge
+              bg="warning"
+              text="dark"
+              title={`Break-up breach started: ${new Date(firstBreachUpAt).toISOString()}`}
+            >
+              ⚠ BREAK UP
+            </Badge>
+          )}
         </div>
       </Card.Header>
       <Card.Body>
@@ -87,15 +119,38 @@ const GridLadderCard: FC<GridLadderCardProps> = ({
             {ladder.reserved_margin} / {ladder.total_margin}
           </Col>
         </Row>
-        <Row>
-          <Col xs={6}>PnL</Col>
-          <Col
-            xs={6}
-            className={`text-end ${totalPnl >= 0 ? "text-success" : "text-danger"}`}
-          >
-            {totalPnl.toFixed(4)}
-          </Col>
-        </Row>
+        {isActive ? (
+          <>
+            <Row>
+              <Col xs={6}>TP cycled</Col>
+              <Col
+                xs={6}
+                className={`text-end ${levelPnl >= 0 ? "text-success" : "text-danger"}`}
+              >
+                {levelPnl.toFixed(4)}
+              </Col>
+            </Row>
+            <Row>
+              <Col xs={6}>Unrealized</Col>
+              <Col
+                xs={6}
+                className={`text-end ${ladder.unrealized_pnl >= 0 ? "text-success" : "text-danger"}`}
+              >
+                {ladder.unrealized_pnl.toFixed(4)}
+              </Col>
+            </Row>
+          </>
+        ) : (
+          <Row>
+            <Col xs={6}>Realized PnL</Col>
+            <Col
+              xs={6}
+              className={`text-end ${totalPnl >= 0 ? "text-success" : "text-danger"}`}
+            >
+              {totalPnl.toFixed(4)}
+            </Col>
+          </Row>
+        )}
         <Row>
           <Col xs={6}>Utilization</Col>
           <Col xs={6} className="text-end">
@@ -143,6 +198,9 @@ const GridLadderCard: FC<GridLadderCardProps> = ({
         </Button>
         <Button variant="danger" onClick={() => onClose(ladder.id)}>
           Close ladder
+        </Button>
+        <Button variant="outline-danger" onClick={() => onDelete(ladder.id)}>
+          Delete
         </Button>
       </Card.Footer>
     </Card>

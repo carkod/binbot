@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.encoders import jsonable_encoder
 from sqlmodel import Session
 
@@ -18,7 +18,7 @@ from pybinbot.models.grid_ladder import (
     GridLadderResponse,
 )
 from grid_ladders.calculations import calculate_grid_levels
-from grid_ladders.capital import evaluate_grid_capital
+from grid_ladders.capital import GridCapitalSettings
 from grid_ladders.models import GridLadderCreate
 from grid_ladders.sizing import KucoinGridMarginRules
 from tools.config import Config
@@ -151,7 +151,7 @@ def post_grid_ladder(
     balance = ConsolidatedAccounts(session=session).get_balance()
     available_fiat_balance = balance.fiat_available
     try:
-        evaluate_grid_capital(
+        GridCapitalSettings(session).evaluate_grid_capital(
             active_ladders,
             available_fiat_balance,
             payload.total_margin,
@@ -220,11 +220,18 @@ def post_grid_ladder(
 def list_grid_ladders(
     limit: int = 100,
     offset: int = 0,
+    start_date: float | None = None,
+    end_date: float | None = None,
     session: Session = Depends(get_session),
     _: UserTokenData = Depends(get_current_user),
 ):
     grid_ladder_crud = GridLadderCrud(session)
-    ladders = grid_ladder_crud.get_all(limit=limit, offset=offset)
+    ladders = grid_ladder_crud.get_all(
+        limit=limit,
+        offset=offset,
+        start_date=start_date,
+        end_date=end_date,
+    )
     return GridLadderListResponse(
         detail=[_grid_ladder_record(ladder) for ladder in ladders],
     )
@@ -256,6 +263,18 @@ def get_grid_ladder_by_id(
     return GridLadderResponse(
         detail=_grid_ladder_record(ladder),
     )
+
+
+@grid_ladder_blueprint.delete("/{ladder_id}", status_code=204)
+def delete_grid_ladder_by_id(
+    ladder_id: UUID,
+    session: Session = Depends(get_session),
+    _: UserTokenData = Depends(get_current_user),
+):
+    deleted = GridLadderCrud(session).delete(ladder_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Grid ladder not found")
+    return Response(status_code=204)
 
 
 @grid_ladder_blueprint.post("/{ladder_id}/close", response_model=GridLadderResponse)
