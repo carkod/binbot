@@ -23,6 +23,7 @@ import {
   useGetGridLaddersQuery,
 } from "../../features/gridLadders/gridLaddersApiSlice";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
+import { calculateGridReturnPct } from "../../utils/grid-ladder";
 
 const GridLaddersPage: FC = () => {
   const { setSpinner } = useContext(SpinnerContext);
@@ -206,16 +207,21 @@ const GridLaddersPage: FC = () => {
         </p>
       ) : (
         <Row>
-          {filteredLadders.map((ladder) => (
-            <Col key={ladder.id} lg={4} className="mb-3">
-              <GridLadderCard
-                ladder={ladder}
-                selected={selectedCards.includes(ladder.id)}
-                onSelect={handleSelect}
-                onClose={setLadderToClose}
-              />
-            </Col>
-          ))}
+          {filteredLadders.map((ladder) => {
+            const gridReturnPct = calculateGridReturnPct(ladder);
+
+            return (
+              <Col key={ladder.id} lg={4} className="mb-3">
+                <GridLadderCard
+                  ladder={ladder}
+                  gridReturnPct={gridReturnPct}
+                  selected={selectedCards.includes(ladder.id)}
+                  onSelect={handleSelect}
+                  onClose={setLadderToClose}
+                />
+              </Col>
+            );
+          })}
         </Row>
       )}
 

@@ -9,9 +9,11 @@ import {
   type GridLadder,
 } from "../../features/gridLadders/gridLadders";
 import type { GridLadderStatus } from "../../features/gridLadders/gridLadders";
+import { returnBadgeBg } from "../../utils/grid-ladder";
 
 interface GridLadderCardProps {
   ladder: GridLadder;
+  gridReturnPct: number;
   selected: boolean;
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
@@ -28,6 +30,7 @@ const statusColorMap: Record<GridLadderStatus, string> = {
 
 const GridLadderCard: FC<GridLadderCardProps> = ({
   ladder,
+  gridReturnPct,
   selected,
   onSelect,
   onClose,
@@ -43,9 +46,12 @@ const GridLadderCard: FC<GridLadderCardProps> = ({
           <strong>{ladder.symbol}</strong>
           <div className="text-muted small">{ladder.algorithm_name}</div>
         </div>
-        <Badge bg={statusColorMap[ladder.status]}>
-          {ladder.status.toUpperCase()}
-        </Badge>
+        <div className="d-flex flex-column align-items-end gap-1">
+          <Badge bg={statusColorMap[ladder.status]}>
+            {ladder.status.toUpperCase()}
+          </Badge>
+          <Badge bg={returnBadgeBg(gridReturnPct)}>{gridReturnPct}%</Badge>
+        </div>
       </Card.Header>
       <Card.Body>
         <div className="small text-muted mb-2">
