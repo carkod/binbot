@@ -1021,7 +1021,8 @@ class PositionDeal(KucoinPositionDeal):
                     self.active_bot.pair
                 )
             )
-            close_price = prefetched_position.mark_price
+            if prefetched_position is not None:
+                close_price = prefetched_position.mark_price
         else:
             cls = SpotPosition(
                 base_streaming=self.base_streaming,
