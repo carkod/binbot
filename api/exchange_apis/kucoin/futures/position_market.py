@@ -236,11 +236,9 @@ class PositionMarket(KucoinPositionDeal):
             symbol=self.symbol,
             interval=str(self.base_streaming.interval.value),
         )
-        self.btc_klines = self.api.get_ui_klines(
-            symbol=self.base_streaming.kucoin_benchmark_symbol
-            if self.base_streaming.exchange == ExchangeId.KUCOIN
-            else self.base_streaming.benchmark_symbol,
-            interval=str(self.base_streaming.interval.value),
+        self.btc_klines = self.base_streaming.binance_api.get_ui_klines(
+            symbol="BTCUSDT",
+            interval=self.base_streaming.binance_interval.value,
         )
 
         raw_candles = Candles(
@@ -250,7 +248,7 @@ class PositionMarket(KucoinPositionDeal):
         self.df = raw_candles.pre_process()
 
         raw_btc_candles = Candles(
-            exchange=self.base_streaming.exchange,
+            exchange=ExchangeId.BINANCE,
             candles=self.btc_klines.copy(),
         )
         self.btc_df = raw_btc_candles.pre_process()

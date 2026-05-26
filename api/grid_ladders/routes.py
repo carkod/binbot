@@ -85,6 +85,18 @@ def _fetch_kucoin_futures_contract_meta(symbol_row: SymbolTable) -> GridContract
     )
 
 
+def _symbol_price_precision(
+    symbol_row: SymbolTable, exchange_id: ExchangeId
+) -> int | None:
+    exchange_values = symbol_row.exchange_values or []
+    for row in exchange_values:
+        if row.exchange_id == exchange_id:
+            return row.price_precision
+    if exchange_values:
+        return exchange_values[0].price_precision
+    return None
+
+
 def _build_margin_sizer(
     session: Session,
     symbol: str,
@@ -130,6 +142,7 @@ def _build_margin_sizer(
         lot_size=contract_meta.lot_size,
         taker_fee_rate=contract_meta.taker_fee_rate,
         min_notional=min_notional or contract_meta.min_notional,
+        price_precision=_symbol_price_precision(symbol_row, ExchangeId.KUCOIN),
     )
 
 

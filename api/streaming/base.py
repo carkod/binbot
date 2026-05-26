@@ -58,6 +58,7 @@ class BaseStreaming:
         kucoin_interval = KucoinKlineIntervals(
             BinanceKlineIntervals.to_kucoin_interval(binance_interval)
         )
+        self.binance_interval = binance_interval
         self.interval: Union[BinanceKlineIntervals, KucoinKlineIntervals]
         self.api: Union[BinanceApi, None]
         # Prepare interval based on exchange

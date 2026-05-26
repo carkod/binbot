@@ -296,6 +296,44 @@ def test_sizes_level_contracts_using_margin_spend_interpretation():
     assert buy_level.margin_required == 225
 
 
+def test_grid_levels_round_prices_to_symbol_data_precision():
+    sizer = KucoinGridMarginRules(
+        futures_leverage=1,
+        multiplier=1,
+        lot_size=1,
+        price_precision=5,
+    )
+
+    calculated = calculate_grid_levels(0.010003, 0.010061, 5, 10, sizer)
+
+    assert [level.price for level in calculated.levels] == [
+        0.01000,
+        0.01001,
+        0.01003,
+        0.01004,
+        0.01006,
+    ]
+    assert [level.take_profit_price for level in calculated.levels] == [
+        0.01001,
+        0.01003,
+        None,
+        0.01003,
+        0.01004,
+    ]
+
+
+def test_grid_rejects_levels_that_collapse_after_symbol_data_rounding():
+    sizer = KucoinGridMarginRules(
+        futures_leverage=1,
+        multiplier=1,
+        lot_size=1,
+        price_precision=2,
+    )
+
+    with pytest.raises(ValueError, match="collapse after symbol price precision"):
+        calculate_grid_levels(1.001, 1.009, 5, 1000, sizer)
+
+
 def test_rejects_ladder_when_per_level_margin_is_too_small():
     sizer = KucoinGridMarginRules(futures_leverage=1, multiplier=1, lot_size=1)
 
@@ -404,6 +442,31 @@ def test_grid_lifecycle_places_initial_entry_orders(
     assert all(level["entry_order_id"] for level in entry_levels)
     assert len(detail["logs"]) == 4
     assert "Placed entry order grid-order-1" in detail["logs"][0]
+
+
+def test_grid_lifecycle_rounds_pending_ladder_prices_before_placing_orders(
+    client, monkeypatch, create_test_tables
+):
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+    payload = _payload(total_margin=10)
+    payload["range_low"] = 0.01003
+    payload["range_high"] = 0.01061
+    payload["breakout_low"] = 0.009
+    payload["breakout_high"] = 0.011
+    response = client.post("/grid-ladders", json=payload)
+    assert response.status_code == 200
+
+    fake_api = FakeFuturesApi()
+    with Session(create_test_tables) as session:
+        GridLadderLifecycle(_grid_base(fake_api), session).process_symbol("ADAUSDC")
+
+    assert [order["price"] for order in fake_api.orders] == [
+        0.01,
+        0.0101,
+        0.0104,
+        0.0106,
+    ]
 
 
 def test_grid_lifecycle_places_take_profit_after_entry_fill(
