@@ -5,7 +5,16 @@ from typing import Protocol
 from pybinbot import round_numbers
 
 
+def round_price_to_precision(price: float, price_precision: int | None) -> float:
+    if price <= 0 or price_precision is None:
+        return price
+
+    return float(round_numbers(price, price_precision))
+
+
 class GridMarginSizer(Protocol):
+    price_precision: int | None
+
     def required_margin_for_contracts(
         self, contracts: float, price: float
     ) -> float: ...
@@ -23,6 +32,7 @@ class KucoinGridMarginRules:
     lot_size: float = 1.0
     taker_fee_rate: float = 0.0
     min_notional: float = 0.0
+    price_precision: int | None = None
 
     def notional_for_contracts(self, contracts: float, price: float) -> float:
         return contracts * price * self.multiplier

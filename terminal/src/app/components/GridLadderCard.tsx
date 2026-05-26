@@ -12,6 +12,7 @@ import {
 } from "../../features/gridLadders/gridLadders";
 import type { GridLadderStatus } from "../../features/gridLadders/gridLadders";
 import { returnBadgeBg } from "../../utils/grid-ladder";
+import { roundDecimals } from "../../utils/math";
 
 interface GridLadderCardProps {
   ladder: GridLadder;
@@ -52,18 +53,23 @@ const GridLadderCard: FC<GridLadderCardProps> = ({
     | number
     | null
     | undefined;
+  const showAlgorithmName = ladder.algorithm_name !== "grid_ladder";
 
   return (
     <Card className={selected ? "border border-success" : ""}>
       <Card.Header className="d-flex justify-content-between align-items-center">
         <div>
           <strong>{ladder.symbol}</strong>
-          <div className="text-muted small">{ladder.algorithm_name}</div>
+          <div>
+            <Badge bg={statusColorMap[ladder.status]}>
+              {ladder.status.toUpperCase()}
+            </Badge>
+          </div>
+          {showAlgorithmName && (
+            <div className="text-muted small">{ladder.algorithm_name}</div>
+          )}
         </div>
         <div className="d-flex flex-column align-items-end gap-1">
-          <Badge bg={statusColorMap[ladder.status]}>
-            {ladder.status.toUpperCase()}
-          </Badge>
           <Badge bg={returnBadgeBg(gridReturnPct)}>{gridReturnPct}%</Badge>
           {firstBreachAt != null && (
             <Badge
@@ -98,7 +104,8 @@ const GridLadderCard: FC<GridLadderCardProps> = ({
         <Row>
           <Col xs={6}>Breakout</Col>
           <Col xs={6} className="text-end">
-            {ladder.breakout_low} / {ladder.breakout_high}
+            {roundDecimals(ladder.breakout_low)} /{" "}
+            {roundDecimals(ladder.breakout_high)}
           </Col>
         </Row>
         <Row>
@@ -110,13 +117,14 @@ const GridLadderCard: FC<GridLadderCardProps> = ({
         <Row>
           <Col xs={6}>Step</Col>
           <Col xs={6} className="text-end">
-            {ladder.grid_step}
+            {roundDecimals(ladder.grid_step)}
           </Col>
         </Row>
         <Row>
           <Col xs={6}>Margin</Col>
           <Col xs={6} className="text-end">
-            {ladder.reserved_margin} / {ladder.total_margin}
+            {roundDecimals(ladder.reserved_margin)} /{" "}
+            {roundDecimals(ladder.total_margin)}
           </Col>
         </Row>
         {isActive ? (

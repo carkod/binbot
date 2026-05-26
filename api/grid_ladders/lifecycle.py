@@ -11,6 +11,7 @@ from databases.tables.symbol_table import SymbolTable
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
 from kucoin_universal_sdk.model.common import RestError
 from pybinbot import (
+    ExchangeId,
     GridLadderStatus,
     GridLevelStatus,
     GridOrderRole,
@@ -19,6 +20,7 @@ from pybinbot import (
     round_numbers,
     timestamp,
 )
+from grid_ladders.sizing import round_price_to_precision
 from kucoin_universal_sdk.generate.futures.order.model_get_order_by_order_id_resp import (
     GetOrderByOrderIdResp,
 )
@@ -124,6 +126,15 @@ class GridLadderLifecycle:
             raise ValueError(f"Symbol not found: {symbol}")
         return symbol_row
 
+    def _price_precision(self, symbol_row: SymbolTable) -> int | None:
+        exchange_values = symbol_row.exchange_values or []
+        for row in exchange_values:
+            if row.exchange_id == ExchangeId.KUCOIN:
+                return row.price_precision
+        if exchange_values:
+            return exchange_values[0].price_precision
+        return None
+
     def _order_status(self, value: Enum | str | None) -> str:
         if value is None:
             return OrderStatus.REJECTED.value
@@ -138,8 +149,14 @@ class GridLadderLifecycle:
         return float(details.filled_size or 0)
 
     def _filled_price(self, details: GetOrderByOrderIdResp, fallback: float) -> float:
-        price = details.avg_deal_price or details.price or fallback
-        return float(price)
+        for raw_price in (details.avg_deal_price, details.price, fallback):
+            try:
+                price = float(raw_price)
+            except (TypeError, ValueError):
+                continue
+            if price > 0:
+                return price
+        return 0.0
 
     def _side_enum(self, side: str) -> AddOrderReq.SideEnum:
         if side == "buy":
@@ -235,6 +252,7 @@ class GridLadderLifecycle:
 
     def _place_initial_entries(self, ladder: GridLadderTable) -> None:
         symbol_row = self._symbol_row(ladder.symbol)
+        price_precision = self._price_precision(symbol_row)
         placed_order_ids: list[str] = []
 
         try:
@@ -244,11 +262,12 @@ class GridLadderLifecycle:
                 if level.entry_order_id:
                     continue
 
+                price = round_price_to_precision(level.price, price_precision)
                 order = self.base_streaming.kucoin_futures_api.place_futures_order(
                     symbol=symbol_row.get_futures_symbol(),
                     side=self._side_enum(level.side),
                     size=level.contracts,
-                    price=level.price,
+                    price=price,
                     leverage=symbol_row.futures_leverage,
                     order_type=OrderType.limit,
                     reduce_only=False,
@@ -260,7 +279,7 @@ class GridLadderLifecycle:
                     exchange_order_id=str(order.order_id),
                     order_role=GridOrderRole.entry.value,
                     side=level.side,
-                    price=level.price,
+                    price=price,
                     contracts=level.contracts,
                     status=GRID_ORDER_OPEN_STATUS,
                 )
@@ -269,7 +288,7 @@ class GridLadderLifecycle:
                     (
                         f"Placed entry order {order.order_id} for level "
                         f"{level.level_index}: {level.side} {level.contracts} "
-                        f"contracts @ {level.price}"
+                        f"contracts @ {price}"
                     ),
                 )
                 self.crud.update_level_order(
@@ -314,6 +333,8 @@ class GridLadderLifecycle:
 
             status = self._order_status(details.status)
             filled_qty = self._filled_size(details)
+            if status == OrderStatus.FILLED.value and filled_qty <= 0:
+                filled_qty = float(order.contracts)
             filled_price = self._filled_price(details, order.price)
 
             if status == OrderStatus.FILLED.value or filled_qty > 0:
@@ -376,11 +397,15 @@ class GridLadderLifecycle:
             return
 
         symbol_row = self._symbol_row(ladder.symbol)
+        price = round_price_to_precision(
+            level.take_profit_price,
+            self._price_precision(symbol_row),
+        )
         order = self.base_streaming.kucoin_futures_api.place_futures_order(
             symbol=symbol_row.get_futures_symbol(),
             side=self._opposite_side_enum(level.side),
             size=level.filled_entry_qty or level.contracts,
-            price=level.take_profit_price,
+            price=price,
             leverage=symbol_row.futures_leverage,
             order_type=OrderType.limit,
             reduce_only=True,
@@ -391,7 +416,7 @@ class GridLadderLifecycle:
             exchange_order_id=str(order.order_id),
             order_role=GridOrderRole.take_profit.value,
             side="sell" if level.side == "buy" else "buy",
-            price=level.take_profit_price,
+            price=price,
             contracts=int(level.filled_entry_qty or level.contracts),
             status=GRID_ORDER_OPEN_STATUS,
         )
@@ -401,7 +426,7 @@ class GridLadderLifecycle:
                 f"Placed take-profit order {order.order_id} for level "
                 f"{level.level_index}: {'sell' if level.side == 'buy' else 'buy'} "
                 f"{int(level.filled_entry_qty or level.contracts)} contracts "
-                f"@ {level.take_profit_price}"
+                f"@ {price}"
             ),
         )
         self.crud.update_level_order(

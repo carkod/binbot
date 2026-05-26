@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from grid_ladders.sizing import GridMarginSizer
+from grid_ladders.sizing import GridMarginSizer, round_price_to_precision
 
 
 @dataclass(frozen=True)
@@ -34,16 +34,25 @@ def calculate_grid_levels(
     midpoint_index = level_count // 2
     active_entry_level_count = level_count - 1
     per_level_margin = total_margin / active_entry_level_count
+    prices = [
+        round_price_to_precision(range_low + (grid_step * index), sizer.price_precision)
+        for index in range(level_count)
+    ]
+    if len(set(prices)) != len(prices):
+        raise ValueError(
+            "Grid levels collapse after symbol price precision rounding; "
+            "widen the range or reduce level_count"
+        )
     levels: list[CalculatedGridLevel] = []
 
     for level_index in range(level_count):
-        price = range_low + (grid_step * level_index)
+        price = prices[level_index]
         if level_index < midpoint_index:
             side = "buy"
-            take_profit_price = price + grid_step
+            take_profit_price = prices[level_index + 1]
         elif level_index > midpoint_index:
             side = "sell"
-            take_profit_price = price - grid_step
+            take_profit_price = prices[level_index - 1]
         else:
             side = "neutral"
             take_profit_price = None

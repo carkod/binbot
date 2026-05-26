@@ -1,11 +1,16 @@
 import { Exchange } from "binbot-charts";
-import { calculateGridPnl } from "../features/gridLadders/gridLadders";
+import {
+  calculateGridPnl,
+  calculateLevelPnlSum,
+  isActiveGridLadder,
+} from "../features/gridLadders/gridLadders";
 import type { GridLadder, GridLevel } from "../features/gridLadders/types";
 import { dealColors } from "./charting";
 import type { OrderLine, TimescaleMark } from "./charting/index.d";
 import { MarketType } from "./enums";
 import { roundDecimals } from "./math";
 import { capitalizeFirst } from "./strings";
+import { matchTsToTimescale } from "./time";
 
 export const prominentBadgeClass = "";
 
@@ -71,14 +76,6 @@ export const buildGridOrderLines = (ladder: GridLadder): OrderLine[] =>
 
     return lines;
   });
-
-const matchTsToTimescale = (ts: number | string | null | undefined): number => {
-  const date = new Date(Number(ts));
-  date.setMinutes(0);
-  date.setSeconds(0);
-  date.setMilliseconds(0);
-  return date.getTime() / 1000;
-};
 
 export const buildGridTimescaleMarks = (
   ladder: GridLadder,
@@ -190,15 +187,19 @@ export const calculateGridReturnPct = (ladder: GridLadder): number => {
 export const calculateGridLiveUnrealizedPnl = (
   ladder: GridLadder,
   currentPrice: number,
+  contractMultiplier: number = 1,
 ): number => {
-  const openStatuses = new Set(["filled", "take_profit_open", "open"]);
+  const openPositionStatuses = new Set(["filled", "take_profit_open"]);
+  const multiplier = Number.isFinite(contractMultiplier)
+    ? contractMultiplier
+    : 1;
 
   const unrealized = ladder.levels.reduce((acc, level) => {
-    if (!openStatuses.has(level.status)) {
+    if (!openPositionStatuses.has(level.status)) {
       return acc;
     }
 
-    const quantity = level.filled_entry_qty || level.contracts;
+    const quantity = level.filled_entry_qty;
     if (!quantity) {
       return acc;
     }
@@ -209,8 +210,34 @@ export const calculateGridLiveUnrealizedPnl = (
     }
 
     const entryPrice = level.filled_entry_price || level.price;
-    return acc + (currentPrice - entryPrice) * quantity * direction;
+    return (
+      acc + (currentPrice - entryPrice) * quantity * multiplier * direction
+    );
   }, 0);
 
   return roundDecimals(unrealized, 8);
+};
+
+export const calculateGridLivePnl = (
+  ladder: GridLadder,
+  unrealizedPnl: number,
+): number => {
+  if (!isActiveGridLadder(ladder.status)) {
+    return ladder.realized_pnl;
+  }
+
+  return calculateLevelPnlSum(ladder) + unrealizedPnl;
+};
+
+export const calculateGridLiveReturnPct = (
+  ladder: GridLadder,
+  unrealizedPnl: number,
+): number => {
+  if (ladder.total_margin <= 0) {
+    return 0;
+  }
+
+  return roundDecimals(
+    (calculateGridLivePnl(ladder, unrealizedPnl) / ladder.total_margin) * 100,
+  );
 };

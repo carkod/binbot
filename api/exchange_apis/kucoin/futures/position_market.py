@@ -3,6 +3,9 @@ from typing import Type, Union
 from bots.models import BotModel
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
+from kucoin_universal_sdk.generate.futures.positions.model_get_position_details_resp import (
+    GetPositionDetailsResp,
+)
 from pybinbot import (
     BinanceApi,
     Candles,
@@ -233,11 +236,9 @@ class PositionMarket(KucoinPositionDeal):
             symbol=self.symbol,
             interval=str(self.base_streaming.interval.value),
         )
-        self.btc_klines = self.api.get_ui_klines(
-            symbol=self.base_streaming.kucoin_benchmark_symbol
-            if self.base_streaming.exchange == ExchangeId.KUCOIN
-            else self.base_streaming.benchmark_symbol,
-            interval=str(self.base_streaming.interval.value),
+        self.btc_klines = self.base_streaming.binance_api.get_ui_klines(
+            symbol="BTCUSDT",
+            interval=self.base_streaming.binance_interval.value,
         )
 
         raw_candles = Candles(
@@ -247,7 +248,7 @@ class PositionMarket(KucoinPositionDeal):
         self.df = raw_candles.pre_process()
 
         raw_btc_candles = Candles(
-            exchange=self.base_streaming.exchange,
+            exchange=ExchangeId.BINANCE,
             candles=self.btc_klines.copy(),
         )
         self.btc_df = raw_btc_candles.pre_process()
@@ -260,7 +261,9 @@ class PositionMarket(KucoinPositionDeal):
 
         return self.klines, self.btc_klines
 
-    def position_updates(self) -> BotModel:
+    def position_updates(
+        self, position: GetPositionDetailsResp | None = None
+    ) -> BotModel:
         """
         Due to ADL, position size (number of contracts can change)
         Therefore we need to keep base_order_size up to date at all times, so that exit execution can succeed with correct qty
@@ -268,10 +271,11 @@ class PositionMarket(KucoinPositionDeal):
         if self.active_bot.deal.base_order_size > 0:
             old_size = self.active_bot.deal.base_order_size
             old_commissions = self.active_bot.deal.total_commissions
-            kucoin_symbol = convert_to_kucoin_symbol(self.active_bot)
-            position = self.base_streaming.kucoin_futures_api.get_futures_position(
-                kucoin_symbol
-            )
+            if position is None:
+                kucoin_symbol = convert_to_kucoin_symbol(self.active_bot)
+                position = self.base_streaming.kucoin_futures_api.get_futures_position(
+                    kucoin_symbol
+                )
             # position.current_qty can be positive or negative depending on the strategy
             if position and abs(int(position.current_qty)) > 0:
                 new_size = round_numbers(

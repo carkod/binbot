@@ -88,3 +88,13 @@ export function renderDuration(bot) {
 export function convertTsToInputDate(ts: number) {
   return moment(ts).format("YYYY-MM-DD");
 }
+
+export function matchTsToTimescale(
+  ts: number | string | null | undefined,
+): number {
+  const date = new Date(Number(ts));
+  date.setMinutes(0);
+  date.setSeconds(0);
+  date.setMilliseconds(0);
+  return date.getTime() / 1000;
+}
