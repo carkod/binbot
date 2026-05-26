@@ -551,6 +551,70 @@ def test_grid_lifecycle_marks_level_completed_after_take_profit_fill(
     assert completed_level["realized_pnl"] > 0
 
 
+def test_grid_lifecycle_ignores_zero_avg_deal_price_for_filled_order(
+    create_test_tables,
+):
+    with Session(create_test_tables) as session:
+        lifecycle = GridLadderLifecycle(_grid_base(FakeFuturesApi()), session)
+    details = _order_details(
+        status=GetOrderByOrderIdResp.StatusEnum.DONE,
+        filled_size=13,
+        avg_deal_price=0,
+        price=77.37,
+    )
+
+    assert lifecycle._filled_price(details, 76.06) == 77.37
+
+
+def test_grid_lifecycle_uses_order_defaults_for_zero_filled_take_profit_payload(
+    client, monkeypatch, create_test_tables
+):
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+    created = client.post("/grid-ladders", json=_payload())
+    fake_api = FakeFuturesApi()
+
+    with Session(create_test_tables) as session:
+        lifecycle = GridLadderLifecycle(_grid_base(fake_api), session)
+        lifecycle.process_symbol("ADAUSDC")
+        ladder = GridLadderCrud(session).get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        entry_order = next(order for order in ladder.orders if order.side == "buy")
+        entry_order_id = entry_order.exchange_order_id
+        fake_api.order_details[entry_order.exchange_order_id] = _order_details(
+            status=GetOrderByOrderIdResp.StatusEnum.DONE,
+            filled_size=entry_order.contracts,
+            avg_deal_price=entry_order.price,
+            price=entry_order.price,
+        )
+        lifecycle.process_symbol("ADAUSDC")
+        ladder = GridLadderCrud(session).get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        tp_order = next(
+            order for order in ladder.orders if order.order_role == "take_profit"
+        )
+        fake_api.order_details[tp_order.exchange_order_id] = _order_details(
+            status=GetOrderByOrderIdResp.StatusEnum.DONE,
+            filled_size=0,
+            avg_deal_price=0,
+            price=0,
+        )
+        lifecycle.process_symbol("ADAUSDC")
+
+    detail = client.get(f"/grid-ladders/{created.json()['detail']['id']}").json()[
+        "detail"
+    ]
+    completed_level = next(
+        level for level in detail["levels"] if level["entry_order_id"] == entry_order_id
+    )
+    completed_order = next(
+        order for order in detail["orders"] if order["order_role"] == "take_profit"
+    )
+    assert completed_order["filled_qty"] == tp_order.contracts
+    assert completed_order["filled_price"] == tp_order.price
+    assert completed_level["realized_pnl"] > 0
+
+
 def test_grid_lifecycle_updates_unrealized_pnl_on_active_ladder(
     client, monkeypatch, create_test_tables
 ):

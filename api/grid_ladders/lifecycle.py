@@ -149,8 +149,14 @@ class GridLadderLifecycle:
         return float(details.filled_size or 0)
 
     def _filled_price(self, details: GetOrderByOrderIdResp, fallback: float) -> float:
-        price = details.avg_deal_price or details.price or fallback
-        return float(price)
+        for raw_price in (details.avg_deal_price, details.price, fallback):
+            try:
+                price = float(raw_price)
+            except (TypeError, ValueError):
+                continue
+            if price > 0:
+                return price
+        return 0.0
 
     def _side_enum(self, side: str) -> AddOrderReq.SideEnum:
         if side == "buy":
@@ -327,6 +333,8 @@ class GridLadderLifecycle:
 
             status = self._order_status(details.status)
             filled_qty = self._filled_size(details)
+            if status == OrderStatus.FILLED.value and filled_qty <= 0:
+                filled_qty = float(order.contracts)
             filled_price = self._filled_price(details, order.price)
 
             if status == OrderStatus.FILLED.value or filled_qty > 0:

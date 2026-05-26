@@ -2,11 +2,14 @@ import { useMemo, useState, type FC } from "react";
 import { Badge, Card, Col, Container, Row } from "react-bootstrap";
 import { useParams } from "react-router";
 import { useGetGridLadderQuery } from "../../features/gridLadders/gridLaddersApiSlice";
+import { useFuturesContractQuery } from "../../features/kucoinApiSlice";
 import TVChartContainer, { Exchange } from "binbot-charts";
 import type { ResolutionString } from "../../../charting_library/charting_library";
 import {
   buildGridOrderLines,
   buildGridTimescaleMarks,
+  calculateGridLivePnl,
+  calculateGridLiveReturnPct,
   calculateGridLiveUnrealizedPnl,
   chartSymbolForLadder,
   formatLogEntry,
@@ -36,20 +39,27 @@ const GridLadderDetail: FC = () => {
       ? Exchange.KUCOIN
       : Exchange.BINANCE;
   const chartSymbol = ladder ? chartSymbolForLadder(ladder) : "";
+  const { data: contract } = useFuturesContractQuery(chartSymbol, {
+    skip: !ladder || exchange !== Exchange.KUCOIN,
+  });
+  const contractMultiplier = contract?.multiplier ?? null;
   const unrealizedPnl = useMemo(() => {
     if (!ladder) {
       return 0;
     }
-    if (currentPrice === null) {
+    if (currentPrice === null || contractMultiplier === null) {
       return ladder.unrealized_pnl;
     }
-    return calculateGridLiveUnrealizedPnl(ladder, currentPrice);
-  }, [ladder, currentPrice]);
-  const totalPnl = ladder ? ladder.realized_pnl + unrealizedPnl : 0;
-  const gridReturnPct =
-    ladder && ladder.total_margin > 0
-      ? roundDecimals((totalPnl / ladder.total_margin) * 100)
-      : 0;
+    return calculateGridLiveUnrealizedPnl(
+      ladder,
+      currentPrice,
+      contractMultiplier,
+    );
+  }, [ladder, currentPrice, contractMultiplier]);
+  const totalPnl = ladder ? calculateGridLivePnl(ladder, unrealizedPnl) : 0;
+  const gridReturnPct = ladder
+    ? calculateGridLiveReturnPct(ladder, unrealizedPnl)
+    : 0;
 
   const updateCurrentPrice = (price: number) => {
     if (!Number.isFinite(price)) {

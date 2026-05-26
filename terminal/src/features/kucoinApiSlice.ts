@@ -16,6 +16,11 @@ export interface KucoinFuturesTicker24 {
   ts: number;
 }
 
+export interface KucoinFuturesContract {
+  symbol: string;
+  multiplier: number;
+}
+
 /**
  * Kucoin Futures API slice
  *
@@ -55,7 +60,17 @@ export const kucoinApiSlice = createApi({
         return allPercentageChanges;
       },
     }),
+    futuresContract: build.query<KucoinFuturesContract, string>({
+      query: (symbol) => ({
+        url: `/contracts/${symbol}`,
+      }),
+      transformResponse: (data: any) => ({
+        symbol: data.data.symbol,
+        multiplier: floatSafe(data.data.multiplier) || 1,
+      }),
+    }),
   }),
 });
 
-export const { useFuturesRankingsQuery } = kucoinApiSlice;
+export const { useFuturesRankingsQuery, useFuturesContractQuery } =
+  kucoinApiSlice;

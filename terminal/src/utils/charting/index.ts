@@ -3,6 +3,7 @@ import marginTrading from "./margin-short.service";
 import { type Bot } from "../../features/bots/botInitialState";
 import { type TimescaleMark } from "./index.d";
 import { BotPosition, DealType } from "../enums";
+import { matchTsToTimescale } from "../time";
 
 const dealColors = {
   base_order: "#1f77d0",
@@ -10,21 +11,6 @@ const dealColors = {
   take_profit: "#87cb16",
   safety_order: "#ffa534",
 };
-
-function matchTsToTimescale(ts: string): number {
-  /**
-   * Internal utility function to match timestamp to timescale
-   * If this is NOT matched, the chart will not show the mark
-   * This time is matched to closest hour (assuming interval hour)
-   */
-
-  const date = new Date(parseFloat(ts));
-  date.setMinutes(0);
-  date.setSeconds(0);
-  date.setMilliseconds(0);
-  const newTs = date.getTime();
-  return newTs / 1000;
-}
 
 export function updateOrderLines(bot: Bot, currentPrice: number): any[] {
   /**
