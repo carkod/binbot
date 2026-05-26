@@ -6,6 +6,7 @@ from fastapi.encoders import jsonable_encoder
 from sqlmodel import Session
 
 from account.controller import ConsolidatedAccounts
+from databases.crud.bot_crud import BotTableCrud
 from databases.crud.grid_ladder_crud import GridLadderCrud
 from databases.tables.grid_ladder_table import GridLadderTable
 from databases.tables.symbol_table import SymbolTable
@@ -153,7 +154,31 @@ def post_grid_ladder(
     _: UserTokenData = Depends(get_current_user),
 ):
     grid_ladder_crud = GridLadderCrud(session)
-    if grid_ladder_crud.get_active_for_symbol(payload.symbol) is not None:
+    bot_crud = BotTableCrud(session)
+    if MarketType(payload.market_type) == MarketType.FUTURES:
+        active_bot = bot_crud.get_active_for_symbol(payload.symbol, payload.market_type)
+        if active_bot is not None:
+            bot_crud.update_logs(
+                (
+                    f"Rejected grid ladder create for {payload.symbol} "
+                    f"({payload.algorithm_name}): active bot already owns symbol."
+                ),
+                active_bot,
+            )
+            raise HTTPException(
+                status_code=400,
+                detail="An active bot already exists for this symbol",
+            )
+
+    active_ladder = grid_ladder_crud.get_active_for_symbol(payload.symbol)
+    if active_ladder is not None:
+        grid_ladder_crud.update_logs(
+            active_ladder.id,
+            (
+                f"Rejected grid ladder create for {payload.symbol} "
+                f"({payload.algorithm_name}): active grid ladder already owns symbol."
+            ),
+        )
         raise HTTPException(
             status_code=400,
             detail="An active grid ladder already exists for this symbol",

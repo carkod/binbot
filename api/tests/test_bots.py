@@ -1,6 +1,8 @@
 from unittest.mock import patch
 from fastapi.testclient import TestClient
 from pytest import fixture
+from pybinbot import ExchangeId, GridLadderStatus, MarketType
+from sqlmodel import Session
 from tests.fixtures.mock_bot_table import (
     mock_bot_data,
     mock_bot_data_superusdt,
@@ -8,6 +10,8 @@ from tests.fixtures.mock_bot_table import (
     make_mock_bot_active_model,
     make_mock_bot_superusdt_model,
 )
+from databases.crud.grid_ladder_crud import GridLadderCrud
+from databases.tables.grid_ladder_table import GridLadderTable
 from uuid import UUID
 
 
@@ -156,6 +160,49 @@ def test_create_bot(client: TestClient):
     assert (
         content["data"]["fiat_order_size"] == mock_bot_data_superusdt["fiat_order_size"]
     )
+
+
+def test_create_bot_rejects_active_grid_ladder_for_same_symbol_and_logs(
+    client: TestClient, create_test_tables
+):
+    ladder_id = UUID("11111111-1111-1111-1111-111111111111")
+    with Session(create_test_tables) as session:
+        session.add(
+            GridLadderTable(
+                id=ladder_id,
+                symbol="EPICUSDC",
+                fiat="USDC",
+                exchange=ExchangeId.KUCOIN,
+                market_type=MarketType.FUTURES,
+                algorithm_name="fixed_grid",
+                status=GridLadderStatus.active,
+                range_low=90,
+                range_high=110,
+                grid_step=5,
+                level_count=5,
+                total_margin=100,
+                reserved_margin=100,
+                breakout_low=85,
+                breakout_high=115,
+            )
+        )
+        session.commit()
+
+    response = client.post(
+        "/bot",
+        json={
+            **mock_bot_data_superusdt,
+            "pair": "EPICUSDC",
+            "market_type": "FUTURES",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "active grid ladder" in response.json()["detail"]
+    with Session(create_test_tables) as session:
+        ladder = GridLadderCrud(session).get(ladder_id)
+        assert ladder is not None
+        assert any("Rejected bot create" in log for log in ladder.logs)
 
 
 def test_edit_bot(client: TestClient):

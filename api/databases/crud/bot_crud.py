@@ -387,3 +387,24 @@ class BotTableCrud:
 
         with get_db_session(self._external_session) as s:
             return s.exec(stmt).all()
+
+    def get_active_for_symbol(
+        self,
+        symbol: str,
+        market_type: Any | None = None,
+    ) -> BotTable | None:
+        stmt = (
+            select(BotTable)
+            .where(BotTable.pair == symbol)
+            .where(BotTable.status == Status.active)
+            .options(selectinload(BOT_DEAL_REL))
+            .options(selectinload(BOT_ORDERS_REL))
+        )
+        if market_type is not None:
+            stmt = stmt.where(BotTable.market_type == market_type)
+
+        with get_db_session(self._external_session) as s:
+            bot = s.exec(stmt).first()
+            if bot is not None:
+                detach_bot_graph(s, bot)
+            return bot
