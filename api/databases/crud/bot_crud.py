@@ -2,7 +2,7 @@ from typing import Any, List, Sequence, cast
 import re
 from uuid import UUID
 
-from sqlmodel import Session, select, asc, desc, case, func
+from sqlmodel import Session, col, select, asc, desc, case, func
 from sqlalchemy.orm import QueryableAttribute, selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -383,7 +383,9 @@ class BotTableCrud:
         ]
 
     def get_active_pairs(self) -> Sequence[str]:
-        stmt = select(BotTable.pair).where(BotTable.status == Status.active)
+        stmt = select(BotTable.pair).where(
+            col(BotTable.status).in_((Status.active, Status.pending))
+        )
 
         with get_db_session(self._external_session) as s:
             return s.exec(stmt).all()

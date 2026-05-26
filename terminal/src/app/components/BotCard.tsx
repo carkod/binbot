@@ -67,11 +67,13 @@ const BotCard: FC<BotCardProps> = ({
                 bg={
                   bot.status === "active"
                     ? "success"
-                    : bot.status === "error"
+                    : bot.status === "pending"
                       ? "warning"
-                      : bot.status === "completed"
-                        ? "info"
-                        : "secondary"
+                      : bot.status === "error"
+                        ? "danger"
+                        : bot.status === "completed"
+                          ? "info"
+                          : "secondary"
                 }
               >
                 <span>{bot.status && bot.status.toUpperCase()}</span>

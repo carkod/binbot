@@ -19,7 +19,7 @@ dependencies = [
     "alembic>=1.18.4",
     "alembic-postgresql-enum",
     "pydantic-settings>=2.10.1",
-    "pybinbot>=1.9.19",
+    "pybinbot>=1.9.23",
 ]
 
 [project.urls]

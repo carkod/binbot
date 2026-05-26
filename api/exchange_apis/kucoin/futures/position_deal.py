@@ -1,5 +1,4 @@
-from copy import deepcopy
-from time import sleep, time
+from time import time
 from typing import Type, Union
 
 from bots.models import BotModel, OrderModel
@@ -472,56 +471,21 @@ class PositionDeal(KucoinPositionDeal):
 
     def reverse_position(self) -> BotModel:
         """
-        After hitting stop loss, open a new position (long or short) with a new bot/deal.
-        Instead of doing open_deal, we do this because we don't want to close current
-        Futures position (save transaction costs, quicker execution to catch rebounds)
-
-        1. Checks position availability, if position does not exist, no choice but to close
-        2. Check available balance (reversal_possible calculcates min flip contracts):
-            - If insufficient, we cannot reverse
-            - We are doing a dummy order of at least 1 contract to flip position,
-            second order will use the same amount that is liberated from this first flip order
-
-        3. Save changes to the database
-        4. Place first flip order. If it fails, we can't continue
-        5. Full close original bot. If anything fails at this point, we can still keep the new bot with 1 contract (flip order), that's why we need to fully close the previous one first to avoid partial close of original bot, but still having an active new bot (that would be extremmely confusing).
-
-        6. Check position again, this is the flip order position
-        7. If everything looks good (position exists, we do have contracts), then place the second order and sleep another 10 for processing
-        8. Update the deal with the new order details (price, qty, timestamp). Because order data, even after sleep 10, might not be available, we check other sources for qty and price (market orders don't have price), this should guarantee a price and qty, in this order:
-            1. order details (best case, we get both price and qty)
-            2. position
-            3. fills
-
-        9. Replace the flip order with the second order, which is the actual base_order deal (we don't care about order history, we can always retrieve that from exchange API, we care what we show in the orderlines and what can be matched to the deal)
-
-        10. Calculate new fiat order size (contracts_to_fiat_order_size). This can eventually be removed if we can process most orders correctly using this flip -> real order flow, because that means original_bot.fiat_order_size = new_bot.fiat_order_size
-        11. Save and re-run update deal (update_parameters)
-
+        Close the current position with a reduce_only order, mark source bot as
+        completed, then create a new opposite-direction bot in Status.pending.
+        The next exit() tick promotes pending -> active via open_deal(), which
+        places the base_order at fresh market price.
         """
         source_bot = self.active_bot
-
-        # Strategy toggle
         target_position = (
             Position.short if source_bot.position == Position.long else Position.long
         )
 
-        # Pre-close current bot
-        previous_bot = deepcopy(source_bot)
-        previous_bot.add_log(
-            f"Skipped stop loss and reversing to {target_position.value} in a new bot."
-        )
-        self.controller.save(previous_bot)
-
         current_position = self.kucoin_futures_api.get_futures_position(
             self.kucoin_symbol
         )
-
         if not current_position or abs(current_position.current_qty) == 0:
-            msg = "No open futures position found to reverse, skipping reversal."
-            previous_bot.add_log(msg)
-            self.controller.save(previous_bot)
-            source_bot.add_log(msg)
+            source_bot.add_log("No open futures position to reverse; aborting.")
             source_bot.status = Status.error
             self.controller.save(source_bot)
             self.active_bot = source_bot
@@ -529,17 +493,50 @@ class PositionDeal(KucoinPositionDeal):
 
         current_contracts = abs(float(current_position.current_qty))
 
-        flip_contracts = self._is_reversal_possible(
-            current_position.mark_price, current_contracts
+        try:
+            if source_bot.position == Position.long:
+                close_order = self.kucoin_futures_api.sell(
+                    symbol=self.kucoin_symbol,
+                    qty=current_contracts,
+                    reduce_only=True,
+                    leverage=self.symbol_info.futures_leverage,
+                )
+            else:
+                close_order = self.kucoin_futures_api.buy(
+                    symbol=self.kucoin_symbol,
+                    qty=current_contracts,
+                    reduce_only=True,
+                )
+        except RestError as kucoin_error:
+            msg = kucoin_error.response.message
+            source_bot.add_log(f"Reduce-only close failed during reversal: {msg}")
+            source_bot.status = Status.error
+            self.controller.save(source_bot)
+            self.active_bot = source_bot
+            return source_bot
+
+        closing_order = OrderModel(
+            timestamp=int(time() * 1000),
+            order_id=str(close_order.order_id),
+            deal_type=DealType.margin_short,
+            pair=self.kucoin_symbol,
+            order_side=close_order.order_side,
+            order_type=close_order.order_type,
+            price=close_order.price,
+            qty=close_order.qty,
+            time_in_force=close_order.time_in_force,
+            status=close_order.status,
         )
+        source_bot.orders.append(closing_order)
+        source_bot.deal.closing_price = closing_order.price
+        source_bot.deal.closing_qty = current_contracts
+        source_bot.deal.closing_timestamp = closing_order.timestamp
+        source_bot.status = Status.completed
+        source_bot.add_log(
+            f"Reversal: reduce_only close placed; creating pending {target_position.value} bot."
+        )
+        self.controller.save(source_bot)
 
-        if flip_contracts <= current_contracts:
-            self.active_bot.add_log(
-                "Insufficient balance to reverse position after hitting stop loss, closing position with stop loss order."
-            )
-            self.execute_stop_loss()
-
-        # Construct new bot
         new_bot = BotBase(
             pair=source_bot.pair,
             fiat=source_bot.fiat,
@@ -554,7 +551,7 @@ class PositionDeal(KucoinPositionDeal):
             name=source_bot.name,
             position=target_position,
             mode=source_bot.mode,
-            status=Status.inactive,
+            status=Status.pending,
             stop_loss=source_bot.stop_loss,
             take_profit=source_bot.take_profit,
             trailing=source_bot.trailing,
@@ -564,220 +561,8 @@ class PositionDeal(KucoinPositionDeal):
         )
         created_bot = self.controller.create(new_bot)
         reversed_bot = BotModel(**created_bot.model_dump())
-
-        try:
-            if reversed_bot.position == Position.short:
-                order = self.kucoin_futures_api.sell(
-                    symbol=self.kucoin_symbol,
-                    qty=flip_contracts,
-                    reduce_only=False,
-                    leverage=self.symbol_info.futures_leverage,
-                )
-            else:
-                order = self.kucoin_futures_api.buy(
-                    symbol=self.kucoin_symbol,
-                    qty=flip_contracts,
-                    reduce_only=False,
-                )
-            sleep(10)
-        except RestError as kucoin_error:
-            msg = kucoin_error.response.message
-            reversed_bot.add_log(
-                f"Failed to open {target_position.value} position during reversal: {msg}"
-            )
-            reversed_bot.status = Status.error
-            self.controller.save(reversed_bot)
-            self.active_bot = reversed_bot
-            return reversed_bot
-
-        order_model = OrderModel(
-            timestamp=int(time() * 1000),
-            order_id=str(order.order_id),
-            deal_type=DealType.base_order,
-            pair=self.kucoin_symbol,
-            order_side=order.order_side,
-            order_type=order.order_type,
-            price=order.price,
-            qty=order.qty,
-            time_in_force=order.time_in_force,
-            status=order.status,
-        )
-
-        # full close previous bot
-        closing_order = deepcopy(order_model)
-        closing_order.deal_type = DealType.margin_short
-        previous_bot.add_log(
-            f"Updated closing deal with {closing_order.deal_type} order from reversal"
-        )
-        previous_bot.orders.append(closing_order)
-        previous_bot.deal.closing_price = closing_order.price
-        previous_bot.deal.closing_qty = current_contracts
-        previous_bot.deal.closing_timestamp = closing_order.timestamp
-        previous_bot.add_log("Fully closed previous_bot")
-        previous_bot.status = Status.completed
-        self.controller.save(previous_bot)
-
-        order_model.deal_type = DealType.base_order
-        reversed_bot.add_log(
-            f"Placed first flip order for reversal, updating deal with {order_model.deal_type} order details"
-        )
-        reversed_bot.orders.append(order_model)
-        self.controller.save(reversed_bot)
-
-        position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
         self.active_bot = reversed_bot
-        if not position or float(position.current_qty) == 0:
-            self.active_bot.add_log(
-                "No open position found after reversal order, backfilling from fills..."
-            )
-            self.active_bot = self.backfill_position_from_fills()
-            return self.active_bot
-
-        new_position_contracts = abs(float(position.current_qty))
-        remaining_contracts = max(0.0, current_contracts - new_position_contracts)
-        first_reversed_position_qty = new_position_contracts
-
-        if remaining_contracts > 0:
-            second_order = self.place_reversal_reentry_order(
-                contracts=remaining_contracts,
-            )
-
-            if second_order is None:
-                self.controller.save(reversed_bot)
-                self.active_bot = reversed_bot
-                return self.active_bot
-
-            sleep(10)
-            second_order_details = self.kucoin_futures_api.retrieve_order(
-                str(second_order.order_id)
-            )
-            second_position = self.kucoin_futures_api.get_futures_position(
-                self.kucoin_symbol
-            )
-            if second_position and float(second_position.current_qty) != 0:
-                self.active_bot.add_log(
-                    "Second position exists after placing additional order, using it for deal update"
-                )
-                position = second_position
-                new_position_contracts = abs(float(second_position.current_qty))
-            filled_qty = float(
-                getattr(second_order_details, "filled_size", 0) or second_order.qty or 0
-            )
-            filled_price = float(
-                getattr(second_order_details, "avg_deal_price", 0)
-                or second_order.price
-                or 0
-            )
-            timestamp = int(
-                getattr(second_order_details, "created_at", 0)
-                or second_order.timestamp
-                or 0
-            )
-
-            if filled_qty <= 0 and position and float(position.current_qty) != 0:
-                self.active_bot.add_log(
-                    "Filled qty not found in order details, using position qty for deal update"
-                )
-                filled_qty = abs(float(position.current_qty))
-
-            if filled_price <= 0 and position:
-                self.active_bot.add_log(
-                    "Filled price not found in order details, using position mark price for deal update"
-                )
-                filled_price = float(position.mark_price or 0)
-
-            if filled_qty <= 0 or filled_price <= 0:
-                self.active_bot.add_log(
-                    "Filled qty and price not found in order details, fetching fills for deal update"
-                )
-                fills = self.kucoin_futures_api.get_fills(
-                    symbol=self.kucoin_symbol,
-                    start_at=int(second_order.timestamp),
-                    end_at=int(time() * 1000),
-                )
-                matching_fills = [
-                    fill
-                    for fill in fills.items
-                    if str(fill.order_id) == str(second_order.order_id)
-                ]
-                if matching_fills:
-                    self.active_bot.add_log(
-                        f"Found {len(matching_fills)} matching fills for order, calculating filled qty and price from fills for deal update"
-                    )
-                    total_qty = sum(abs(float(fill.size)) for fill in matching_fills)
-                    total_notional = sum(
-                        abs(float(fill.size)) * float(fill.price)
-                        for fill in matching_fills
-                    )
-                    if filled_qty <= 0:
-                        filled_qty = total_qty
-                    if filled_price <= 0 and total_qty > 0:
-                        filled_price = total_notional / total_qty
-                    if timestamp <= 0:
-                        timestamp = int(matching_fills[0].created_at)
-
-            self.active_bot.add_log(
-                f"Second order succeeded - filled_qty: {filled_qty}, filled_price: {filled_price}, timestamp: {timestamp}"
-            )
-            second_order_model = OrderModel(
-                order_type=(
-                    second_order_details.type.value
-                    if second_order_details.type
-                    else second_order.order_type
-                ),
-                time_in_force=(
-                    second_order_details.time_in_force
-                    if second_order_details.time_in_force
-                    else second_order.time_in_force
-                ),
-                timestamp=timestamp or int(second_order.timestamp),
-                order_id=str(second_order.order_id),
-                order_side=(
-                    second_order_details.side.value
-                    if second_order_details.side
-                    else second_order.order_side
-                ),
-                pair=str(second_order_details.symbol or second_order.pair),
-                qty=float(filled_qty or second_order.qty or 0),
-                status=second_order.status,
-                price=float(filled_price or second_order.price or 0),
-                deal_type=DealType.base_order,
-            )
-            order_model = second_order_model
-            combined_opening_qty = round_numbers(
-                first_reversed_position_qty + float(second_order_model.qty or 0),
-                self.qty_precision,
-            )
-            if combined_opening_qty > 0:
-                new_position_contracts = combined_opening_qty
-            self.active_bot.add_log(
-                "Placed additional order for remaining contracts during reversal, updating deal with new order details"
-            )
-            reversed_bot.orders = [second_order_model]
-
-        reversed_bot.deal.base_order_size = new_position_contracts
-        reversed_bot.deal.opening_price = order_model.price
-        reversed_bot.deal.opening_qty = new_position_contracts
-        reversed_bot.deal.opening_timestamp = order_model.timestamp
-        reversed_bot.deal.current_price = position.mark_price if position else 0
-        new_fiat_order_size = self.contracts_to_fiat_order_size(
-            contracts=new_position_contracts,
-            price=float(order_model.price or position.mark_price or 0),
-        )
-        if new_fiat_order_size > 0:
-            reversed_bot.fiat_order_size = new_fiat_order_size
-        reversed_bot.status = (
-            Status.active if new_position_contracts > 0 else Status.error
-        )
-        reversed_bot.add_log(
-            f"Futures bot updated @ {reversed_bot.deal.current_price} with {max(0.0, new_position_contracts - first_reversed_position_qty)} additional contracts"
-        )
-        self.controller.save(reversed_bot)
-        self.active_bot = reversed_bot
-        if reversed_bot.status == Status.active:
-            self.active_bot = self.update_parameters()
-
-        return self.active_bot
+        return reversed_bot
 
     def exit(self, close_price: float, _: float | None = None) -> BotModel:
         """
@@ -786,6 +571,13 @@ class PositionDeal(KucoinPositionDeal):
         current_price = round_numbers(close_price, self.price_precision)
         self.active_bot.deal.current_price = current_price
         self.controller.save(self.active_bot)
+
+        if self.active_bot.status == Status.pending:
+            self.active_bot.add_log(
+                "Pending bot detected on exit tick; calling open_deal to place base_order and activate."
+            )
+            self.active_bot = self.open_deal()
+            return self.active_bot
 
         direction = self._direction_multiplier()
         position_name = self.active_bot.position.value
