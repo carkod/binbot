@@ -4,6 +4,7 @@ from uuid import UUID
 
 from bots.models import BotModel, BotListResponse, BotPairsList, OrderModel
 from databases.crud.bot_crud import BotTableCrud
+from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.tables.deal_table import DealTable
 from exchange_apis.kucoin.futures.position_deal import PositionDeal
@@ -149,6 +150,32 @@ def test_get_active_pairs_includes_pending_and_active(monkeypatch):
     pairs = BotTableCrud().get_active_pairs()
 
     assert set(pairs) == {"ACTIVEUSDT", "PENDINGUSDT"}
+
+
+def test_paper_trading_active_pairs_only_includes_active(monkeypatch):
+    engine = make_in_memory_db()
+
+    with session_for(engine) as session:
+        for pair, status in [
+            ("ACTIVEUSDT", "active"),
+            ("INACTIVEUSDT", "inactive"),
+            ("COMPLETEDUSDT", "completed"),
+            ("ERRORUSDT", "error"),
+        ]:
+            session.add(PaperTradingTable(pair=pair, status=status))
+
+    @contextmanager
+    def patched_session(s=None):
+        with session_for(engine) as sess:
+            yield sess
+
+    monkeypatch.setattr(
+        "databases.crud.paper_trading_crud.get_db_session", patched_session
+    )
+
+    pairs = PaperTradingTableCrud().get_active_pairs()
+
+    assert pairs == ["ACTIVEUSDT"]
 
 
 def test_exit_pending_calls_open_deal_and_returns_early():
