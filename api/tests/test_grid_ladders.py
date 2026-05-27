@@ -833,6 +833,85 @@ def test_grid_lifecycle_closes_ladder_when_price_breaks_below_range(
     assert detail["logs"][-2]["direction"] == "down"
 
 
+def test_grid_lifecycle_closes_unfilled_ladder_after_one_breach_candle(
+    client, monkeypatch, create_test_tables
+):
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+    created = client.post("/grid-ladders", json=_payload())
+    ladder_id = created.json()["detail"]["id"]
+    fake_api = FakeFuturesApi()
+
+    with Session(create_test_tables) as session:
+        lifecycle = GridLadderLifecycle(_grid_base(fake_api), session)
+        lifecycle.process_symbol("ADAUSDC")
+        fake_api.position_mark_price = 84
+        lifecycle.process_symbol("ADAUSDC")
+        crud = GridLadderCrud(session)
+        ladder = crud.get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        past_ms = (
+            int(time() * 1000)
+            - GridLadderLifecycle.UNFILLED_BREACH_CANDLES_REQUIRED * 15 * 60 * 1000
+            - 1000
+        )
+        crud.update_status_with_context(
+            ladder.id,
+            GridLadderStatus.active,
+            context_updates={"first_breach_at": past_ms},
+        )
+        lifecycle.process_symbol("ADAUSDC")
+
+    detail = client.get(f"/grid-ladders/{ladder_id}").json()["detail"]
+    assert detail["status"] == "closed"
+    assert detail["context"]["close_reason"] == "range_break_down"
+
+
+def test_grid_lifecycle_keeps_filled_ladder_open_after_one_breach_candle(
+    client, monkeypatch, create_test_tables
+):
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+    created = client.post("/grid-ladders", json=_payload())
+    ladder_id = created.json()["detail"]["id"]
+    fake_api = FakeFuturesApi()
+    fake_api.position_mark_price = 100
+
+    with Session(create_test_tables) as session:
+        lifecycle = GridLadderLifecycle(_grid_base(fake_api), session)
+        lifecycle.process_symbol("ADAUSDC")
+        ladder = GridLadderCrud(session).get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        entry_order = next(order for order in ladder.orders if order.side == "buy")
+        fake_api.order_details[entry_order.exchange_order_id] = _order_details(
+            status=GetOrderByOrderIdResp.StatusEnum.DONE,
+            filled_size=entry_order.contracts,
+            avg_deal_price=entry_order.price,
+            price=entry_order.price,
+        )
+        lifecycle.process_symbol("ADAUSDC")
+        fake_api.position_mark_price = 84
+        lifecycle.process_symbol("ADAUSDC")
+        crud = GridLadderCrud(session)
+        ladder = crud.get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        past_ms = (
+            int(time() * 1000)
+            - GridLadderLifecycle.UNFILLED_BREACH_CANDLES_REQUIRED * 15 * 60 * 1000
+            - 1000
+        )
+        crud.update_status_with_context(
+            ladder.id,
+            GridLadderStatus.active,
+            context_updates={"first_breach_at": past_ms},
+        )
+        lifecycle.process_symbol("ADAUSDC")
+
+    detail = client.get(f"/grid-ladders/{ladder_id}").json()["detail"]
+    assert detail["status"] == "active"
+    assert detail["context"]["first_breach_at"] == past_ms
+
+
 def test_grid_lifecycle_closes_ladder_when_price_breaks_above_range(
     client, monkeypatch, create_test_tables
 ):

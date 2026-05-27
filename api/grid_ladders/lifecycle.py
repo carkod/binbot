@@ -66,9 +66,10 @@ class GridLadderLifecycle:
     """
 
     # Price must stay outside the breakout zone for this many monitoring ticks
-    # before a close is triggered (prevents wicks from exiting prematurely).
+    # before a filled ladder closes (prevents wicks from exiting prematurely).
     # Each tick corresponds to one process_symbol() call, typically every ~15 m.
     BREACH_CANDLES_REQUIRED = 3
+    UNFILLED_BREACH_CANDLES_REQUIRED = 1
 
     def __init__(self, base_streaming: BaseStreaming, session: Session):
         self.base_streaming = base_streaming
@@ -119,6 +120,17 @@ class GridLadderLifecycle:
         if isinstance(status, GridLadderStatus):
             return status.value
         return str(status)
+
+    def _has_filled_exposure(self, ladder: GridLadderTable) -> bool:
+        return any(
+            level.side != "neutral" and level.filled_entry_qty > 0
+            for level in ladder.levels
+        )
+
+    def _breach_candles_required(self, ladder: GridLadderTable) -> int:
+        if self._has_filled_exposure(ladder):
+            return self.BREACH_CANDLES_REQUIRED
+        return self.UNFILLED_BREACH_CANDLES_REQUIRED
 
     def _symbol_row(self, symbol: str) -> SymbolTable:
         symbol_row = self.session.get(SymbolTable, symbol)
@@ -178,7 +190,7 @@ class GridLadderLifecycle:
             return None
 
         now_ms = int(time() * 1000)
-        breach_duration_ms = self.BREACH_CANDLES_REQUIRED * 15 * 60 * 1000
+        breach_duration_ms = self._breach_candles_required(ladder) * 15 * 60 * 1000
 
         if price < ladder.breakout_low:
             first_breach = _coerce_breach_ts(
