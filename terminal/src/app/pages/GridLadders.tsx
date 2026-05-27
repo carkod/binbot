@@ -71,7 +71,6 @@ const GridLaddersPage: FC = () => {
       (acc, ladder) => {
         acc.active += isActiveGridLadder(ladder.status) ? 1 : 0;
         acc.reserved += ladder.reserved_margin;
-        acc.used += ladder.used_margin;
         // Active ladders keep realized_pnl=0 until close; surface TP-cycle
         // profits from individual levels so the summary isn't misleadingly 0.
         const levelPnl = isActiveGridLadder(ladder.status)
@@ -87,7 +86,6 @@ const GridLaddersPage: FC = () => {
       {
         active: 0,
         reserved: 0,
-        used: 0,
         realized: 0,
         unrealized: 0,
         openLevels: 0,
@@ -159,11 +157,6 @@ const GridLaddersPage: FC = () => {
         <AlertHeading>
           <Badge bg="secondary">
             Reserved margin: {summary.reserved.toFixed(2)} {fiat}
-          </Badge>
-        </AlertHeading>
-        <AlertHeading>
-          <Badge bg="secondary">
-            Used margin: {summary.used.toFixed(2)} {fiat}
           </Badge>
         </AlertHeading>
         <AlertHeading>

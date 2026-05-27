@@ -1,5 +1,7 @@
 import {
+  calculateCloseAdjustmentPnl,
   GridLadderStatus,
+  resolveGridPosition,
   type GridLadder,
 } from "../features/gridLadders/gridLadders";
 import {
@@ -117,5 +119,89 @@ describe("grid ladder live PnL", () => {
 
     expect(calculateGridLivePnl(ladder, 0.25)).toBe(0.75);
     expect(calculateGridLiveReturnPct(ladder, 0.25)).toBe(0.75);
+  });
+
+  it("surfaces closed ladder PnL outside completed TP cycles", () => {
+    const ladder = makeLadder({
+      status: GridLadderStatus.CLOSED,
+      realized_pnl: -0.200201,
+      levels: [
+        {
+          id: "level-1",
+          ladder_id: "ladder-1",
+          level_index: 2,
+          price: 0.04246,
+          side: "sell",
+          contracts: 14,
+          margin_required: 1,
+          status: "cancelled",
+          entry_order_id: "entry-1",
+          take_profit_order_id: "tp-1",
+          filled_entry_price: 0.04246,
+          filled_entry_qty: 14,
+          take_profit_price: 0.04143,
+          realized_pnl: 0,
+          created_at: 1,
+          updated_at: 1,
+        },
+      ],
+    });
+
+    expect(calculateGridLivePnl(ladder, 0)).toBe(-0.200201);
+    expect(calculateCloseAdjustmentPnl(ladder)).toBe(-0.200201);
+    expect(resolveGridPosition(ladder)).toEqual({
+      side: "short",
+      contracts: 14,
+      label: "short",
+    });
+  });
+
+  it("derives the active position from filled entry levels", () => {
+    const ladder = makeLadder({
+      levels: [
+        {
+          id: "level-1",
+          ladder_id: "ladder-1",
+          level_index: 0,
+          price: 75,
+          side: "buy",
+          contracts: 100,
+          margin_required: 75,
+          status: "take_profit_open",
+          entry_order_id: "entry-1",
+          take_profit_order_id: "tp-1",
+          filled_entry_price: 75,
+          filled_entry_qty: 100,
+          take_profit_price: 76,
+          realized_pnl: 0,
+          created_at: 1,
+          updated_at: 1,
+        },
+        {
+          id: "level-2",
+          ladder_id: "ladder-1",
+          level_index: 2,
+          price: 80,
+          side: "sell",
+          contracts: 40,
+          margin_required: 40,
+          status: "take_profit_open",
+          entry_order_id: "entry-2",
+          take_profit_order_id: "tp-2",
+          filled_entry_price: 80,
+          filled_entry_qty: 40,
+          take_profit_price: 78,
+          realized_pnl: 0,
+          created_at: 1,
+          updated_at: 1,
+        },
+      ],
+    });
+
+    expect(resolveGridPosition(ladder)).toEqual({
+      side: "long",
+      contracts: 60,
+      label: "long",
+    });
   });
 });
