@@ -819,6 +819,7 @@ def test_grid_lifecycle_closes_ladder_when_price_breaks_below_range(
     assert detail["unrealized_pnl"] == 0
     assert detail["used_margin"] == 0
     assert detail["context"]["close_reason"] == "range_break_down"
+    assert detail["context"]["breakout_close_type"] == "unfilled_breakout_close"
     assert detail["context"]["range_break_price"] == 84
     assert fake_api.cancelled_symbols == ["ADAUSDCM"]
     assert any(order["reduce_only"] for order in fake_api.orders)
@@ -831,6 +832,8 @@ def test_grid_lifecycle_closes_ladder_when_price_breaks_below_range(
     assert set(open_level_statuses) == {"cancelled"}
     assert detail["logs"][-2]["event"] == "range_break_close"
     assert detail["logs"][-2]["direction"] == "down"
+    assert detail["logs"][-2]["breakout_close_type"] == "unfilled_breakout_close"
+    assert detail["logs"][-2]["has_filled_exposure"] is False
 
 
 def test_grid_lifecycle_closes_unfilled_ladder_after_one_breach_candle(
@@ -865,6 +868,9 @@ def test_grid_lifecycle_closes_unfilled_ladder_after_one_breach_candle(
     detail = client.get(f"/grid-ladders/{ladder_id}").json()["detail"]
     assert detail["status"] == "closed"
     assert detail["context"]["close_reason"] == "range_break_down"
+    assert detail["context"]["breakout_close_type"] == "unfilled_breakout_close"
+    assert detail["logs"][-2]["breakout_close_type"] == "unfilled_breakout_close"
+    assert detail["logs"][-2]["has_filled_exposure"] is False
 
 
 def test_grid_lifecycle_keeps_filled_ladder_open_after_one_breach_candle(
@@ -948,11 +954,14 @@ def test_grid_lifecycle_closes_ladder_when_price_breaks_above_range(
     detail = client.get(f"/grid-ladders/{ladder_id}").json()["detail"]
     assert detail["status"] == "closed"
     assert detail["context"]["close_reason"] == "range_break_up"
+    assert detail["context"]["breakout_close_type"] == "unfilled_breakout_close"
     assert detail["context"]["range_break_price"] == 116
     assert fake_api.cancelled_symbols == ["ADAUSDCM"]
     assert any(order["reduce_only"] for order in fake_api.orders)
     assert detail["logs"][-2]["event"] == "range_break_close"
     assert detail["logs"][-2]["direction"] == "up"
+    assert detail["logs"][-2]["breakout_close_type"] == "unfilled_breakout_close"
+    assert detail["logs"][-2]["has_filled_exposure"] is False
 
 
 def test_grid_lifecycle_continues_reconciliation_inside_breakout_bounds(

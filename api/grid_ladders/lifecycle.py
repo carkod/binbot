@@ -91,10 +91,12 @@ class GridLadderLifecycle:
             if range_break is not None:
                 direction, price = range_break
                 close_reason = f"range_break_{direction}"
+                breakout_close_type = self._breakout_close_type(ladder)
                 self._close_ladder(
                     ladder,
                     context_updates={
                         "close_reason": close_reason,
+                        "breakout_close_type": breakout_close_type,
                         "range_break_price": price,
                         "breakout_low": ladder.breakout_low,
                         "breakout_high": ladder.breakout_high,
@@ -102,6 +104,8 @@ class GridLadderLifecycle:
                     log_event={
                         "event": "range_break_close",
                         "direction": direction,
+                        "breakout_close_type": breakout_close_type,
+                        "has_filled_exposure": self._has_filled_exposure(ladder),
                         "price": price,
                         "breakout_low": ladder.breakout_low,
                         "breakout_high": ladder.breakout_high,
@@ -131,6 +135,11 @@ class GridLadderLifecycle:
         if self._has_filled_exposure(ladder):
             return self.BREACH_CANDLES_REQUIRED
         return self.UNFILLED_BREACH_CANDLES_REQUIRED
+
+    def _breakout_close_type(self, ladder: GridLadderTable) -> str:
+        if self._has_filled_exposure(ladder):
+            return "filled_breakout_close"
+        return "unfilled_breakout_close"
 
     def _symbol_row(self, symbol: str) -> SymbolTable:
         symbol_row = self.session.get(SymbolTable, symbol)
