@@ -1,6 +1,12 @@
 import { useMemo, useState, type FC } from "react";
 import { Badge, Card, Col, Container, Row } from "react-bootstrap";
 import { useParams } from "react-router";
+import {
+  calculateCloseAdjustmentPnl,
+  calculateLevelPnlSum,
+  isActiveGridLadder,
+  resolveGridPosition,
+} from "../../features/gridLadders/gridLadders";
 import { useGetGridLadderQuery } from "../../features/gridLadders/gridLaddersApiSlice";
 import { useFuturesContractQuery } from "../../features/kucoinApiSlice";
 import TVChartContainer, { Exchange } from "binbot-charts";
@@ -57,6 +63,13 @@ const GridLadderDetail: FC = () => {
     );
   }, [ladder, currentPrice, contractMultiplier]);
   const totalPnl = ladder ? calculateGridLivePnl(ladder, unrealizedPnl) : 0;
+  const isActive = ladder ? isActiveGridLadder(ladder.status) : false;
+  const levelPnl = ladder ? calculateLevelPnlSum(ladder) : 0;
+  const closeAdjustmentPnl = ladder ? calculateCloseAdjustmentPnl(ladder) : 0;
+  const hasCloseAdjustment = Math.abs(closeAdjustmentPnl) >= 0.00000001;
+  const position = ladder
+    ? resolveGridPosition(ladder)
+    : { side: "flat", contracts: 0, label: "No position" };
   const gridReturnPct = ladder
     ? calculateGridLiveReturnPct(ladder, unrealizedPnl)
     : 0;
@@ -159,10 +172,36 @@ const GridLadderDetail: FC = () => {
                 </Row>
                 <Row className="mb-2">
                   <Col md={4}>
+                    <strong>Position</strong>
+                  </Col>
+                  <Col md={8}>
+                    {position.contracts > 0
+                      ? position.label.toUpperCase()
+                      : position.label}
+                  </Col>
+                </Row>
+                <Row className="mb-2">
+                  <Col md={4}>
                     <strong>Unrealized PnL</strong>
                   </Col>
                   <Col md={8}>{unrealizedPnl}</Col>
                 </Row>
+                {!isActive && (levelPnl !== 0 || hasCloseAdjustment) && (
+                  <Row className="mb-2">
+                    <Col md={4}>
+                      <strong>TP Cycled PnL</strong>
+                    </Col>
+                    <Col md={8}>{levelPnl}</Col>
+                  </Row>
+                )}
+                {!isActive && hasCloseAdjustment && (
+                  <Row className="mb-2">
+                    <Col md={4}>
+                      <strong>Close Adjustment</strong>
+                    </Col>
+                    <Col md={8}>{closeAdjustmentPnl}</Col>
+                  </Row>
+                )}
                 <Row className="mb-2">
                   <Col md={4}>
                     <strong>Total PnL</strong>

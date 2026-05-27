@@ -2,7 +2,7 @@ from typing import Any, List, Sequence, cast
 import re
 from uuid import UUID
 
-from sqlmodel import Session, select, asc, desc, case, func
+from sqlmodel import Session, col, select, asc, desc, case, func
 from sqlalchemy.orm import QueryableAttribute, selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -26,6 +26,7 @@ from pybinbot import (
 # Deal with SQLModel vs mypy issues
 BOT_DEAL_REL = cast(QueryableAttribute[Any], BotTable.deal)
 BOT_ORDERS_REL = cast(QueryableAttribute[Any], BotTable.orders)
+ACTIVE_BOT_STATUSES = (Status.active, Status.pending)
 
 
 class BotTableCrud:
@@ -383,7 +384,9 @@ class BotTableCrud:
         ]
 
     def get_active_pairs(self) -> Sequence[str]:
-        stmt = select(BotTable.pair).where(BotTable.status == Status.active)
+        stmt = select(BotTable.pair).where(
+            col(BotTable.status).in_(ACTIVE_BOT_STATUSES)
+        )
 
         with get_db_session(self._external_session) as s:
             return s.exec(stmt).all()
@@ -396,7 +399,7 @@ class BotTableCrud:
         stmt = (
             select(BotTable)
             .where(BotTable.pair == symbol)
-            .where(BotTable.status == Status.active)
+            .where(col(BotTable.status).in_(ACTIVE_BOT_STATUSES))
             .options(selectinload(BOT_DEAL_REL))
             .options(selectinload(BOT_ORDERS_REL))
         )

@@ -6,9 +6,9 @@ export enum BotStatus {
   ALL = "all",
   INACTIVE = "inactive",
   ACTIVE = "active",
+  PENDING = "pending",
   COMPLETED = "completed",
   ERROR = "error",
-  ARCHIVED = "archived",
 }
 
 export enum BotMode {

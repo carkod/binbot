@@ -408,7 +408,37 @@ def test_post_grid_ladder_rejects_active_bot_for_same_symbol_and_logs(
     response = client.post("/grid-ladders", json=_payload("QNTUSDTM"))
 
     assert response.status_code == 400
-    assert "active bot" in response.json()["detail"]
+    assert "active or pending bot" in response.json()["detail"]
+    with Session(create_test_tables) as session:
+        bot = session.get(BotTable, bot_id)
+        assert bot is not None
+        assert any("Rejected grid ladder create" in log for log in bot.logs)
+
+
+def test_post_grid_ladder_rejects_pending_bot_for_same_symbol_and_logs(
+    client, monkeypatch, create_test_tables
+):
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+    bot_id = UUID("33333333-3333-3333-3333-333333333333")
+
+    with Session(create_test_tables) as session:
+        bot = BotTable(
+            id=bot_id,
+            pair="PNDUSDTM",
+            fiat="USDC",
+            market_type=MarketType.FUTURES,
+            name="pending_reversal_bot",
+            status="pending",
+            deal=DealTable(),
+        )
+        session.add(bot)
+        session.commit()
+
+    response = client.post("/grid-ladders", json=_payload("PNDUSDTM"))
+
+    assert response.status_code == 400
+    assert "active or pending bot" in response.json()["detail"]
     with Session(create_test_tables) as session:
         bot = session.get(BotTable, bot_id)
         assert bot is not None

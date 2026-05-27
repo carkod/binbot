@@ -1,7 +1,7 @@
 import re
 from typing import Any, List, cast
 from uuid import UUID
-from sqlmodel import Session, select, case, desc, asc
+from sqlmodel import Session, col, select, case, desc, asc
 from sqlalchemy.orm import QueryableAttribute, selectinload
 from databases.tables.bot_table import PaperTradingTable
 from bots.models import BotModel
@@ -257,6 +257,6 @@ class PaperTradingTableCrud:
         with get_db_session(self._external_session) as s:
             return s.exec(
                 select(PaperTradingTable.pair).where(
-                    PaperTradingTable.status == Status.active
+                    col(PaperTradingTable.status).in_((Status.active, Status.pending))
                 )
             ).all()

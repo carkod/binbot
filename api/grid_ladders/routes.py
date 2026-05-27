@@ -161,13 +161,13 @@ def post_grid_ladder(
             bot_crud.update_logs(
                 (
                     f"Rejected grid ladder create for {payload.symbol} "
-                    f"({payload.algorithm_name}): active bot already owns symbol."
+                    f"({payload.algorithm_name}): active or pending bot already owns symbol."
                 ),
                 active_bot,
             )
             raise HTTPException(
                 status_code=400,
-                detail="An active bot already exists for this symbol",
+                detail="An active or pending bot already exists for this symbol",
             )
 
     active_ladder = grid_ladder_crud.get_active_for_symbol(payload.symbol)
