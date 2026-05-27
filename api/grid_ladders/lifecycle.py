@@ -379,6 +379,7 @@ class GridLadderLifecycle:
                 filled_entry_price=filled_price,
                 filled_entry_qty=filled_qty,
             )
+            self.crud.recalculate_used_margin(ladder.id)
             self._place_take_profit_order(ladder, level)
             return
 
@@ -387,6 +388,7 @@ class GridLadderLifecycle:
                 level.id,
                 realized_pnl=self._realized_pnl(ladder, level, filled_price),
             )
+            self.crud.recalculate_used_margin(ladder.id)
 
     def _place_take_profit_order(
         self,
@@ -469,6 +471,7 @@ class GridLadderLifecycle:
             GridLadderStatus.error,
             context_updates={"execution_error": message},
         )
+        self.crud.recalculate_used_margin(ladder.id)
         self.crud.update_error_logs(ladder.id, error)
 
     def _refresh_unrealized_pnl(self, ladder: GridLadderTable) -> None:
@@ -547,6 +550,7 @@ class GridLadderLifecycle:
             closed_at=timestamp(),
         )
         self.crud.update_unrealized_pnl(ladder.id, 0)
+        self.crud.recalculate_used_margin(ladder.id)
         if log_event is not None:
             self.crud.update_logs(ladder.id, log_event)
         self.crud.update_logs(ladder.id, {"event": "ladder_closed"})

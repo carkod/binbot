@@ -6,6 +6,7 @@ from pybinbot import (
     ExchangeId,
     GridLadderStatus,
     MarketType,
+    round_numbers,
     timestamp,
     ts_to_humandate,
 )
@@ -24,6 +25,15 @@ ACTIVE_GRID_LADDER_STATUSES = (
     GridLadderStatus.active,
     GridLadderStatus.closing,
 )
+ZERO_USED_MARGIN_STATUSES = (
+    GridLadderStatus.closed.value,
+    GridLadderStatus.cancelled.value,
+)
+OPEN_EXPOSURE_LEVEL_STATUSES = {
+    "filled",
+    "take_profit_open",
+    "error",
+}
 GRID_LADDER_LEVELS_REL = cast(QueryableAttribute[Any], GridLadderTable.levels)
 GRID_LADDER_ORDERS_REL = cast(QueryableAttribute[Any], GridLadderTable.orders)
 GRID_LADDER_STATUS_COL = cast(Any, GridLadderTable.status)
@@ -186,6 +196,45 @@ class GridLadderCrud:
         self.session.commit()
         self.session.refresh(ladder)
         return ladder
+
+    def update_used_margin(
+        self,
+        ladder_id: UUID,
+        used_margin: float,
+    ) -> GridLadderTable | None:
+        ladder = self.session.get(GridLadderTable, ladder_id)
+        if ladder is None:
+            return None
+
+        ladder.used_margin = used_margin
+        ladder.updated_at = timestamp()
+        self.session.add(ladder)
+        self.session.commit()
+        self.session.refresh(ladder)
+        return ladder
+
+    def recalculate_used_margin(self, ladder_id: UUID) -> GridLadderTable | None:
+        ladder = self.get(ladder_id)
+        if ladder is None:
+            return None
+
+        status = (
+            ladder.status.value
+            if isinstance(ladder.status, GridLadderStatus)
+            else str(ladder.status)
+        )
+        used_margin = 0.0
+        if status not in ZERO_USED_MARGIN_STATUSES:
+            for level in ladder.levels:
+                if level.status not in OPEN_EXPOSURE_LEVEL_STATUSES:
+                    continue
+                if level.filled_entry_qty <= 0 or level.contracts <= 0:
+                    continue
+
+                fill_ratio = min(level.filled_entry_qty / level.contracts, 1)
+                used_margin += level.margin_required * fill_ratio
+
+        return self.update_used_margin(ladder_id, round_numbers(used_margin, 8))
 
     def update_status_with_context(
         self,

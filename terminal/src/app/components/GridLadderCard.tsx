@@ -5,6 +5,7 @@ import {
   calculateFilledLevelCount,
   calculateCloseAdjustmentPnl,
   calculateGridPnl,
+  calculateGridUtilization,
   calculateLevelPnlSum,
   calculateOpenOrderCount,
   isActiveGridLadder,
@@ -53,6 +54,7 @@ const GridLadderCard: FC<GridLadderCardProps> = ({
 }) => {
   const navigate = useNavigate();
   const totalPnl = calculateGridPnl(ladder);
+  const utilization = calculateGridUtilization(ladder);
   const isActive = isActiveGridLadder(ladder.status);
   const levelPnl = calculateLevelPnlSum(ladder);
   const closeAdjustmentPnl = calculateCloseAdjustmentPnl(ladder);
@@ -153,6 +155,12 @@ const GridLadderCard: FC<GridLadderCardProps> = ({
             </Col>
           </Row>
         )}
+        <Row>
+          <Col xs={6}>Utilisation</Col>
+          <Col xs={6} className="text-end">
+            {utilization.toFixed(2)}%
+          </Col>
+        </Row>
         {isActive ? (
           <>
             <Row>

@@ -40,6 +40,14 @@ export const calculateGridPnl = (ladder: GridLadder): number => {
   return calculateLevelPnlSum(ladder) + ladder.unrealized_pnl;
 };
 
+export const calculateGridUtilization = (ladder: GridLadder): number => {
+  if (ladder.reserved_margin <= 0) {
+    return 0;
+  }
+
+  return (ladder.used_margin / ladder.reserved_margin) * 100;
+};
+
 export const resolveGridPosition = (ladder: GridLadder): GridPosition => {
   const openPositionStatuses = new Set(["filled", "take_profit_open"]);
   const isActive = isActiveGridLadder(ladder.status);
