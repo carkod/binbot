@@ -541,6 +541,12 @@ class GridLadderLifecycle:
         # Snapshot level state before any mutations so PnL computation sees
         # the original statuses (some will be flipped to "cancelled" below).
         open_levels = list(ladder.levels)
+        has_filled_exposure = any(
+            level.side != "neutral"
+            and level.filled_entry_qty > 0
+            and level.status != GridLevelStatus.completed.value
+            for level in open_levels
+        )
 
         self._cancel_ladder_orders(ladder.symbol)
         self.crud.update_orders_for_ladder(
@@ -559,8 +565,10 @@ class GridLadderLifecycle:
                     status=GridLevelStatus.cancelled.value,
                 )
 
-        close_price = self._close_symbol_position(ladder.symbol)
-        forced_pnl = self._forced_close_pnl(ladder, close_price, open_levels)
+        forced_pnl = 0.0
+        if has_filled_exposure:
+            close_price = self._close_symbol_position(ladder.symbol)
+            forced_pnl = self._forced_close_pnl(ladder, close_price, open_levels)
         total_pnl = sum(float(lv.realized_pnl or 0) for lv in open_levels) + forced_pnl
         self.crud.update_realized_pnl(ladder.id, round_numbers(total_pnl))
 

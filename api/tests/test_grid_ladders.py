@@ -14,6 +14,7 @@ from pybinbot import (
     MarketType,
     OrderBase,
     OrderStatus,
+    OrderType,
 )
 from sqlmodel import Session, delete
 
@@ -191,6 +192,14 @@ class FakeFuturesApi:
 
 def _grid_base(fake_api: FakeFuturesApi):
     return SimpleNamespace(kucoin_futures_api=fake_api)
+
+
+def _market_reduce_only_orders(fake_api: FakeFuturesApi) -> list[dict]:
+    return [
+        order
+        for order in fake_api.orders
+        if order["reduce_only"] and order["order_type"] == OrderType.market
+    ]
 
 
 @pytest.mark.parametrize(
@@ -788,10 +797,21 @@ def test_grid_lifecycle_closes_ladder_when_price_breaks_below_range(
     created = client.post("/grid-ladders", json=_payload())
     ladder_id = created.json()["detail"]["id"]
     fake_api = FakeFuturesApi()
-    fake_api.position_qty = 2
+    fake_api.position_mark_price = 100
 
     with Session(create_test_tables) as session:
         lifecycle = GridLadderLifecycle(_grid_base(fake_api), session)
+        lifecycle.process_symbol("ADAUSDC")
+        ladder = GridLadderCrud(session).get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        entry_order = next(order for order in ladder.orders if order.side == "buy")
+        fake_api.position_qty = entry_order.contracts
+        fake_api.order_details[entry_order.exchange_order_id] = _order_details(
+            status=GetOrderByOrderIdResp.StatusEnum.DONE,
+            filled_size=entry_order.contracts,
+            avg_deal_price=entry_order.price,
+            price=entry_order.price,
+        )
         lifecycle.process_symbol("ADAUSDC")
         fake_api.position_mark_price = 84
         # First out-of-range tick: starts the breach timer, does not close yet.
@@ -819,12 +839,20 @@ def test_grid_lifecycle_closes_ladder_when_price_breaks_below_range(
     assert detail["unrealized_pnl"] == 0
     assert detail["used_margin"] == 0
     assert detail["context"]["close_reason"] == "range_break_down"
-    assert detail["context"]["breakout_close_type"] == "unfilled_breakout_close"
+    assert detail["context"]["breakout_close_type"] == "filled_breakout_close"
     assert detail["context"]["range_break_price"] == 84
     assert fake_api.cancelled_symbols == ["ADAUSDCM"]
-    assert any(order["reduce_only"] for order in fake_api.orders)
+    assert _market_reduce_only_orders(fake_api)
+    filled_entry = next(
+        order
+        for order in detail["orders"]
+        if order["exchange_order_id"] == entry_order.exchange_order_id
+    )
+    assert filled_entry["status"] == OrderStatus.FILLED.value
     assert all(
-        order["status"] == OrderStatus.CANCELED.value for order in detail["orders"]
+        order["status"] == OrderStatus.CANCELED.value
+        for order in detail["orders"]
+        if order["exchange_order_id"] != entry_order.exchange_order_id
     )
     open_level_statuses = [
         level["status"] for level in detail["levels"] if level["side"] != "neutral"
@@ -832,8 +860,8 @@ def test_grid_lifecycle_closes_ladder_when_price_breaks_below_range(
     assert set(open_level_statuses) == {"cancelled"}
     assert detail["logs"][-2]["event"] == "range_break_close"
     assert detail["logs"][-2]["direction"] == "down"
-    assert detail["logs"][-2]["breakout_close_type"] == "unfilled_breakout_close"
-    assert detail["logs"][-2]["has_filled_exposure"] is False
+    assert detail["logs"][-2]["breakout_close_type"] == "filled_breakout_close"
+    assert detail["logs"][-2]["has_filled_exposure"] is True
 
 
 def test_grid_lifecycle_closes_unfilled_ladder_after_one_breach_candle(
@@ -844,6 +872,7 @@ def test_grid_lifecycle_closes_unfilled_ladder_after_one_breach_candle(
     created = client.post("/grid-ladders", json=_payload())
     ladder_id = created.json()["detail"]["id"]
     fake_api = FakeFuturesApi()
+    fake_api.position_qty = 2
 
     with Session(create_test_tables) as session:
         lifecycle = GridLadderLifecycle(_grid_base(fake_api), session)
@@ -869,6 +898,8 @@ def test_grid_lifecycle_closes_unfilled_ladder_after_one_breach_candle(
     assert detail["status"] == "closed"
     assert detail["context"]["close_reason"] == "range_break_down"
     assert detail["context"]["breakout_close_type"] == "unfilled_breakout_close"
+    assert detail["realized_pnl"] == 0
+    assert _market_reduce_only_orders(fake_api) == []
     assert detail["logs"][-2]["breakout_close_type"] == "unfilled_breakout_close"
     assert detail["logs"][-2]["has_filled_exposure"] is False
 
@@ -926,10 +957,21 @@ def test_grid_lifecycle_closes_ladder_when_price_breaks_above_range(
     created = client.post("/grid-ladders", json=_payload())
     ladder_id = created.json()["detail"]["id"]
     fake_api = FakeFuturesApi()
-    fake_api.position_qty = -2
+    fake_api.position_mark_price = 100
 
     with Session(create_test_tables) as session:
         lifecycle = GridLadderLifecycle(_grid_base(fake_api), session)
+        lifecycle.process_symbol("ADAUSDC")
+        ladder = GridLadderCrud(session).get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        entry_order = next(order for order in ladder.orders if order.side == "sell")
+        fake_api.position_qty = -entry_order.contracts
+        fake_api.order_details[entry_order.exchange_order_id] = _order_details(
+            status=GetOrderByOrderIdResp.StatusEnum.DONE,
+            filled_size=entry_order.contracts,
+            avg_deal_price=entry_order.price,
+            price=entry_order.price,
+        )
         lifecycle.process_symbol("ADAUSDC")
         fake_api.position_mark_price = 116
         # First out-of-range tick: starts the breach timer, does not close yet.
@@ -954,14 +996,14 @@ def test_grid_lifecycle_closes_ladder_when_price_breaks_above_range(
     detail = client.get(f"/grid-ladders/{ladder_id}").json()["detail"]
     assert detail["status"] == "closed"
     assert detail["context"]["close_reason"] == "range_break_up"
-    assert detail["context"]["breakout_close_type"] == "unfilled_breakout_close"
+    assert detail["context"]["breakout_close_type"] == "filled_breakout_close"
     assert detail["context"]["range_break_price"] == 116
     assert fake_api.cancelled_symbols == ["ADAUSDCM"]
-    assert any(order["reduce_only"] for order in fake_api.orders)
+    assert _market_reduce_only_orders(fake_api)
     assert detail["logs"][-2]["event"] == "range_break_close"
     assert detail["logs"][-2]["direction"] == "up"
-    assert detail["logs"][-2]["breakout_close_type"] == "unfilled_breakout_close"
-    assert detail["logs"][-2]["has_filled_exposure"] is False
+    assert detail["logs"][-2]["breakout_close_type"] == "filled_breakout_close"
+    assert detail["logs"][-2]["has_filled_exposure"] is True
 
 
 def test_grid_lifecycle_continues_reconciliation_inside_breakout_bounds(
@@ -1143,10 +1185,21 @@ def test_grid_lifecycle_closes_ladder_and_position(
     created = client.post("/grid-ladders", json=_payload())
     ladder_id = created.json()["detail"]["id"]
     fake_api = FakeFuturesApi()
-    fake_api.position_qty = 2
+    fake_api.position_mark_price = 100
 
     with Session(create_test_tables) as session:
         lifecycle = GridLadderLifecycle(_grid_base(fake_api), session)
+        lifecycle.process_symbol("ADAUSDC")
+        ladder = GridLadderCrud(session).get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        entry_order = next(order for order in ladder.orders if order.side == "buy")
+        fake_api.position_qty = entry_order.contracts
+        fake_api.order_details[entry_order.exchange_order_id] = _order_details(
+            status=GetOrderByOrderIdResp.StatusEnum.DONE,
+            filled_size=entry_order.contracts,
+            avg_deal_price=entry_order.price,
+            price=entry_order.price,
+        )
         lifecycle.process_symbol("ADAUSDC")
 
     close = client.post(
@@ -1163,7 +1216,7 @@ def test_grid_lifecycle_closes_ladder_and_position(
     assert detail["closed_at"] is not None
     assert detail["used_margin"] == 0
     assert fake_api.cancelled_symbols == ["ADAUSDCM"]
-    assert any(order["reduce_only"] for order in fake_api.orders)
+    assert _market_reduce_only_orders(fake_api)
 
 
 def test_grid_ladder_active_unique_constraint(create_test_tables):
