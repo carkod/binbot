@@ -95,15 +95,10 @@ class BaseStreaming:
         return active_pairs
 
     def get_current_bot(self, symbol: str) -> BotModel | None:
-        try:
-            current_bot = self.bot_controller.get_one(
-                symbol=symbol, status=Status.active
-            )
-            bot = BotModel.dump_from_table(current_bot)
-            return bot
-        except BinbotErrors:
-            bot = None
-            return bot
+        current_bot = self.bot_controller.get_active_for_symbol(symbol)
+        if current_bot is None:
+            return None
+        return BotModel.dump_from_table(current_bot)
 
     def get_current_test_bot(self, symbol: str) -> BotModel | None:
         try:

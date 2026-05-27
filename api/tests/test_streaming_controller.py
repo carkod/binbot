@@ -9,6 +9,8 @@ from typing import Any, cast
 from pybinbot import MarketType
 from streaming.position_manager import PositionManager
 from streaming.base import BaseStreaming
+from databases.tables.bot_table import BotTable
+from databases.tables.deal_table import DealTable
 from pybinbot import (
     ExchangeId,
     BinanceErrors,
@@ -206,6 +208,28 @@ class TestPositionManager:
         base = self._make_base_streaming(monkeypatch)
 
         assert base.bot_controller.session is None
+
+    def test_base_streaming_get_current_bot_includes_pending(self, monkeypatch):
+        base = self._make_base_streaming(monkeypatch)
+        pending_bot = BotTable(
+            pair="BTCUSDC",
+            status=Status.pending,
+            deal=DealTable(),
+            orders=[],
+        )
+
+        class CurrentBotCrud:
+            def get_active_for_symbol(self, symbol):
+                assert symbol == "BTCUSDC"
+                return pending_bot
+
+        base.bot_controller = CurrentBotCrud()
+
+        bot = base.get_current_bot("BTCUSDC")
+
+        assert bot is not None
+        assert bot.pair == "BTCUSDC"
+        assert bot.status == Status.pending
 
     def test_build_bb_spreads_minimum_length(self, monkeypatch):
         base = self._make_base_streaming(monkeypatch)
