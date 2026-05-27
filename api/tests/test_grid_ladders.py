@@ -872,7 +872,6 @@ def test_grid_lifecycle_closes_unfilled_ladder_after_one_breach_candle(
     created = client.post("/grid-ladders", json=_payload())
     ladder_id = created.json()["detail"]["id"]
     fake_api = FakeFuturesApi()
-    fake_api.position_qty = 2
 
     with Session(create_test_tables) as session:
         lifecycle = GridLadderLifecycle(_grid_base(fake_api), session)
@@ -902,6 +901,96 @@ def test_grid_lifecycle_closes_unfilled_ladder_after_one_breach_candle(
     assert _market_reduce_only_orders(fake_api) == []
     assert detail["logs"][-2]["breakout_close_type"] == "unfilled_breakout_close"
     assert detail["logs"][-2]["has_filled_exposure"] is False
+    assert detail["logs"][-2]["has_exchange_position"] is False
+
+
+def test_grid_lifecycle_reconciles_between_tick_fill_before_range_break_close(
+    client, monkeypatch, create_test_tables
+):
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+    created = client.post("/grid-ladders", json=_payload())
+    ladder_id = created.json()["detail"]["id"]
+    fake_api = FakeFuturesApi()
+
+    with Session(create_test_tables) as session:
+        lifecycle = GridLadderLifecycle(_grid_base(fake_api), session)
+        lifecycle.process_symbol("ADAUSDC")
+        fake_api.position_mark_price = 84
+        lifecycle.process_symbol("ADAUSDC")
+        crud = GridLadderCrud(session)
+        ladder = crud.get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        entry_order = next(order for order in ladder.orders if order.side == "buy")
+        fake_api.position_qty = entry_order.contracts
+        fake_api.order_details[entry_order.exchange_order_id] = _order_details(
+            status=GetOrderByOrderIdResp.StatusEnum.DONE,
+            filled_size=entry_order.contracts,
+            avg_deal_price=entry_order.price,
+            price=entry_order.price,
+        )
+        past_ms = (
+            int(time() * 1000)
+            - GridLadderLifecycle.UNFILLED_BREACH_CANDLES_REQUIRED * 15 * 60 * 1000
+            - 1000
+        )
+        crud.update_status_with_context(
+            ladder.id,
+            GridLadderStatus.active,
+            context_updates={"first_breach_at": past_ms},
+        )
+        lifecycle.process_symbol("ADAUSDC")
+
+    detail = client.get(f"/grid-ladders/{ladder_id}").json()["detail"]
+    filled_level = next(
+        level
+        for level in detail["levels"]
+        if level["entry_order_id"] == entry_order.exchange_order_id
+    )
+    assert detail["status"] == "active"
+    assert detail["context"]["first_breach_at"] == past_ms
+    assert filled_level["status"] == "take_profit_open"
+    assert _market_reduce_only_orders(fake_api) == []
+
+
+def test_grid_lifecycle_uses_exchange_position_for_stale_db_breakout_close(
+    client, monkeypatch, create_test_tables
+):
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+    created = client.post("/grid-ladders", json=_payload())
+    ladder_id = created.json()["detail"]["id"]
+    fake_api = FakeFuturesApi()
+
+    with Session(create_test_tables) as session:
+        lifecycle = GridLadderLifecycle(_grid_base(fake_api), session)
+        lifecycle.process_symbol("ADAUSDC")
+        fake_api.position_mark_price = 84
+        lifecycle.process_symbol("ADAUSDC")
+        fake_api.position_qty = 2
+        crud = GridLadderCrud(session)
+        ladder = crud.get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        past_ms = (
+            int(time() * 1000)
+            - GridLadderLifecycle.BREACH_CANDLES_REQUIRED * 15 * 60 * 1000
+            - 1000
+        )
+        crud.update_status_with_context(
+            ladder.id,
+            GridLadderStatus.active,
+            context_updates={"first_breach_at": past_ms},
+        )
+        lifecycle.process_symbol("ADAUSDC")
+
+    detail = client.get(f"/grid-ladders/{ladder_id}").json()["detail"]
+    assert detail["status"] == "closed"
+    assert detail["context"]["breakout_close_type"] == "filled_breakout_close"
+    assert detail["realized_pnl"] == 0
+    assert _market_reduce_only_orders(fake_api)
+    assert detail["logs"][-2]["breakout_close_type"] == "filled_breakout_close"
+    assert detail["logs"][-2]["has_filled_exposure"] is True
+    assert detail["logs"][-2]["has_exchange_position"] is True
 
 
 def test_grid_lifecycle_keeps_filled_ladder_open_after_one_breach_candle(

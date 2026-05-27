@@ -87,6 +87,14 @@ class GridLadderLifecycle:
             return
 
         if status == GridLadderStatus.active.value:
+            self._reconcile_active_ladder(ladder)
+            refreshed_ladder = self.crud.get(ladder.id)
+            if refreshed_ladder is None:
+                return
+            ladder = refreshed_ladder
+            if self._status_value(ladder.status) != GridLadderStatus.active.value:
+                return
+
             range_break = self._range_break(ladder)
             if range_break is not None:
                 direction, price = range_break
@@ -105,7 +113,10 @@ class GridLadderLifecycle:
                         "event": "range_break_close",
                         "direction": direction,
                         "breakout_close_type": breakout_close_type,
-                        "has_filled_exposure": self._has_filled_exposure(ladder),
+                        "has_filled_exposure": self._has_open_exposure(ladder),
+                        "has_exchange_position": self._has_exchange_position(
+                            ladder.symbol
+                        ),
                         "price": price,
                         "breakout_low": ladder.breakout_low,
                         "breakout_high": ladder.breakout_high,
@@ -113,7 +124,6 @@ class GridLadderLifecycle:
                 )
                 return
 
-            self._reconcile_active_ladder(ladder)
             self._refresh_unrealized_pnl(ladder)
             return
 
@@ -125,19 +135,45 @@ class GridLadderLifecycle:
             return status.value
         return str(status)
 
-    def _has_filled_exposure(self, ladder: GridLadderTable) -> bool:
+    def _has_filled_exposure(
+        self,
+        ladder: GridLadderTable,
+        levels: list[GridLevelTable] | None = None,
+    ) -> bool:
+        exposure_levels = ladder.levels if levels is None else levels
         return any(
-            level.side != "neutral" and level.filled_entry_qty > 0
-            for level in ladder.levels
+            level.side != "neutral"
+            and level.filled_entry_qty > 0
+            and level.status != GridLevelStatus.completed.value
+            for level in exposure_levels
         )
 
+    def _has_exchange_position(self, symbol: str) -> bool:
+        symbol_row = self._symbol_row(symbol)
+        position = self.base_streaming.kucoin_futures_api.get_futures_position(
+            symbol_row.get_futures_symbol()
+        )
+        if position is None:
+            return False
+        return abs(float(position.current_qty or 0)) > 0
+
+    def _has_open_exposure(
+        self,
+        ladder: GridLadderTable,
+        levels: list[GridLevelTable] | None = None,
+    ) -> bool:
+        return self._has_filled_exposure(
+            ladder,
+            levels,
+        ) or self._has_exchange_position(ladder.symbol)
+
     def _breach_candles_required(self, ladder: GridLadderTable) -> int:
-        if self._has_filled_exposure(ladder):
+        if self._has_open_exposure(ladder):
             return self.BREACH_CANDLES_REQUIRED
         return self.UNFILLED_BREACH_CANDLES_REQUIRED
 
     def _breakout_close_type(self, ladder: GridLadderTable) -> str:
-        if self._has_filled_exposure(ladder):
+        if self._has_open_exposure(ladder):
             return "filled_breakout_close"
         return "unfilled_breakout_close"
 
@@ -541,12 +577,7 @@ class GridLadderLifecycle:
         # Snapshot level state before any mutations so PnL computation sees
         # the original statuses (some will be flipped to "cancelled" below).
         open_levels = list(ladder.levels)
-        has_filled_exposure = any(
-            level.side != "neutral"
-            and level.filled_entry_qty > 0
-            and level.status != GridLevelStatus.completed.value
-            for level in open_levels
-        )
+        has_filled_exposure = self._has_open_exposure(ladder, open_levels)
 
         self._cancel_ladder_orders(ladder.symbol)
         self.crud.update_orders_for_ladder(
