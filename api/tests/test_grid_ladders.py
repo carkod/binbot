@@ -1,6 +1,6 @@
 from time import time
 from types import SimpleNamespace
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from kucoin_universal_sdk.generate.futures.order.model_get_order_by_order_id_resp import (
@@ -18,6 +18,8 @@ from pybinbot import (
 from sqlmodel import Session, delete
 
 from databases.crud.grid_ladder_crud import GridLadderCrud
+from databases.tables.bot_table import BotTable
+from databases.tables.deal_table import DealTable
 from databases.tables.grid_ladder_table import (
     GridLadderTable,
     GridLevelTable,
@@ -366,7 +368,7 @@ def test_post_grid_ladder_persists_ladder_and_levels(client, monkeypatch):
 
 
 def test_post_grid_ladder_rejects_second_active_ladder_for_same_symbol(
-    client, monkeypatch
+    client, monkeypatch, create_test_tables
 ):
     _patch_balance(monkeypatch, 10_000)
     _patch_contract_meta(monkeypatch)
@@ -377,6 +379,40 @@ def test_post_grid_ladder_rejects_second_active_ladder_for_same_symbol(
     assert first.status_code == 200
     assert second.status_code == 400
     assert "already exists" in second.json()["detail"]
+    with Session(create_test_tables) as session:
+        ladder = GridLadderCrud(session).get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        assert any("Rejected grid ladder create" in log for log in ladder.logs)
+
+
+def test_post_grid_ladder_rejects_active_bot_for_same_symbol_and_logs(
+    client, monkeypatch, create_test_tables
+):
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+    bot_id = UUID("22222222-2222-2222-2222-222222222222")
+
+    with Session(create_test_tables) as session:
+        bot = BotTable(
+            id=bot_id,
+            pair="QNTUSDTM",
+            fiat="USDC",
+            market_type=MarketType.FUTURES,
+            name="active_futures_bot",
+            status="active",
+            deal=DealTable(),
+        )
+        session.add(bot)
+        session.commit()
+
+    response = client.post("/grid-ladders", json=_payload("QNTUSDTM"))
+
+    assert response.status_code == 400
+    assert "active bot" in response.json()["detail"]
+    with Session(create_test_tables) as session:
+        bot = session.get(BotTable, bot_id)
+        assert bot is not None
+        assert any("Rejected grid ladder create" in log for log in bot.logs)
 
 
 def test_post_grid_ladder_rejects_default_third_active_ladder(client, monkeypatch):

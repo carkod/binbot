@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from sqlmodel import Session
-from pybinbot import Status, BinbotErrors, BinanceErrors
+from pybinbot import Status, BinbotErrors, BinanceErrors, MarketType
 from user.models.user import UserTokenData
 from bots.models import (
     BotBase,
@@ -14,6 +14,7 @@ from bots.models import (
     ErrorsRequestBody,
 )
 from databases.crud.bot_crud import BotTableCrud
+from databases.crud.grid_ladder_crud import GridLadderCrud
 from databases.utils import get_session
 from deals.gateway import DealGateway
 from databases.tables.bot_table import BotTable, PaperTradingTable
@@ -172,6 +173,23 @@ def create_bot(
     _: UserTokenData = Depends(get_current_user),
 ):
     crud = BotTableCrud(session)
+    grid_ladder_crud = GridLadderCrud(session)
+    active_ladder = grid_ladder_crud.get_active_for_symbol(bot_item.pair)
+    if active_ladder is not None and MarketType(
+        active_ladder.market_type
+    ) == MarketType(bot_item.market_type):
+        grid_ladder_crud.update_logs(
+            active_ladder.id,
+            (
+                f"Rejected bot create for {bot_item.pair} ({bot_item.name}): "
+                "active grid ladder already owns symbol."
+            ),
+        )
+        raise HTTPException(
+            status_code=400,
+            detail="An active grid ladder already exists for this symbol",
+        )
+
     bot_row = crud.create(bot_item)
     bot_model = BotModel.dump_from_table(bot_row)
     return BotResponse(message="Successfully created one bot.", data=bot_model)
