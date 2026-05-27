@@ -1,5 +1,6 @@
 import {
   calculateCloseAdjustmentPnl,
+  calculateGridUtilization,
   GridLadderStatus,
   resolveGridPosition,
   type GridLadder,
@@ -119,6 +120,16 @@ describe("grid ladder live PnL", () => {
 
     expect(calculateGridLivePnl(ladder, 0.25)).toBe(0.75);
     expect(calculateGridLiveReturnPct(ladder, 0.25)).toBe(0.75);
+  });
+
+  it("calculates utilisation against reserved margin", () => {
+    const ladder = makeLadder({
+      reserved_margin: 80,
+      total_margin: 100,
+      used_margin: 20,
+    });
+
+    expect(calculateGridUtilization(ladder)).toBe(25);
   });
 
   it("surfaces closed ladder PnL outside completed TP cycles", () => {
