@@ -32,13 +32,19 @@ GRID_ORDER_OPEN_STATUS = OrderStatus.NEW.value
 GRID_ORDER_FILLED_STATUS = OrderStatus.FILLED.value
 GRID_ORDER_CANCELLED_STATUS = OrderStatus.CANCELED.value
 GRID_ORDER_ERROR_STATUS = OrderStatus.REJECTED.value
-OPEN_ORDER_STATUSES = (GRID_ORDER_OPEN_STATUS,)
 TERMINAL_GRID_ORDER_STATUSES = {
     GRID_ORDER_FILLED_STATUS,
     GRID_ORDER_CANCELLED_STATUS,
     GRID_ORDER_ERROR_STATUS,
     OrderStatus.EXPIRED.value,
 }
+# Exchange-terminal statuses that are not a fill — the order died without executing.
+CANCELLED_GRID_ORDER_STATUSES = TERMINAL_GRID_ORDER_STATUSES - {
+    GRID_ORDER_FILLED_STATUS
+}
+_STALE_LADDER_AGE_MS = int(1.5 * 24 * 60 * 60 * 1000)
+_STALE_LADDER_PNL_PCT_LOW = -1.0
+_STALE_LADDER_PNL_PCT_HIGH = 1.0
 
 
 def _coerce_breach_ts(value: object) -> int | None:
@@ -93,6 +99,42 @@ class GridLadderLifecycle:
                 return
             ladder = refreshed_ladder
             if self._status_value(ladder.status) != GridLadderStatus.active.value:
+                return
+
+            # All entry orders cancelled/expired on the exchange and no open position —
+            # the ladder is an orphan with no way to fill. Close it immediately.
+            if self._is_orphaned(ladder):
+                self._close_ladder(
+                    ladder,
+                    context_updates={"close_reason": "orphaned_close"},
+                    log_event={
+                        "event": "orphaned_close",
+                        "reason": "all_orders_terminal_no_exposure",
+                    },
+                )
+                return
+
+            # Panic close stale ladders with flat PnL after 1.5 days (mirrors
+            # PositionDeal.exit stale-position logic).
+            if self._is_stale(ladder):
+                total_pnl = float(ladder.realized_pnl or 0) + float(
+                    ladder.unrealized_pnl or 0
+                )
+                pnl_pct = (
+                    (total_pnl / float(ladder.total_margin) * 100)
+                    if ladder.total_margin > 0
+                    else 0
+                )
+                self._close_ladder(
+                    ladder,
+                    context_updates={"close_reason": "stale_close"},
+                    log_event={
+                        "event": "stale_close",
+                        "pnl_pct": round(pnl_pct, 4),
+                        "realized_pnl": ladder.realized_pnl,
+                        "unrealized_pnl": ladder.unrealized_pnl,
+                    },
+                )
                 return
 
             range_break = self._range_break(ladder)
@@ -359,7 +401,7 @@ class GridLadderLifecycle:
             self._cancel_ladder_orders(ladder.symbol)
             self.crud.update_orders_for_ladder(
                 ladder.id,
-                current_statuses=OPEN_ORDER_STATUSES,
+                current_statuses=(GRID_ORDER_OPEN_STATUS,),
                 new_status=GRID_ORDER_CANCELLED_STATUS,
             )
             self.crud.update_status_with_context(
@@ -412,6 +454,21 @@ class GridLadderLifecycle:
                     self._handle_filled_order(ladder, order, filled_qty, filled_price)
                 except Exception as error:
                     self._mark_order_error(ladder, order, error)
+                continue
+
+            # Exchange reports a terminal non-fill status (cancelled/expired) but our DB
+            # still shows the order as open. Persist the terminal state so we stop
+            # polling this order and the ladder can be closed as an orphan.
+            if status in CANCELLED_GRID_ORDER_STATUSES:
+                self.crud.update_order(order.id, status=status)
+                if order.level_id:
+                    self.crud.update_level_order(
+                        order.level_id, status=GridLevelStatus.cancelled.value
+                    )
+                self.crud.update_logs(
+                    ladder.id,
+                    f"Order {order.exchange_order_id} {status} on exchange; marked terminal",
+                )
                 continue
 
             self.crud.update_order(
@@ -531,6 +588,31 @@ class GridLadderLifecycle:
         self.crud.recalculate_used_margin(ladder.id)
         self.crud.update_error_logs(ladder.id, error)
 
+    def _is_orphaned(self, ladder: GridLadderTable) -> bool:
+        """True when every non-neutral order is in a terminal non-fill state and
+        there is no open exchange position — the ladder has nothing left to do."""
+        has_any_active = any(
+            order.status == GRID_ORDER_OPEN_STATUS for order in ladder.orders
+        )
+        if has_any_active:
+            return False
+        return not self._has_open_exposure(ladder)
+
+    def _is_stale(self, ladder: GridLadderTable) -> bool:
+        """True when the ladder has been running for 1.5 days with flat PnL
+        (between -1% and +1% of total_margin), mirroring PositionDeal's
+        panic-close logic for low-activity positions."""
+        if not ladder.created_at:
+            return False
+        age_ms = int(time() * 1000) - int(ladder.created_at)
+        if age_ms < _STALE_LADDER_AGE_MS:
+            return False
+        if ladder.total_margin <= 0:
+            return False
+        total_pnl = float(ladder.realized_pnl or 0) + float(ladder.unrealized_pnl or 0)
+        pnl_pct = total_pnl / float(ladder.total_margin) * 100
+        return _STALE_LADDER_PNL_PCT_LOW <= pnl_pct < _STALE_LADDER_PNL_PCT_HIGH
+
     def _refresh_unrealized_pnl(self, ladder: GridLadderTable) -> None:
         symbol_row = self._symbol_row(ladder.symbol)
         position = self.base_streaming.kucoin_futures_api.get_futures_position(
@@ -582,7 +664,7 @@ class GridLadderLifecycle:
         self._cancel_ladder_orders(ladder.symbol)
         self.crud.update_orders_for_ladder(
             ladder.id,
-            current_statuses=OPEN_ORDER_STATUSES,
+            current_statuses=(GRID_ORDER_OPEN_STATUS,),
             new_status=GRID_ORDER_CANCELLED_STATUS,
         )
         for level in open_levels:
