@@ -143,6 +143,7 @@ class FakeFuturesApi:
         self.position_qty = 0
         self.position_unrealized_pnl: float = 0
         self.position_mark_price: float | None = None
+        self.market_price: float | None = None
         self.raise_on_order = False
         self.fail_on_call: int | None = None
         self._counter = 0
@@ -185,6 +186,9 @@ class FakeFuturesApi:
             unrealized_pnl=self.position_unrealized_pnl,
             mark_price=self.position_mark_price,
         )
+
+    def matching_engine(self, symbol: str, size: float, side):
+        return self.market_price or self.position_mark_price or 100
 
     def get_symbol_info(self, symbol: str):
         return SimpleNamespace(multiplier=1)
@@ -902,6 +906,45 @@ def test_grid_lifecycle_closes_unfilled_ladder_after_one_breach_candle(
     assert detail["logs"][-2]["breakout_close_type"] == "unfilled_breakout_close"
     assert detail["logs"][-2]["has_filled_exposure"] is False
     assert detail["logs"][-2]["has_exchange_position"] is False
+
+
+def test_grid_lifecycle_uses_matching_engine_price_for_range_break(
+    client, monkeypatch, create_test_tables
+):
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+    created = client.post("/grid-ladders", json=_payload())
+    ladder_id = created.json()["detail"]["id"]
+    fake_api = FakeFuturesApi()
+    fake_api.position_mark_price = 0
+    fake_api.market_price = 100
+
+    with Session(create_test_tables) as session:
+        lifecycle = GridLadderLifecycle(_grid_base(fake_api), session)
+        lifecycle.process_symbol("ADAUSDC")
+        crud = GridLadderCrud(session)
+        ladder = crud.get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        crud.update_status_with_context(
+            ladder.id,
+            GridLadderStatus.active,
+            context_updates={
+                "first_breach_at": (
+                    int(time() * 1000)
+                    - GridLadderLifecycle.UNFILLED_BREACH_CANDLES_REQUIRED
+                    * 15
+                    * 60
+                    * 1000
+                    - 1000
+                )
+            },
+        )
+        lifecycle.process_symbol("ADAUSDC")
+
+    detail = client.get(f"/grid-ladders/{ladder_id}").json()["detail"]
+    assert detail["status"] == "active"
+    assert detail["context"]["first_breach_at"] is None
+    assert _market_reduce_only_orders(fake_api) == []
 
 
 def test_grid_lifecycle_reconciles_between_tick_fill_before_range_break_close(

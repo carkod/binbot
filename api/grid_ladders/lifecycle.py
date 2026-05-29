@@ -272,7 +272,7 @@ class GridLadderLifecycle:
         raise ValueError(f"Unsupported grid side: {side}")
 
     def _range_break(self, ladder: GridLadderTable) -> tuple[str, float] | None:
-        price = self._current_position_price(ladder.symbol)
+        price = self._current_market_price(ladder.symbol)
         if price is None:
             return None
 
@@ -335,19 +335,28 @@ class GridLadderLifecycle:
             )
         return None
 
-    def _current_position_price(self, symbol: str) -> float | None:
+    def _current_market_price(self, symbol: str) -> float | None:
         symbol_row = self._symbol_row(symbol)
-        position = self.base_streaming.kucoin_futures_api.get_futures_position(
-            symbol_row.get_futures_symbol()
-        )
-        if position is None:
+        futures_symbol = symbol_row.get_futures_symbol()
+        prices: list[float] = []
+        for side in (AddOrderReq.SideEnum.BUY, AddOrderReq.SideEnum.SELL):
+            try:
+                raw_price = self.base_streaming.kucoin_futures_api.matching_engine(
+                    futures_symbol,
+                    size=1,
+                    side=side,
+                )
+            except Exception:
+                continue
+            price = float(raw_price or 0)
+            if price > 0:
+                prices.append(price)
+
+        if not prices:
             return None
 
-        for field_name in ("mark_price", "current_price", "price"):
-            raw_price = getattr(position, field_name, None)
-            if raw_price is not None:
-                return float(raw_price)
-        return None
+        precision = self._price_precision(symbol_row)
+        return round_numbers(sum(prices) / len(prices), precision or 8)
 
     def _place_initial_entries(self, ladder: GridLadderTable) -> None:
         symbol_row = self._symbol_row(ladder.symbol)
