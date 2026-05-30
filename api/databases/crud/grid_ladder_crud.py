@@ -457,6 +457,13 @@ class GridLadderCrud:
         self.session.refresh(level)
         return level
 
+    def recalculate_realized_pnl(self, ladder_id: UUID) -> GridLadderTable | None:
+        ladder = self.get(ladder_id)
+        if ladder is None:
+            return None
+        total = sum(float(lv.realized_pnl or 0) for lv in ladder.levels)
+        return self.update_realized_pnl(ladder_id, round_numbers(total))
+
     def delete(self, ladder_id: UUID) -> bool:
         ladder = self.session.get(GridLadderTable, ladder_id)
         if ladder is None:
