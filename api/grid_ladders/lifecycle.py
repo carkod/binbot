@@ -32,13 +32,19 @@ GRID_ORDER_OPEN_STATUS = OrderStatus.NEW.value
 GRID_ORDER_FILLED_STATUS = OrderStatus.FILLED.value
 GRID_ORDER_CANCELLED_STATUS = OrderStatus.CANCELED.value
 GRID_ORDER_ERROR_STATUS = OrderStatus.REJECTED.value
-OPEN_ORDER_STATUSES = (GRID_ORDER_OPEN_STATUS,)
 TERMINAL_GRID_ORDER_STATUSES = {
     GRID_ORDER_FILLED_STATUS,
     GRID_ORDER_CANCELLED_STATUS,
     GRID_ORDER_ERROR_STATUS,
     OrderStatus.EXPIRED.value,
 }
+# Exchange-terminal statuses that are not a fill — the order died without executing.
+CANCELLED_GRID_ORDER_STATUSES = TERMINAL_GRID_ORDER_STATUSES - {
+    GRID_ORDER_FILLED_STATUS
+}
+_STALE_LADDER_AGE_MS = int(1.5 * 24 * 60 * 60 * 1000)
+_STALE_LADDER_PNL_PCT_LOW = -1.0
+_STALE_LADDER_PNL_PCT_HIGH = 1.0
 
 
 def _coerce_breach_ts(value: object) -> int | None:
@@ -66,9 +72,10 @@ class GridLadderLifecycle:
     """
 
     # Price must stay outside the breakout zone for this many monitoring ticks
-    # before a close is triggered (prevents wicks from exiting prematurely).
+    # before a filled ladder closes (prevents wicks from exiting prematurely).
     # Each tick corresponds to one process_symbol() call, typically every ~15 m.
     BREACH_CANDLES_REQUIRED = 3
+    UNFILLED_BREACH_CANDLES_REQUIRED = 1
 
     def __init__(self, base_streaming: BaseStreaming, session: Session):
         self.base_streaming = base_streaming
@@ -86,14 +93,60 @@ class GridLadderLifecycle:
             return
 
         if status == GridLadderStatus.active.value:
+            self._reconcile_active_ladder(ladder)
+            refreshed_ladder = self.crud.get(ladder.id)
+            if refreshed_ladder is None:
+                return
+            ladder = refreshed_ladder
+            if self._status_value(ladder.status) != GridLadderStatus.active.value:
+                return
+
+            # All entry orders cancelled/expired on the exchange and no open position —
+            # the ladder is an orphan with no way to fill. Close it immediately.
+            if self._is_orphaned(ladder):
+                self._close_ladder(
+                    ladder,
+                    context_updates={"close_reason": "orphaned_close"},
+                    log_event={
+                        "event": "orphaned_close",
+                        "reason": "all_orders_terminal_no_exposure",
+                    },
+                )
+                return
+
+            # Panic close stale ladders with flat PnL after 1.5 days (mirrors
+            # PositionDeal.exit stale-position logic).
+            if self._is_stale(ladder):
+                total_pnl = float(ladder.realized_pnl or 0) + float(
+                    ladder.unrealized_pnl or 0
+                )
+                pnl_pct = (
+                    (total_pnl / float(ladder.total_margin) * 100)
+                    if ladder.total_margin > 0
+                    else 0
+                )
+                self._close_ladder(
+                    ladder,
+                    context_updates={"close_reason": "stale_close"},
+                    log_event={
+                        "event": "stale_close",
+                        "pnl_pct": round(pnl_pct, 4),
+                        "realized_pnl": ladder.realized_pnl,
+                        "unrealized_pnl": ladder.unrealized_pnl,
+                    },
+                )
+                return
+
             range_break = self._range_break(ladder)
             if range_break is not None:
                 direction, price = range_break
                 close_reason = f"range_break_{direction}"
+                breakout_close_type = self._breakout_close_type(ladder)
                 self._close_ladder(
                     ladder,
                     context_updates={
                         "close_reason": close_reason,
+                        "breakout_close_type": breakout_close_type,
                         "range_break_price": price,
                         "breakout_low": ladder.breakout_low,
                         "breakout_high": ladder.breakout_high,
@@ -101,6 +154,11 @@ class GridLadderLifecycle:
                     log_event={
                         "event": "range_break_close",
                         "direction": direction,
+                        "breakout_close_type": breakout_close_type,
+                        "has_filled_exposure": self._has_open_exposure(ladder),
+                        "has_exchange_position": self._has_exchange_position(
+                            ladder.symbol
+                        ),
                         "price": price,
                         "breakout_low": ladder.breakout_low,
                         "breakout_high": ladder.breakout_high,
@@ -108,7 +166,6 @@ class GridLadderLifecycle:
                 )
                 return
 
-            self._reconcile_active_ladder(ladder)
             self._refresh_unrealized_pnl(ladder)
             return
 
@@ -119,6 +176,48 @@ class GridLadderLifecycle:
         if isinstance(status, GridLadderStatus):
             return status.value
         return str(status)
+
+    def _has_filled_exposure(
+        self,
+        ladder: GridLadderTable,
+        levels: list[GridLevelTable] | None = None,
+    ) -> bool:
+        exposure_levels = ladder.levels if levels is None else levels
+        return any(
+            level.side != "neutral"
+            and level.filled_entry_qty > 0
+            and level.status != GridLevelStatus.completed.value
+            for level in exposure_levels
+        )
+
+    def _has_exchange_position(self, symbol: str) -> bool:
+        symbol_row = self._symbol_row(symbol)
+        position = self.base_streaming.kucoin_futures_api.get_futures_position(
+            symbol_row.get_futures_symbol()
+        )
+        if position is None:
+            return False
+        return abs(float(position.current_qty or 0)) > 0
+
+    def _has_open_exposure(
+        self,
+        ladder: GridLadderTable,
+        levels: list[GridLevelTable] | None = None,
+    ) -> bool:
+        return self._has_filled_exposure(
+            ladder,
+            levels,
+        ) or self._has_exchange_position(ladder.symbol)
+
+    def _breach_candles_required(self, ladder: GridLadderTable) -> int:
+        if self._has_open_exposure(ladder):
+            return self.BREACH_CANDLES_REQUIRED
+        return self.UNFILLED_BREACH_CANDLES_REQUIRED
+
+    def _breakout_close_type(self, ladder: GridLadderTable) -> str:
+        if self._has_open_exposure(ladder):
+            return "filled_breakout_close"
+        return "unfilled_breakout_close"
 
     def _symbol_row(self, symbol: str) -> SymbolTable:
         symbol_row = self.session.get(SymbolTable, symbol)
@@ -173,12 +272,12 @@ class GridLadderLifecycle:
         raise ValueError(f"Unsupported grid side: {side}")
 
     def _range_break(self, ladder: GridLadderTable) -> tuple[str, float] | None:
-        price = self._current_position_price(ladder.symbol)
+        price = self._current_market_price(ladder.symbol)
         if price is None:
             return None
 
         now_ms = int(time() * 1000)
-        breach_duration_ms = self.BREACH_CANDLES_REQUIRED * 15 * 60 * 1000
+        breach_duration_ms = self._breach_candles_required(ladder) * 15 * 60 * 1000
 
         if price < ladder.breakout_low:
             first_breach = _coerce_breach_ts(
@@ -236,19 +335,28 @@ class GridLadderLifecycle:
             )
         return None
 
-    def _current_position_price(self, symbol: str) -> float | None:
+    def _current_market_price(self, symbol: str) -> float | None:
         symbol_row = self._symbol_row(symbol)
-        position = self.base_streaming.kucoin_futures_api.get_futures_position(
-            symbol_row.get_futures_symbol()
-        )
-        if position is None:
+        futures_symbol = symbol_row.get_futures_symbol()
+        prices: list[float] = []
+        for side in (AddOrderReq.SideEnum.BUY, AddOrderReq.SideEnum.SELL):
+            try:
+                raw_price = self.base_streaming.kucoin_futures_api.matching_engine(
+                    futures_symbol,
+                    size=1,
+                    side=side,
+                )
+            except Exception:
+                continue
+            price = float(raw_price or 0)
+            if price > 0:
+                prices.append(price)
+
+        if not prices:
             return None
 
-        for field_name in ("mark_price", "current_price", "price"):
-            raw_price = getattr(position, field_name, None)
-            if raw_price is not None:
-                return float(raw_price)
-        return None
+        precision = self._price_precision(symbol_row)
+        return round_numbers(sum(prices) / len(prices), precision or 8)
 
     def _place_initial_entries(self, ladder: GridLadderTable) -> None:
         symbol_row = self._symbol_row(ladder.symbol)
@@ -302,7 +410,7 @@ class GridLadderLifecycle:
             self._cancel_ladder_orders(ladder.symbol)
             self.crud.update_orders_for_ladder(
                 ladder.id,
-                current_statuses=OPEN_ORDER_STATUSES,
+                current_statuses=(GRID_ORDER_OPEN_STATUS,),
                 new_status=GRID_ORDER_CANCELLED_STATUS,
             )
             self.crud.update_status_with_context(
@@ -355,6 +463,21 @@ class GridLadderLifecycle:
                     self._handle_filled_order(ladder, order, filled_qty, filled_price)
                 except Exception as error:
                     self._mark_order_error(ladder, order, error)
+                continue
+
+            # Exchange reports a terminal non-fill status (cancelled/expired) but our DB
+            # still shows the order as open. Persist the terminal state so we stop
+            # polling this order and the ladder can be closed as an orphan.
+            if status in CANCELLED_GRID_ORDER_STATUSES:
+                self.crud.update_order(order.id, status=status)
+                if order.level_id:
+                    self.crud.update_level_order(
+                        order.level_id, status=GridLevelStatus.cancelled.value
+                    )
+                self.crud.update_logs(
+                    ladder.id,
+                    f"Order {order.exchange_order_id} {status} on exchange; marked terminal",
+                )
                 continue
 
             self.crud.update_order(
@@ -474,6 +597,31 @@ class GridLadderLifecycle:
         self.crud.recalculate_used_margin(ladder.id)
         self.crud.update_error_logs(ladder.id, error)
 
+    def _is_orphaned(self, ladder: GridLadderTable) -> bool:
+        """True when every non-neutral order is in a terminal non-fill state and
+        there is no open exchange position — the ladder has nothing left to do."""
+        has_any_active = any(
+            order.status == GRID_ORDER_OPEN_STATUS for order in ladder.orders
+        )
+        if has_any_active:
+            return False
+        return not self._has_open_exposure(ladder)
+
+    def _is_stale(self, ladder: GridLadderTable) -> bool:
+        """True when the ladder has been running for 1.5 days with flat PnL
+        (between -1% and +1% of total_margin), mirroring PositionDeal's
+        panic-close logic for low-activity positions."""
+        if not ladder.created_at:
+            return False
+        age_ms = int(time() * 1000) - int(ladder.created_at)
+        if age_ms < _STALE_LADDER_AGE_MS:
+            return False
+        if ladder.total_margin <= 0:
+            return False
+        total_pnl = float(ladder.realized_pnl or 0) + float(ladder.unrealized_pnl or 0)
+        pnl_pct = total_pnl / float(ladder.total_margin) * 100
+        return _STALE_LADDER_PNL_PCT_LOW <= pnl_pct < _STALE_LADDER_PNL_PCT_HIGH
+
     def _refresh_unrealized_pnl(self, ladder: GridLadderTable) -> None:
         symbol_row = self._symbol_row(ladder.symbol)
         position = self.base_streaming.kucoin_futures_api.get_futures_position(
@@ -520,11 +668,12 @@ class GridLadderLifecycle:
         # Snapshot level state before any mutations so PnL computation sees
         # the original statuses (some will be flipped to "cancelled" below).
         open_levels = list(ladder.levels)
+        has_filled_exposure = self._has_open_exposure(ladder, open_levels)
 
         self._cancel_ladder_orders(ladder.symbol)
         self.crud.update_orders_for_ladder(
             ladder.id,
-            current_statuses=OPEN_ORDER_STATUSES,
+            current_statuses=(GRID_ORDER_OPEN_STATUS,),
             new_status=GRID_ORDER_CANCELLED_STATUS,
         )
         for level in open_levels:
@@ -538,8 +687,10 @@ class GridLadderLifecycle:
                     status=GridLevelStatus.cancelled.value,
                 )
 
-        close_price = self._close_symbol_position(ladder.symbol)
-        forced_pnl = self._forced_close_pnl(ladder, close_price, open_levels)
+        forced_pnl = 0.0
+        if has_filled_exposure:
+            close_price = self._close_symbol_position(ladder.symbol)
+            forced_pnl = self._forced_close_pnl(ladder, close_price, open_levels)
         total_pnl = sum(float(lv.realized_pnl or 0) for lv in open_levels) + forced_pnl
         self.crud.update_realized_pnl(ladder.id, round_numbers(total_pnl))
 
