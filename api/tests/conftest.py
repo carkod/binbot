@@ -38,6 +38,10 @@ def vcr_config():
         "filter_headers": [
             ("X-MBX-APIKEY", "DUMMY"),
             ("authorization", "DUMMY"),
+            ("KC-API-KEY", "DUMMY"),
+            ("KC-API-PASSPHRASE", "DUMMY"),
+            ("KC-API-SIGN", "DUMMY"),
+            ("KC-API-TIMESTAMP", "DUMMY"),
         ],
         "filter_query_parameters": [
             ("timestamp", "DUMMY"),

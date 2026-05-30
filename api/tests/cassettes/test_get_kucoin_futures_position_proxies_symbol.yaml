@@ -1,0 +1,64 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Content-Type:
+      - application/json
+      KC-API-KEY:
+      - DUMMY
+      KC-API-KEY-VERSION:
+      - '3'
+      KC-API-PASSPHRASE:
+      - DUMMY
+      KC-API-SIGN:
+      - DUMMY
+      KC-API-TIMESTAMP:
+      - DUMMY
+      User-Agent:
+      - Kucoin-Universal-Python-SDK/v1.3.0
+    method: GET
+    uri: https://api-futures.kucoin.com/api/v1/position?symbol=XBTUSDTM
+  response:
+    body:
+      string: '{"code":"200000","data":{"id":"","symbol":"XBTUSDTM","autoDeposit":false,"crossMode":false,"maintMarginReq":0,"riskLimit":250000,"realLeverage":0.0,"delevPercentage":0.0,"openingTimestamp":0,"currentTimestamp":1780166691429,"currentQty":0,"currentCost":0,"currentComm":0,"unrealisedCost":0,"realisedGrossCost":0.0,"realisedCost":0.0,"isOpen":false,"markPrice":0,"markValue":0.0,"posCost":0,"posCross":0,"posCrossMargin":0,"posInit":0,"posComm":0,"posCommCommon":0,"posLoss":0,"posMargin":0,"posFunding":0,"posMaint":0,"maintMargin":0.0,"realisedGrossPnl":0.0,"realisedPnl":0.0,"unrealisedPnl":0.0,"unrealisedPnlPcnt":0,"unrealisedRoePcnt":0,"avgEntryPrice":0,"liquidationPrice":0,"bankruptPrice":0,"settleCurrency":"USDT","isInverse":false,"maintainMargin":0,"riskLimitLevel":1,"marginMode":"ISOLATED","positionSide":"BOTH","leverage":0.0,"withdrawPnl":0,"aggRate":0}}'
+    headers:
+      CF-RAY:
+      - a03fe47c8b54540e-LHR
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '868'
+      Content-Type:
+      - application/json
+      Date:
+      - Sat, 30 May 2026 18:44:51 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=9800; includeSubDomains; preload
+      Vary:
+      - Origin
+      X-RESULT-BIZ-CODE:
+      - '200000'
+      cf-cache-status:
+      - DYNAMIC
+      gw-ratelimit-limit:
+      - '2000'
+      gw-ratelimit-remaining:
+      - '1989'
+      gw-ratelimit-reset:
+      - '14347'
+      set-cookie:
+      - __cf_bm=gpTTs2i9rgrItiEIR.ymiG9txI9kD2tx4DmdPyCr3Y4-1780166691.2873278-1.0.1.1-_5XNk8DZvz85pcLWjaxIT94W5qD9IR0I84cUDOLt6ea_eOJqoWMiKP0t2Eq10SQD275jL5xjAcOZIF1TLoQDw5o.W4ox5FLbpHpwa9x22NvpurKVvsHaqh.K7CkWA51p;
+        HttpOnly; SameSite=None; Secure; Path=/; Domain=kucoin.com; Expires=Sat, 30
+        May 2026 19:14:51 GMT
+      - _cfuvid=A6cD5hJMyc.tS8i26BAanFe1tl1njfHbQPf2wRYxH4s-1780166691.2873278-1.0.1.1-KYmn7rh_dcOML4mCQ4y8xvwtXa1TXRyq5xKntA34acE;
+        HttpOnly; SameSite=None; Secure; Path=/; Domain=kucoin.com
+      x-in-time:
+      - 5-1780166691426802
+      x-out-time:
+      - 5-1780166691429841
+    status:
+      code: 200
+      message: OK
+version: 1
