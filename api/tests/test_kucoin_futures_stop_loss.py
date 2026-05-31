@@ -266,6 +266,7 @@ def test_reconcile_exchange_sl_places_when_exchange_missing():
 def test_exit_panic_closes_stale_mild_loser_after_three_days(monkeypatch):
     deal = cast(Any, PositionDeal.__new__(PositionDeal))
     deal.price_precision = 2
+    deal.klines = None
     deal.active_bot = BotModel(
         pair="BEATUSDTM",
         market_type=MarketType.FUTURES,
@@ -299,6 +300,7 @@ def test_exit_panic_closes_stale_mild_loser_after_three_days(monkeypatch):
 def test_exit_keeps_stale_loser_below_panic_close_band(monkeypatch):
     deal = cast(Any, PositionDeal.__new__(PositionDeal))
     deal.price_precision = 2
+    deal.klines = None
     deal.active_bot = BotModel(
         pair="BEATUSDTM",
         market_type=MarketType.FUTURES,

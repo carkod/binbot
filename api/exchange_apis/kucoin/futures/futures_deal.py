@@ -153,6 +153,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
             side=side,
             size=1,
         )
+        if estimated_price is None:
+            return False
+
         estimated_contracts = self.calculate_contracts(
             self.active_bot.fiat_order_size, estimated_price
         )
@@ -573,6 +576,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
             side=AddOrderReq.SideEnum.BUY,
             size=available_balance,
         )
+        if price is None:
+            raise BinbotErrors(
+                "matching_engine returned no price for sizing calculation — order book may be empty."
+            )
 
         margin_sized_contracts = self.calculate_contracts(
             self.active_bot.fiat_order_size, price
