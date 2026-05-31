@@ -196,6 +196,10 @@ def test_base_order_downsizes_when_margin_size_exceeds_available_balance():
         def get_futures_position(self, symbol):
             return types.SimpleNamespace(mark_price=10)
 
+        def retrieve_order(self, order_id):
+            # Simulate an already-filled entry so base_order() activates immediately.
+            return types.SimpleNamespace(filled_size="9", avg_deal_price="10")
+
     # margin_sized at 1x: 1500 / (10*10) = 15 contracts (notional 1500, margin 1500).
     # affordable: per-contract margin (100*1 + 2*100*0.0006) = 100.12 → floor(1000/100.12) = 9.
     # min(15, 9) = 9, downsized from 15 to 9.

@@ -640,20 +640,39 @@ class KucoinPositionDeal(KucoinBaseBalance):
         # Kucoin only operates with contracts, not underlying asset (qty)
         # so in Binbot we only care about that
         self.active_bot.deal.base_order_size = contracts
-        self.active_bot.deal.opening_price = order.price
-        self.active_bot.deal.opening_qty = contracts
         self.active_bot.deal.opening_timestamp = order.timestamp
         self.active_bot.deal.current_price = position.mark_price
-        self.active_bot.status = Status.active
+
+        # Check if the order has already been filled on the exchange. Futures
+        # market orders settle quickly but not always before this code runs —
+        # the position endpoint can lag by several minutes. If unfilled, leave
+        # opening_price == 0 and do not activate; open_deal() will set the bot
+        # to pending and order_updates() will promote it once KuCoin confirms
+        # the fill. Only set status = active here on an instant fill.
+        system_order = self.kucoin_futures_api.retrieve_order(str(order.order_id))
+        filled_size = float(system_order.filled_size)
+        avg_price = float(system_order.avg_deal_price)
+        if filled_size > 0 and avg_price > 0:
+            order.status = OrderStatus.FILLED
+            order.qty = filled_size
+            order.price = avg_price
+            self.active_bot.deal.opening_price = avg_price
+            self.active_bot.deal.opening_qty = filled_size
+            self.active_bot.status = Status.active
+        # else: opening_price stays 0; open_deal() will set Status.pending
 
         position_label = getattr(
             self.active_bot.position,
             "name",
             self.active_bot.position,
         )
+        if self.active_bot.deal.opening_price > 0:
+            log_message = f"Futures {position_label} opened @ {self.active_bot.deal.opening_price} with {int(self.active_bot.deal.opening_qty)} contracts"
+        else:
+            log_message = f"Futures {position_label} order submitted @ {position.mark_price} with {contracts} contracts (awaiting fill)"
         self.controller.update_logs(
             bot=self.active_bot,
-            log_message=f"Futures {position_label} opened @ {position.mark_price} with {order.qty} contracts",
+            log_message=log_message,
         )
 
         self.controller.save(self.active_bot)
@@ -863,18 +882,21 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self.controller.save(self.active_bot)
             self.base_order()
 
-        if (
-            self.active_bot.status == Status.active
-            or self.active_bot.deal.opening_price > 0
-        ):
-            # Update bot, no activation required. This path is the user-driven
-            # "Update Deal" flow — disarm any active trail since the parameters
-            # it was computed against may have just changed.
-            self.active_bot.deal.trailing_stop_loss_price = 0
-            self.active_bot = self.update_parameters()
-        else:
-            # Activation required
-            self.active_bot = self.update_parameters_with_activation()
+        # Entry not filled yet (opening_price == 0): leave the bot pending and
+        # return. order_updates() will promote it to active once KuCoin confirms
+        # the fill by calling open_deal() again, which will reach the branch below.
+        if self.active_bot.deal.opening_price == 0:
+            self.active_bot.status = Status.pending
+            self.active_bot.add_log(
+                "Entry order is live but not yet filled; bot set to pending."
+            )
+            self.controller.save(self.active_bot)
+            return self.active_bot
 
+        # Entry is filled (opening_price > 0): activate / reactivate.
+        # Disarm any stale trail — parameters may have changed (e.g. Update Deal).
+        self.active_bot.deal.trailing_stop_loss_price = 0
+        self.active_bot = self.update_parameters()
+        self.active_bot.status = Status.active
         self.controller.save(self.active_bot)
         return self.active_bot
