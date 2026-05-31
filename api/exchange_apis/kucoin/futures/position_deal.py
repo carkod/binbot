@@ -797,7 +797,6 @@ class PositionDeal(KucoinPositionDeal):
         self, close_price: float, open_price: float
     ) -> BotModel:
         cls: Union[SpotPosition, FuturesPosition]
-        prefetched_position = None
         if self.active_bot.market_type == MarketType.FUTURES:
             cls = FuturesPosition(
                 base_streaming=self.base_streaming,
@@ -808,13 +807,6 @@ class PositionDeal(KucoinPositionDeal):
             )
             cls.base_streaming.kucoin_benchmark_symbol = "XBTUSDTM"
             self.api = self.base_streaming.kucoin_futures_api
-            prefetched_position = (
-                self.base_streaming.kucoin_futures_api.get_futures_position(
-                    self.active_bot.pair
-                )
-            )
-            if prefetched_position is not None:
-                close_price = prefetched_position.mark_price
         else:
             cls = SpotPosition(
                 base_streaming=self.base_streaming,
@@ -836,7 +828,18 @@ class PositionDeal(KucoinPositionDeal):
 
         self.active_bot = cls.order_updates()
         cls.active_bot = self.active_bot
-        self.active_bot = cls.position_updates(position=prefetched_position)
+
+        # Fetch position AFTER order_updates so any fill-promotion is already
+        # reflected. Same single call as before; close_price stays mark-price.
+        position = None
+        if self.active_bot.market_type == MarketType.FUTURES:
+            position = self.base_streaming.kucoin_futures_api.get_futures_position(
+                self.active_bot.pair
+            )
+            if position is not None:
+                close_price = position.mark_price
+
+        self.active_bot = cls.position_updates(position=position)
         cls.active_bot = self.active_bot
 
         open_price = float(self.klines[-1][1])
