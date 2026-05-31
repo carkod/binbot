@@ -631,6 +631,7 @@ def test_grid_lifecycle_marks_level_completed_after_take_profit_fill(
     assert completed_level["status"] == "completed"
     assert completed_level["realized_pnl"] > 0
     assert detail["used_margin"] == 0
+    assert detail["realized_pnl"] == completed_level["realized_pnl"]
 
 
 def test_grid_lifecycle_scales_used_margin_for_partial_entry_fill(
@@ -770,6 +771,7 @@ def test_grid_lifecycle_uses_order_defaults_for_zero_filled_take_profit_payload(
     assert completed_order["filled_qty"] == tp_order.contracts
     assert completed_order["filled_price"] == tp_order.price
     assert completed_level["realized_pnl"] > 0
+    assert detail["realized_pnl"] == completed_level["realized_pnl"]
 
 
 def test_grid_lifecycle_updates_unrealized_pnl_on_active_ladder(

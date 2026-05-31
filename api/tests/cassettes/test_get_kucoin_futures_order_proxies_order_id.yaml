@@ -1,0 +1,64 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Content-Type:
+      - application/json
+      KC-API-KEY:
+      - DUMMY
+      KC-API-KEY-VERSION:
+      - '3'
+      KC-API-PASSPHRASE:
+      - DUMMY
+      KC-API-SIGN:
+      - DUMMY
+      KC-API-TIMESTAMP:
+      - DUMMY
+      User-Agent:
+      - Kucoin-Universal-Python-SDK/v1.3.0
+    method: GET
+    uri: https://api-futures.kucoin.com/api/v1/orders/450247517263708160?order-id=450247517263708160
+  response:
+    body:
+      string: '{"code":"200000","data":{"id":"450247517263708160","symbol":"TAUSDTM","type":"limit","side":"buy","price":"0.07563","size":19,"value":"14.3697","dealValue":"14.3678","dealSize":19,"stp":"","stop":"","stopPriceType":"","stopTriggered":false,"stopPrice":null,"timeInForce":"GTC","postOnly":false,"hidden":false,"iceberg":false,"leverage":"2","forceHold":false,"closeOrder":false,"visibleSize":0,"clientOid":"32e027cc-7596-4a83-ab28-a34767833231","remark":null,"tags":"","isActive":false,"cancelExist":false,"createdAt":1780160575310,"updatedAt":1780160575321,"endAt":1780160575321,"orderTime":1780160575310280471,"settleCurrency":"USDT","marginMode":"ISOLATED","avgDealPrice":"0.07562","positionSide":"BOTH","filledSize":19,"filledValue":"14.3678","status":"done","reduceOnly":false}}'
+    headers:
+      CF-RAY:
+      - a03fe47e8d4d8924-LHR
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '782'
+      Content-Type:
+      - application/json
+      Date:
+      - Sat, 30 May 2026 18:44:51 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=9800; includeSubDomains; preload
+      Vary:
+      - Origin
+      X-RESULT-BIZ-CODE:
+      - '200000'
+      cf-cache-status:
+      - DYNAMIC
+      gw-ratelimit-limit:
+      - '2000'
+      gw-ratelimit-remaining:
+      - '1984'
+      gw-ratelimit-reset:
+      - '14031'
+      set-cookie:
+      - __cf_bm=Vkp_twiq35UrcRG94PRIXFIVFEEawB5jXDKIs9KdMxQ-1780166691.6040688-1.0.1.1-pqinqUDEDHx4hoMSXpm5HLGW0CYsnCll2uzJmuxltS.kiYoj5Iy3mRjNYhmR1LpE28sSbt8e2caxmwH7IAMgbDBxxYAxSEbAbIlX.eYUibY36ARsYs8tlWMY07vX.zpv;
+        HttpOnly; SameSite=None; Secure; Path=/; Domain=kucoin.com; Expires=Sat, 30
+        May 2026 19:14:51 GMT
+      - _cfuvid=NDCx6oz0YMkJTlc880i94nlG8sibGDv.CEBHV9xMJIM-1780166691.6040688-1.0.1.1-yr0s3rcprQRI9uSmlPIT1xQgbuOm6OAc3vauYf5ux.k;
+        HttpOnly; SameSite=None; Secure; Path=/; Domain=kucoin.com
+      x-in-time:
+      - 5-1780166691743415
+      x-out-time:
+      - 5-1780166691746389
+    status:
+      code: 200
+      message: OK
+version: 1

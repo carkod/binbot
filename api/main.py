@@ -1,27 +1,28 @@
 import logging
 from contextlib import asynccontextmanager
+
+from account.routes import account_blueprint
+from asset_index.routes import asset_index_blueprint
+from autotrade.routes import autotrade_settings_blueprint
+from bots.routes import bot_blueprint
+from charts.routes import charts_blueprint
+from databases.api_db import ApiDb
+from databases.tables import *  # noqa
 from fastapi import FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-
-from databases.api_db import ApiDb
-from account.routes import account_blueprint
-from autotrade.routes import autotrade_settings_blueprint
-from bots.routes import bot_blueprint
-from charts.routes import charts_blueprint
-from orders.routes import order_blueprint
+from grid_ladders.routes import grid_ladder_blueprint
+from inquiries.routes import inquiries_router
+from orders.routes.binance import binance_order_blueprint
+from orders.routes.kucoin import kucoin_order_blueprint
 from paper_trading.routes import paper_trading_blueprint
+from portfolio.routes import portfolio_blueprint
+from pybinbot import configure_logging
+from signals.routes import signals_blueprint
 from symbols.routes import symbols_blueprint
 from user.routes import user_blueprint
-from asset_index.routes import asset_index_blueprint
-from inquiries.routes import inquiries_router
-from portfolio.routes import portfolio_blueprint
-from signals.routes import signals_blueprint
-from grid_ladders.routes import grid_ladder_blueprint
-from pybinbot import configure_logging
-from databases.tables import *  # noqa
 
 configure_logging()
 
@@ -62,7 +63,8 @@ app.include_router(user_blueprint)
 app.include_router(account_blueprint, prefix="/account")
 app.include_router(bot_blueprint)
 app.include_router(paper_trading_blueprint)
-app.include_router(order_blueprint, prefix="/order")
+app.include_router(binance_order_blueprint, prefix="/order")
+app.include_router(kucoin_order_blueprint, prefix="/order/kucoin")
 app.include_router(charts_blueprint, prefix="/charts")
 app.include_router(symbols_blueprint)
 app.include_router(autotrade_settings_blueprint, prefix="/autotrade-settings")
