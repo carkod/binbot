@@ -293,20 +293,42 @@ class GridLadderCrud:
         ladder_id: UUID,
         error: Exception | str,
     ) -> GridLadderTable | None:
+        ladder = self.session.get(GridLadderTable, ladder_id)
+        if ladder is None:
+            return None
+
+        ts = ts_to_humandate(ts=timestamp())
         error_message = str(error)
         if isinstance(error, Exception):
             error_type = error.__class__.__name__
         else:
             error_type = "error"
 
-        return self.update_logs(
-            ladder_id,
-            {
-                "event": "error",
-                "error_type": error_type,
-                "message": error_message,
-            },
-        )
+        error_entry = {
+            "timestamp": ts,
+            "error_type": error_type,
+            "message": error_message,
+        }
+        logs = list(ladder.logs or [])
+        logs.append({"event": "error", **error_entry})
+
+        context = dict(ladder.context or {})
+        execution_errors = context.get("execution_error")
+        if execution_errors is None:
+            execution_errors = []
+        elif not isinstance(execution_errors, list):
+            execution_errors = [execution_errors]
+        context["execution_error"] = [*execution_errors, error_entry]
+
+        ladder.logs = logs
+        ladder.context = context
+        ladder.updated_at = timestamp()
+        flag_modified(ladder, "logs")
+        flag_modified(ladder, "context")
+        self.session.add(ladder)
+        self.session.commit()
+        self.session.refresh(ladder)
+        return ladder
 
     def create_levels(
         self,

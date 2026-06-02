@@ -1254,12 +1254,36 @@ def test_grid_lifecycle_cancels_partial_initial_orders_on_failure(
         "detail"
     ]
     assert detail["status"] == "error"
-    assert detail["context"]["execution_error"] == "exchange rejected order"
+    assert detail["context"]["execution_error"][-1]["error_type"] == "RuntimeError"
+    assert detail["context"]["execution_error"][-1]["message"] == (
+        "exchange rejected order"
+    )
     assert fake_api.cancelled_symbols == ["ADAUSDCM"]
     assert detail["orders"][0]["status"] == OrderStatus.CANCELED.value
     assert detail["logs"][-1]["event"] == "error"
     assert detail["logs"][-1]["error_type"] == "RuntimeError"
     assert detail["logs"][-1]["message"] == "exchange rejected order"
+
+
+def test_grid_ladder_error_logs_append_to_execution_error(create_test_tables):
+    with Session(create_test_tables) as session:
+        ladder = _active_ladder("ERRUSDC")
+        ladder.context = {"execution_error": "previous error"}
+        session.add(ladder)
+        session.commit()
+        crud = GridLadderCrud(session)
+
+        crud.update_error_logs(ladder.id, ValueError("new error"))
+
+        updated = crud.get(ladder.id)
+
+    assert updated is not None
+    assert updated.context["execution_error"][0] == "previous error"
+    assert updated.context["execution_error"][1]["error_type"] == "ValueError"
+    assert updated.context["execution_error"][1]["message"] == "new error"
+    assert updated.logs[-1]["event"] == "error"
+    assert updated.logs[-1]["error_type"] == "ValueError"
+    assert updated.logs[-1]["message"] == "new error"
 
 
 def test_sizer_snaps_contracts_to_lot_size():
