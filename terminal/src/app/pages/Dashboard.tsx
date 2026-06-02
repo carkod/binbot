@@ -23,6 +23,7 @@ import type {
 import { BotStatus } from "../../utils/enums";
 import { roundDecimals } from "../../utils/math";
 import { formatTimestamp } from "../../utils/time";
+import { getNetProfit } from "../../features/bots/profits";
 import GainersLosers from "../components/GainersLosers";
 import PortfolioBenchmarkChart from "../components/PortfolioBenchmark";
 import { SpinnerContext } from "../Layout";
@@ -92,6 +93,9 @@ export const DashboardPage: FC<{}> = () => {
     useGetBotsQuery({
       status: BotStatus.ACTIVE,
     });
+  const { data: allBotEntities, isLoading: loadingAllBots } = useGetBotsQuery({
+    status: BotStatus.ALL,
+  });
   const { data: benchmark, isLoading: loadingBenchmark } =
     useGetBenchmarkQuery();
 
@@ -126,6 +130,38 @@ export const DashboardPage: FC<{}> = () => {
       .sort((a, b) => b - a)
       .slice(0, 3) ?? [],
   );
+  const top_1_symbol_pnl_share = useMemo(() => {
+    const symbolPnl = new Map<string, number>();
+
+    Object.values(allBotEntities?.bots.entities ?? {}).forEach((bot) => {
+      if (!bot?.pair) return;
+
+      symbolPnl.set(
+        bot.pair,
+        (symbolPnl.get(bot.pair) ?? 0) + getNetProfit(bot),
+      );
+    });
+
+    const absolutePnlBySymbol = [...symbolPnl.values()]
+      .map((pnl) => Math.abs(pnl))
+      .filter((pnl) => pnl > 0);
+    const totalAbsolutePnl = absolutePnlBySymbol.reduce(
+      (total, pnl) => total + pnl,
+      0,
+    );
+
+    if (totalAbsolutePnl <= 0) return undefined;
+
+    return (Math.max(...absolutePnlBySymbol) / totalAbsolutePnl) * 100;
+  }, [allBotEntities]);
+  const symbolConcentrationClass =
+    top_1_symbol_pnl_share === undefined
+      ? ""
+      : top_1_symbol_pnl_share < 50
+        ? "text-success"
+        : top_1_symbol_pnl_share < 75
+          ? "text-warning"
+          : "text-danger";
   const rankedSignalAlgorithms = useMemo(() => {
     const algorithms = new Map<
       string,
@@ -177,6 +213,7 @@ export const DashboardPage: FC<{}> = () => {
 
     if (
       !loadingActiveBots &&
+      !loadingAllBots &&
       !loadingBenchmark &&
       !loadingEstimates &&
       !loadingErrorBots &&
@@ -193,11 +230,13 @@ export const DashboardPage: FC<{}> = () => {
   }, [
     accountData,
     activeBotEntities,
+    allBotEntities,
     errorBotEntities,
     benchmark,
     combinedGainersLosers,
     combinedFuturesRankings,
     loadingActiveBots,
+    loadingAllBots,
     loadingBenchmark,
     loadingEstimates,
     loadingErrorBots,
@@ -358,6 +397,50 @@ export const DashboardPage: FC<{}> = () => {
                       ? `${roundDecimals(btcSharpe)} BTC`
                       : ""}
                   </p>
+                </Col>
+              </Row>
+            </Card.Footer>
+          </Card>
+          <Card>
+            <Card.Body>
+              <Row>
+                <Col
+                  md="4"
+                  xs="5"
+                  className="d-flex justify-content-center align-items-center"
+                >
+                  <div className="text-center fs-1">
+                    <i
+                      className={`${symbolConcentrationClass || "text-body-secondary"} fa-solid fa-chart-pie`}
+                    />
+                  </div>
+                </Col>
+                <Col md="8" xs="7">
+                  <div>
+                    <p className="text-end text-body-secondary">
+                      Symbol concentration
+                    </p>
+                  </div>
+                  <Card.Title
+                    as="h3"
+                    className={`${symbolConcentrationClass} fs-4 text-end`}
+                  >
+                    {top_1_symbol_pnl_share !== undefined
+                      ? `${roundDecimals(top_1_symbol_pnl_share, 2)}%`
+                      : ""}
+                  </Card.Title>
+                  <p />
+                </Col>
+              </Row>
+            </Card.Body>
+            <Card.Footer className="pt-0">
+              <hr className="mt-0" />
+              <Row>
+                <Col>
+                  <p>top_1_symbol_pnl_share</p>
+                </Col>
+                <Col>
+                  <p className="text-end">bot PnL</p>
                 </Col>
               </Row>
             </Card.Footer>

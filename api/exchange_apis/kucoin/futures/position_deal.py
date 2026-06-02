@@ -40,6 +40,8 @@ class PositionDeal(KucoinPositionDeal):
     these operations are triggered by websockets
     """
 
+    TRAILING_STOP_REFRESH_MIN_IMPROVEMENT_RATIO = 0.002
+
     def __init__(
         self,
         bot: BotModel,
@@ -54,6 +56,27 @@ class PositionDeal(KucoinPositionDeal):
         # Inherited variables for mypy
         self.api: KucoinApi | KucoinFutures
         self.controller: BotTableCrud | PaperTradingTableCrud
+
+    def should_refresh_trailing_stop_loss(
+        self,
+        current_stop_price: float,
+        new_stop_price: float,
+        direction: int,
+    ) -> bool:
+        if new_stop_price <= 0:
+            return False
+
+        if current_stop_price <= 0:
+            return True
+
+        improvement = (new_stop_price - current_stop_price) * direction
+        if improvement <= 0:
+            return False
+
+        min_improvement = (
+            abs(current_stop_price) * self.TRAILING_STOP_REFRESH_MIN_IMPROVEMENT_RATIO
+        )
+        return improvement >= min_improvement
 
     def place_reversal_reentry_order(
         self,
@@ -693,14 +716,10 @@ class PositionDeal(KucoinPositionDeal):
                 # so time to close with net profit
                 if (
                     new_trailing_stop_loss - self.active_bot.deal.opening_price
-                ) * direction > 0 and (
-                    self.active_bot.deal.trailing_stop_loss_price == 0
-                    or (
-                        new_trailing_stop_loss
-                        - self.active_bot.deal.trailing_stop_loss_price
-                    )
-                    * direction
-                    > 0
+                ) * direction > 0 and self.should_refresh_trailing_stop_loss(
+                    current_stop_price=self.active_bot.deal.trailing_stop_loss_price,
+                    new_stop_price=new_trailing_stop_loss,
+                    direction=direction,
                 ):
                     self.active_bot.deal.trailing_stop_loss_price = (
                         new_trailing_stop_loss
