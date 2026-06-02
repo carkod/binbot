@@ -39,6 +39,14 @@ type PortfolioPnlDetails = {
   portfolioPnlClass: string;
 };
 
+type SymbolConcentrationDetails = {
+  top_1_symbol_pnl_share: number | undefined;
+  top_3_symbol_pnl_share: number | undefined;
+  symbol_hhi: number | undefined;
+  effective_symbol_count: number | undefined;
+  symbol_count: number;
+};
+
 const usePortfolioPnlDetails = (
   benchmark?: BenchmarkCollection,
   accountData?: BalanceData,
@@ -130,7 +138,7 @@ export const DashboardPage: FC<{}> = () => {
       .sort((a, b) => b - a)
       .slice(0, 3) ?? [],
   );
-  const top_1_symbol_pnl_share = useMemo(() => {
+  const symbolConcentration = useMemo<SymbolConcentrationDetails>(() => {
     const symbolPnl = new Map<string, number>();
 
     Object.values(allBotEntities?.bots.entities ?? {}).forEach((bot) => {
@@ -150,10 +158,40 @@ export const DashboardPage: FC<{}> = () => {
       0,
     );
 
-    if (totalAbsolutePnl <= 0) return undefined;
+    if (totalAbsolutePnl <= 0) {
+      return {
+        top_1_symbol_pnl_share: undefined,
+        top_3_symbol_pnl_share: undefined,
+        symbol_hhi: undefined,
+        effective_symbol_count: undefined,
+        symbol_count: symbolPnl.size,
+      };
+    }
 
-    return (Math.max(...absolutePnlBySymbol) / totalAbsolutePnl) * 100;
+    const pnlShares = absolutePnlBySymbol
+      .map((pnl) => pnl / totalAbsolutePnl)
+      .sort((left, right) => right - left);
+    const symbol_hhi = pnlShares.reduce(
+      (total, share) => total + share * share,
+      0,
+    );
+
+    return {
+      top_1_symbol_pnl_share: (pnlShares[0] ?? 0) * 100,
+      top_3_symbol_pnl_share:
+        pnlShares.slice(0, 3).reduce((total, share) => total + share, 0) * 100,
+      symbol_hhi,
+      effective_symbol_count: symbol_hhi > 0 ? 1 / symbol_hhi : undefined,
+      symbol_count: pnlShares.length,
+    };
   }, [allBotEntities]);
+  const {
+    top_1_symbol_pnl_share,
+    top_3_symbol_pnl_share,
+    symbol_hhi,
+    effective_symbol_count,
+    symbol_count,
+  } = symbolConcentration;
   const symbolConcentrationClass =
     top_1_symbol_pnl_share === undefined
       ? ""
@@ -441,6 +479,42 @@ export const DashboardPage: FC<{}> = () => {
                 </Col>
                 <Col>
                   <p className="text-end">bot PnL</p>
+                </Col>
+              </Row>
+              <Row>
+                <Col>
+                  <p>top_3_symbol_pnl_share</p>
+                </Col>
+                <Col>
+                  <p className="text-end">
+                    {top_3_symbol_pnl_share !== undefined
+                      ? `${roundDecimals(top_3_symbol_pnl_share, 2)}%`
+                      : ""}
+                  </p>
+                </Col>
+              </Row>
+              <Row>
+                <Col>
+                  <p>effective_symbol_count</p>
+                </Col>
+                <Col>
+                  <p className="text-end">
+                    {effective_symbol_count !== undefined
+                      ? `${roundDecimals(effective_symbol_count, 2)} / ${symbol_count}`
+                      : ""}
+                  </p>
+                </Col>
+              </Row>
+              <Row>
+                <Col>
+                  <p>symbol_hhi</p>
+                </Col>
+                <Col>
+                  <p className="text-end">
+                    {symbol_hhi !== undefined
+                      ? roundDecimals(symbol_hhi, 4)
+                      : ""}
+                  </p>
                 </Col>
               </Row>
             </Card.Footer>
