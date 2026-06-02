@@ -1,4 +1,5 @@
 from copy import deepcopy
+from time import time
 from typing import Type, Union
 from bots.models import BotModel
 from databases.tables.bot_table import BotTable, PaperTradingTable
@@ -16,6 +17,7 @@ from pybinbot import (
     KucoinFutures,
     MarketType,
     Position,
+    Status,
     convert_to_kucoin_symbol,
     round_numbers,
 )
@@ -293,6 +295,26 @@ class PositionMarket(KucoinPositionDeal):
                     )
                 self.controller.save(data=self.active_bot)
             else:
+                # Only backfill for active bots — pending/inactive/completed bots
+                # have no live position to reconcile and must never be marked error
+                # here (e.g. an expired→inactive bot still has base_order_size > 0).
+                if self.active_bot.status != Status.active:
+                    return self.active_bot
+                # Grace window: the position endpoint lags the order fill by up to
+                # one candle interval. Skipping backfill during this window prevents
+                # a false error on the same tick the entry fills.
+                now_ms = int(time() * 1000)
+                grace_ms = self.base_streaming.interval.get_ms()
+                if (
+                    self.active_bot.deal.opening_timestamp > 0
+                    and (now_ms - self.active_bot.deal.opening_timestamp) < grace_ms
+                ):
+                    self.active_bot.add_log(
+                        "Position not yet propagated to exchange endpoint; "
+                        "within entry grace window. Skipping backfill."
+                    )
+                    self.controller.save(data=self.active_bot)
+                    return self.active_bot
                 self.active_bot = self.backfill_position_from_fills()
                 self.controller.save(data=self.active_bot)
 

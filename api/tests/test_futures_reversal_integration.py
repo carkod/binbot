@@ -34,7 +34,7 @@ class DummyFuturesApi:
     def get_futures_position(self, symbol):
         return self._position
 
-    def sell(self, symbol, qty, reduce_only, leverage=None):
+    def sell(self, symbol, qty, reduce_only, leverage=None, reference_price=None):
         self.sell_calls.append({"qty": qty, "reduce_only": reduce_only})
         return OrderModel(
             order_id="close-order-1",
@@ -49,7 +49,7 @@ class DummyFuturesApi:
             deal_type=DealType.margin_short,
         )
 
-    def buy(self, symbol, qty, reduce_only, leverage=None):
+    def buy(self, symbol, qty, reduce_only, leverage=None, reference_price=None):
         self.buy_calls.append({"qty": qty, "reduce_only": reduce_only})
         return OrderModel(
             order_id="close-order-1",
@@ -160,7 +160,7 @@ def test_reverse_position_errors_when_reduce_only_fails():
     bot = make_long_bot()
 
     class FailingApi(DummyFuturesApi):
-        def sell(self, symbol, qty, reduce_only, leverage=None):
+        def sell(self, symbol, qty, reduce_only, leverage=None, reference_price=None):
             raise RestError(
                 msg="insufficient balance",
                 response=DummyResponse(400100, "insufficient balance"),

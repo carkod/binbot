@@ -10,6 +10,7 @@ from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddO
 from kucoin_universal_sdk.model.common import RestError
 from pybinbot import (
     BotBase,
+    DealType,
     KucoinApi,
     KucoinFutures,
     MarketType,
@@ -17,12 +18,11 @@ from pybinbot import (
     OrderSide,
     OrderStatus,
     OrderType,
+    Position,
     Status,
     convert_to_kucoin_symbol,
     round_numbers,
     round_timestamp,
-    DealType,
-    Position,
 )
 from streaming.futures_position import FuturesPosition
 from streaming.spot_position import SpotPosition
@@ -54,6 +54,7 @@ class PositionDeal(KucoinPositionDeal):
         # Inherited variables for mypy
         self.api: KucoinApi | KucoinFutures
         self.controller: BotTableCrud | PaperTradingTableCrud
+        self.klines: list | None
 
     def place_reversal_reentry_order(
         self,
@@ -198,13 +199,17 @@ class PositionDeal(KucoinPositionDeal):
 
         return self.active_bot
 
-    def execute_stop_loss(self) -> BotModel:
+    def execute_stop_loss(self, reference_price: float | None = None) -> BotModel:
         """
         Place a stop loss limit order, since we've hit the threshold
 
         - Hard sell (order status="FILLED" immediately) initial amount crypto in deal
         - Close current opened take profit order
         - Deactivate bot
+
+        When ``reference_price`` is provided the close order is routed through the
+        anti-wick escalation path (band-capped IOC → market fallback) so the fill
+        stays within a sane slippage band off the last-closed-candle price.
         """
         self.controller.update_logs("Placing Futures stop loss...", self.active_bot)
 
@@ -214,7 +219,13 @@ class PositionDeal(KucoinPositionDeal):
             if qty <= 0:
                 return self.active_bot
 
-            price = float(self.active_bot.deal.current_price or 0)
+            # Use reference_price as the simulated fill price when available so
+            # paper-trade results reflect the anti-wick capped behaviour.
+            price = float(
+                reference_price
+                if reference_price is not None
+                else (self.active_bot.deal.current_price or 0)
+            )
             close_side = (
                 OrderSide.buy
                 if self.active_bot.position == Position.short
@@ -240,6 +251,7 @@ class PositionDeal(KucoinPositionDeal):
                         symbol=self.kucoin_symbol,
                         qty=qty,
                         reduce_only=True,
+                        reference_price=reference_price,
                     )
                 else:
                     order_base = self.kucoin_futures_api.sell(
@@ -247,6 +259,7 @@ class PositionDeal(KucoinPositionDeal):
                         qty=qty,
                         reduce_only=True,
                         leverage=self.symbol_info.futures_leverage,
+                        reference_price=reference_price,
                     )
 
             except RestError as e:
@@ -266,8 +279,8 @@ class PositionDeal(KucoinPositionDeal):
                     self.active_bot.status = Status.error
                     return self.active_bot
 
-        order_base.deal_type = DealType.stop_loss
-        stop_loss_order = OrderModel.model_construct(**order_base.model_dump())
+            order_base.deal_type = DealType.stop_loss
+            stop_loss_order = OrderModel.model_construct(**order_base.model_dump())
 
         self.active_bot.orders.append(stop_loss_order)
         self.active_bot.deal.closing_price = float(stop_loss_order.price)
@@ -469,12 +482,17 @@ class PositionDeal(KucoinPositionDeal):
                 return True
         return False
 
-    def reverse_position(self) -> BotModel:
+    def reverse_position(self, reference_price: float | None = None) -> BotModel:
         """
         Close the current position with a reduce_only order, mark source bot as
         completed, then create a new opposite-direction bot in Status.pending.
         The next exit() tick promotes pending -> active via open_deal(), which
         places the base_order at fresh market price.
+
+        When ``reference_price`` is provided the reduce-only close leg is routed
+        through the anti-wick escalation path so the reversal close doesn't fill
+        into a wick.  The new bot's re-entry (open_deal) always uses fresh market
+        price and is unaffected.
         """
         source_bot = self.active_bot
         target_position = (
@@ -500,12 +518,14 @@ class PositionDeal(KucoinPositionDeal):
                     qty=current_contracts,
                     reduce_only=True,
                     leverage=self.symbol_info.futures_leverage,
+                    reference_price=reference_price,
                 )
             else:
                 close_order = self.kucoin_futures_api.buy(
                     symbol=self.kucoin_symbol,
                     qty=current_contracts,
                     reduce_only=True,
+                    reference_price=reference_price,
                 )
         except RestError as kucoin_error:
             msg = kucoin_error.response.message
@@ -582,6 +602,18 @@ class PositionDeal(KucoinPositionDeal):
         direction = self._direction_multiplier()
         position_name = self.active_bot.position.value
 
+        # ---------------------------------------------------------------------------
+        # Reference price for anti-wick exit execution (Phase 1).
+        # Anchors the slippage band to the last *closed* candle close so that
+        # reduce-only limit orders don't chase a transient wick below the book.
+        # self.klines[-1] is the in-progress candle; [-2] is last fully closed.
+        # ---------------------------------------------------------------------------
+        exit_reference_price: float | None = None
+        if self.klines is not None and len(self.klines) >= 2:
+            closed_close = float(self.klines[-2][4])
+            if closed_close > 0:
+                exit_reference_price = closed_close
+
         # panic close low activity assets
         opening_price = float(self.active_bot.deal.opening_price)
         bot_profit = (
@@ -634,7 +666,9 @@ class PositionDeal(KucoinPositionDeal):
                     f"Margin short reversal enabled, opening {self.active_bot.position.value} position after stop loss...",
                     self.active_bot,
                 )
-                self.active_bot = self.reverse_position()
+                self.active_bot = self.reverse_position(
+                    reference_price=exit_reference_price
+                )
             else:
                 if self.active_bot.margin_short_reversal:
                     self.controller.update_logs(
@@ -646,7 +680,7 @@ class PositionDeal(KucoinPositionDeal):
                         f"Executing futures {position_name} stop_loss after hitting {self.active_bot.deal.stop_loss_price}",
                         self.active_bot,
                     )
-                self.execute_stop_loss()
+                self.execute_stop_loss(reference_price=exit_reference_price)
 
         # Trailing profit (price going down)
         if self.active_bot.trailing and self.active_bot.deal.opening_price > 0:
@@ -797,7 +831,6 @@ class PositionDeal(KucoinPositionDeal):
         self, close_price: float, open_price: float
     ) -> BotModel:
         cls: Union[SpotPosition, FuturesPosition]
-        prefetched_position = None
         if self.active_bot.market_type == MarketType.FUTURES:
             cls = FuturesPosition(
                 base_streaming=self.base_streaming,
@@ -808,13 +841,6 @@ class PositionDeal(KucoinPositionDeal):
             )
             cls.base_streaming.kucoin_benchmark_symbol = "XBTUSDTM"
             self.api = self.base_streaming.kucoin_futures_api
-            prefetched_position = (
-                self.base_streaming.kucoin_futures_api.get_futures_position(
-                    self.active_bot.pair
-                )
-            )
-            if prefetched_position is not None:
-                close_price = prefetched_position.mark_price
         else:
             cls = SpotPosition(
                 base_streaming=self.base_streaming,
@@ -836,7 +862,18 @@ class PositionDeal(KucoinPositionDeal):
 
         self.active_bot = cls.order_updates()
         cls.active_bot = self.active_bot
-        self.active_bot = cls.position_updates(position=prefetched_position)
+
+        # Fetch position AFTER order_updates so any fill-promotion is already
+        # reflected. Same single call as before; close_price stays mark-price.
+        position = None
+        if self.active_bot.market_type == MarketType.FUTURES:
+            position = self.base_streaming.kucoin_futures_api.get_futures_position(
+                self.active_bot.pair
+            )
+            if position is not None:
+                close_price = position.mark_price
+
+        self.active_bot = cls.position_updates(position=position)
         cls.active_bot = self.active_bot
 
         open_price = float(self.klines[-1][1])

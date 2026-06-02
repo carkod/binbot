@@ -141,12 +141,17 @@ class FuturesPosition(PositionMarket):
                     if (
                         order.deal_type == DealType.base_order
                         and self.active_bot.deal.opening_price == 0
-                        and float(system_order.price) > 0
+                        and (status == OrderStatus.FILLED or filled_size > 0)
                     ):
-                        self.active_bot.deal.opening_price = order.price
-                        self.active_bot.deal.opening_qty = order.qty
+                        # Entry fill confirmed: stamp deal fields then activate
+                        # via open_deal() so SL/TP are armed on the same path
+                        # as an instant-fill base order.
+                        self.active_bot.deal.opening_price = (
+                            order.price
+                        )  # avg_deal_price
+                        self.active_bot.deal.opening_qty = order.qty  # filled_size
                         self.active_bot.deal.opening_timestamp = order.timestamp
-                        self.active_bot.status = Status.active
+                        self.active_bot = self.open_deal()
 
                     if (
                         (
