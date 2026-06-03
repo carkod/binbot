@@ -32,7 +32,6 @@ const BotCard: FC<BotCardProps> = ({
   handleDelete,
 }) => {
   const botProfit = computeSingleBotProfit(bot);
-  const botProfitCurrency = bot.fiat || bot.quote_asset || "";
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const selectedIds = selectedCards ?? [];
@@ -60,7 +59,7 @@ const BotCard: FC<BotCardProps> = ({
             </Col>
             <Col md="5" xs="12">
               <Badge bg={botProfit > 0 ? "success" : "danger"}>
-                {roundDecimals(botProfit, 2)} {botProfitCurrency}
+                {roundDecimals(botProfit)}%
               </Badge>
               <br />
               <Badge

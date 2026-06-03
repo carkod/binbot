@@ -6,7 +6,6 @@ import DashboardPage from "../Dashboard";
 import { SpinnerContext } from "../../Layout";
 import { renderWithProviders } from "../../../utils/test-utils";
 import { useGetSignalsQuery } from "../../../features/signalsApiSlice";
-import { useGetBotsQuery } from "../../../features/bots/botsApiSlice";
 
 vi.mock("../../../features/balanceApiSlice", () => ({
   useGetBalanceQuery: vi.fn(() => ({
@@ -46,7 +45,6 @@ vi.mock("../../../features/bots/botsApiSlice", () => ({
     data: {
       bots: {
         ids: [],
-        entities: {},
       },
     },
     isLoading: false,
@@ -114,62 +112,6 @@ describe("Dashboard page", () => {
     ).toBeInTheDocument();
     expect(rtlScreen.getByText("110 USDC")).toBeInTheDocument();
     expect(rtlScreen.getByText("1.27 BTC")).toBeInTheDocument();
-  });
-
-  it("weights symbol concentration by bot PnL value instead of percent return", () => {
-    vi.mocked(useGetBotsQuery).mockImplementation((params = {}) => {
-      if (params.status === "all") {
-        return {
-          data: {
-            bots: {
-              ids: ["small-high-return", "large-low-return"],
-              entities: {
-                "small-high-return": {
-                  id: "small-high-return",
-                  pair: "SMALLUSDC",
-                  fiat_order_size: 10,
-                  position: "long",
-                  deal: {
-                    base_order_size: 10,
-                    opening_price: 100,
-                    current_price: 120,
-                    closing_price: 0,
-                  },
-                },
-                "large-low-return": {
-                  id: "large-low-return",
-                  pair: "LARGEUSDC",
-                  fiat_order_size: 10_000,
-                  position: "long",
-                  deal: {
-                    base_order_size: 10_000,
-                    opening_price: 100,
-                    current_price: 101,
-                    closing_price: 0,
-                  },
-                },
-              },
-            },
-          },
-          isLoading: false,
-        } as ReturnType<typeof useGetBotsQuery>;
-      }
-
-      return {
-        data: {
-          bots: {
-            ids: [],
-            entities: {},
-          },
-        },
-        isLoading: false,
-      } as ReturnType<typeof useGetBotsQuery>;
-    });
-
-    renderDashboard();
-
-    expect(rtlScreen.getByText("Symbol concentration")).toBeInTheDocument();
-    expect(rtlScreen.getByText("98.04%")).toBeInTheDocument();
   });
 
   it("renders signals collapsed and ranked by algorithm count", () => {

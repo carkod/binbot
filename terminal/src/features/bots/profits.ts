@@ -6,23 +6,22 @@ export function getProfit(
   base_price: number,
   current_price: number,
   position = BotPosition.LONG,
-  fiat_order_size: number = 1,
 ) {
-  if (base_price && current_price && fiat_order_size > 0) {
+  if (base_price && current_price) {
     let percent = ((current_price - base_price) / base_price) * 100;
     if (position === BotPosition.SHORT) {
       percent = percent * -1;
     }
-    return roundDecimals((percent * fiat_order_size) / 100, 2);
+    return parseFloat(percent.toFixed(2));
   }
   return 0;
 }
 
 /**
- * This function calculates PnL (not including commissions/fees)
+ * This function calculates the profit (not including commissions/fees)
  * for a single bot, namely the BotForm and TestBotForm components
  * by using input data from that individual bot as opposed to computeTotalProfit
- * function which uses an accumulator function to aggregate all PnL of all bots
+ * function which uses an accumulator function to aggregate all profits of all bots
  */
 export function computeSingleBotProfit(
   bot: Bot,
@@ -51,12 +50,7 @@ export function computeSingleBotProfit(
           : bot.deal.current_price;
     const buyPrice = bot.deal.opening_price;
     if (currentPrice > 0) {
-      const profitChange = getProfit(
-        buyPrice,
-        currentPrice,
-        bot.position,
-        base_order_size,
-      );
+      const profitChange = getProfit(buyPrice, currentPrice, bot.position);
       return roundDecimals(profitChange, 2);
     }
     return 0;
@@ -68,7 +62,6 @@ export function computeSingleBotProfit(
       bot.deal.opening_price,
       bot.deal.closing_price,
       bot.position,
-      base_order_size,
     );
     return roundDecimals(profitChange, 2);
   }
@@ -86,7 +79,6 @@ export function computeSingleBotProfit(
     bot.deal.opening_price,
     closePrice,
     bot.position,
-    base_order_size,
   );
   return roundDecimals(profitChange, 2);
 }
@@ -102,17 +94,7 @@ export function computeTotalProfit(bots: Bot[] = []) {
       return accumulator;
     }
 
-    const orderSize =
-      bot?.deal?.base_order_size && bot.deal.base_order_size > 0
-        ? bot.deal.base_order_size
-        : bot.fiat_order_size;
-
-    const profit = getProfit(
-      openingPrice,
-      closingPrice,
-      bot.position,
-      orderSize,
-    );
+    const profit = getProfit(openingPrice, closingPrice, bot.position);
     return accumulator + profit;
   }, 0);
   return roundDecimals(totalProfit, 2);
