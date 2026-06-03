@@ -43,6 +43,10 @@ export const PaperTradingPage: FC = () => {
     startDate,
     endDate,
   });
+  const totalProfitCurrency =
+    Object.values(data?.bots?.entities ?? {})[0]?.fiat ||
+    Object.values(data?.bots?.entities ?? {})[0]?.quote_asset ||
+    "";
 
   const handleSelection = (id: string) => {
     let newCards = [];
@@ -146,7 +150,7 @@ export const PaperTradingPage: FC = () => {
               <Badge bg={data.totalProfit > 0 ? "success" : "danger"}>
                 <i className="fas fa-building-columns" />{" "}
                 <span className="visually-hidden">Profit</span>
-                {(data.totalProfit || 0) + "%"}
+                {`${data.totalProfit || 0} ${totalProfitCurrency}`}
               </Badge>
             )}
           </h4>

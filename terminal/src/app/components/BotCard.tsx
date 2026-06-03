@@ -5,7 +5,6 @@ import { type Bot } from "../../features/bots/botInitialState";
 import { computeSingleBotProfit } from "../../features/bots/profits";
 import { roundDecimals } from "../../utils/math";
 import { formatTimestamp, renderDuration } from "../../utils/time";
-import { capitalizeFirst } from "../../utils/strings";
 import { MarketType } from "../../utils/enums";
 
 type handleCallback = (id: string) => void;
@@ -33,6 +32,7 @@ const BotCard: FC<BotCardProps> = ({
   handleDelete,
 }) => {
   const botProfit = computeSingleBotProfit(bot);
+  const botProfitCurrency = bot.fiat || bot.quote_asset || "";
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const selectedIds = selectedCards ?? [];
@@ -60,7 +60,7 @@ const BotCard: FC<BotCardProps> = ({
             </Col>
             <Col md="5" xs="12">
               <Badge bg={botProfit > 0 ? "success" : "danger"}>
-                {roundDecimals(botProfit)}%
+                {roundDecimals(botProfit, 2)} {botProfitCurrency}
               </Badge>
               <br />
               <Badge

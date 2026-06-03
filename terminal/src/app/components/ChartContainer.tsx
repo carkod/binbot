@@ -31,6 +31,7 @@ const ChartContainer: FC<{
   const [botProfit, setBotProfit] = useState<number>(Number(0));
   const { data: autotradeSettings } = useGetSettingsQuery();
   const marketLabel = capitalizeFirst(marketType.toLowerCase());
+  const botProfitCurrency = bot.fiat || bot.quote_asset || quoteAsset;
   const exchangeState =
     autotradeSettings?.exchange_id?.toLowerCase() === "kucoin"
       ? Exchange.KUCOIN
@@ -116,7 +117,7 @@ const ChartContainer: FC<{
                       : "secondary"
                 }
               >
-                {botProfit ? botProfit + "% " : "0% "}
+                {roundDecimals(botProfit, 2)} {botProfitCurrency}
               </Badge>{" "}
               <Badge
                 bg={
