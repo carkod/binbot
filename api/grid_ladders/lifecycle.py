@@ -416,10 +416,7 @@ class GridLadderLifecycle:
             self.crud.update_status_with_context(
                 ladder.id,
                 GridLadderStatus.error,
-                context_updates={
-                    "execution_error": str(error),
-                    "cancelled_order_ids": placed_order_ids,
-                },
+                context_updates={"cancelled_order_ids": placed_order_ids},
             )
             self.crud.update_error_logs(ladder.id, error)
 
@@ -583,7 +580,6 @@ class GridLadderLifecycle:
         order: GridOrderTable,
         error: Exception | str,
     ) -> None:
-        message = str(error)
         self.crud.update_order(order.id, status=GRID_ORDER_ERROR_STATUS)
         if order.level_id:
             self.crud.update_level_order(
@@ -593,7 +589,6 @@ class GridLadderLifecycle:
         self.crud.update_status_with_context(
             ladder.id,
             GridLadderStatus.error,
-            context_updates={"execution_error": message},
         )
         self.crud.recalculate_used_margin(ladder.id)
         self.crud.update_error_logs(ladder.id, error)

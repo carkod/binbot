@@ -5,7 +5,6 @@ import { type Bot } from "../../features/bots/botInitialState";
 import { computeSingleBotProfit } from "../../features/bots/profits";
 import { roundDecimals } from "../../utils/math";
 import { formatTimestamp, renderDuration } from "../../utils/time";
-import { capitalizeFirst } from "../../utils/strings";
 import { MarketType } from "../../utils/enums";
 
 type handleCallback = (id: string) => void;

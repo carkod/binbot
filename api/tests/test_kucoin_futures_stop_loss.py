@@ -224,6 +224,76 @@ def test_reconcile_trailing_stop_loss_keeps_better_exchange_stop():
     assert calls == []
 
 
+def test_should_refresh_trailing_stop_loss_allows_first_stop():
+    deal = _make_position_deal()
+
+    assert (
+        PositionDeal.should_refresh_trailing_stop_loss(
+            deal,
+            current_stop_price=0.0,
+            new_stop_price=99.0,
+            direction=1,
+        )
+        is True
+    )
+
+
+def test_should_refresh_trailing_stop_loss_blocks_small_long_improvement():
+    deal = _make_position_deal()
+
+    assert (
+        PositionDeal.should_refresh_trailing_stop_loss(
+            deal,
+            current_stop_price=100.0,
+            new_stop_price=100.1,
+            direction=1,
+        )
+        is False
+    )
+
+
+def test_should_refresh_trailing_stop_loss_allows_material_long_improvement():
+    deal = _make_position_deal()
+
+    assert (
+        PositionDeal.should_refresh_trailing_stop_loss(
+            deal,
+            current_stop_price=100.0,
+            new_stop_price=100.2,
+            direction=1,
+        )
+        is True
+    )
+
+
+def test_should_refresh_trailing_stop_loss_blocks_small_short_improvement():
+    deal = _make_position_deal()
+
+    assert (
+        PositionDeal.should_refresh_trailing_stop_loss(
+            deal,
+            current_stop_price=100.0,
+            new_stop_price=99.9,
+            direction=-1,
+        )
+        is False
+    )
+
+
+def test_should_refresh_trailing_stop_loss_allows_material_short_improvement():
+    deal = _make_position_deal()
+
+    assert (
+        PositionDeal.should_refresh_trailing_stop_loss(
+            deal,
+            current_stop_price=100.0,
+            new_stop_price=99.8,
+            direction=-1,
+        )
+        is True
+    )
+
+
 def test_reconcile_exchange_sl_skips_for_margin_short_reversal():
     calls: list[str] = []
     deal = _make_deal(margin_short_reversal=True)
