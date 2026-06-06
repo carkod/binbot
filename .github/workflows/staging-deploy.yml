@@ -21,8 +21,6 @@ jobs:
           tags: tag:ci
 
       - name: Install SSH key
-        id: install-ssh-key
-        continue-on-error: true
         run: |
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
@@ -33,7 +31,6 @@ jobs:
           ssh-keyscan -p 2222 100.64.83.67 >> ~/.ssh/known_hosts
 
       - name: Deploy stack
-        if: steps.install-ssh-key.outcome == 'success'
         run: |
           ssh -i ~/.ssh/home_server_key \
             -p 2222 \
