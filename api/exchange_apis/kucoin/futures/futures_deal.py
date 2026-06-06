@@ -64,7 +64,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
         else:
             self.controller = BotTableCrud()
 
-        self.symbol_info = SymbolsCrud().get_symbol(bot.pair)
+        self.symbols_crud = SymbolsCrud()
+        self.symbol_info = self.symbols_crud.get_symbol(bot.pair)
         self.kucoin_futures_api.DEFAULT_LEVERAGE = self.symbol_info.futures_leverage
         self.kucoin_symbol = convert_to_kucoin_symbol(bot)
         self.kucoin_symbol_data = self.kucoin_futures_api.get_symbol_info(
@@ -616,6 +617,19 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self.active_bot.add_log(
                 f"Futures order downsized from {margin_sized_contracts} to {contracts} contracts "
                 f"because required margin exceeded available balance."
+            )
+
+        recovery_params = getattr(self.active_bot, "recovery_params", None)
+        if (
+            recovery_params is not None
+            and recovery_params.reversal_path == "recovery"
+            and recovery_params.source_contracts > 0
+            and contracts < recovery_params.source_contracts * 0.60
+        ):
+            self.active_bot.add_log(
+                "underpowered_recovery: "
+                f"opening {contracts} contracts, below 60% of source "
+                f"{recovery_params.source_contracts} contracts."
             )
 
         self.active_bot.add_log(

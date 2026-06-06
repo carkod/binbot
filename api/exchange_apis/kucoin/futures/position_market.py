@@ -1,6 +1,7 @@
 from copy import deepcopy
 from time import time
 from typing import Type, Union
+
 from bots.models import BotModel
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
@@ -21,9 +22,9 @@ from pybinbot import (
     convert_to_kucoin_symbol,
     round_numbers,
 )
-from tools.utils import clamp
 from streaming.apex_flow_closing import ApexFlowClose
 from streaming.base import BaseStreaming
+from tools.utils import clamp
 
 
 class PositionMarket(KucoinPositionDeal):
@@ -434,6 +435,10 @@ class PositionMarket(KucoinPositionDeal):
         - trailing_deviation = active stop after trailing
         - trailing_profit = trigger, never exit
         """
+        recovery_params = self.active_bot.recovery_params
+        if recovery_params is not None and recovery_params.reversal_path == "recovery":
+            return
+
         self.apex_flow_closing = ApexFlowClose(self.df, self.btc_df)
 
         # Strategy-specific dispatch: bb_extreme_reversion bots use ATR-based

@@ -211,6 +211,18 @@ class SymbolsCrud(SymbolsCrudUtils):
             else:
                 raise BinbotErrors("Symbol not found")
 
+    def start_cooldown(self, symbol: str, cooldown_seconds: int) -> None:
+        with get_db_session() as session:
+            symbol_table = session.get(SymbolTable, symbol)
+            if symbol_table is None:
+                raise BinbotErrors("Symbol not found")
+
+            now_ms = int(time() * 1000)
+            symbol_table.cooldown = max(int(cooldown_seconds), 0)
+            symbol_table.cooldown_start_ts = now_ms
+            symbol_table.updated_at = now_ms
+            session.add(symbol_table)
+
     def edit_symbol_item(self, data: SymbolRequestPayload) -> SymbolModel:
         with get_db_session() as s:
             statement = select(SymbolTable).where(SymbolTable.id == data.symbol)
