@@ -23,6 +23,28 @@ export interface Deal {
   total_commissions: number;
 }
 
+export type ReversalPath = "source" | "recovery";
+
+export interface RecoveryParamsRequest {
+  reversal_path: ReversalPath;
+  source_contracts: number;
+  source_loss_fiat: number;
+  stop_loss_pct: number;
+}
+
+export interface RecoveryParams extends RecoveryParamsRequest {
+  id?: string;
+  created_at?: number;
+  updated_at?: number;
+}
+
+export const defaultRecoveryParams: RecoveryParamsRequest = {
+  reversal_path: "source",
+  source_contracts: 0,
+  source_loss_fiat: 0,
+  stop_loss_pct: 0,
+};
+
 export interface Bot {
   id: string;
   pair: string;
@@ -39,6 +61,8 @@ export interface Bot {
   status: BotStatus;
   stop_loss: number;
   margin_short_reversal: boolean;
+  recovery_mode_id?: string | null;
+  recovery_params?: RecoveryParams | null;
   take_profit: number;
   trailing: boolean;
   trailing_deviation: number;
@@ -98,5 +122,7 @@ export const singleBot: Bot = {
   orders: [],
   stop_loss: 3,
   margin_short_reversal: true,
+  recovery_mode_id: null,
+  recovery_params: null,
   position: BotPosition.LONG,
 };

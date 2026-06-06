@@ -12,6 +12,7 @@ import type {
   SingleBotResponse,
   GetBotsParams,
   BotDetailsState,
+  BotRequest,
 } from "./bots";
 
 type GetBotsResponse = {
@@ -23,6 +24,23 @@ export type AlgoRankingItem = {
   name: string;
   count: number;
   bot_profit: number;
+};
+
+export const buildBotRequest = (bot: Bot): BotRequest => {
+  const { recovery_mode_id, recovery_params, ...botFields } = bot;
+
+  return {
+    ...botFields,
+    recovery_params:
+      recovery_params == null
+        ? recovery_params
+        : {
+            reversal_path: recovery_params.reversal_path,
+            source_contracts: recovery_params.source_contracts,
+            source_loss_fiat: recovery_params.source_loss_fiat,
+            stop_loss_pct: recovery_params.stop_loss_pct,
+          },
+  };
 };
 
 export const buildGetBotsPath = (
@@ -109,7 +127,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
       query: (body) => ({
         url: import.meta.env.VITE_GET_BOTS,
         method: "POST",
-        body: body,
+        body: buildBotRequest(body),
         invalidatesTags: (result) => [{ type: "bot", id: result.id }],
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
@@ -127,7 +145,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
       query: ({ body, id }) => ({
         url: `${import.meta.env.VITE_GET_BOTS}/${id}`,
         method: "PUT",
-        body: body,
+        body: buildBotRequest(body),
         invalidatesTags: (result) => [{ type: "bot", id: result.id }],
       }),
       transformResponse: ({ botId, message, error }, meta, arg) => {

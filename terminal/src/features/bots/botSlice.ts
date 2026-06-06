@@ -1,6 +1,6 @@
 import type { PayloadAction } from "@reduxjs/toolkit";
 import { createAppSlice } from "../../app/createAppSlice";
-import { singleBot } from "./botInitialState";
+import { singleBot, type RecoveryParams } from "./botInitialState";
 import type {
   BotDetailsFormField,
   BotDetailsFormFieldBoolean,
@@ -21,6 +21,14 @@ export const botSlice = createAppSlice({
     setToggle: create.reducer(
       (state, { payload }: PayloadAction<BotDetailsFormFieldBoolean>) => {
         state.bot[payload.name] = payload.value;
+      },
+    ),
+    setRecoveryParams: create.reducer(
+      (state, { payload }: PayloadAction<RecoveryParams | null>) => {
+        state.bot.recovery_params = payload;
+        if (payload === null) {
+          state.bot.recovery_mode_id = null;
+        }
       },
     ),
     setBot: create.reducer(
@@ -51,6 +59,12 @@ export const botSlice = createAppSlice({
   },
 });
 
-export const { setField, setBot, setToggle, setCurrentPrice, resetBot } =
-  botSlice.actions;
+export const {
+  setField,
+  setBot,
+  setToggle,
+  setRecoveryParams,
+  setCurrentPrice,
+  resetBot,
+} = botSlice.actions;
 export const { selectBot } = botSlice.selectors;
