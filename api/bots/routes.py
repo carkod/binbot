@@ -6,11 +6,12 @@ from sqlmodel import Session
 from pybinbot import Status, BinbotErrors, BinanceErrors, MarketType
 from user.models.user import UserTokenData
 from bots.models import (
-    BotBase,
+    BotCreateRequest,
     BotResponse,
     BotListResponse,
     BulkDeleteRequest,
     BotModel,
+    BotUpdateRequest,
     ErrorsRequestBody,
 )
 from databases.crud.bot_crud import BotTableCrud
@@ -168,7 +169,7 @@ def get_one_by_symbol(
 
 @bot_blueprint.post("/bot", response_model=BotResponse, tags=["bots"])
 def create_bot(
-    bot_item: BotBase,
+    bot_item: BotCreateRequest,
     session: Session = Depends(get_session),
     _: UserTokenData = Depends(get_current_user),
 ):
@@ -198,14 +199,18 @@ def create_bot(
 @bot_blueprint.put("/bot/{bot_id}", response_model=BotResponse, tags=["bots"])
 def edit_bot(
     bot_id: str,
-    bot_item: BotBase,
+    bot_item: BotUpdateRequest,
     session: Session = Depends(get_session),
     _: UserTokenData = Depends(get_current_user),
 ):
     crud = BotTableCrud(session)
     bot_row = crud.get_one(bot_id=bot_id)
-    bot_row.sqlmodel_update(bot_item.model_dump())
-    updated_row = crud.save(bot_row)
+    bot_row.sqlmodel_update(bot_item.model_dump(exclude={"recovery_params"}))
+    updated_row = crud.save(
+        bot_row,
+        recovery_params_submitted="recovery_params" in bot_item.model_fields_set,
+        recovery_params=bot_item.recovery_params,
+    )
     bot_model = BotModel.dump_from_table(updated_row)
     return BotResponse(message="Successfully edited bot.", data=bot_model)
 

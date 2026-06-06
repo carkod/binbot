@@ -6,10 +6,16 @@ from sqlmodel import Session, col, select, asc, desc, case, func
 from sqlalchemy.orm import QueryableAttribute, selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
-from bots.models import BotModel, OrderModel, AlgoRankingItem
+from bots.models import (
+    AlgoRankingItem,
+    BotModel,
+    OrderModel,
+    RecoveryParamsRequest,
+)
 from databases.tables.bot_table import BotTable
 from databases.tables.deal_table import DealTable
 from databases.tables.order_table import ExchangeOrderTable
+from databases.tables.recovery_bot_table import RecoveryBotTable
 from databases.utils import detach_bot_graph, get_db_session
 
 from pybinbot import (
@@ -26,6 +32,7 @@ from pybinbot import (
 # Deal with SQLModel vs mypy issues
 BOT_DEAL_REL = cast(QueryableAttribute[Any], BotTable.deal)
 BOT_ORDERS_REL = cast(QueryableAttribute[Any], BotTable.orders)
+BOT_RECOVERY_REL = cast(QueryableAttribute[Any], BotTable.recovery_params)
 ACTIVE_BOT_STATUSES = (Status.active, Status.pending)
 
 
@@ -85,7 +92,12 @@ class BotTableCrud:
         # Step 1: Copy BotModel fields (except relationships)
         bot_table = BotTable()
         for field_name in BotTable.model_fields.keys():
-            if field_name in {"deal", "orders"}:
+            if field_name in {
+                "deal",
+                "orders",
+                "recovery_mode_id",
+                "recovery_params",
+            }:
                 continue
             if hasattr(bot, field_name):
                 setattr(bot_table, field_name, getattr(bot, field_name))
@@ -148,6 +160,7 @@ class BotTableCrud:
         stmt = select(BotTable).options(
             selectinload(BOT_DEAL_REL),
             selectinload(BOT_ORDERS_REL),
+            selectinload(BOT_RECOVERY_REL),
         )
 
         if status and status != Status.all:
@@ -191,6 +204,7 @@ class BotTableCrud:
             stmt = select(BotTable).options(
                 selectinload(BOT_DEAL_REL),
                 selectinload(BOT_ORDERS_REL),
+                selectinload(BOT_RECOVERY_REL),
             )
 
             if bot_id:
@@ -220,21 +234,30 @@ class BotTableCrud:
     # --------------------------------------------------
 
     def create(self, data: BotBase) -> BotTable:
+        recovery_params = getattr(data, "recovery_params", None)
         new_bot = BotTable(
-            **data.model_dump(),
+            **data.model_dump(exclude={"recovery_params"}),
             deal=DealTable(),
             orders=[],
         )
+        if recovery_params is not None:
+            new_bot.recovery_params = RecoveryBotTable(**recovery_params.model_dump())
 
         with get_db_session(self._external_session) as s:
             s.add(new_bot)
             s.commit()
             s.refresh(new_bot)
-            s.expunge(new_bot)
+            detach_bot_graph(s, new_bot)
 
         return new_bot
 
-    def save(self, data: BotModel | BotTable) -> BotTable:
+    def save(
+        self,
+        data: BotModel | BotTable,
+        *,
+        recovery_params_submitted: bool = False,
+        recovery_params: RecoveryParamsRequest | None = None,
+    ) -> BotTable:
         with get_db_session(self._external_session) as s:
             # Fetch the existing bot from DB (already attached to session)
             bot_row = s.get(BotTable, UUID(str(data.id)))
@@ -249,10 +272,37 @@ class BotTableCrud:
 
             # Update scalar fields on the managed bot_row
             for field_name in BotTable.model_fields.keys():
-                if field_name in {"id", "deal", "orders", "deal_id"}:
+                if field_name in {
+                    "id",
+                    "deal",
+                    "orders",
+                    "deal_id",
+                    "recovery_mode_id",
+                    "recovery_params",
+                }:
                     continue
                 if hasattr(data_table, field_name):
                     setattr(bot_row, field_name, getattr(data_table, field_name))
+
+            if recovery_params_submitted:
+                if recovery_params is None:
+                    recovery_row = bot_row.recovery_params
+                    bot_row.recovery_params = None
+                    bot_row.recovery_mode_id = None
+                    if recovery_row is not None:
+                        s.delete(recovery_row)
+                elif bot_row.recovery_params is None:
+                    bot_row.recovery_params = RecoveryBotTable(
+                        **recovery_params.model_dump()
+                    )
+                else:
+                    for field_name in RecoveryParamsRequest.model_fields:
+                        setattr(
+                            bot_row.recovery_params,
+                            field_name,
+                            getattr(recovery_params, field_name),
+                        )
+                    bot_row.recovery_params.updated_at = timestamp()
 
             # Update deal fields (preserve existing deal.id)
             for field_name in DealTable.model_fields.keys():
@@ -280,7 +330,7 @@ class BotTableCrud:
             s.add(bot_row)
             s.commit()
             s.refresh(bot_row)
-            s.expunge(bot_row)
+            detach_bot_graph(s, bot_row)
 
             return bot_row
 
@@ -402,6 +452,7 @@ class BotTableCrud:
             .where(col(BotTable.status).in_(ACTIVE_BOT_STATUSES))
             .options(selectinload(BOT_DEAL_REL))
             .options(selectinload(BOT_ORDERS_REL))
+            .options(selectinload(BOT_RECOVERY_REL))
         )
         if market_type is not None:
             stmt = stmt.where(BotTable.market_type == market_type)

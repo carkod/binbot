@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Literal, Optional
 from uuid import uuid4, UUID
 from pybinbot import DealBase as DealModel, BotBase, OrderBase
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -6,6 +6,29 @@ from tools.handle_error import IResponseBase
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.tables.deal_table import DealTable
 from databases.tables.order_table import ExchangeOrderTable
+
+
+class RecoveryParamsRequest(BaseModel):
+    reversal_path: Literal["source", "recovery"] = "source"
+    source_contracts: float = Field(default=0, ge=0)
+    source_loss_fiat: float = Field(default=0, ge=0)
+    stop_loss_pct: float = Field(default=0, ge=0)
+
+
+class RecoveryBotModel(RecoveryParamsRequest):
+    id: UUID
+    created_at: float
+    updated_at: float
+
+    model_config = {"from_attributes": True}
+
+
+class BotCreateRequest(BotBase):
+    recovery_params: RecoveryParamsRequest | None = None
+
+
+class BotUpdateRequest(BotBase):
+    recovery_params: RecoveryParamsRequest | None = None
 
 
 class OrderModel(OrderBase):
@@ -45,6 +68,8 @@ class BotModel(BotBase):
     id: UUID = Field(default_factory=uuid4)
     deal: DealModel = Field(default_factory=DealModel)
     orders: List[OrderModel] = Field(default_factory=list)
+    recovery_mode_id: UUID | None = None
+    recovery_params: RecoveryBotModel | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -125,6 +150,13 @@ class BotModel(BotBase):
         ]
         model.deal = deal_model
         model.orders = order_models
+        recovery_params = getattr(bot, "recovery_params", None)
+        model.recovery_mode_id = getattr(bot, "recovery_mode_id", None)
+        model.recovery_params = (
+            RecoveryBotModel.model_validate(recovery_params)
+            if recovery_params is not None
+            else None
+        )
         return model
 
     @classmethod
