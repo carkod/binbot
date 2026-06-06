@@ -2,15 +2,13 @@ import { fetchBaseQuery } from "@reduxjs/toolkit/query";
 import { Bounce, toast } from "react-toastify";
 import { getToken, removeToken } from "./login";
 
-export function buildBackUrl() {
-  let base = window.location.hostname.split(".");
-  if (base.includes("localhost")) {
-    base = ["localhost:8008"];
-  } else {
-    base.unshift("api");
-  }
-  const backUrl = `${window.location.protocol}//${base.join(".")}`;
-  return backUrl;
+export function buildBackUrl(
+  location: Pick<Location, "hostname" | "protocol"> = window.location,
+) {
+  const host = location.hostname.includes(".")
+    ? `api.${location.hostname}`
+    : `${location.hostname}:8008`;
+  return `${location.protocol}//${host}`;
 }
 
 export const binbotBaseQuery = async (
