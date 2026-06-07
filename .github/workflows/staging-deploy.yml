@@ -1,7 +1,8 @@
 name: Deploy to Staging (home server)
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_run:
+    workflows: ["Deployment checks"]
+    types: [completed]
   workflow_dispatch:
 
 env:
@@ -9,6 +10,9 @@ env:
 
 jobs:
   full-stack-deploy:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 20
 

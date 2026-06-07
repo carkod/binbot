@@ -1,11 +1,14 @@
 from typing import List, Literal, Optional
-from uuid import uuid4, UUID
-from pybinbot import DealBase as DealModel, BotBase, OrderBase
-from pydantic import BaseModel, Field, field_validator, model_validator
-from tools.handle_error import IResponseBase
+from uuid import UUID, uuid4
+
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.tables.deal_table import DealTable
 from databases.tables.order_table import ExchangeOrderTable
+from pybinbot import BotBase
+from pybinbot import DealBase as DealModel
+from pybinbot import OrderBase
+from pydantic import BaseModel, Field, field_validator, model_validator
+from tools.handle_error import IResponseBase
 
 
 class RecoveryParamsRequest(BaseModel):
@@ -150,11 +153,10 @@ class BotModel(BotBase):
         ]
         model.deal = deal_model
         model.orders = order_models
-        recovery_params = getattr(bot, "recovery_params", None)
-        model.recovery_mode_id = getattr(bot, "recovery_mode_id", None)
+        model.recovery_mode_id = bot.recovery_mode_id
         model.recovery_params = (
-            RecoveryBotModel.model_validate(recovery_params)
-            if recovery_params is not None
+            RecoveryBotModel.model_validate(bot.recovery_params)
+            if bot.recovery_params is not None
             else None
         )
         return model
