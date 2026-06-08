@@ -1,6 +1,6 @@
 import type { EntityId, EntityState } from "@reduxjs/toolkit";
 import { type BotStatus } from "../../utils/enums";
-import type { Bot, RecoveryParamsRequest } from "./botInitialState";
+import type { Bot } from "./botInitialState";
 
 export interface DefaultBotsResponse {
   error: number;
@@ -33,10 +33,6 @@ export interface EditBotParams {
   body: Bot;
   id: string;
 }
-
-export type BotRequest = Omit<Bot, "recovery_mode_id" | "recovery_params"> & {
-  recovery_params?: RecoveryParamsRequest | null;
-};
 
 export interface BotsState {
   bots: Bot[];

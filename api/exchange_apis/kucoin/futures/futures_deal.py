@@ -17,10 +17,10 @@ from pybinbot import (
     OrderBase,
     OrderStatus,
     OrderType,
+    Position,
     Status,
     convert_to_kucoin_symbol,
     round_numbers,
-    Position,
 )
 from streaming.base import BaseStreaming
 
@@ -75,6 +75,12 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
     def _direction_multiplier(self) -> int:
         return -1 if self.active_bot.position == Position.short else 1
+
+    def _is_recovery_bot(self) -> bool:
+        recovery_params = self.active_bot.recovery_params
+        return (
+            recovery_params is not None and recovery_params.reversal_path == "recovery"
+        )
 
     def create_controller(self) -> PaperTradingTableCrud | BotTableCrud:
         """
@@ -619,10 +625,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 f"because required margin exceeded available balance."
             )
 
-        recovery_params = getattr(self.active_bot, "recovery_params", None)
+        recovery_params = self.active_bot.recovery_params
         if (
-            recovery_params is not None
-            and recovery_params.reversal_path == "recovery"
+            self._is_recovery_bot()
+            and recovery_params is not None
             and recovery_params.source_contracts > 0
             and contracts < recovery_params.source_contracts * 0.60
         ):

@@ -3,15 +3,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from sqlmodel import Session
-from pybinbot import Status, BinbotErrors, BinanceErrors, MarketType
+from pybinbot import BotBase, Status, BinbotErrors, BinanceErrors, MarketType
 from user.models.user import UserTokenData
 from bots.models import (
-    BotCreateRequest,
     BotResponse,
     BotListResponse,
     BulkDeleteRequest,
     BotModel,
-    BotUpdateRequest,
     ErrorsRequestBody,
 )
 from databases.crud.bot_crud import BotTableCrud
@@ -169,7 +167,7 @@ def get_one_by_symbol(
 
 @bot_blueprint.post("/bot", response_model=BotResponse, tags=["bots"])
 def create_bot(
-    bot_item: BotCreateRequest,
+    bot_item: BotBase,
     session: Session = Depends(get_session),
     _: UserTokenData = Depends(get_current_user),
 ):
@@ -199,7 +197,7 @@ def create_bot(
 @bot_blueprint.put("/bot/{bot_id}", response_model=BotResponse, tags=["bots"])
 def edit_bot(
     bot_id: str,
-    bot_item: BotUpdateRequest,
+    bot_item: BotBase,
     session: Session = Depends(get_session),
     _: UserTokenData = Depends(get_current_user),
 ):

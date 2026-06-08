@@ -25,20 +25,14 @@ export interface Deal {
 
 export type ReversalPath = "source" | "recovery";
 
-export interface RecoveryParamsRequest {
+export interface RecoveryParams {
   reversal_path: ReversalPath;
   source_contracts: number;
   source_loss_fiat: number;
   stop_loss_pct: number;
 }
 
-export interface RecoveryParams extends RecoveryParamsRequest {
-  id?: string;
-  created_at?: number;
-  updated_at?: number;
-}
-
-export const defaultRecoveryParams: RecoveryParamsRequest = {
+export const defaultRecoveryParams: RecoveryParams = {
   reversal_path: "source",
   source_contracts: 0,
   source_loss_fiat: 0,

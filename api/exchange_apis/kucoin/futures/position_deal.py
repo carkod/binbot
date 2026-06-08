@@ -2,12 +2,7 @@ from math import ceil
 from time import time
 from typing import Type, Union
 
-from bots.models import (
-    BotCreateRequest,
-    BotModel,
-    OrderModel,
-    RecoveryParamsRequest,
-)
+from bots.models import BotModel, OrderModel
 from databases.crud.bot_crud import BotTableCrud
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
@@ -15,7 +10,11 @@ from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
 from kucoin_universal_sdk.model.common import RestError
 from pybinbot import (
+    BotBase,
+    Candles,
     DealType,
+    ExchangeId,
+    Indicators,
     KucoinApi,
     KucoinFutures,
     MarketType,
@@ -24,6 +23,7 @@ from pybinbot import (
     OrderStatus,
     OrderType,
     Position,
+    RecoveryParams,
     Status,
     convert_to_kucoin_symbol,
     round_numbers,
@@ -473,12 +473,6 @@ class PositionDeal(KucoinPositionDeal):
         "bb_extreme_reversion",
     }
 
-    def _is_recovery_bot(self) -> bool:
-        recovery_params = getattr(self.active_bot, "recovery_params", None)
-        return (
-            recovery_params is not None and recovery_params.reversal_path == "recovery"
-        )
-
     def _recovery_atr_pct(self, reference_price: float) -> float | None:
         if reference_price <= 0 or self.klines is None:
             return None
@@ -487,24 +481,17 @@ class PositionDeal(KucoinPositionDeal):
         if len(closed_candles) < self.RECOVERY_ATR_WINDOW + 1:
             return None
 
-        true_ranges: list[float] = []
-        start_index = len(closed_candles) - self.RECOVERY_ATR_WINDOW
-        for index in range(start_index, len(closed_candles)):
-            previous_close = float(closed_candles[index - 1][4])
-            high = float(closed_candles[index][2])
-            low = float(closed_candles[index][3])
-            true_ranges.append(
-                max(
-                    high - low,
-                    abs(high - previous_close),
-                    abs(low - previous_close),
-                )
-            )
-
-        if not true_ranges:
+        atr_candles = closed_candles[-(self.RECOVERY_ATR_WINDOW + 1) :]
+        atr_df = Candles(
+            exchange=ExchangeId.KUCOIN,
+            candles=atr_candles,
+        ).pre_process()
+        atr_df = Indicators.atr(atr_df, window=self.RECOVERY_ATR_WINDOW)
+        atr = float(atr_df["ATR"].iloc[-1])
+        if atr != atr:
             return None
 
-        return (sum(true_ranges) / len(true_ranges) / reference_price) * 100
+        return (atr / reference_price) * 100
 
     def compute_recovery_stop_loss_pct(
         self,
@@ -781,9 +768,9 @@ class PositionDeal(KucoinPositionDeal):
             f"{target_position.value} entry."
         )
 
-        source_recovery_params = getattr(source_bot, "recovery_params", None)
+        source_recovery_params = source_bot.recovery_params
         recovery_stop_pct: float | None = None
-        recovery_params: RecoveryParamsRequest | None = None
+        recovery_params: RecoveryParams | None = None
         recovery_fiat_order_size = float(source_bot.fiat_order_size)
         recovery_trailing_profit = float(source_bot.trailing_profit)
         recovery_trailing_deviation = float(source_bot.trailing_deviation)
@@ -816,7 +803,7 @@ class PositionDeal(KucoinPositionDeal):
                 recovery_trailing_deviation,
             ) = self._recovery_trailing_params(source_bot, recovery_stop_pct)
             recovery_margin_short_reversal = False
-            recovery_params = RecoveryParamsRequest(
+            recovery_params = RecoveryParams(
                 reversal_path="recovery",
                 source_contracts=current_contracts,
                 source_loss_fiat=self._source_loss_fiat(
@@ -831,7 +818,7 @@ class PositionDeal(KucoinPositionDeal):
             )
 
         self.controller.save(source_bot)
-        new_bot = BotCreateRequest(
+        new_bot = BotBase(
             pair=source_bot.pair,
             fiat=source_bot.fiat,
             fiat_order_size=recovery_fiat_order_size,
@@ -918,7 +905,7 @@ class PositionDeal(KucoinPositionDeal):
             self.close_all()
             return self.active_bot
 
-        recovery_params = getattr(self.active_bot, "recovery_params", None)
+        recovery_params = self.active_bot.recovery_params
         sl_pct = float(self.active_bot.stop_loss)
         is_recovery_bot = self._is_recovery_bot()
         if (

@@ -2,6 +2,9 @@ from typing import Any, cast
 from uuid import uuid4
 
 from bots.models import BotModel, OrderModel, RecoveryBotModel
+from databases.tables.bot_table import BotTable
+from databases.tables.deal_table import DealTable
+from databases.tables.recovery_bot_table import RecoveryBotTable
 from exchange_apis.kucoin.futures.position_deal import PositionDeal
 from kucoin_universal_sdk.model.common import RestError
 from pybinbot import MarketType, OrderStatus, QuoteAssets, Status, DealType, Position
@@ -11,26 +14,26 @@ from tests.fixtures.mock_bot_table import make_mock_bot_active_model
 class DummyController:
     def __init__(self):
         self.saved: list[BotModel] = []
-        self.created: list[BotModel] = []
+        self.created: list[BotTable] = []
 
     def save(self, bot: BotModel) -> BotModel:
         snapshot = BotModel.model_validate(bot.model_dump())
         self.saved.append(snapshot)
         return snapshot
 
-    def create(self, new_bot) -> BotModel:
+    def create(self, new_bot) -> BotTable:
         data = new_bot.model_dump(exclude={"recovery_params"})
+        created = BotTable(**data, deal=DealTable(), orders=[])
         recovery_params = new_bot.recovery_params
         if recovery_params is not None:
             recovery_id = uuid4()
-            data["recovery_mode_id"] = recovery_id
-            data["recovery_params"] = {
+            created.recovery_mode_id = recovery_id
+            created.recovery_params = RecoveryBotTable(
                 **recovery_params.model_dump(),
-                "id": recovery_id,
-                "created_at": 1,
-                "updated_at": 1,
-            }
-        created = BotModel.model_validate(data)
+                id=recovery_id,
+                created_at=1,
+                updated_at=1,
+            )
         self.created.append(created)
         return created
 

@@ -25,10 +25,7 @@ import {
   setTestBotField,
   setTestBotToggle,
 } from "../../features/bots/paperTradingSlice";
-import type {
-  RecoveryParams,
-  RecoveryParamsRequest,
-} from "../../features/bots/botInitialState";
+import type { RecoveryParams } from "../../features/bots/botInitialState";
 import { defaultRecoveryParams } from "../../features/bots/botInitialState";
 
 const StopLossTab: FC<{ botType?: BotType }> = ({ botType = "bots" }) => {
@@ -106,13 +103,13 @@ const StopLossTab: FC<{ botType?: BotType }> = ({ botType = "bots" }) => {
   };
 
   const handleRecoveryChange = (
-    name: keyof RecoveryParamsRequest,
-    value: RecoveryParamsRequest[keyof RecoveryParamsRequest],
+    name: keyof RecoveryParams,
+    value: RecoveryParams[keyof RecoveryParams],
   ) => {
     dispatch(
       setRecoveryParams({
         ...defaultRecoveryParams,
-        ...(bot.recovery_params as RecoveryParams | undefined),
+        ...bot.recovery_params,
         [name]: value,
       }),
     );
@@ -229,8 +226,7 @@ const StopLossTab: FC<{ botType?: BotType }> = ({ botType = "bots" }) => {
                 onChange={(event) =>
                   handleRecoveryChange(
                     "reversal_path",
-                    event.target
-                      .value as RecoveryParamsRequest["reversal_path"],
+                    event.target.value as RecoveryParams["reversal_path"],
                   )
                 }
               >

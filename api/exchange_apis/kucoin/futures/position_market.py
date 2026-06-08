@@ -435,8 +435,7 @@ class PositionMarket(KucoinPositionDeal):
         - trailing_deviation = active stop after trailing
         - trailing_profit = trigger, never exit
         """
-        recovery_params = self.active_bot.recovery_params
-        if recovery_params is not None and recovery_params.reversal_path == "recovery":
+        if self._is_recovery_bot():
             return
 
         self.apex_flow_closing = ApexFlowClose(self.df, self.btc_df)

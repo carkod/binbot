@@ -10,7 +10,6 @@ from bots.models import (
     AlgoRankingItem,
     BotModel,
     OrderModel,
-    RecoveryParamsRequest,
 )
 from databases.tables.bot_table import BotTable
 from databases.tables.deal_table import DealTable
@@ -26,6 +25,7 @@ from pybinbot import (
     BinbotErrors,
     BotBase,
     Position,
+    RecoveryParams,
 )
 
 
@@ -234,14 +234,15 @@ class BotTableCrud:
     # --------------------------------------------------
 
     def create(self, data: BotBase) -> BotTable:
-        recovery_params = getattr(data, "recovery_params", None)
         new_bot = BotTable(
             **data.model_dump(exclude={"recovery_params"}),
             deal=DealTable(),
             orders=[],
         )
-        if recovery_params is not None:
-            new_bot.recovery_params = RecoveryBotTable(**recovery_params.model_dump())
+        if data.recovery_params is not None:
+            new_bot.recovery_params = RecoveryBotTable(
+                **data.recovery_params.model_dump()
+            )
 
         with get_db_session(self._external_session) as s:
             s.add(new_bot)
@@ -256,7 +257,7 @@ class BotTableCrud:
         data: BotModel | BotTable,
         *,
         recovery_params_submitted: bool = False,
-        recovery_params: RecoveryParamsRequest | None = None,
+        recovery_params: RecoveryParams | None = None,
     ) -> BotTable:
         with get_db_session(self._external_session) as s:
             # Fetch the existing bot from DB (already attached to session)
@@ -296,7 +297,7 @@ class BotTableCrud:
                         **recovery_params.model_dump()
                     )
                 else:
-                    for field_name in RecoveryParamsRequest.model_fields:
+                    for field_name in RecoveryParams.model_fields:
                         setattr(
                             bot_row.recovery_params,
                             field_name,

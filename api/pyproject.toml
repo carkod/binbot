@@ -19,7 +19,7 @@ dependencies = [
     "alembic>=1.18.4",
     "alembic-postgresql-enum",
     "pydantic-settings>=2.10.1",
-    "pybinbot>=1.9.25",
+    "pybinbot>=1.9.27",
 ]
 
 [project.urls]
@@ -33,6 +33,7 @@ package = false
 
 [project.optional-dependencies]
 dev = [
+    "aiohttp>=3.13.3,<3.14",
     "pytest-asyncio>=1.2.0",
     "pytest>=9.0.2",
     "coverage",
