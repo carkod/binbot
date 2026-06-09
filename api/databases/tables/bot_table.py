@@ -14,6 +14,7 @@ from pybinbot import (
 from sqlmodel import Relationship, SQLModel, Field
 from databases.tables.order_table import ExchangeOrderTable, FakeOrderTable
 from databases.tables.deal_table import DealTable
+from databases.tables.recovery_bot_table import RecoveryBotTable
 
 # avoids circular imports
 # https://sqlmodel.tiangolo.com/tutorial/code-structure/#hero-model-file
@@ -90,6 +91,20 @@ class BotTable(SQLModel, table=True):
     # lazy option will allow objects to be nested when transformed for json return
     deal: DealTable = Relationship(
         sa_relationship_kwargs={"lazy": "joined", "single_parent": True}
+    )
+    recovery_mode_id: Optional[UUID] = Field(
+        default=None,
+        foreign_key="recovery_bot_table.id",
+        index=True,
+        unique=True,
+    )
+    recovery_params: Optional[RecoveryBotTable] = Relationship(
+        sa_relationship_kwargs={
+            "lazy": "joined",
+            "single_parent": True,
+            "cascade": "all, delete-orphan",
+            "uselist": False,
+        }
     )
 
     model_config = {

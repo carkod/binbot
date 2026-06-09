@@ -1,7 +1,8 @@
 from typing import Any, cast
 import types
+from uuid import uuid4
 
-from bots.models import BotModel
+from bots.models import BotModel, RecoveryBotModel
 from exchange_apis.kucoin.deals.base import KucoinBaseBalance
 from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from pybinbot import DealType, OrderBase, OrderStatus, Position
@@ -204,6 +205,17 @@ def test_base_order_downsizes_when_margin_size_exceeds_available_balance():
     # affordable: per-contract margin (100*1 + 2*100*0.0006) = 100.12 → floor(1000/100.12) = 9.
     # min(15, 9) = 9, downsized from 15 to 9.
     deal = make_sizing_deal(fiat_order_size=1500, stop_loss=1, multiplier=10)
+    recovery_id = uuid4()
+    deal.active_bot.recovery_mode_id = recovery_id
+    deal.active_bot.recovery_params = RecoveryBotModel(
+        id=recovery_id,
+        reversal_path="recovery",
+        source_contracts=20,
+        source_loss_fiat=4,
+        stop_loss_pct=3,
+        created_at=1,
+        updated_at=1,
+    )
     deal.active_bot.fiat = "USDT"
     deal.fiat = "USDT"
     deal.kucoin_symbol = "TESTUSDTM"
@@ -220,3 +232,4 @@ def test_base_order_downsizes_when_margin_size_exceeds_available_balance():
     assert opened_bot.deal.base_order_size == 9
     assert opened_bot.deal.opening_qty == 9
     assert any("Futures order downsized from 15 to 9" in log for log in opened_bot.logs)
+    assert any("underpowered_recovery" in log for log in opened_bot.logs)

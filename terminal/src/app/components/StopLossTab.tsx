@@ -11,7 +11,12 @@ import {
 } from "react-bootstrap";
 import InputGroupText from "react-bootstrap/esm/InputGroupText";
 import { useForm } from "react-hook-form";
-import { selectBot, setField, setToggle } from "../../features/bots/botSlice";
+import {
+  selectBot,
+  setField,
+  setRecoveryParams,
+  setToggle,
+} from "../../features/bots/botSlice";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { type AppDispatch } from "../store";
 import { BotType, TabsKeys } from "../../utils/enums";
@@ -20,15 +25,16 @@ import {
   setTestBotField,
   setTestBotToggle,
 } from "../../features/bots/paperTradingSlice";
+import type { RecoveryParams } from "../../features/bots/botInitialState";
+import { defaultRecoveryParams } from "../../features/bots/botInitialState";
 
 const StopLossTab: FC<{ botType?: BotType }> = ({ botType = "bots" }) => {
   const dispatch: AppDispatch = useAppDispatch();
-  let { bot } = useAppSelector(selectBot);
-
-  if (botType === BotType.PAPER_TRADING) {
-    const testBot = useAppSelector(selectTestBot);
-    bot = testBot.paperTrading;
-  }
+  const { bot: liveBot } = useAppSelector(selectBot);
+  const { paperTrading } = useAppSelector(selectTestBot);
+  const bot = botType === BotType.PAPER_TRADING ? paperTrading : liveBot;
+  const recoveryEnabled =
+    botType !== BotType.PAPER_TRADING && bot.recovery_params != null;
 
   const {
     watch,
@@ -45,21 +51,22 @@ const StopLossTab: FC<{ botType?: BotType }> = ({ botType = "bots" }) => {
   });
 
   useEffect(() => {
-    const { unsubscribe } = watch((v, { name, type }) => {
-      if (v && v?.[name]) {
-        if (typeof v === "boolean") {
+    const { unsubscribe } = watch((values, { name }) => {
+      const value = name ? values[name] : undefined;
+      if (name && value !== undefined) {
+        if (typeof value === "boolean") {
           if (botType === BotType.PAPER_TRADING) {
-            dispatch(setTestBotToggle({ name, value: v[name] }));
+            dispatch(setTestBotToggle({ name, value }));
           } else {
-            dispatch(setToggle({ name, value: v[name] }));
+            dispatch(setToggle({ name, value }));
           }
         } else {
           if (botType === BotType.PAPER_TRADING) {
             dispatch(
-              setTestBotField({ name, value: v[name] as number | string }),
+              setTestBotField({ name, value: value as number | string }),
             );
           } else {
-            dispatch(setField({ name, value: v[name] as number | string }));
+            dispatch(setField({ name, value: value as number | string }));
           }
         }
       }
@@ -73,7 +80,7 @@ const StopLossTab: FC<{ botType?: BotType }> = ({ botType = "bots" }) => {
     }
 
     return () => unsubscribe();
-  }, [watch, dispatch, bot, reset]);
+  }, [watch, dispatch, bot, reset, botType]);
 
   const handleBlur = (e) => {
     if (e.target.value) {
@@ -89,6 +96,25 @@ const StopLossTab: FC<{ botType?: BotType }> = ({ botType = "bots" }) => {
     }
   };
 
+  const handleRecoveryToggle = () => {
+    dispatch(
+      setRecoveryParams(recoveryEnabled ? null : { ...defaultRecoveryParams }),
+    );
+  };
+
+  const handleRecoveryChange = (
+    name: keyof RecoveryParams,
+    value: RecoveryParams[keyof RecoveryParams],
+  ) => {
+    dispatch(
+      setRecoveryParams({
+        ...defaultRecoveryParams,
+        ...bot.recovery_params,
+        [name]: value,
+      }),
+    );
+  };
+
   return (
     <Tab.Pane
       id={TabsKeys.STOPLOSS}
@@ -97,7 +123,7 @@ const StopLossTab: FC<{ botType?: BotType }> = ({ botType = "bots" }) => {
     >
       <Container>
         <Row className="my-3">
-          <Col md="6" sm="12">
+          <Col md={botType === BotType.PAPER_TRADING ? 6 : 4} sm="12">
             <Form.Label htmlFor="stop_loss">
               Stop loss <span className="u-required">*</span>
             </Form.Label>
@@ -128,7 +154,7 @@ const StopLossTab: FC<{ botType?: BotType }> = ({ botType = "bots" }) => {
               )}
             </InputGroup>
           </Col>
-          <Col md="6" sm="12">
+          <Col md={botType === BotType.PAPER_TRADING ? 6 : 4} sm="12">
             <Form.Group className="position-relative">
               <Form.Label htmlFor="margin_short_reversal">
                 Autoswitch (reversal)
@@ -168,7 +194,106 @@ const StopLossTab: FC<{ botType?: BotType }> = ({ botType = "bots" }) => {
               </Form.Control.Feedback>
             </Form.Group>
           </Col>
+          {botType !== BotType.PAPER_TRADING && (
+            <Col md="4" sm="12">
+              <Form.Group className="position-relative">
+                <Form.Label htmlFor="recovery_mode">Recovery mode</Form.Label>
+                <br />
+                <ButtonGroup className="mb-2">
+                  <ToggleButton
+                    id="recovery_mode"
+                    type="checkbox"
+                    name="recovery_mode"
+                    variant={recoveryEnabled ? "primary" : "secondary"}
+                    value={1}
+                    checked={recoveryEnabled}
+                    onChange={handleRecoveryToggle}
+                  >
+                    {recoveryEnabled ? "On" : "Off"}
+                  </ToggleButton>
+                </ButtonGroup>
+              </Form.Group>
+            </Col>
+          )}
         </Row>
+        {recoveryEnabled && (
+          <Row className="my-3">
+            <Col md="3" sm="12">
+              <Form.Label htmlFor="reversal_path">Reversal path</Form.Label>
+              <Form.Select
+                id="reversal_path"
+                value={bot.recovery_params?.reversal_path ?? "source"}
+                onChange={(event) =>
+                  handleRecoveryChange(
+                    "reversal_path",
+                    event.target.value as RecoveryParams["reversal_path"],
+                  )
+                }
+              >
+                <option value="source">Source</option>
+                <option value="recovery">Recovery</option>
+              </Form.Select>
+            </Col>
+            <Col md="3" sm="12">
+              <Form.Label htmlFor="source_contracts">
+                Source contracts
+              </Form.Label>
+              <Form.Control
+                id="source_contracts"
+                type="number"
+                min={0}
+                step="any"
+                value={bot.recovery_params?.source_contracts ?? 0}
+                onChange={(event) =>
+                  handleRecoveryChange(
+                    "source_contracts",
+                    Number(event.target.value) || 0,
+                  )
+                }
+              />
+            </Col>
+            <Col md="3" sm="12">
+              <Form.Label htmlFor="source_loss_fiat">
+                Source loss ({bot.fiat ?? "fiat"})
+              </Form.Label>
+              <Form.Control
+                id="source_loss_fiat"
+                type="number"
+                min={0}
+                step="any"
+                value={bot.recovery_params?.source_loss_fiat ?? 0}
+                onChange={(event) =>
+                  handleRecoveryChange(
+                    "source_loss_fiat",
+                    Number(event.target.value) || 0,
+                  )
+                }
+              />
+            </Col>
+            <Col md="3" sm="12">
+              <Form.Label htmlFor="recovery_stop_loss_pct">
+                Recovery stop loss
+              </Form.Label>
+              <InputGroup size="sm">
+                <Form.Control
+                  id="recovery_stop_loss_pct"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="any"
+                  value={bot.recovery_params?.stop_loss_pct ?? 0}
+                  onChange={(event) =>
+                    handleRecoveryChange(
+                      "stop_loss_pct",
+                      Number(event.target.value) || 0,
+                    )
+                  }
+                />
+                <InputGroupText>%</InputGroupText>
+              </InputGroup>
+            </Col>
+          </Row>
+        )}
       </Container>
     </Tab.Pane>
   );

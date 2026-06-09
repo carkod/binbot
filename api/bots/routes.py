@@ -3,10 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from sqlmodel import Session
-from pybinbot import Status, BinbotErrors, BinanceErrors, MarketType
+from pybinbot import BotBase, Status, BinbotErrors, BinanceErrors, MarketType
 from user.models.user import UserTokenData
 from bots.models import (
-    BotBase,
     BotResponse,
     BotListResponse,
     BulkDeleteRequest,
@@ -204,8 +203,12 @@ def edit_bot(
 ):
     crud = BotTableCrud(session)
     bot_row = crud.get_one(bot_id=bot_id)
-    bot_row.sqlmodel_update(bot_item.model_dump())
-    updated_row = crud.save(bot_row)
+    bot_row.sqlmodel_update(bot_item.model_dump(exclude={"recovery_params"}))
+    updated_row = crud.save(
+        bot_row,
+        recovery_params_submitted="recovery_params" in bot_item.model_fields_set,
+        recovery_params=bot_item.recovery_params,
+    )
     bot_model = BotModel.dump_from_table(updated_row)
     return BotResponse(message="Successfully edited bot.", data=bot_model)
 

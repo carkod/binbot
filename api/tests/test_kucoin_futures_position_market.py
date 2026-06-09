@@ -1,9 +1,10 @@
 from typing import Any, cast
 import types
+from uuid import uuid4
 
 import pandas as pd
 
-from bots.models import BotModel, DealModel
+from bots.models import BotModel, DealModel, RecoveryBotModel
 from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from exchange_apis.kucoin.futures.position_market import PositionMarket
 from pybinbot import MarketType, Position
@@ -101,6 +102,36 @@ def test_market_trailing_analytics_keeps_stop_loss_percent_when_pullback_missing
     assert market.active_bot.stop_loss == 4.0
     assert market.active_bot.trailing_profit == 3.5
     assert market.active_bot.trailing_deviation == 2.0
+
+
+def test_market_trailing_analytics_preserves_recovery_parameters(monkeypatch):
+    market = make_position_market()
+    recovery_id = uuid4()
+    market.active_bot.stop_loss = 5.5
+    market.active_bot.trailing_profit = 5
+    market.active_bot.trailing_deviation = 2.5
+    market.active_bot.recovery_mode_id = recovery_id
+    market.active_bot.recovery_params = RecoveryBotModel(
+        id=recovery_id,
+        reversal_path="recovery",
+        source_contracts=10,
+        source_loss_fiat=2,
+        stop_loss_pct=5.5,
+        created_at=1,
+        updated_at=1,
+    )
+    monkeypatch.setattr(
+        "exchange_apis.kucoin.futures.position_market.ApexFlowClose",
+        lambda *_: (_ for _ in ()).throw(
+            AssertionError("recovery analytics should return before recalculation")
+        ),
+    )
+
+    market.market_trailing_analytics(current_price=104)
+
+    assert market.active_bot.stop_loss == 5.5
+    assert market.active_bot.trailing_profit == 5
+    assert market.active_bot.trailing_deviation == 2.5
 
 
 def test_derive_dynamic_trailing_params_widens_gap_on_shallow_pullback():

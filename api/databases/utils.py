@@ -63,10 +63,11 @@ def get_db_session(session: Session | None = None) -> Generator[Session, None, N
 
 def detach_bot_graph(session: Session, bot: Any) -> None:
     """
-    Detach a bot with its eagerly loaded deal and orders from a session.
+    Detach a bot with its eagerly loaded relationships from a session.
     """
     deal = bot.deal
     orders = list(bot.orders)
+    recovery_params = getattr(bot, "recovery_params", None)
 
     if deal is not None and object_session(deal) is session:
         session.expunge(deal)
@@ -74,6 +75,9 @@ def detach_bot_graph(session: Session, bot: Any) -> None:
     for order in orders:
         if object_session(order) is session:
             session.expunge(order)
+
+    if recovery_params is not None and object_session(recovery_params) is session:
+        session.expunge(recovery_params)
 
     if object_session(bot) is session:
         session.expunge(bot)

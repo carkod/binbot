@@ -1,7 +1,8 @@
 name: Deploy to Staging (home server)
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_run:
+    workflows: ["Deployment checks"]
+    types: [completed]
   workflow_dispatch:
 
 env:
@@ -9,6 +10,9 @@ env:
 
 jobs:
   full-stack-deploy:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -21,8 +25,6 @@ jobs:
           tags: tag:ci
 
       - name: Install SSH key
-        id: install-ssh-key
-        continue-on-error: true
         run: |
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
@@ -33,7 +35,6 @@ jobs:
           ssh-keyscan -p 2222 100.64.83.67 >> ~/.ssh/known_hosts
 
       - name: Deploy stack
-        if: steps.install-ssh-key.outcome == 'success'
         run: |
           ssh -i ~/.ssh/home_server_key \
             -p 2222 \

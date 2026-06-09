@@ -1,8 +1,9 @@
 from time import time
 from typing import Any, cast
 import types
+from uuid import uuid4
 
-from bots.models import BotModel, DealModel, OrderModel
+from bots.models import BotModel, DealModel, OrderModel, RecoveryBotModel
 from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from exchange_apis.kucoin.futures.position_deal import PositionDeal
 from pybinbot import MarketType, OrderBase, OrderStatus, DealType, Position
@@ -399,6 +400,43 @@ def test_exit_keeps_stale_loser_below_panic_close_band(monkeypatch):
     PositionDeal.exit(deal, 98.9)
 
     assert closed == []
+
+
+def test_exit_uses_recovery_stop_and_closes_without_second_flip():
+    deal = _make_position_deal(
+        stop_loss=1.0,
+        stop_loss_price=0,
+        margin_short_reversal=False,
+    )
+    deal.klines = None
+    recovery_id = uuid4()
+    deal.active_bot.recovery_mode_id = recovery_id
+    deal.active_bot.recovery_params = RecoveryBotModel(
+        id=recovery_id,
+        reversal_path="recovery",
+        source_contracts=10,
+        source_loss_fiat=2,
+        stop_loss_pct=5,
+        created_at=1,
+        updated_at=1,
+    )
+    deal.controller = types.SimpleNamespace(
+        save=lambda bot: None,
+        update_logs=lambda *args, **kwargs: None,
+    )
+    reverse_calls: list[float | None] = []
+
+    def reverse_position(reference_price: float | None = None) -> BotModel:
+        reverse_calls.append(reference_price)
+        return deal.active_bot
+
+    deal.reverse_position = reverse_position
+
+    PositionDeal.exit(deal, 94.9)
+
+    assert deal.active_bot.stop_loss == 5
+    assert deal.active_bot.deal.stop_loss_price == 95
+    assert reverse_calls == [None]
 
 
 def test_reconcile_exchange_sl_skips_on_api_failure():

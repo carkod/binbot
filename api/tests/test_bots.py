@@ -1,8 +1,9 @@
 from unittest.mock import patch
 from fastapi.testclient import TestClient
-from pytest import fixture
+from pytest import fixture, raises
 from pybinbot import ExchangeId, GridLadderStatus, MarketType
-from sqlmodel import Session
+from sqlmodel import Session, select
+from sqlalchemy.exc import IntegrityError
 from tests.fixtures.mock_bot_table import (
     mock_bot_data,
     mock_bot_data_superusdt,
@@ -11,8 +12,10 @@ from tests.fixtures.mock_bot_table import (
     make_mock_bot_superusdt_model,
 )
 from databases.crud.grid_ladder_crud import GridLadderCrud
+from databases.tables.bot_table import BotTable
 from databases.tables.grid_ladder_table import GridLadderTable
-from uuid import UUID
+from databases.tables.recovery_bot_table import RecoveryBotTable
+from uuid import UUID, uuid4
 
 
 @fixture()
@@ -160,6 +163,148 @@ def test_create_bot(client: TestClient):
     assert (
         content["data"]["fiat_order_size"] == mock_bot_data_superusdt["fiat_order_size"]
     )
+
+
+def test_create_bot_without_recovery_params_creates_no_recovery_row(
+    client: TestClient, create_test_tables
+):
+    with Session(create_test_tables) as session:
+        recovery_count_before = len(session.exec(select(RecoveryBotTable)).all())
+
+    response = client.post(
+        "/bot",
+        json={
+            **mock_bot_data_superusdt,
+            "pair": "NO-RECOVERY-USDT",
+            "name": "Bot without recovery params",
+        },
+    )
+
+    assert response.status_code == 200
+    content = response.json()["data"]
+    assert content["recovery_mode_id"] is None
+    assert content["recovery_params"] is None
+
+    with Session(create_test_tables) as session:
+        recovery_count_after = len(session.exec(select(RecoveryBotTable)).all())
+        bot = session.get(BotTable, UUID(content["id"]))
+        assert bot is not None
+        assert bot.recovery_mode_id is None
+        assert recovery_count_after == recovery_count_before
+
+
+def test_recovery_params_api_lifecycle(client: TestClient, create_test_tables):
+    create_payload = {
+        **mock_bot_data_superusdt,
+        "pair": "RECOVERY-LIFECYCLE-USDT",
+        "name": "Recovery lifecycle bot",
+        "recovery_params": {
+            "reversal_path": "source",
+            "source_contracts": 12,
+            "source_loss_fiat": 4.75,
+            "stop_loss_pct": 6.5,
+        },
+    }
+    create_response = client.post("/bot", json=create_payload)
+
+    assert create_response.status_code == 200
+    created = create_response.json()["data"]
+    bot_id = created["id"]
+    recovery_id = created["recovery_mode_id"]
+    assert recovery_id is not None
+    assert created["recovery_params"] == {
+        "id": recovery_id,
+        "reversal_path": "source",
+        "source_contracts": 12,
+        "source_loss_fiat": 4.75,
+        "stop_loss_pct": 6.5,
+        "created_at": created["recovery_params"]["created_at"],
+        "updated_at": created["recovery_params"]["updated_at"],
+    }
+
+    get_response = client.get(f"/bot/{bot_id}")
+    assert get_response.status_code == 200
+    fetched = get_response.json()["data"]
+    assert fetched["recovery_mode_id"] == recovery_id
+    assert fetched["recovery_params"]["source_loss_fiat"] == 4.75
+
+    omitted_payload = {
+        **mock_bot_data_superusdt,
+        "pair": "RECOVERY-LIFECYCLE-USDT",
+        "name": "Recovery lifecycle bot edited",
+    }
+    omitted_response = client.put(f"/bot/{bot_id}", json=omitted_payload)
+    assert omitted_response.status_code == 200
+    omitted = omitted_response.json()["data"]
+    assert omitted["recovery_mode_id"] == recovery_id
+    assert omitted["recovery_params"]["source_loss_fiat"] == 4.75
+
+    update_payload = {
+        **omitted_payload,
+        "recovery_params": {
+            "reversal_path": "recovery",
+            "source_contracts": 9,
+            "source_loss_fiat": 3.25,
+            "stop_loss_pct": 8,
+        },
+    }
+    update_response = client.put(f"/bot/{bot_id}", json=update_payload)
+    assert update_response.status_code == 200
+    updated = update_response.json()["data"]
+    assert updated["recovery_mode_id"] == recovery_id
+    assert updated["recovery_params"]["id"] == recovery_id
+    assert updated["recovery_params"]["reversal_path"] == "recovery"
+    assert updated["recovery_params"]["source_contracts"] == 9
+    assert updated["recovery_params"]["source_loss_fiat"] == 3.25
+    assert updated["recovery_params"]["stop_loss_pct"] == 8
+
+    clear_response = client.put(
+        f"/bot/{bot_id}",
+        json={**omitted_payload, "recovery_params": None},
+    )
+    assert clear_response.status_code == 200
+    cleared = clear_response.json()["data"]
+    assert cleared["recovery_mode_id"] is None
+    assert cleared["recovery_params"] is None
+
+    with Session(create_test_tables) as session:
+        assert session.get(RecoveryBotTable, UUID(recovery_id)) is None
+
+
+def test_recovery_row_cannot_be_shared_by_two_bots(create_test_tables):
+    recovery_id = uuid4()
+    first_bot_id = uuid4()
+    second_bot_id = uuid4()
+
+    with Session(create_test_tables) as session:
+        session.add(RecoveryBotTable(id=recovery_id))
+        session.add(
+            BotTable(
+                id=first_bot_id,
+                pair="UNIQUE-RECOVERY-ONE-USDT",
+                recovery_mode_id=recovery_id,
+            )
+        )
+        session.commit()
+
+        session.add(
+            BotTable(
+                id=second_bot_id,
+                pair="UNIQUE-RECOVERY-TWO-USDT",
+                recovery_mode_id=recovery_id,
+            )
+        )
+        with raises(IntegrityError):
+            session.commit()
+        session.rollback()
+
+        first_bot = session.get(BotTable, first_bot_id)
+        recovery = session.get(RecoveryBotTable, recovery_id)
+        assert first_bot is not None
+        assert recovery is not None
+        session.delete(first_bot)
+        session.commit()
+        assert session.get(RecoveryBotTable, recovery_id) is None
 
 
 def test_create_bot_rejects_active_grid_ladder_for_same_symbol_and_logs(

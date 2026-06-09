@@ -1,11 +1,22 @@
 from typing import List, Optional
-from uuid import uuid4, UUID
-from pybinbot import DealBase as DealModel, BotBase, OrderBase
-from pydantic import BaseModel, Field, field_validator, model_validator
-from tools.handle_error import IResponseBase
+from uuid import UUID, uuid4
+
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.tables.deal_table import DealTable
 from databases.tables.order_table import ExchangeOrderTable
+from pybinbot import BotBase, RecoveryParams
+from pybinbot import DealBase as DealModel
+from pybinbot import OrderBase
+from pydantic import BaseModel, Field, field_validator, model_validator
+from tools.handle_error import IResponseBase
+
+
+class RecoveryBotModel(RecoveryParams):
+    id: UUID
+    created_at: float
+    updated_at: float
+
+    model_config = {"from_attributes": True}
 
 
 class OrderModel(OrderBase):
@@ -45,6 +56,8 @@ class BotModel(BotBase):
     id: UUID = Field(default_factory=uuid4)
     deal: DealModel = Field(default_factory=DealModel)
     orders: List[OrderModel] = Field(default_factory=list)
+    recovery_mode_id: UUID | None = None
+    recovery_params: RecoveryBotModel | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -111,7 +124,10 @@ class BotModel(BotBase):
         return v
 
     @classmethod
-    def dump_from_table(cls, bot: BotTable | PaperTradingTable) -> "BotModel":
+    def dump_from_table(
+        cls,
+        bot: "BotTable | PaperTradingTable",
+    ) -> "BotModel":
         """
         Same as model_dump() but from
         BotTable
@@ -125,6 +141,16 @@ class BotModel(BotBase):
         ]
         model.deal = deal_model
         model.orders = order_models
+        if isinstance(bot, BotTable):
+            model.recovery_mode_id = bot.recovery_mode_id
+            model.recovery_params = (
+                RecoveryBotModel.model_validate(bot.recovery_params)
+                if bot.recovery_params is not None
+                else None
+            )
+        else:
+            model.recovery_mode_id = None
+            model.recovery_params = None
         return model
 
     @classmethod
