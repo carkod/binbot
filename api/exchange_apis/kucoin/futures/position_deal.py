@@ -588,18 +588,17 @@ class PositionDeal(KucoinPositionDeal):
         closing_price: float,
         contracts: float,
     ) -> float:
-        entry_price = float(source_bot.deal.opening_price)
+        entry_price = source_bot.deal.opening_price
         if entry_price <= 0 or closing_price <= 0 or contracts <= 0:
             return 0
 
-        multiplier = float(
-            getattr(self.kucoin_symbol_data, "multiplier", 0)
-            or getattr(self.kucoin_futures_api, "DEFAULT_MULTIPLIER", 1)
-            or 1
+        multiplier = (
+            self.kucoin_symbol_data.multiplier
+            or self.kucoin_futures_api.DEFAULT_MULTIPLIER
         )
         direction = 1 if source_bot.position == Position.long else -1
         price_pnl = (closing_price - entry_price) * contracts * multiplier * direction
-        loss = max(-price_pnl, 0) + float(source_bot.deal.total_commissions)
+        loss = max(-price_pnl, 0) + source_bot.deal.total_commissions
         return round_numbers(loss, 8)
 
     def _recovery_trailing_params(
@@ -668,16 +667,11 @@ class PositionDeal(KucoinPositionDeal):
                 continue
             if str(prev.id) == str(self.active_bot.id):
                 continue
-            deal = getattr(prev, "deal", None)
-            if deal is None:
-                continue
-            op = float(getattr(deal, "opening_price", 0) or 0)
-            cp = float(getattr(deal, "closing_price", 0) or 0)
+            op = prev.deal.opening_price
+            cp = prev.deal.closing_price
             if op <= 0 or cp <= 0:
                 continue
-            prev_position = getattr(prev, "position", None)
-            prev_position_value = getattr(prev_position, "value", prev_position)
-            prev_direction = 1 if str(prev_position_value).lower() == "long" else -1
+            prev_direction = 1 if prev.position == Position.long else -1
             prev_pct = ((cp - op) / op) * 100 * prev_direction
             if prev_pct < 0:
                 return True
