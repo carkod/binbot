@@ -11,6 +11,7 @@ from exchange_apis.kucoin.futures.balance import KucoinFuturesBalance
 from kucoin_universal_sdk.generate.futures.order import GetTradeHistoryReq
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
 from pybinbot import (
+    BinanceKlineIntervals,
     BinbotErrors,
     DealType,
     KucoinFutures,
@@ -41,6 +42,11 @@ class KucoinPositionDeal(KucoinBaseBalance):
     STOP_LOSS_REPLACE_MIN_MOVE_RATIO = 0.0015  # 0.15% of price
     STOP_LOSS_REPLACE_MIN_TICKS = 2
     STOP_LOSS_REPLACE_COOLDOWN_MS = 30_000
+    ENTRY_ATR_WINDOW = 14
+    ENTRY_ATR_MULTIPLIER = 0.5
+    ENTRY_MIN_ALLOWANCE_PCT = 0.5
+    ENTRY_MAX_ALLOWANCE_PCT = 1.5
+    ENTRY_FALLBACK_ALLOWANCE_PCT = 0.75
 
     def __init__(
         self,
@@ -81,6 +87,125 @@ class KucoinPositionDeal(KucoinBaseBalance):
         return (
             recovery_params is not None and recovery_params.reversal_path == "recovery"
         )
+
+    @staticmethod
+    def partition_klines(
+        klines: list,
+        now_ms: int | None = None,
+    ) -> tuple[list, list | None]:
+        current_time_ms = now_ms if now_ms is not None else int(time() * 1000)
+        completed: list = []
+        current: list | None = None
+
+        for candle in sorted(klines, key=lambda item: float(item[0])):
+            if len(candle) < 7:
+                continue
+
+            open_time = float(candle[0])
+            close_time = float(candle[6])
+            if open_time < 100_000_000_000:
+                open_time *= 1000
+            if close_time < 100_000_000_000:
+                close_time *= 1000
+
+            if close_time < current_time_ms:
+                completed.append(candle)
+            elif open_time <= current_time_ms <= close_time:
+                current = candle
+
+        return completed, current
+
+    @classmethod
+    def closed_candle_atr(cls, completed_candles: list) -> float | None:
+        if len(completed_candles) < cls.ENTRY_ATR_WINDOW + 1:
+            return None
+
+        candles = completed_candles[-(cls.ENTRY_ATR_WINDOW + 1) :]
+        true_ranges: list[float] = []
+        for index in range(1, len(candles)):
+            previous_close = float(candles[index - 1][4])
+            high = float(candles[index][2])
+            low = float(candles[index][3])
+            true_ranges.append(
+                max(
+                    high - low,
+                    abs(high - previous_close),
+                    abs(low - previous_close),
+                )
+            )
+
+        if len(true_ranges) < cls.ENTRY_ATR_WINDOW:
+            return None
+        return sum(true_ranges[-cls.ENTRY_ATR_WINDOW :]) / cls.ENTRY_ATR_WINDOW
+
+    def recovery_entry_limit_price(self) -> float | None:
+        if self.active_bot.recovery_params is None:
+            return None
+
+        interval = BinanceKlineIntervals(
+            self.active_bot.candlestick_interval
+        ).to_kucoin_interval()
+        try:
+            klines = self.kucoin_futures_api.get_ui_klines(
+                symbol=self.kucoin_symbol,
+                interval=interval,
+                limit=self.ENTRY_ATR_WINDOW + 3,
+            )
+        except Exception as exc:
+            self.active_bot.add_log(
+                f"Recovery entry rejected: unable to load reliable candle data ({exc})."
+            )
+            raise BinbotErrors(
+                "Unable to load reliable candle data for recovery-enabled entry."
+            ) from exc
+
+        completed_candles, current_candle = self.partition_klines(klines)
+        if not completed_candles or current_candle is None:
+            self.active_bot.add_log(
+                "Recovery entry rejected: current candle or previous completed candle is unavailable."
+            )
+            raise BinbotErrors(
+                "Reliable current and completed candles are required for recovery-enabled entry."
+            )
+
+        previous_close = float(completed_candles[-1][4])
+        current_open = float(current_candle[1])
+        if previous_close <= 0 or current_open <= 0:
+            self.active_bot.add_log(
+                "Recovery entry rejected: candle open or previous close is invalid."
+            )
+            raise BinbotErrors(
+                "Valid candle prices are required for recovery-enabled entry."
+            )
+
+        if self.active_bot.position == Position.short:
+            anchor_price = min(current_open, previous_close)
+        else:
+            anchor_price = max(current_open, previous_close)
+
+        atr = self.closed_candle_atr(completed_candles)
+        if atr is None:
+            allowance_pct = self.ENTRY_FALLBACK_ALLOWANCE_PCT
+            allowance_source = "fallback"
+        else:
+            atr_allowance_pct = self.ENTRY_ATR_MULTIPLIER * atr / anchor_price * 100
+            allowance_pct = max(
+                self.ENTRY_MIN_ALLOWANCE_PCT,
+                min(atr_allowance_pct, self.ENTRY_MAX_ALLOWANCE_PCT),
+            )
+            allowance_source = "ATR"
+
+        direction = self._direction_multiplier()
+        entry_limit_price = round_numbers(
+            anchor_price * (1 + direction * allowance_pct / 100),
+            self.price_precision,
+        )
+        self.active_bot.add_log(
+            "Recovery body-capped entry: "
+            f"anchor={anchor_price}, allowance={allowance_pct:.2f}% "
+            f"({allowance_source}), limit={entry_limit_price}."
+        )
+        return entry_limit_price
 
     def create_controller(self) -> PaperTradingTableCrud | BotTableCrud:
         """
@@ -578,15 +703,19 @@ class KucoinPositionDeal(KucoinBaseBalance):
             raise BinbotErrors("Fiat order size must be set.")
 
         available_balance = self.compute_available_balance()
-        price = self.kucoin_futures_api.matching_engine(
-            symbol=self.kucoin_symbol,
-            side=AddOrderReq.SideEnum.BUY,
-            size=available_balance,
-        )
-        if price is None:
-            raise BinbotErrors(
-                "matching_engine returned no price for sizing calculation — order book may be empty."
+        entry_limit_price = self.recovery_entry_limit_price()
+        if entry_limit_price is not None:
+            price = entry_limit_price
+        else:
+            price = self.kucoin_futures_api.matching_engine(
+                symbol=self.kucoin_symbol,
+                side=AddOrderReq.SideEnum.BUY,
+                size=available_balance,
             )
+            if price is None:
+                raise BinbotErrors(
+                    "matching_engine returned no price for sizing calculation — order book may be empty."
+                )
 
         margin_sized_contracts = self.calculate_contracts(
             self.active_bot.fiat_order_size, price
@@ -646,16 +775,31 @@ class KucoinPositionDeal(KucoinBaseBalance):
         )
 
         if self.active_bot.position == Position.short:
-            order: OrderBase = self.kucoin_futures_api.sell(
-                symbol=self.kucoin_symbol,
-                qty=contracts,
-                leverage=self.symbol_info.futures_leverage,
-            )
+            if entry_limit_price is None:
+                order: OrderBase = self.kucoin_futures_api.sell(
+                    symbol=self.kucoin_symbol,
+                    qty=contracts,
+                    leverage=self.symbol_info.futures_leverage,
+                )
+            else:
+                order = self.kucoin_futures_api.sell(
+                    symbol=self.kucoin_symbol,
+                    qty=contracts,
+                    leverage=self.symbol_info.futures_leverage,
+                    entry_limit_price=entry_limit_price,
+                )
         else:
-            order = self.kucoin_futures_api.buy(
-                symbol=self.kucoin_symbol,
-                qty=contracts,
-            )
+            if entry_limit_price is None:
+                order = self.kucoin_futures_api.buy(
+                    symbol=self.kucoin_symbol,
+                    qty=contracts,
+                )
+            else:
+                order = self.kucoin_futures_api.buy(
+                    symbol=self.kucoin_symbol,
+                    qty=contracts,
+                    entry_limit_price=entry_limit_price,
+                )
 
         order.deal_type = DealType.base_order
         order = OrderModel(**order.model_dump())

@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Any, cast
 from uuid import uuid4
 
@@ -180,6 +181,124 @@ def recovery_klines(
     ]
     candles.append([closed_count, close, high, low, close, 100, closed_count + 1])
     return candles
+
+
+def timestamped_kline(
+    open_time_ms: int,
+    open_price: float,
+    high: float,
+    low: float,
+    close: float,
+) -> list[float]:
+    interval_ms = 15 * 60 * 1000
+    return [
+        open_time_ms,
+        open_price,
+        high,
+        low,
+        close,
+        100,
+        open_time_ms + interval_ms - 1,
+    ]
+
+
+def kat_klines(include_2345_close: bool = False) -> list[list[float]]:
+    start_ms = int(datetime(2026, 6, 9, 19, 45, tzinfo=timezone.utc).timestamp() * 1000)
+    candles = [
+        timestamped_kline(
+            start_ms + index * 15 * 60 * 1000,
+            0.0061,
+            0.0061675,
+            0.0060325,
+            0.0061,
+        )
+        for index in range(11)
+    ]
+    candles.extend(
+        [
+            timestamped_kline(
+                int(
+                    datetime(2026, 6, 9, 22, 30, tzinfo=timezone.utc).timestamp() * 1000
+                ),
+                0.00608,
+                0.00616,
+                0.00605,
+                0.00615,
+            ),
+            timestamped_kline(
+                int(
+                    datetime(2026, 6, 9, 22, 45, tzinfo=timezone.utc).timestamp() * 1000
+                ),
+                0.00613,
+                0.00625,
+                0.00608,
+                0.00616,
+            ),
+            timestamped_kline(
+                int(
+                    datetime(2026, 6, 9, 23, 0, tzinfo=timezone.utc).timestamp() * 1000
+                ),
+                0.00619,
+                0.00646,
+                0.00618,
+                0.00625,
+            ),
+            timestamped_kline(
+                int(
+                    datetime(2026, 6, 9, 23, 15, tzinfo=timezone.utc).timestamp() * 1000
+                ),
+                0.00624,
+                0.00636,
+                0.00618,
+                0.00625,
+            ),
+            timestamped_kline(
+                int(
+                    datetime(2026, 6, 9, 23, 30, tzinfo=timezone.utc).timestamp() * 1000
+                ),
+                0.00624,
+                0.00625,
+                0.0061,
+                0.00618,
+            ),
+        ]
+    )
+    if include_2345_close:
+        candles.append(
+            timestamped_kline(
+                int(
+                    datetime(2026, 6, 9, 23, 45, tzinfo=timezone.utc).timestamp() * 1000
+                ),
+                0.00617,
+                0.00625,
+                0.00613,
+                0.00616,
+            )
+        )
+    return candles
+
+
+def prepare_kat_source_bot() -> BotModel:
+    bot = make_long_bot()
+    bot.pair = "KATUSDTM"
+    bot.stop_loss = 4
+    bot.trailing = False
+    bot.deal.opening_price = 0.00644
+    bot.deal.stop_loss_price = 0.00618
+    enable_source_recovery(bot)
+    return bot
+
+
+def set_lifecycle_time(monkeypatch, when: datetime) -> None:
+    timestamp_seconds = when.timestamp()
+    monkeypatch.setattr(
+        "exchange_apis.kucoin.futures.position_deal.time",
+        lambda: timestamp_seconds,
+    )
+    monkeypatch.setattr(
+        "exchange_apis.kucoin.futures.futures_deal.time",
+        lambda: timestamp_seconds,
+    )
 
 
 def test_reverse_position_closes_source_with_reduce_only_and_creates_pending_bot():
@@ -402,3 +521,157 @@ def test_recovery_reversal_closes_only_and_starts_symbol_cooldown():
             "cooldown_seconds": 360 * 60,
         }
     ]
+
+
+def test_kat_intrabar_stop_breach_keeps_source_long_until_candle_confirmation(
+    monkeypatch,
+):
+    event_time = datetime(2026, 6, 9, 23, 32, 52, tzinfo=timezone.utc)
+    set_lifecycle_time(monkeypatch, event_time)
+    bot = prepare_kat_source_bot()
+    position_deal, controller = make_position_deal(bot, DummyFuturesApi(150))
+    position_deal.price_precision = 5
+    position_deal.klines = kat_klines()
+    reverse_calls: list[float | None] = []
+    stop_calls: list[float | None] = []
+
+    def reverse_position(reference_price: float | None = None) -> BotModel:
+        reverse_calls.append(reference_price)
+        return bot
+
+    def execute_stop_loss(reference_price: float | None = None) -> BotModel:
+        stop_calls.append(reference_price)
+        return bot
+
+    position_deal.reverse_position = reverse_position
+    position_deal.execute_stop_loss = execute_stop_loss
+
+    result = position_deal.exit(0.00613)
+
+    assert result.position == Position.long
+    assert result.status == Status.active
+    assert reverse_calls == []
+    assert stop_calls == []
+    assert position_deal.symbols_crud.cooldowns == []
+    assert any("Recovery reversal deferred" in log for log in result.logs)
+    assert controller.created == []
+
+
+def test_completed_bearish_body_breakout_allows_short_recovery(monkeypatch):
+    event_time = datetime(2026, 6, 10, 0, 0, 1, tzinfo=timezone.utc)
+    set_lifecycle_time(monkeypatch, event_time)
+    bot = prepare_kat_source_bot()
+    position_deal, _ = make_position_deal(bot, DummyFuturesApi(150))
+    position_deal.price_precision = 5
+    position_deal.klines = kat_klines(include_2345_close=True)
+    reverse_calls: list[float | None] = []
+
+    def reverse_position(reference_price: float | None = None) -> BotModel:
+        reverse_calls.append(reference_price)
+        bot.position = Position.short
+        return bot
+
+    position_deal.reverse_position = reverse_position
+
+    result = position_deal.exit(0.00615)
+
+    assert result.position == Position.short
+    assert reverse_calls == [0.00616]
+    assert any("Recovery candle confirmation approved" in log for log in result.logs)
+
+
+def test_completed_bullish_body_breakout_is_required_for_long_recovery():
+    bot = make_long_bot()
+    bot.position = Position.short
+    position_deal, _ = make_position_deal(bot, DummyFuturesApi(-68))
+    completed_candles = [
+        [1, 100, 101, 99, 99.5, 100, 2],
+        [3, 99.5, 100, 98, 99, 100, 4],
+        [5, 99, 100, 98.5, 99.2, 100, 6],
+        [7, 99.1, 102, 99, 101.5, 100, 8],
+    ]
+
+    assert (
+        position_deal.recovery_body_breakout_confirmed(
+            target_position=Position.long,
+            completed_candles=completed_candles,
+        )
+        is True
+    )
+
+
+def test_confirmed_stop_without_body_breakout_closes_without_reversing(monkeypatch):
+    event_time = datetime(2026, 6, 10, 0, 0, 1, tzinfo=timezone.utc)
+    set_lifecycle_time(monkeypatch, event_time)
+    bot = prepare_kat_source_bot()
+    position_deal, controller = make_position_deal(bot, DummyFuturesApi(150))
+    position_deal.price_precision = 5
+    candles = kat_klines()
+    candles[-1][4] = 0.00615
+    candles.append(
+        timestamped_kline(
+            int(datetime(2026, 6, 9, 23, 45, tzinfo=timezone.utc).timestamp() * 1000),
+            0.00619,
+            0.00622,
+            0.00615,
+            0.00617,
+        )
+    )
+    position_deal.klines = candles
+    stop_calls: list[float | None] = []
+    reverse_calls: list[float | None] = []
+
+    def execute_stop_loss(reference_price: float | None = None) -> BotModel:
+        stop_calls.append(reference_price)
+        bot.status = Status.completed
+        return bot
+
+    position_deal.execute_stop_loss = execute_stop_loss
+
+    def reverse_position(reference_price: float | None = None) -> BotModel:
+        reverse_calls.append(reference_price)
+        return bot
+
+    position_deal.reverse_position = reverse_position
+
+    result = position_deal.exit(0.00616)
+
+    assert result.status == Status.completed
+    assert stop_calls == [0.00617]
+    assert reverse_calls == []
+    assert controller.created == []
+    assert any("Recovery body breakout rejected" in log for log in result.logs)
+    assert len(position_deal.symbols_crud.cooldowns) == 1
+
+
+def test_emergency_breach_closes_source_without_recovery(monkeypatch):
+    event_time = datetime(2026, 6, 9, 23, 32, 52, tzinfo=timezone.utc)
+    set_lifecycle_time(monkeypatch, event_time)
+    bot = prepare_kat_source_bot()
+    position_deal, controller = make_position_deal(bot, DummyFuturesApi(150))
+    position_deal.price_precision = 5
+    position_deal.klines = kat_klines()
+    stop_calls: list[float | None] = []
+    reverse_calls: list[float | None] = []
+
+    def execute_stop_loss(reference_price: float | None = None) -> BotModel:
+        stop_calls.append(reference_price)
+        bot.status = Status.completed
+        return bot
+
+    position_deal.execute_stop_loss = execute_stop_loss
+
+    def reverse_position(reference_price: float | None = None) -> BotModel:
+        reverse_calls.append(reference_price)
+        return bot
+
+    position_deal.reverse_position = reverse_position
+
+    result = position_deal.exit(0.00607)
+
+    assert result.status == Status.completed
+    assert stop_calls == [0.00625]
+    assert reverse_calls == []
+    assert controller.created == []
+    assert any("Recovery emergency threshold breached" in log for log in result.logs)
+    assert len(position_deal.symbols_crud.cooldowns) == 1

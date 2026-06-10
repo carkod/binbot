@@ -11,10 +11,7 @@ from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddO
 from kucoin_universal_sdk.model.common import RestError
 from pybinbot import (
     BotBase,
-    Candles,
     DealType,
-    ExchangeId,
-    Indicators,
     KucoinApi,
     KucoinFutures,
     MarketType,
@@ -55,6 +52,9 @@ class PositionDeal(KucoinPositionDeal):
     RECOVERY_TRAILING_PROFIT_CAP_PCT = 6.0
     RECOVERY_TRAILING_MIN_GAP_PCT = 0.35
     RECOVERY_COOLDOWN_MINUTES = 240
+    RECOVERY_EMERGENCY_ATR_MULTIPLIER = 1.0
+    RECOVERY_EMERGENCY_MIN_PCT = 0.75
+    RECOVERY_EMERGENCY_MAX_PCT = 1.5
 
     def __init__(
         self,
@@ -477,18 +477,9 @@ class PositionDeal(KucoinPositionDeal):
         if reference_price <= 0 or self.klines is None:
             return None
 
-        closed_candles = self.klines[:-1]
-        if len(closed_candles) < self.RECOVERY_ATR_WINDOW + 1:
-            return None
-
-        atr_candles = closed_candles[-(self.RECOVERY_ATR_WINDOW + 1) :]
-        atr_df = Candles(
-            exchange=ExchangeId.KUCOIN,
-            candles=atr_candles,
-        ).pre_process()
-        atr_df = Indicators.atr(atr_df, window=self.RECOVERY_ATR_WINDOW)
-        atr = float(atr_df["ATR"].iloc[-1])
-        if atr != atr:
+        closed_candles, _ = self.partition_klines(self.klines)
+        atr = self.closed_candle_atr(closed_candles)
+        if atr is None:
             return None
 
         return (atr / reference_price) * 100
@@ -504,7 +495,7 @@ class PositionDeal(KucoinPositionDeal):
             )
             return None
 
-        closed_candles = self.klines[:-1]
+        closed_candles, _ = self.partition_klines(self.klines)
         if len(closed_candles) < self.RECOVERY_STRUCTURE_WINDOW:
             self.active_bot.add_log(
                 "Recovery skipped: fewer than four closed candles available for structure invalidation."
@@ -561,6 +552,73 @@ class PositionDeal(KucoinPositionDeal):
             f"(structure distance {structure_distance_pct:.2f}%)."
         )
         return round_numbers(recovery_stop_pct, 2)
+
+    def recovery_body_breakout_confirmed(
+        self,
+        target_position: Position,
+        completed_candles: list,
+    ) -> bool:
+        if len(completed_candles) < self.RECOVERY_STRUCTURE_WINDOW:
+            return False
+
+        structure_candles = completed_candles[-self.RECOVERY_STRUCTURE_WINDOW :]
+        latest_candle = structure_candles[-1]
+        preceding_candles = structure_candles[:-1]
+        latest_open = float(latest_candle[1])
+        latest_close = float(latest_candle[4])
+
+        if target_position == Position.short:
+            preceding_body_floor = min(
+                min(float(candle[1]), float(candle[4])) for candle in preceding_candles
+            )
+            return latest_close < latest_open and latest_close < preceding_body_floor
+
+        preceding_body_ceiling = max(
+            max(float(candle[1]), float(candle[4])) for candle in preceding_candles
+        )
+        return latest_close > latest_open and latest_close > preceding_body_ceiling
+
+    def recovery_emergency_stop_price(
+        self,
+        stop_loss_price: float,
+        completed_candles: list,
+    ) -> tuple[float, float]:
+        atr = self.closed_candle_atr(completed_candles)
+        if atr is None:
+            emergency_pct = self.RECOVERY_EMERGENCY_MIN_PCT
+        else:
+            atr_pct = (
+                self.RECOVERY_EMERGENCY_ATR_MULTIPLIER * atr / stop_loss_price * 100
+            )
+            emergency_pct = max(
+                self.RECOVERY_EMERGENCY_MIN_PCT,
+                min(atr_pct, self.RECOVERY_EMERGENCY_MAX_PCT),
+            )
+
+        direction = self._direction_multiplier()
+        emergency_price = round_numbers(
+            stop_loss_price - (stop_loss_price * emergency_pct / 100 * direction),
+            self.price_precision,
+        )
+        return emergency_price, emergency_pct
+
+    def _add_recovery_log_once(self, marker: str, message: str) -> None:
+        if any(marker in str(log) for log in self.active_bot.logs):
+            return
+        self.active_bot.add_log(message)
+        self.controller.save(self.active_bot)
+
+    def _close_source_without_recovery(
+        self,
+        message: str,
+        reference_price: float | None,
+    ) -> BotModel:
+        self.active_bot.add_log(message)
+        self.active_bot = self.execute_stop_loss(reference_price=reference_price)
+        if self.active_bot.status == Status.completed:
+            self._start_recovery_cooldown()
+            self.controller.save(self.active_bot)
+        return self.active_bot
 
     def _start_recovery_cooldown(self) -> None:
         configured_symbol_cooldown = int(getattr(self.symbol_info, "cooldown", 0) or 0)
@@ -682,12 +740,11 @@ class PositionDeal(KucoinPositionDeal):
         Close the current position with a reduce_only order, mark source bot as
         completed, then create a new opposite-direction bot in Status.pending.
         The next exit() tick promotes pending -> active via open_deal(), which
-        places the base_order at fresh market price.
+        places a candle-body-capped base order for recovery-enabled bots.
 
         When ``reference_price`` is provided the reduce-only close leg is routed
         through the anti-wick escalation path so the reversal close doesn't fill
-        into a wick.  The new bot's re-entry (open_deal) always uses fresh market
-        price and is unaffected.
+        into a wick.
         """
         if self._is_recovery_bot():
             self.active_bot.add_log(
@@ -866,15 +923,14 @@ class PositionDeal(KucoinPositionDeal):
             self.active_bot.position,
         )
 
-        # ---------------------------------------------------------------------------
-        # Reference price for anti-wick exit execution (Phase 1).
-        # Anchors the slippage band to the last *closed* candle close so that
-        # reduce-only limit orders don't chase a transient wick below the book.
-        # self.klines[-1] is the in-progress candle; [-2] is last fully closed.
-        # ---------------------------------------------------------------------------
+        # Anchor exit execution and recovery decisions to timestamp-confirmed
+        # completed candles rather than list position.
+        completed_candles: list = []
         exit_reference_price: float | None = None
-        if self.klines is not None and len(self.klines) >= 2:
-            closed_close = float(self.klines[-2][4])
+        if self.klines is not None:
+            completed_candles, _ = self.partition_klines(self.klines)
+        if completed_candles:
+            closed_close = float(completed_candles[-1][4])
             if closed_close > 0:
                 exit_reference_price = closed_close
 
@@ -940,7 +996,75 @@ class PositionDeal(KucoinPositionDeal):
                 recovery_params is not None
                 and recovery_params.reversal_path == "source"
             )
-            if is_recovery_bot:
+            source_reversal_requires_confirmation = (
+                not is_recovery_bot
+                and self.active_bot.margin_short_reversal
+                and recovery_source_enabled
+            )
+
+            if source_reversal_requires_confirmation:
+                stop_loss_price = float(self.active_bot.deal.stop_loss_price)
+                emergency_price, emergency_pct = self.recovery_emergency_stop_price(
+                    stop_loss_price=stop_loss_price,
+                    completed_candles=completed_candles,
+                )
+                emergency_breached = (current_price - emergency_price) * direction < 0
+                if emergency_breached:
+                    self.active_bot = self._close_source_without_recovery(
+                        "Recovery emergency threshold breached at "
+                        f"{emergency_price} ({emergency_pct:.2f}% beyond stop); "
+                        "closing without reversal.",
+                        exit_reference_price,
+                    )
+                    return self.active_bot
+
+                latest_closed_price = (
+                    float(completed_candles[-1][4]) if completed_candles else None
+                )
+                stop_confirmed = (
+                    latest_closed_price is not None
+                    and (latest_closed_price - stop_loss_price) * direction < 0
+                )
+                if not stop_confirmed:
+                    closed_price_text = (
+                        str(latest_closed_price)
+                        if latest_closed_price is not None
+                        else "unavailable"
+                    )
+                    self._add_recovery_log_once(
+                        "Recovery reversal deferred:",
+                        "Recovery reversal deferred: live price breached stop "
+                        f"{stop_loss_price}, but latest completed candle close "
+                        f"{closed_price_text} did not confirm it; emergency "
+                        f"threshold is {emergency_price}.",
+                    )
+                    return self.active_bot
+
+                target_position = (
+                    Position.short
+                    if self.active_bot.position == Position.long
+                    else Position.long
+                )
+                if not self.recovery_body_breakout_confirmed(
+                    target_position=target_position,
+                    completed_candles=completed_candles,
+                ):
+                    self.active_bot = self._close_source_without_recovery(
+                        "Recovery body breakout rejected for opposite "
+                        f"{target_position.value}; closing source without reversal.",
+                        exit_reference_price,
+                    )
+                    return self.active_bot
+
+                self.active_bot.add_log(
+                    "Recovery candle confirmation approved: completed candle "
+                    f"closed beyond {stop_loss_price} with an opposite "
+                    f"{target_position.value} body breakout."
+                )
+                self.active_bot = self.reverse_position(
+                    reference_price=exit_reference_price
+                )
+            elif is_recovery_bot:
                 self.controller.update_logs(
                     "Recovery stop loss reached; closing and starting symbol cooldown.",
                     self.active_bot,
