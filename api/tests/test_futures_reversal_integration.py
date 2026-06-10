@@ -463,7 +463,7 @@ def test_first_reversal_creates_recovery_bot_with_source_metadata():
     assert reversed_bot.recovery_params.source_loss_fiat > 0
     assert reversed_bot.stop_loss == reversed_bot.recovery_params.stop_loss_pct
     assert reversed_bot.stop_loss <= PositionDeal.RECOVERY_STOP_CAP_PCT
-    assert reversed_bot.fiat_order_size == 0.086156
+    assert reversed_bot.fiat_order_size == 15.0
     assert reversed_bot.trailing_profit >= 0.9 * reversed_bot.stop_loss
     assert (
         reversed_bot.trailing_deviation

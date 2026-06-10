@@ -3,6 +3,7 @@ from time import time
 from typing import Type, Union
 
 from bots.models import BotModel, OrderModel
+from databases.crud.autotrade_crud import AutotradeCrud
 from databases.crud.bot_crud import BotTableCrud
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
@@ -842,12 +843,7 @@ class PositionDeal(KucoinPositionDeal):
                 self.active_bot = source_bot
                 return source_bot
 
-            recovery_fiat_order_size = self.contracts_to_fiat_order_size(
-                current_contracts,
-                float(closing_order.price),
-            )
-            if recovery_fiat_order_size <= 0:
-                recovery_fiat_order_size = float(source_bot.fiat_order_size)
+            recovery_fiat_order_size = AutotradeCrud().get_settings().base_order_size
 
             (
                 recovery_trailing_profit,
