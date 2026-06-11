@@ -9,7 +9,6 @@ import {
   calculateLevelPnlSum,
   calculateOpenOrderCount,
   isActiveGridLadder,
-  resolveGridPosition,
   type GridLadder,
 } from "../../features/gridLadders/gridLadders";
 import type { GridLadderStatus } from "../../features/gridLadders/gridLadders";
@@ -34,16 +33,6 @@ const statusColorMap: Record<GridLadderStatus, string> = {
   error: "danger",
 };
 
-const positionTextClass = (side: string): string => {
-  if (side === "long") {
-    return "text-success";
-  }
-  if (side === "short") {
-    return "text-danger";
-  }
-  return "text-secondary";
-};
-
 const GridLadderCard: FC<GridLadderCardProps> = ({
   ladder,
   gridReturnPct,
@@ -59,7 +48,6 @@ const GridLadderCard: FC<GridLadderCardProps> = ({
   const levelPnl = calculateLevelPnlSum(ladder);
   const closeAdjustmentPnl = calculateCloseAdjustmentPnl(ladder);
   const hasCloseAdjustment = Math.abs(closeAdjustmentPnl) >= 0.00005;
-  const position = resolveGridPosition(ladder);
   const firstBreachAt = ladder.context.first_breach_at as
     | number
     | null
@@ -144,17 +132,6 @@ const GridLadderCard: FC<GridLadderCardProps> = ({
             {roundDecimals(ladder.total_margin)}
           </Col>
         </Row>
-        {position.contracts > 0 && (
-          <Row>
-            <Col xs={6}>Position</Col>
-            <Col
-              xs={6}
-              className={`text-end fw-semibold ${positionTextClass(position.side)}`}
-            >
-              {position.label.toUpperCase()}
-            </Col>
-          </Row>
-        )}
         <Row>
           <Col xs={6}>Utilisation</Col>
           <Col xs={6} className="text-end">

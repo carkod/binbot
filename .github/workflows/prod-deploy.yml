@@ -110,24 +110,12 @@ jobs:
           fi
 
           echo "version=$next_version" >> "$GITHUB_OUTPUT"
-          echo "Archiving the previous images as $next_version"
+          echo "Production version: $next_version"
 
-      - name: Tag previous latest images
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
+      - name: Push commit images
         run: |
           for image in "$API_IMAGE" "$TERMINAL_IMAGE"; do
-            docker pull "$image:latest"
-            docker tag "$image:latest" "$image:$VERSION"
-            docker push "$image:$VERSION"
-          done
-
-      - name: Push latest commit images
-        run: |
-          for image in "$API_IMAGE" "$TERMINAL_IMAGE"; do
-            docker tag "$image:${{ github.sha }}" "$image:latest"
             docker push "$image:${{ github.sha }}"
-            docker push "$image:latest"
           done
 
       - name: SSH deploy
@@ -139,5 +127,22 @@ jobs:
           script: |
             cd /var/www/terminal.binbot.in
             echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-            docker compose up --pull always -d
+            docker pull carloswufei/binbot:${{ github.sha }}
+            docker pull carloswufei/binbot_nginx:${{ github.sha }}
+            docker tag carloswufei/binbot:${{ github.sha }} carloswufei/binbot:latest
+            docker tag carloswufei/binbot_nginx:${{ github.sha }} carloswufei/binbot_nginx:latest
+            docker compose up --pull never -d
             docker image prune -f
+
+      - name: Version deployed production images
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          for image in "$API_IMAGE" "$TERMINAL_IMAGE"; do
+            docker tag "$image:${{ github.sha }}" "$image:latest"
+            docker tag "$image:${{ github.sha }}" "$image:$VERSION"
+            docker tag "$image:${{ github.sha }}" "$image:production"
+            docker push "$image:latest"
+            docker push "$image:$VERSION"
+            docker push "$image:production"
+          done
