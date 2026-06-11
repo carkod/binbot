@@ -38,7 +38,7 @@ class SymbolTable(SQLModel, table=True):
     futures_leverage: int = Field(
         default=1,
         ge=1,
-        le=3,
+        le=5,
         description="Default leverage to use for this symbol when trading futures",
     )
     exchange_values: list["SymbolExchangeTable"] = Relationship(
