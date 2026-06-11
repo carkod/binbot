@@ -3,15 +3,134 @@ name: Deploy to Production
 on:
   workflow_dispatch:
 
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+env:
+  ENV: ci
+  SECRET_KEY: test
+  FRONTEND_DOMAIN: http://localhost
+  POSTGRES_USER: "postgres"
+  POSTGRES_PASSWORD: "postgres"
+  POSTGRES_DB: "postgres"
+  API_IMAGE: carloswufei/binbot
+  TERMINAL_IMAGE: carloswufei/binbot_nginx
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
-      - name: Checkout
+      - name: Check out the repo
         uses: actions/checkout@v6
 
-      - name: SSH Deploy
+      - name: Build API image
+        run: docker build --tag "$API_IMAGE:${{ github.sha }}" --file api/Dockerfile api
+
+      - name: Test API image
+        run: |
+          docker run --network host \
+            -e ENV="$ENV" \
+            -e POSTGRES_PORT="${{ job.services.postgres.ports[5432] }}" \
+            --name binbot_api \
+            --detach "$API_IMAGE:${{ github.sha }}"
+          curl \
+            --retry 3 \
+            --retry-connrefused \
+            --retry-delay 10 \
+            --retry-max-time 60 \
+            --url http://localhost:8000
+
+      - name: Build terminal image
+        run: docker build --tag "$TERMINAL_IMAGE:${{ github.sha }}" .
+
+      - name: Test terminal image
+        run: |
+          docker run \
+            --publish 8080:80 \
+            --name binbot_terminal \
+            --detach "$TERMINAL_IMAGE:${{ github.sha }}"
+          curl \
+            --retry 3 \
+            --retry-connrefused \
+            --retry-delay 5 \
+            --retry-max-time 30 \
+            --url http://localhost:8080
+
+      - name: Log in to Docker Hub
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        run: |
+          echo "$DOCKER_PASSWORD" |
+            docker login --username "$DOCKER_USERNAME" --password-stdin
+
+      - name: Calculate next image version
+        id: version
+        shell: bash
+        run: |
+          versions_file="$RUNNER_TEMP/docker-image-versions"
+          : > "$versions_file"
+
+          for image in "$API_IMAGE" "$TERMINAL_IMAGE"; do
+            next_url="https://hub.docker.com/v2/repositories/${image}/tags?page_size=100"
+
+            while [ -n "$next_url" ]; do
+              response="$(curl --fail --silent --show-error "$next_url")"
+              jq --raw-output \
+                '.results[].name | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))' \
+                <<< "$response" >> "$versions_file"
+              next_url="$(jq --raw-output '.next // empty' <<< "$response")"
+            done
+          done
+
+          latest_version="$(
+            sort --version-sort "$versions_file" |
+              tail --lines 1
+          )"
+
+          if [ -z "$latest_version" ]; then
+            next_version="0.0.1"
+          else
+            IFS=. read -r major minor patch <<< "$latest_version"
+            next_version="$major.$minor.$((patch + 1))"
+          fi
+
+          echo "version=$next_version" >> "$GITHUB_OUTPUT"
+          echo "Archiving the previous images as $next_version"
+
+      - name: Tag previous latest images
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          for image in "$API_IMAGE" "$TERMINAL_IMAGE"; do
+            docker pull "$image:latest"
+            docker tag "$image:latest" "$image:$VERSION"
+            docker push "$image:$VERSION"
+          done
+
+      - name: Push latest commit images
+        run: |
+          for image in "$API_IMAGE" "$TERMINAL_IMAGE"; do
+            docker tag "$image:${{ github.sha }}" "$image:latest"
+            docker push "$image:${{ github.sha }}"
+            docker push "$image:latest"
+          done
+
+      - name: SSH deploy
         uses: appleboy/ssh-action@v1.2.4
         with:
           host: ${{ secrets.SSH_HOST }}
