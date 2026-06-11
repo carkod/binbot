@@ -2,6 +2,12 @@ name: Deploy to Production
 
 on:
   workflow_dispatch:
+    inputs:
+      rollback_tag:
+        description: Leave blank for a new release, or enter a tag such as 0.0.1 to roll back
+        required: false
+        default: ""
+        type: string
 
 concurrency:
   group: production-deploy
@@ -19,6 +25,8 @@ env:
 
 jobs:
   deploy:
+    name: Release new production version
+    if: ${{ inputs.rollback_tag == '' }}
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -48,6 +56,7 @@ jobs:
             --name binbot_api \
             --detach "$API_IMAGE:${{ github.sha }}"
           curl \
+            --fail-with-body \
             --retry 3 \
             --retry-connrefused \
             --retry-delay 10 \
@@ -64,6 +73,7 @@ jobs:
             --name binbot_terminal \
             --detach "$TERMINAL_IMAGE:${{ github.sha }}"
           curl \
+            --fail-with-body \
             --retry 3 \
             --retry-connrefused \
             --retry-delay 5 \
@@ -110,24 +120,12 @@ jobs:
           fi
 
           echo "version=$next_version" >> "$GITHUB_OUTPUT"
-          echo "Archiving the previous images as $next_version"
+          echo "Production version: $next_version"
 
-      - name: Tag previous latest images
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
+      - name: Push commit images
         run: |
           for image in "$API_IMAGE" "$TERMINAL_IMAGE"; do
-            docker pull "$image:latest"
-            docker tag "$image:latest" "$image:$VERSION"
-            docker push "$image:$VERSION"
-          done
-
-      - name: Push latest commit images
-        run: |
-          for image in "$API_IMAGE" "$TERMINAL_IMAGE"; do
-            docker tag "$image:${{ github.sha }}" "$image:latest"
             docker push "$image:${{ github.sha }}"
-            docker push "$image:latest"
           done
 
       - name: SSH deploy
@@ -137,7 +135,83 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASSWORD }}
           script: |
+            set -e
             cd /var/www/terminal.binbot.in
             echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-            docker compose up --pull always -d
+            docker pull carloswufei/binbot:${{ github.sha }}
+            docker pull carloswufei/binbot_nginx:${{ github.sha }}
+            docker tag carloswufei/binbot:${{ github.sha }} carloswufei/binbot:latest
+            docker tag carloswufei/binbot_nginx:${{ github.sha }} carloswufei/binbot_nginx:latest
+            docker compose up --pull never -d
             docker image prune -f
+
+      - name: Version deployed production images
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          for image in "$API_IMAGE" "$TERMINAL_IMAGE"; do
+            docker tag "$image:${{ github.sha }}" "$image:latest"
+            docker tag "$image:${{ github.sha }}" "$image:$VERSION"
+            docker tag "$image:${{ github.sha }}" "$image:production"
+            docker push "$image:latest"
+            docker push "$image:$VERSION"
+            docker push "$image:production"
+          done
+
+  rollback:
+    name: Roll back production
+    if: ${{ inputs.rollback_tag != '' }}
+    runs-on: ubuntu-latest
+    env:
+      ROLLBACK_TAG: ${{ inputs.rollback_tag }}
+
+    steps:
+      - name: Validate rollback tag
+        shell: bash
+        run: |
+          if [[ ! "$ROLLBACK_TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Rollback tag must be a semantic version such as 0.0.1"
+            exit 1
+          fi
+
+      - name: Log in to Docker Hub
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        run: |
+          echo "$DOCKER_PASSWORD" |
+            docker login --username "$DOCKER_USERNAME" --password-stdin
+
+      - name: Verify rollback images
+        run: |
+          docker pull "$API_IMAGE:$ROLLBACK_TAG"
+          docker pull "$TERMINAL_IMAGE:$ROLLBACK_TAG"
+
+      - name: SSH rollback
+        uses: appleboy/ssh-action@v1.2.4
+        env:
+          ROLLBACK_TAG: ${{ inputs.rollback_tag }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          envs: ROLLBACK_TAG
+          script: |
+            set -e
+            cd /var/www/terminal.binbot.in
+            echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+            docker pull carloswufei/binbot:$ROLLBACK_TAG
+            docker pull carloswufei/binbot_nginx:$ROLLBACK_TAG
+            docker tag carloswufei/binbot:$ROLLBACK_TAG carloswufei/binbot:latest
+            docker tag carloswufei/binbot_nginx:$ROLLBACK_TAG carloswufei/binbot_nginx:latest
+            docker compose up --pull never -d
+            docker image prune -f
+
+      - name: Update production image markers
+        run: |
+          for image in "$API_IMAGE" "$TERMINAL_IMAGE"; do
+            docker tag "$image:$ROLLBACK_TAG" "$image:latest"
+            docker tag "$image:$ROLLBACK_TAG" "$image:production"
+            docker push "$image:latest"
+            docker push "$image:production"
+          done
