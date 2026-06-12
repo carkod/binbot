@@ -1,4 +1,4 @@
-import React, { useEffect, type FC } from "react";
+import { useEffect, type FC } from "react";
 import {
   ButtonGroup,
   Col,

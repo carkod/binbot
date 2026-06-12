@@ -8,7 +8,7 @@ import {
   Tooltip as Tip,
   Title,
 } from "chart.js";
-import React, { type FC } from "react";
+import { type FC } from "react";
 import { Card, Col, Row } from "react-bootstrap";
 import { type BenchmarkSeriesData } from "../../features/features.types";
 import { listCssColors } from "../../utils/validations";

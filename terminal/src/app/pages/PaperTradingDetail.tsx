@@ -1,7 +1,7 @@
-import React, { type FC } from "react";
+import { type FC } from "react";
 import { useEffect } from "react";
 import { Card, Col, Container, Row } from "react-bootstrap";
-import { useMatch, useParams } from "react-router";
+import { useMatch, useParams } from "react-router-dom";
 import {
   selectTestBot,
   setTestBot,

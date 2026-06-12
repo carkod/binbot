@@ -1,4 +1,3 @@
-import React from "react";
 import Plot from "react-plotly.js";
 import { listCssColors } from "../../utils/validations";
 import { type FC } from "react";

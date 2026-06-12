@@ -1,10 +1,4 @@
-import React, {
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type FC,
-} from "react";
+import { useContext, useEffect, useMemo, useState, type FC } from "react";
 import { Card, Col, Row, Table } from "react-bootstrap";
 import {
   useGetBalanceQuery,

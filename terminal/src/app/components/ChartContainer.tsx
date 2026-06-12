@@ -1,4 +1,4 @@
-import React, { useEffect, useState, type FC } from "react";
+import { useEffect, useState, type FC } from "react";
 import { Badge, Card, Col, Row } from "react-bootstrap";
 import { useAppDispatch, useSymbolData } from "../hooks";
 import { computeSingleBotProfit } from "../../features/bots/profits";

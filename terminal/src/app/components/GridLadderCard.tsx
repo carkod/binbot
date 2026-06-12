@@ -1,6 +1,6 @@
 import type { FC } from "react";
 import { Badge, Button, Card, Col, Row } from "react-bootstrap";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import {
   calculateFilledLevelCount,
   calculateCloseAdjustmentPnl,

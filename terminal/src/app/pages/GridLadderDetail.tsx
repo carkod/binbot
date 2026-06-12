@@ -1,6 +1,6 @@
 import { useMemo, useState, type FC } from "react";
 import { Badge, Card, Col, Container, Row } from "react-bootstrap";
-import { useParams } from "react-router";
+import { useParams } from "react-router-dom";
 import {
   calculateCloseAdjustmentPnl,
   calculateLevelPnlSum,

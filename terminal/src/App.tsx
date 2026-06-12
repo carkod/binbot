@@ -163,57 +163,42 @@ export const routes = [
   },
 ];
 
-const rootRouter = createBrowserRouter(
-  [
-    {
-      path: "/login",
-      Component: () => {
-        const token = getToken();
-        if (token) {
-          return <Navigate to="/" replace />;
-        } else {
-          return <LoginPage />;
-        }
-      },
-    },
-    {
-      id: "root",
-      path: "/",
-      element: (
-        <SymbolProvider>
-          <Layout />
-        </SymbolProvider>
-      ),
-      hydrateFallbackElement: <div>Loading...</div>,
-      children: routes,
-    },
-    {
-      path: "/logout",
-      Component: () => {
-        removeToken();
-        return <Navigate to="/login" replace />;
-      },
-    },
-  ],
+const rootRouter = createBrowserRouter([
   {
-    future: {
-      v7_partialHydration: true,
-      v7_fetcherPersist: true,
-      v7_normalizeFormMethod: true,
-      v7_skipActionErrorRevalidation: true,
+    path: "/login",
+    Component: () => {
+      const token = getToken();
+      if (token) {
+        return <Navigate to="/" replace />;
+      } else {
+        return <LoginPage />;
+      }
     },
   },
-);
+  {
+    id: "root",
+    path: "/",
+    element: (
+      <SymbolProvider>
+        <Layout />
+      </SymbolProvider>
+    ),
+    hydrateFallbackElement: <div>Loading...</div>,
+    children: routes,
+  },
+  {
+    path: "/logout",
+    Component: () => {
+      removeToken();
+      return <Navigate to="/login" replace />;
+    },
+  },
+]);
 
 export const App = () => {
   return (
     <Provider store={store}>
-      <RouterProvider
-        router={rootRouter}
-        future={{
-          v7_startTransition: false,
-        }}
-      />
+      <RouterProvider router={rootRouter} />
     </Provider>
   );
 };
