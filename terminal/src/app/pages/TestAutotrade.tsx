@@ -1,4 +1,4 @@
-import React, { useEffect, type FC } from "react";
+import { useEffect, type FC } from "react";
 import { Button, Card, Col, Container, Form, Row } from "react-bootstrap";
 import { useForm, type FieldValues } from "react-hook-form";
 import LightSwitch from "../components/LightSwitch";

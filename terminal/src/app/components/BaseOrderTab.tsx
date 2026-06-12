@@ -1,4 +1,4 @@
-import React, { type FC, useContext, useEffect, useRef, useState } from "react";
+import { type FC, useContext, useEffect, useRef, useState } from "react";
 import {
   Button,
   Col,
@@ -29,7 +29,7 @@ import { useAppDispatch, useAppSelector, useSymbolData } from "../hooks";
 import { type AppDispatch } from "../store";
 import { InputTooltip } from "./InputTooltip";
 import SymbolSearch from "./SymbolSearch";
-import { matchPath, useLocation, useMatch, useParams } from "react-router";
+import { matchPath, useLocation, useMatch, useParams } from "react-router-dom";
 import { SpinnerContext } from "../Layout";
 import {
   selectTestBot,

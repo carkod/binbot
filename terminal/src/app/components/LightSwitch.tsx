@@ -1,4 +1,4 @@
-import React, { type FC } from "react";
+import { type FC } from "react";
 import { ToggleButton, ToggleButtonGroup } from "react-bootstrap";
 import { type UseFormRegister, type FieldValues } from "react-hook-form";
 

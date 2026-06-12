@@ -1,4 +1,4 @@
-import React, { type FC, type ReactNode } from "react";
+import { type FC, type ReactNode } from "react";
 import { SymbolContext, useSymbolDataProvider } from "../hooks";
 import type { MarketType } from "../../utils/enums";
 

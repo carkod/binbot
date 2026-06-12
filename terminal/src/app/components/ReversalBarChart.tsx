@@ -1,4 +1,4 @@
-import React, { type FC } from "react";
+import { type FC } from "react";
 import { Card, Col, Row } from "react-bootstrap";
 import { type GainerLosersData } from "../../features/marketApiSlice";
 import { useBreakpoint } from "../hooks";

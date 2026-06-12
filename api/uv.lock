@@ -342,7 +342,7 @@ requires-dist = [
     { name = "psycopg2-binary", specifier = ">=2.9.12" },
     { name = "py3cw", specifier = ">=0.0.39" },
     { name = "py4j", specifier = ">=0.10.9" },
-    { name = "pybinbot", specifier = ">=1.9.31" },
+    { name = "pybinbot", specifier = ">=1.9.32" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0.2" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=1.2.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=1.3.0" },
@@ -1965,7 +1965,7 @@ wheels = [
 
 [[package]]
 name = "pybinbot"
-version = "1.9.31"
+version = "1.9.32"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -1977,10 +1977,11 @@ dependencies = [
     { name = "pydantic", extra = ["email"] },
     { name = "python-dotenv" },
     { name = "requests" },
+    { name = "websocket-client" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/50/b7/ce07bd7e69db72abc67c5dd76175e7aa8d7f9cc980202dc6ceed71e697be/pybinbot-1.9.31.tar.gz", hash = "sha256:86883d85b3c384e87be50369493605cb164c251fb7bc2af12c6b5e48e0cb58d1", size = 73136, upload-time = "2026-06-12T00:13:17.579Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/87/30/808a1e23321384c8aa459d6a862cb7216a9f7f3877660a75341903ee008f/pybinbot-1.9.32.tar.gz", hash = "sha256:2bed3fe5d601c6d2e0c5e6351897e387a80f1077441f71340d285b9159b2e864", size = 73189, upload-time = "2026-06-12T00:42:31.456Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e8/9a/be1bbc2312f4fab05e4993df3e1d9df7a59fcbeade5de62f9127b7c01233/pybinbot-1.9.31-py3-none-any.whl", hash = "sha256:1c510270f93a4836ecd526f63bf7d2127f64b6ffb15d013058993b06f7899929", size = 69275, upload-time = "2026-06-12T00:13:16.34Z" },
+    { url = "https://files.pythonhosted.org/packages/ac/1c/3f98656e77992b67dcdcbecf3f981dc5e53fe379e4233b789b846125f0c4/pybinbot-1.9.32-py3-none-any.whl", hash = "sha256:d28673b01ed6dd467ccfecf8a689da496b84390e60bb876469cf287d36855a8c", size = 69292, upload-time = "2026-06-12T00:42:30.252Z" },
 ]
 
 [[package]]

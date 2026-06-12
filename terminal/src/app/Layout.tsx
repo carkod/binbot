@@ -1,5 +1,5 @@
-import React, { createContext, useState, type FC } from "react";
-import { Navigate, Outlet } from "react-router";
+import { createContext, useState, type FC } from "react";
+import { Navigate, Outlet } from "react-router-dom";
 import { Slide, ToastContainer } from "react-toastify";
 import { getToken } from "../utils/login";
 import Footer from "./components/Footer";

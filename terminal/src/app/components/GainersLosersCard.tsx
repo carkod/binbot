@@ -1,4 +1,3 @@
-import React from "react";
 import { Badge, Card, ListGroup } from "react-bootstrap";
 import { type GainersLosersProps } from "./GainersLosers";
 import { normalizePriceChangePercent } from "../../utils/gainers-losers";

@@ -1,4 +1,4 @@
-import React, { type FC } from "react";
+import { type FC } from "react";
 import { Card, Col, Row } from "react-bootstrap";
 import { type BalanceData } from "../../features/features.types";
 import { type MarketType } from "../../utils/enums";

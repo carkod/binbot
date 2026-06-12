@@ -1,6 +1,6 @@
-import React, { useContext, useEffect, useState, type FC } from "react";
+import { useContext, useEffect, useState, type FC } from "react";
 import { Badge, Button, Col, Container, Row, Stack } from "react-bootstrap";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import { useImmer } from "use-immer";
 import {
   papertradingApiSlice,

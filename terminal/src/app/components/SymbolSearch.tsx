@@ -1,4 +1,4 @@
-import React, { type ChangeEvent, useEffect, useState, type FC } from "react";
+import { type ChangeEvent, useEffect, useState, type FC } from "react";
 import { Typeahead } from "react-bootstrap-typeahead";
 import "react-bootstrap-typeahead/css/Typeahead.css";
 import Form from "react-bootstrap/Form";

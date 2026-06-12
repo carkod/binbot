@@ -1,4 +1,4 @@
-import React, { type FC, useEffect, useState } from "react";
+import { type FC, useEffect, useState } from "react";
 import { Button, Card, Col, Row, Form } from "react-bootstrap";
 import SymbolSearch from "../components/SymbolSearch";
 import {
