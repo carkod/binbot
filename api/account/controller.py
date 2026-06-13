@@ -41,6 +41,9 @@ class ConsolidatedAccounts:
         self.balances_crud = BalancesCrud(session=self.session)
         self.fiat = self.autotrade_settings.fiat
         self._historical_rate_cache: dict[tuple[str, int], float] = {}
+        # Loading settings starts a read transaction. Return its connection
+        # before the slower exchange API calls begin.
+        self.session.rollback()
 
     @staticmethod
     def _extract_entry_timestamp(entry: GetSpotLedgerItems) -> int | None:

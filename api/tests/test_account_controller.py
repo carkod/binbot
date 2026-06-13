@@ -1,9 +1,23 @@
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from account.controller import ConsolidatedAccounts
 from databases.tables.autotrade_table import AutotradeTable
 from pybinbot import ExchangeId
+
+
+def test_initialization_releases_settings_read_transaction():
+    session = MagicMock()
+    settings = AutotradeTable(
+        exchange_id=ExchangeId.KUCOIN,
+        fiat="USDT",
+    )
+
+    with patch("account.controller.Assets") as assets_class:
+        assets_class.return_value.autotrade_settings = settings
+        ConsolidatedAccounts(session=session)
+
+    session.rollback.assert_called_once_with()
 
 
 def test_get_total_deposit_includes_paginated_crypto_and_bank_transfer_entries():
