@@ -1,4 +1,4 @@
-name: Deployment checks
+name: Deployments
 on:
   pull_request:
   workflow_dispatch:
@@ -38,7 +38,7 @@ jobs:
         run: |
           docker run --network host \
             -e ENV=${{ env.ENV }} \
-            -e POSTGRES_PORT=${{ job.services.postgres.ports[5432] }} \
+            -e POSTGRES_PORT=${{ job.services.postgres.ports['5432'] }} \
             --name app -d carloswufei/binbot:${{ github.sha }}
 
       - name: Test back-end
@@ -123,3 +123,44 @@ jobs:
           docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
           docker push carloswufei/binbot_cronjobs:${{ github.sha }}
           docker push carloswufei/binbot_cronjobs:latest
+
+  staging_deploy:
+    name: Deploy to Staging (home server)
+    needs:
+      - deploy_api
+      - deploy_terminal
+      - deploy_streaming
+      - deploy_cronjobs
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.actor != 'dependabot[bot]' &&
+        github.event.pull_request.head.repo.full_name == github.repository
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TAILSCALE_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TAILSCALE_CLIENT_SECRET }}
+          tags: tag:ci
+
+      - name: Install SSH key
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          echo "${{ secrets.STAGING_DEPLOY }}" > ~/.ssh/home_server_key
+          chmod 600 ~/.ssh/home_server_key
+
+          ssh-keyscan -p 2222 100.64.83.67 >> ~/.ssh/known_hosts
+
+      - name: Deploy stack
+        run: |
+          ssh -i ~/.ssh/home_server_key \
+            -p 2222 \
+            "carkod@100.64.83.67" \
+            'cd /var/www/terminal.binbot.in && docker compose up --pull always -d && docker image prune -f'
