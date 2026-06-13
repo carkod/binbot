@@ -2,9 +2,17 @@ import { fetchBaseQuery } from "@reduxjs/toolkit/query";
 import { Bounce, toast } from "react-toastify";
 import { getToken, removeToken } from "./login";
 
+/**
+ * Builds the backend URL based on the current location.
+ * This is dependant on infrastructure, so don't change unless infra changes
+ */
 export function buildBackUrl(
-  location: Pick<Location, "hostname" | "protocol"> = window.location,
+  location: Pick<Location, "hostname" | "port" | "protocol"> = window.location,
 ) {
+  if (location.port === "8007") {
+    return `${location.protocol}//${location.hostname}/api`;
+  }
+
   const host = location.hostname.includes(".")
     ? `api.${location.hostname}`
     : `${location.hostname}:8008`;
