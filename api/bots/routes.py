@@ -17,7 +17,7 @@ from databases.crud.grid_ladder_crud import GridLadderCrud
 from databases.utils import get_session
 from deals.gateway import DealGateway
 from databases.tables.bot_table import BotTable, PaperTradingTable
-from exchange_apis.kucoin.futures.position_deal import PositionDeal
+from exchange_apis.kucoin.futures.lifecycle import PositionDeal
 from kucoin_universal_sdk.model.common import RestError
 from user.services.auth import get_current_user
 from uuid import UUID

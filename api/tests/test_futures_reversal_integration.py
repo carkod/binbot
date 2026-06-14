@@ -6,7 +6,7 @@ from bots.models import BotModel, OrderModel, RecoveryBotModel
 from databases.tables.bot_table import BotTable
 from databases.tables.deal_table import DealTable
 from databases.tables.recovery_bot_table import RecoveryBotTable
-from exchange_apis.kucoin.futures.position_deal import PositionDeal
+from exchange_apis.kucoin.futures.lifecycle import PositionDeal
 from kucoin_universal_sdk.model.common import RestError
 from pybinbot import MarketType, OrderStatus, QuoteAssets, Status, DealType, Position
 from tests.fixtures.mock_bot_table import make_mock_bot_active_model
@@ -292,7 +292,7 @@ def prepare_kat_source_bot() -> BotModel:
 def set_lifecycle_time(monkeypatch, when: datetime) -> None:
     timestamp_seconds = when.timestamp()
     monkeypatch.setattr(
-        "exchange_apis.kucoin.futures.position_deal.time",
+        "exchange_apis.kucoin.futures.lifecycle.time",
         lambda: timestamp_seconds,
     )
     monkeypatch.setattr(

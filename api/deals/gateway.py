@@ -7,7 +7,7 @@ from exchange_apis.kucoin.deals.short_deal import KucoinShortDeal
 from databases.crud.autotrade_crud import AutotradeCrud
 from exchange_apis.binance.deals.short import BinanceShortDeal
 from exchange_apis.binance.deals.long import BinanceLongDeal
-from exchange_apis.kucoin.futures.position_deal import PositionDeal
+from exchange_apis.kucoin.futures.lifecycle import PositionDeal
 
 if TYPE_CHECKING:
     from streaming.base import BaseStreaming

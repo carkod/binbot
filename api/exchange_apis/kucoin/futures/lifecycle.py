@@ -33,7 +33,7 @@ from streaming.spot_position import SpotPosition
 
 class PositionDeal(KucoinPositionDeal):
     """
-    Position-based implementation for Kucoin futures trading.
+    Position lifecycle for Kucoin futures trading.
 
     Previously called FuturesLongDeal, but long or short position logic is all handled within this class
     since Kucoin Futures logic allows easy isolated margin and switching positions.

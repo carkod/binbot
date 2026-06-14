@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from bots.models import BotModel, DealModel, OrderModel, RecoveryBotModel
 from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
-from exchange_apis.kucoin.futures.position_deal import PositionDeal
+from exchange_apis.kucoin.futures.lifecycle import PositionDeal
 from pybinbot import MarketType, OrderBase, OrderStatus, DealType, Position
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import (
     AddOrderReq,
@@ -359,7 +359,7 @@ def test_exit_panic_closes_stale_mild_loser_after_three_days(monkeypatch):
     deal.close_all = lambda: closed.append(True)
 
     monkeypatch.setattr(
-        "exchange_apis.kucoin.futures.position_deal.time",
+        "exchange_apis.kucoin.futures.lifecycle.time",
         lambda: (1_000 + (4 * 24 * 60 * 60 * 1000)) / 1000,
     )
 
@@ -393,7 +393,7 @@ def test_exit_keeps_stale_loser_below_panic_close_band(monkeypatch):
     deal.close_all = lambda: closed.append(True)
 
     monkeypatch.setattr(
-        "exchange_apis.kucoin.futures.position_deal.time",
+        "exchange_apis.kucoin.futures.lifecycle.time",
         lambda: (1_000 + (4 * 24 * 60 * 60 * 1000)) / 1000,
     )
 

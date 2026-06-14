@@ -7,7 +7,7 @@ from databases.crud.bot_crud import BotTableCrud
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.tables.deal_table import DealTable
-from exchange_apis.kucoin.futures.position_deal import PositionDeal
+from exchange_apis.kucoin.futures.lifecycle import PositionDeal
 from pybinbot import DealType, MarketType, OrderStatus, Status
 from sqlalchemy.pool import StaticPool
 from sqlmodel import SQLModel, Session, create_engine

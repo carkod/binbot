@@ -23,7 +23,7 @@ from typing import Any, cast
 
 import pytest
 from bots.models import BotModel, DealModel
-from exchange_apis.kucoin.futures.position_deal import PositionDeal
+from exchange_apis.kucoin.futures.lifecycle import PositionDeal
 from pybinbot import MarketType, OrderBase, OrderStatus, DealType, Position
 
 
