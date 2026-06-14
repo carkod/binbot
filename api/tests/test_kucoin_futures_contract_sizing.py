@@ -414,7 +414,7 @@ def test_non_recovery_entry_keeps_legacy_market_matching_path():
     assert deal.recovery_entry_limit_price() is None
 
 
-def test_unfilled_capped_base_order_remains_subject_to_candle_age_expiry():
+def test_unfilled_capped_base_order_remains_owned_until_exchange_is_terminal():
     position = cast(Any, FuturesPosition.__new__(FuturesPosition))
     order = OrderModel(
         order_id="capped-entry",
@@ -427,6 +427,32 @@ def test_unfilled_capped_base_order_remains_subject_to_candle_age_expiry():
         status=OrderStatus.NEW,
         time_in_force="GTC",
         deal_type=DealType.base_order,
+    )
+
+    assert position.should_expire_order_by_age(order) is False
+
+
+@pytest.mark.parametrize(
+    "deal_type",
+    [
+        DealType.algorithmic_close,
+        DealType.conversion,
+        DealType.margin_short,
+    ],
+)
+def test_non_protective_futures_orders_remain_subject_to_age_expiry(deal_type):
+    position = cast(Any, FuturesPosition.__new__(FuturesPosition))
+    order = OrderModel(
+        order_id="non-protective-order",
+        order_type="limit",
+        pair="KATUSDTM",
+        timestamp=1,
+        order_side="sell",
+        qty=150,
+        price=0.00625,
+        status=OrderStatus.NEW,
+        time_in_force="GTC",
+        deal_type=deal_type,
     )
 
     assert position.should_expire_order_by_age(order) is True

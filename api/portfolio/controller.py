@@ -127,9 +127,24 @@ class PortfolioController:
         if len(balance_series) == 0:
             raise BinbotErrors("No balance data found.")
 
-        oldest_balance = balance_series[-1]
+        balance_points = [
+            (
+                item.id,
+                (
+                    float(item.estimated_total_fiat)
+                    if item.estimated_total_fiat is not None
+                    else None
+                ),
+            )
+            for item in balance_series
+        ]
+        # Keep the request from occupying a pooled DB connection while waiting
+        # for exchange price and balance APIs.
+        self.session.rollback()
+
+        oldest_balance_id = balance_points[-1][0]
         end_time = int(
-            datetime.fromtimestamp(oldest_balance.id / 1000)
+            datetime.fromtimestamp(oldest_balance_id / 1000)
             .replace(hour=0, minute=0, second=0, microsecond=0)
             .timestamp()
             * 1000
@@ -138,7 +153,7 @@ class PortfolioController:
         klines = self.api.get_ui_klines(
             symbol=self.benchmark_symbol,
             interval=self.interval,
-            limit=len(balance_series),
+            limit=len(balance_points),
             end_time=end_time,
         )
 
@@ -147,15 +162,15 @@ class PortfolioController:
         dates: list[int] = []
         balances: list[float] = []
 
-        for item in balance_series:
-            if item.estimated_total_fiat is not None:
-                balances.append(float(item.estimated_total_fiat))
+        for balance_id, estimated_total_fiat in balance_points:
+            if estimated_total_fiat is not None:
+                balances.append(estimated_total_fiat)
 
-            btc_index = self._consolidate_dates(klines, item.id)
-            if btc_index is None or item.estimated_total_fiat is None:
+            btc_index = self._consolidate_dates(klines, balance_id)
+            if btc_index is None or estimated_total_fiat is None:
                 continue
 
-            fiat_series.append(round_numbers(float(item.estimated_total_fiat), 4))
+            fiat_series.append(round_numbers(estimated_total_fiat, 4))
             btc_series.append(float(klines[btc_index][4]))
             dates.append(int(klines[btc_index][6]))
 

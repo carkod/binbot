@@ -41,17 +41,16 @@ class FuturesPosition(PositionMarket):
 
     def should_expire_order_by_age(self, order: OrderModel) -> bool:
         """
-        Futures protective orders must remain on exchange until they trigger or
-        the exchange reports a terminal state. A candle-age cutoff is useful for
-        entry orders, but dangerous for stop-market exits.
+        Futures GTC entries and protective orders must remain owned by the bot
+        until the exchange reports a terminal state. Relinquishing a live base
+        order allows it to fill later without an active bot managing the
+        resulting position.
         """
-        is_not_base = order.deal_type not in {
-            DealType.stop_loss,
-            DealType.trailing_profit,
-            DealType.take_profit,
-            DealType.panic_close,
+        return order.deal_type in {
+            DealType.algorithmic_close,
+            DealType.conversion,
+            DealType.margin_short,
         }
-        return is_not_base
 
     def confirm_close_from_position(self, filled_size: float) -> bool:
         kucoin_symbol = convert_to_kucoin_symbol(self.active_bot)

@@ -802,6 +802,77 @@ class TestPositionManager:
         assert saved == []
         assert bot.orders[0].qty == 116
 
+    def test_futures_order_updates_keeps_aged_live_base_order_pending(
+        self, monkeypatch
+    ):
+        base = self._make_base_streaming(monkeypatch, active_pairs=["MEMEUSDT"])
+        base.exchange = ExchangeId.KUCOIN
+        base.interval = types.SimpleNamespace(get_ms=lambda: 15 * 60 * 1000)
+
+        bot = self._make_bot(
+            pair="MEMEUSDT",
+            position=Position.long,
+            market_type=MarketType.FUTURES,
+        )
+        bot.id = "meme-bot"
+        bot.status = Status.pending
+        bot.orders = [
+            OrderModel(
+                order_id="455559324140359680",
+                order_type="limit",
+                pair="MEMEUSDTM",
+                timestamp=int(time.time() * 1000) - (16 * 60 * 1000),
+                order_side="buy",
+                qty=0,
+                price=0.000611,
+                status=OrderStatus.NEW,
+                time_in_force="GTC",
+                deal_type=DealType.base_order,
+            )
+        ]
+
+        deleted: list[str] = []
+        saved: list[Any] = []
+
+        monkeypatch.setattr(
+            OrderStatus,
+            "map_from_kucoin_status",
+            staticmethod(lambda _: OrderStatus.NEW),
+        )
+        monkeypatch.setattr(
+            "streaming.futures_position.convert_to_kucoin_symbol",
+            lambda _bot: "MEMEUSDTM",
+        )
+
+        base.kucoin_futures_api.retrieve_order = lambda order_id: types.SimpleNamespace(
+            status=types.SimpleNamespace(value="open"),
+            filled_size=0,
+            avg_deal_price=0,
+            created_at=bot.orders[0].timestamp,
+            price=0.000611,
+        )
+        base.bot_controller.update_order = lambda order: order
+        base.bot_controller.save = lambda *args, **kwargs: saved.append(
+            kwargs.get("data") if "data" in kwargs else args[0]
+        )
+
+        fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
+        fp.base_streaming = base
+        fp.active_bot = bot
+        fp.price_precision = 6
+        fp.qty_precision = 0
+        fp.bot_crud = types.SimpleNamespace(
+            delete_order=lambda order_id, bot_id: deleted.append(order_id)
+        )
+        fp.cancel_current_sl = lambda: deleted.append("cancel_current_sl")
+
+        FuturesPosition.order_updates(fp)
+
+        assert bot.status == Status.pending
+        assert deleted == []
+        assert saved == []
+        assert bot.orders[0].status == OrderStatus.NEW
+
     def test_futures_order_updates_does_not_cancel_live_stops_for_missing_protective_order(
         self, monkeypatch
     ):

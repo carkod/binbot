@@ -1,12 +1,13 @@
 from datetime import datetime, timedelta
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 from sqlalchemy import delete
 from sqlmodel import Session
 
 from databases.tables.account_balances import ConsolidatedBalancesTable
+from portfolio.controller import PortfolioController
 
 
 def test_get_benchmark_series(client: TestClient, create_test_tables) -> None:
@@ -69,3 +70,34 @@ def test_get_benchmark_series(client: TestClient, create_test_tables) -> None:
     assert content["data"]["stats"]["pnl"] == 0.16
     assert content["data"]["stats"]["sharpe"] == 16.0555
     assert content["data"]["stats"]["btc_sharpe"] == 2246.155
+
+
+def test_benchmark_releases_read_transaction_before_exchange_request() -> None:
+    controller = PortfolioController.__new__(PortfolioController)
+    session = MagicMock()
+    controller.session = session
+    controller.balances_crud = MagicMock()
+    controller.balances_crud.query_balance_series.return_value = [
+        SimpleNamespace(id=1_700_000_000_000, estimated_total_fiat=100.0),
+        SimpleNamespace(id=1_699_913_600_000, estimated_total_fiat=90.0),
+    ]
+    controller.benchmark_symbol = "BTC-USDT"
+    controller.interval = "1day"
+    controller.api = MagicMock()
+
+    def get_ui_klines(**kwargs):
+        session.rollback.assert_called_once_with()
+        return [
+            [0, "0", "0", "0", "100", "0", 1_699_913_600_000],
+            [0, "0", "0", "0", "110", "0", 1_700_000_000_000],
+        ]
+
+    controller.api.get_ui_klines.side_effect = get_ui_klines
+
+    with patch.object(controller, "_append_live_benchmark_point"):
+        controller.map_balance_with_benchmark(
+            start_date=1_699_913_600_000,
+            end_date=1_700_000_000_000,
+        )
+
+    session.rollback.assert_called_once_with()
