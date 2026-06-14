@@ -272,7 +272,8 @@ const GridLaddersPage: FC = () => {
       >
         This permanently deletes the ladder record and all associated levels and
         orders from the database. It does not cancel exchange orders or close
-        positions — only use this to clean up local records.
+        positions. Any active exchange activity will continue without this
+        ladder record.
       </ConfirmModal>
     </Container>
   );
