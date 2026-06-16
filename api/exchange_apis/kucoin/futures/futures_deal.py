@@ -1,5 +1,5 @@
 from time import time
-from typing import Type
+from typing import Any, Type
 
 from bots.models import BotModel, OrderModel
 from databases.crud.bot_crud import BotTableCrud
@@ -42,6 +42,12 @@ class KucoinPositionDeal(KucoinBaseBalance):
     STOP_LOSS_REPLACE_MIN_MOVE_RATIO = 0.0015  # 0.15% of price
     STOP_LOSS_REPLACE_MIN_TICKS = 2
     STOP_LOSS_REPLACE_COOLDOWN_MS = 30_000
+    TERMINAL_STOP_ORDER_STATUSES = (
+        OrderStatus.FILLED,
+        OrderStatus.CANCELED,
+        OrderStatus.EXPIRED,
+        OrderStatus.REJECTED,
+    )
     ENTRY_ATR_WINDOW = 14
     ENTRY_ATR_MULTIPLIER = 0.5
     ENTRY_MIN_ALLOWANCE_PCT = 0.5
@@ -528,38 +534,88 @@ class KucoinPositionDeal(KucoinBaseBalance):
         else:
             self.remove_stale_orders()
 
-    def _bot_known_stop_loss(self) -> tuple[float | None, int | None]:
+    def cancel_current_trailing_sl(self) -> None:
+        """
+        Cancel only the active trailing stop when the bot knows its order id.
+
+        First trailing activation still falls back to the broad stop cleanup so
+        the emergency SL can be replaced by the trailing SL.
+        """
+        _, _, trailing_order_id = self._bot_known_trailing_stop_loss()
+        if trailing_order_id is None:
+            self.cancel_current_sl()
+            return
+
+        stop_orders = self.kucoin_futures_api.get_all_stop_loss_orders(
+            self.kucoin_symbol
+        )
+        stop_order_ids = [
+            order.id
+            for order in stop_orders
+            if str(getattr(order, "id", "")) == trailing_order_id
+        ]
+        if stop_order_ids:
+            self.kucoin_futures_api.batch_cancel_stop_loss_orders(stop_order_ids)
+
+        self.active_bot.orders = [
+            order
+            for order in self.active_bot.orders
+            if str(order.order_id) != trailing_order_id
+        ]
+        if not stop_order_ids:
+            self.remove_stale_orders()
+
+    def _bot_known_stop_order(
+        self,
+        deal_type: DealType,
+        fallback_price: float,
+    ) -> tuple[float | None, int | None, str | None]:
         """
         Source of truth from the bot's local order list:
-        return (price, timestamp_ms) of the most recent open SL order, or
-        (None, None) if there is no open SL recorded.
+        return (price, timestamp_ms, order_id) of the most recent open stop
+        order matching the requested deal type, or (None, None, None) if
+        there is no matching local order.
         """
         for order in reversed(self.active_bot.orders):
-            if order.deal_type != DealType.stop_loss:
+            if order.deal_type != deal_type:
                 continue
-            if order.status in {
-                OrderStatus.FILLED,
-                OrderStatus.CANCELED,
-                OrderStatus.EXPIRED,
-                OrderStatus.REJECTED,
-            }:
+            if order.status in self.TERMINAL_STOP_ORDER_STATUSES:
                 continue
             order_price = float(order.price or 0)
             ts = int(order.timestamp or 0)
+            order_id = str(order.order_id) if order.order_id else None
             if order_price > 0:
-                return order_price, ts
-            sl_price = float(self.active_bot.deal.stop_loss_price or 0)
-            if sl_price > 0:
-                return sl_price, ts
-        return None, None
+                return order_price, ts, order_id
+            if fallback_price > 0:
+                return fallback_price, ts, order_id
+            return None, ts, order_id
+        return None, None, None
 
-    def _exchange_stop_loss_price(self) -> tuple[bool, float | None]:
+    def _bot_known_stop_loss(self) -> tuple[float | None, int | None]:
+        stop_price, ts, _ = self._bot_known_stop_order(
+            DealType.stop_loss,
+            float(self.active_bot.deal.stop_loss_price or 0),
+        )
+        return stop_price, ts
+
+    def _bot_known_trailing_stop_loss(
+        self,
+    ) -> tuple[float | None, int | None, str | None]:
+        return self._bot_known_stop_order(
+            DealType.trailing_profit,
+            float(self.active_bot.deal.trailing_stop_loss_price or 0),
+        )
+
+    def _exchange_stop_loss_price(
+        self, order_id: str | None = None
+    ) -> tuple[bool, float | None]:
         """
         Source of truth from the exchange.
 
         Returns ``(ok, price)``:
           - ``ok=True, price=float``  → exchange has an SL at this price
           - ``ok=True, price=None``   → exchange confirmed no SL exists
+            for the requested order id, or no stop exists when no id is passed
           - ``ok=False, price=None``  → query failed; caller must NOT treat
             this as "no SL", or it will cancel/replace a still-valid one.
         """
@@ -574,7 +630,18 @@ class KucoinPositionDeal(KucoinBaseBalance):
         if not stop_orders:
             return True, None
 
-        for order in stop_orders:
+        matching_orders: list[Any] = stop_orders
+        if order_id is not None:
+            matching_orders = [
+                order
+                for order in stop_orders
+                if str(getattr(order, "id", "")) == order_id
+            ]
+
+        if not matching_orders:
+            return True, None
+
+        for order in matching_orders:
             stop_price = float(getattr(order, "stop_price", 0) or 0)
             if stop_price > 0:
                 return True, stop_price

@@ -107,19 +107,8 @@ class PositionDeal(KucoinPositionDeal):
         return now_ms - last_replace_ts_ms < self.TRAILING_STOP_REPLACE_COOLDOWN_MS
 
     def last_trailing_stop_replace_ts_ms(self) -> int | None:
-        latest_ts: int | None = None
-        for order in self.active_bot.orders:
-            if order.deal_type != DealType.trailing_profit:
-                continue
-
-            order_ts = int(order.timestamp or 0)
-            if order_ts <= 0:
-                continue
-
-            if latest_ts is None or order_ts > latest_ts:
-                latest_ts = order_ts
-
-        return latest_ts
+        _, ts, _ = self._bot_known_trailing_stop_loss()
+        return ts
 
     def place_reversal_reentry_order(
         self,
@@ -408,8 +397,12 @@ class PositionDeal(KucoinPositionDeal):
                 abs(float(position.current_qty)) * repurchase_multiplier, 8
             )
             intended_price = float(self.active_bot.deal.trailing_stop_loss_price)
-            last_replace_ts_ms = self.last_trailing_stop_replace_ts_ms()
-            exchange_ok, exchange_price = self._exchange_stop_loss_price()
+            _, last_replace_ts_ms, trailing_order_id = (
+                self._bot_known_trailing_stop_loss()
+            )
+            exchange_ok, exchange_price = self._exchange_stop_loss_price(
+                order_id=trailing_order_id
+            )
             if exchange_ok:
                 if exchange_price is None and self.trailing_stop_replace_on_cooldown(
                     last_replace_ts_ms
@@ -434,7 +427,7 @@ class PositionDeal(KucoinPositionDeal):
                 self.active_bot,
             )
 
-            self.cancel_current_sl()
+            self.cancel_current_trailing_sl()
 
             if self.active_bot.position == Position.short:
                 order_base: OrderBase = self.kucoin_futures_api.place_futures_order(
@@ -493,11 +486,13 @@ class PositionDeal(KucoinPositionDeal):
         if intended_price <= 0:
             return
 
-        exchange_ok, exchange_price = self._exchange_stop_loss_price()
+        _, last_replace_ts_ms, trailing_order_id = self._bot_known_trailing_stop_loss()
+        exchange_ok, exchange_price = self._exchange_stop_loss_price(
+            order_id=trailing_order_id
+        )
         if not exchange_ok:
             return
 
-        last_replace_ts_ms = self.last_trailing_stop_replace_ts_ms()
         if exchange_price is None and self.trailing_stop_replace_on_cooldown(
             last_replace_ts_ms
         ):

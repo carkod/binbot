@@ -225,6 +225,51 @@ def test_reconcile_trailing_stop_loss_keeps_better_exchange_stop():
     assert calls == []
 
 
+def test_reconcile_trailing_stop_loss_uses_tracked_trailing_order():
+    calls: list[str] = []
+    now_ms = int(time() * 1000)
+    emergency_order = OrderModel(
+        order_id="emergency-sl",
+        order_type="market",
+        pair="BEATUSDT",
+        order_side="sell",
+        qty=1,
+        price=97.0,
+        status=OrderStatus.NEW,
+        timestamp=now_ms - 20_000,
+        time_in_force="GTC",
+        deal_type=DealType.stop_loss,
+    )
+    trailing_order = OrderModel(
+        order_id="trail-1",
+        order_type="market",
+        pair="BEATUSDT",
+        order_side="sell",
+        qty=1,
+        price=99.0,
+        status=OrderStatus.NEW,
+        timestamp=now_ms - (PositionDeal.TRAILING_STOP_REPLACE_COOLDOWN_MS + 1_000),
+        time_in_force="GTC",
+        deal_type=DealType.trailing_profit,
+    )
+    deal = _make_position_deal(
+        trailing_stop_loss_price=99.0,
+        orders=[emergency_order, trailing_order],
+    )
+    deal.kucoin_futures_api = types.SimpleNamespace(
+        get_all_stop_loss_orders=lambda symbol: [
+            types.SimpleNamespace(stop_price="97.0", id="emergency-sl"),
+            types.SimpleNamespace(stop_price="99.0", id="trail-1"),
+        ],
+        batch_cancel_stop_loss_orders=lambda ids: None,
+    )
+    deal.place_trailing_stop_loss = lambda: calls.append("trailing")
+
+    PositionDeal.reconcile_trailing_stop_loss(deal)
+
+    assert calls == []
+
+
 def test_place_trailing_stop_loss_keeps_existing_exchange_stop_without_cancel():
     calls: list[str] = []
     deal = _make_position_deal(trailing_stop_loss_price=99.0)
@@ -245,6 +290,75 @@ def test_place_trailing_stop_loss_keeps_existing_exchange_stop_without_cancel():
 
     assert calls == []
     assert deal.active_bot.orders == []
+
+
+def test_place_trailing_stop_loss_cancels_only_tracked_trailing_order():
+    cancelled_ids: list[str] = []
+    now_ms = int(time() * 1000)
+    emergency_order = OrderModel(
+        order_id="emergency-sl",
+        order_type="market",
+        pair="BEATUSDT",
+        order_side="sell",
+        qty=1,
+        price=97.0,
+        status=OrderStatus.NEW,
+        timestamp=now_ms - 20_000,
+        time_in_force="GTC",
+        deal_type=DealType.stop_loss,
+    )
+    trailing_order = OrderModel(
+        order_id="trail-1",
+        order_type="market",
+        pair="BEATUSDT",
+        order_side="sell",
+        qty=1,
+        price=98.0,
+        status=OrderStatus.NEW,
+        timestamp=now_ms - (PositionDeal.TRAILING_STOP_REPLACE_COOLDOWN_MS + 1_000),
+        time_in_force="GTC",
+        deal_type=DealType.trailing_profit,
+    )
+
+    def fake_place_futures_order(**kwargs):
+        return OrderBase(
+            order_id="trail-2",
+            order_type="market",
+            pair=kwargs["symbol"],
+            timestamp=now_ms,
+            order_side="sell",
+            qty=1,
+            price=kwargs["stop_price"],
+            status=OrderStatus.NEW,
+            time_in_force="GTC",
+            deal_type=DealType.trailing_profit,
+        )
+
+    deal = _make_position_deal(
+        trailing_stop_loss_price=99.0,
+        orders=[emergency_order, trailing_order],
+    )
+    deal.controller = types.SimpleNamespace(
+        update_logs=lambda *args, **kwargs: None,
+        save=lambda bot: None,
+    )
+    deal.kucoin_futures_api = types.SimpleNamespace(
+        get_futures_position=lambda symbol: types.SimpleNamespace(current_qty=1),
+        get_all_stop_loss_orders=lambda symbol: [
+            types.SimpleNamespace(stop_price="97.0", id="emergency-sl"),
+            types.SimpleNamespace(stop_price="98.0", id="trail-1"),
+        ],
+        batch_cancel_stop_loss_orders=lambda ids: cancelled_ids.extend(ids),
+        place_futures_order=fake_place_futures_order,
+    )
+
+    PositionDeal.place_trailing_stop_loss(deal)
+
+    assert cancelled_ids == ["trail-1"]
+    assert [order.order_id for order in deal.active_bot.orders] == [
+        "emergency-sl",
+        "trail-2",
+    ]
 
 
 def test_place_trailing_stop_loss_blocks_recent_trailing_replace():
@@ -283,6 +397,51 @@ def test_place_trailing_stop_loss_blocks_recent_trailing_replace():
 
     assert calls == []
     assert deal.active_bot.orders == [recent_trailing_order]
+
+
+def test_last_trailing_stop_replace_ignores_emergency_and_terminal_trailing_orders():
+    now_ms = int(time() * 1000)
+    emergency_order = OrderModel(
+        order_id="emergency-sl",
+        order_type="market",
+        pair="BEATUSDT",
+        order_side="sell",
+        qty=1,
+        price=97.0,
+        status=OrderStatus.NEW,
+        timestamp=now_ms,
+        time_in_force="GTC",
+        deal_type=DealType.stop_loss,
+    )
+    closed_trailing_order = OrderModel(
+        order_id="trail-closed",
+        order_type="market",
+        pair="BEATUSDT",
+        order_side="sell",
+        qty=1,
+        price=98.0,
+        status=OrderStatus.CANCELED,
+        timestamp=now_ms - 1_000,
+        time_in_force="GTC",
+        deal_type=DealType.trailing_profit,
+    )
+    active_trailing_order = OrderModel(
+        order_id="trail-active",
+        order_type="market",
+        pair="BEATUSDT",
+        order_side="sell",
+        qty=1,
+        price=98.5,
+        status=OrderStatus.NEW,
+        timestamp=now_ms - 2_000,
+        time_in_force="GTC",
+        deal_type=DealType.trailing_profit,
+    )
+    deal = _make_position_deal(
+        orders=[emergency_order, closed_trailing_order, active_trailing_order],
+    )
+
+    assert PositionDeal.last_trailing_stop_replace_ts_ms(deal) == now_ms - 2_000
 
 
 def test_place_trailing_stop_loss_logs_new_status_as_armed_stop():
