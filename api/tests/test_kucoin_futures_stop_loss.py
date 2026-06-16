@@ -41,7 +41,7 @@ def _make_deal(
     if orders is not None:
         deal.active_bot.orders = orders
 
-    deal.controller = types.SimpleNamespace(update_logs=lambda **kwargs: None)
+    deal.controller = types.SimpleNamespace(update_logs=lambda *args, **kwargs: None)
     deal.kucoin_futures_api = types.SimpleNamespace(
         get_all_stop_loss_orders=lambda symbol: [],
         batch_cancel_stop_loss_orders=lambda ids: None,
@@ -225,6 +225,106 @@ def test_reconcile_trailing_stop_loss_keeps_better_exchange_stop():
     assert calls == []
 
 
+def test_place_trailing_stop_loss_keeps_existing_exchange_stop_without_cancel():
+    calls: list[str] = []
+    deal = _make_position_deal(trailing_stop_loss_price=99.0)
+    deal.controller = types.SimpleNamespace(
+        update_logs=lambda *args, **kwargs: None,
+        save=lambda bot: None,
+    )
+    deal.kucoin_futures_api = types.SimpleNamespace(
+        get_futures_position=lambda symbol: types.SimpleNamespace(current_qty=1),
+        get_all_stop_loss_orders=lambda symbol: [
+            types.SimpleNamespace(stop_price="99.0", id="trail-1")
+        ],
+        batch_cancel_stop_loss_orders=lambda ids: calls.append("cancel"),
+        place_futures_order=lambda **kwargs: calls.append("place"),
+    )
+
+    PositionDeal.place_trailing_stop_loss(deal)
+
+    assert calls == []
+    assert deal.active_bot.orders == []
+
+
+def test_place_trailing_stop_loss_blocks_recent_trailing_replace():
+    calls: list[str] = []
+    now_ms = int(time() * 1000)
+    recent_trailing_order = OrderModel(
+        order_id="trail-1",
+        order_type="market",
+        pair="BEATUSDT",
+        order_side="sell",
+        qty=1,
+        price=98.0,
+        status=OrderStatus.NEW,
+        timestamp=now_ms - 1000,
+        time_in_force="GTC",
+        deal_type=DealType.trailing_profit,
+    )
+    deal = _make_position_deal(
+        trailing_stop_loss_price=99.0,
+        orders=[recent_trailing_order],
+    )
+    deal.controller = types.SimpleNamespace(
+        update_logs=lambda *args, **kwargs: None,
+        save=lambda bot: None,
+    )
+    deal.kucoin_futures_api = types.SimpleNamespace(
+        get_futures_position=lambda symbol: types.SimpleNamespace(current_qty=1),
+        get_all_stop_loss_orders=lambda symbol: [
+            types.SimpleNamespace(stop_price="98.0", id="trail-1")
+        ],
+        batch_cancel_stop_loss_orders=lambda ids: calls.append("cancel"),
+        place_futures_order=lambda **kwargs: calls.append("place"),
+    )
+
+    PositionDeal.place_trailing_stop_loss(deal)
+
+    assert calls == []
+    assert deal.active_bot.orders == [recent_trailing_order]
+
+
+def test_place_trailing_stop_loss_logs_new_status_as_armed_stop():
+    calls: list[str] = []
+
+    def fake_place_futures_order(**kwargs):
+        calls.append("place")
+        return OrderBase(
+            order_id="trail-1",
+            order_type="market",
+            pair=kwargs["symbol"],
+            timestamp=1775008219262,
+            order_side="sell",
+            qty=1,
+            price=kwargs["stop_price"],
+            status=OrderStatus.NEW,
+            time_in_force="GTC",
+            deal_type=DealType.trailing_profit,
+        )
+
+    deal = _make_position_deal(trailing_stop_loss_price=99.0)
+    deal.controller = types.SimpleNamespace(
+        update_logs=lambda *args, **kwargs: None,
+        save=lambda bot: None,
+    )
+    deal.kucoin_futures_api = types.SimpleNamespace(
+        get_futures_position=lambda symbol: types.SimpleNamespace(current_qty=1),
+        get_all_stop_loss_orders=lambda symbol: [],
+        batch_cancel_stop_loss_orders=lambda ids: calls.append("cancel"),
+        place_futures_order=fake_place_futures_order,
+    )
+
+    PositionDeal.place_trailing_stop_loss(deal)
+
+    assert calls == ["place"]
+    assert any(
+        "Trailing stop armed on exchange with status" in log
+        for log in deal.active_bot.logs
+    )
+    assert not any("not filled immediately" in log for log in deal.active_bot.logs)
+
+
 def test_should_refresh_trailing_stop_loss_allows_first_stop():
     deal = _make_position_deal()
 
@@ -264,6 +364,38 @@ def test_should_refresh_trailing_stop_loss_allows_material_long_improvement():
             direction=1,
         )
         is True
+    )
+
+
+def test_should_refresh_trailing_stop_loss_blocks_recent_replace():
+    deal = _make_position_deal()
+    now_ms = int(time() * 1000)
+
+    assert (
+        PositionDeal.should_refresh_trailing_stop_loss(
+            deal,
+            current_stop_price=100.0,
+            new_stop_price=101.0,
+            direction=1,
+            last_replace_ts_ms=now_ms - 1000,
+        )
+        is False
+    )
+
+
+def test_should_refresh_trailing_stop_loss_blocks_recent_replace_without_local_stop():
+    deal = _make_position_deal()
+    now_ms = int(time() * 1000)
+
+    assert (
+        PositionDeal.should_refresh_trailing_stop_loss(
+            deal,
+            current_stop_price=0.0,
+            new_stop_price=101.0,
+            direction=1,
+            last_replace_ts_ms=now_ms - 1000,
+        )
+        is False
     )
 
 

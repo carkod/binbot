@@ -44,6 +44,7 @@ class PositionDeal(KucoinPositionDeal):
     """
 
     TRAILING_STOP_REFRESH_MIN_IMPROVEMENT_RATIO = 0.002
+    TRAILING_STOP_REPLACE_COOLDOWN_MS = 5 * 60 * 1000
     RECOVERY_ATR_WINDOW = 14
     RECOVERY_STRUCTURE_WINDOW = 4
     RECOVERY_STOP_CAP_PCT = 6.5
@@ -78,8 +79,12 @@ class PositionDeal(KucoinPositionDeal):
         current_stop_price: float,
         new_stop_price: float,
         direction: int,
+        last_replace_ts_ms: int | None = None,
     ) -> bool:
         if new_stop_price <= 0:
+            return False
+
+        if self.trailing_stop_replace_on_cooldown(last_replace_ts_ms):
             return False
 
         if current_stop_price <= 0:
@@ -93,6 +98,28 @@ class PositionDeal(KucoinPositionDeal):
             abs(current_stop_price) * self.TRAILING_STOP_REFRESH_MIN_IMPROVEMENT_RATIO
         )
         return improvement >= min_improvement
+
+    def trailing_stop_replace_on_cooldown(self, last_replace_ts_ms: int | None) -> bool:
+        if not last_replace_ts_ms or last_replace_ts_ms <= 0:
+            return False
+
+        now_ms = int(time() * 1000)
+        return now_ms - last_replace_ts_ms < self.TRAILING_STOP_REPLACE_COOLDOWN_MS
+
+    def last_trailing_stop_replace_ts_ms(self) -> int | None:
+        latest_ts: int | None = None
+        for order in self.active_bot.orders:
+            if order.deal_type != DealType.trailing_profit:
+                continue
+
+            order_ts = int(order.timestamp or 0)
+            if order_ts <= 0:
+                continue
+
+            if latest_ts is None or order_ts > latest_ts:
+                latest_ts = order_ts
+
+        return latest_ts
 
     def place_reversal_reentry_order(
         self,
@@ -380,16 +407,33 @@ class PositionDeal(KucoinPositionDeal):
             qty = round_numbers(
                 abs(float(position.current_qty)) * repurchase_multiplier, 8
             )
+            intended_price = float(self.active_bot.deal.trailing_stop_loss_price)
+            last_replace_ts_ms = self.last_trailing_stop_replace_ts_ms()
+            exchange_ok, exchange_price = self._exchange_stop_loss_price()
+            if exchange_ok:
+                if exchange_price is None and self.trailing_stop_replace_on_cooldown(
+                    last_replace_ts_ms
+                ):
+                    return self.active_bot
+                if (
+                    exchange_price is not None
+                    and not self.should_replace_stop_loss_order(
+                        current_stop_price=exchange_price,
+                        new_stop_price=intended_price,
+                        last_replace_ts_ms=last_replace_ts_ms,
+                        cooldown_ms=self.TRAILING_STOP_REPLACE_COOLDOWN_MS,
+                    )
+                ):
+                    return self.active_bot
+            elif self.trailing_stop_replace_on_cooldown(last_replace_ts_ms):
+                return self.active_bot
+
             action = "buy" if self.active_bot.position == Position.short else "sell"
             self.controller.update_logs(
                 f"Dispatching futures {action} order for trailing profit...",
                 self.active_bot,
             )
 
-            # since trailing_profit only runs when trail is broken
-            # we can assume stop loss needs to be replaced
-            # if it constantly runs, then we need to add conditional logic
-            # to avoid cancelling constantly
             self.cancel_current_sl()
 
             if self.active_bot.position == Position.short:
@@ -423,13 +467,17 @@ class PositionDeal(KucoinPositionDeal):
         self.remove_stale_orders()
         self.active_bot.orders.append(order_data)
 
-        if order_data.status != OrderStatus.FILLED:
+        if order_data.status == OrderStatus.FILLED:
             self.active_bot.add_log(
-                f"Trailing profit order not filled immediately, got status {order_data.status}"
+                "Completed futures take profit after failing to break trailing"
+            )
+        elif order_data.status == OrderStatus.NEW:
+            self.active_bot.add_log(
+                f"Trailing stop armed on exchange with status {order_data.status}"
             )
         else:
             self.active_bot.add_log(
-                "Completed futures take profit after failing to break trailing"
+                f"Trailing stop placement returned status {order_data.status}; verify exchange order state"
             )
 
         self.controller.save(self.active_bot)
@@ -449,10 +497,17 @@ class PositionDeal(KucoinPositionDeal):
         if not exchange_ok:
             return
 
+        last_replace_ts_ms = self.last_trailing_stop_replace_ts_ms()
+        if exchange_price is None and self.trailing_stop_replace_on_cooldown(
+            last_replace_ts_ms
+        ):
+            return
+
         if exchange_price is not None and not self.should_replace_stop_loss_order(
             current_stop_price=exchange_price,
             new_stop_price=intended_price,
-            last_replace_ts_ms=None,
+            last_replace_ts_ms=last_replace_ts_ms,
+            cooldown_ms=self.TRAILING_STOP_REPLACE_COOLDOWN_MS,
         ):
             return
 
@@ -1144,6 +1199,7 @@ class PositionDeal(KucoinPositionDeal):
                     current_stop_price=self.active_bot.deal.trailing_stop_loss_price,
                     new_stop_price=new_trailing_stop_loss,
                     direction=direction,
+                    last_replace_ts_ms=self.last_trailing_stop_replace_ts_ms(),
                 ):
                     self.active_bot.deal.trailing_stop_loss_price = (
                         new_trailing_stop_loss

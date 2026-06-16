@@ -585,6 +585,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         current_stop_price: float | None,
         new_stop_price: float,
         last_replace_ts_ms: int | None = None,
+        cooldown_ms: int | None = None,
     ) -> bool:
         """
         Decide whether the on-exchange SL needs replacing.
@@ -615,8 +616,13 @@ class KucoinPositionDeal(KucoinBaseBalance):
             return False
 
         if last_replace_ts_ms and last_replace_ts_ms > 0:
+            cooldown = (
+                self.STOP_LOSS_REPLACE_COOLDOWN_MS
+                if cooldown_ms is None
+                else cooldown_ms
+            )
             now_ms = int(time() * 1000)
-            if now_ms - last_replace_ts_ms < self.STOP_LOSS_REPLACE_COOLDOWN_MS:
+            if now_ms - last_replace_ts_ms < cooldown:
                 return False
 
         return True
