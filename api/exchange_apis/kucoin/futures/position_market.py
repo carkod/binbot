@@ -99,8 +99,8 @@ class PositionMarket(KucoinPositionDeal):
         )
 
     def build_pullback_metrics(self, current_price: float) -> dict[str, float] | None:
-        entry_price = float(self.active_bot.deal.opening_price or 0)
-        entry_timestamp = int(self.active_bot.deal.opening_timestamp or 0)
+        entry_price = self.active_bot.deal.opening_price
+        entry_timestamp = self.active_bot.deal.opening_timestamp
         if entry_price <= 0 or entry_timestamp <= 0:
             return None
 
@@ -182,13 +182,13 @@ class PositionMarket(KucoinPositionDeal):
 
         # Emergency SL: pin to existing value if already set, otherwise derive
         # an initial one. Never re-trail it from market state.
-        existing_stop_loss = float(self.active_bot.stop_loss or 0)
+        existing_stop_loss = self.active_bot.stop_loss
         if existing_stop_loss > 0:
             stop_loss = clamp(
                 existing_stop_loss, self.MIN_STOP_LOSS, self.MAX_STOP_LOSS
             )
         else:
-            opening_price = float(self.active_bot.deal.opening_price or 0)
+            opening_price = self.active_bot.deal.opening_price
             if is_aggressive_momo and opening_price > 0:
                 stop_loss = ((expansion_range * 0.5) / opening_price) * 100
             else:
@@ -363,14 +363,14 @@ class PositionMarket(KucoinPositionDeal):
             str(market_type).lower() != MarketType.FUTURES.value.lower()
             or position_value
             not in {Position.long.value.lower(), Position.short.value.lower()}
-            or float(self.active_bot.deal.opening_price or 0) <= 0
+            or self.active_bot.deal.opening_price <= 0
         ):
             return
 
         # ─────────────────────────────
         # ATR-based stop loss (emergency only; pinned once set)
         # ─────────────────────────────
-        existing_stop_loss = float(self.active_bot.stop_loss or 0)
+        existing_stop_loss = self.active_bot.stop_loss
         if existing_stop_loss > 0:
             stop_loss = clamp(
                 existing_stop_loss, self.MIN_STOP_LOSS, self.MAX_STOP_LOSS
@@ -407,8 +407,16 @@ class PositionMarket(KucoinPositionDeal):
                 trailing_deviation, self.MIN_TRAILING_DEVIATION, max_deviation
             )
         else:
-            trailing_profit = float(self.active_bot.trailing_profit or 2.3)
-            trailing_deviation = float(self.active_bot.trailing_deviation or 1.63)
+            trailing_profit = (
+                self.active_bot.trailing_profit
+                if self.active_bot.trailing_profit > 0
+                else 2.3
+            )
+            trailing_deviation = (
+                self.active_bot.trailing_deviation
+                if self.active_bot.trailing_deviation > 0
+                else 1.63
+            )
 
         self.active_bot.stop_loss = round_numbers(stop_loss, 2)
         self.active_bot.trailing_profit = round_numbers(trailing_profit, 2)
@@ -453,7 +461,7 @@ class PositionMarket(KucoinPositionDeal):
         if (
             str(market_type).lower() != MarketType.FUTURES.value.lower()
             or str(position).lower() != Position.long.value.lower()
-            or float(self.active_bot.deal.opening_price or 0) <= 0
+            or self.active_bot.deal.opening_price <= 0
         ):
             return
 

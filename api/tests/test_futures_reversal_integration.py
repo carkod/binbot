@@ -6,7 +6,7 @@ from bots.models import BotModel, OrderModel, RecoveryBotModel
 from databases.tables.bot_table import BotTable
 from databases.tables.deal_table import DealTable
 from databases.tables.recovery_bot_table import RecoveryBotTable
-from exchange_apis.kucoin.futures.lifecycle import PositionDeal
+from exchange_apis.kucoin.futures.lifecycle import Lifecycle
 from kucoin_universal_sdk.model.common import RestError
 from pybinbot import MarketType, OrderStatus, QuoteAssets, Status, DealType, Position
 from tests.fixtures.mock_bot_table import make_mock_bot_active_model
@@ -102,7 +102,7 @@ class DummyResponse:
 
 def make_position_deal(bot, futures_api):
     controller = DummyController()
-    position_deal = cast(Any, PositionDeal.__new__(PositionDeal))
+    position_deal = cast(Any, Lifecycle.__new__(Lifecycle))
     position_deal.active_bot = bot
     position_deal.controller = controller
     position_deal.kucoin_futures_api = futures_api
@@ -306,7 +306,7 @@ def test_reverse_position_closes_source_with_reduce_only_and_creates_pending_bot
     futures_api = DummyFuturesApi(current_qty=68)
     position_deal, controller = make_position_deal(bot, futures_api)
 
-    reversed_bot = PositionDeal.reverse_position(position_deal)
+    reversed_bot = Lifecycle.reverse_position(position_deal)
 
     # New bot is pending with flipped direction and no orders/deal
     assert reversed_bot.position == Position.short
@@ -332,7 +332,7 @@ def test_reverse_position_short_closes_with_buy():
     futures_api = DummyFuturesApi(current_qty=-68)
     position_deal, controller = make_position_deal(bot, futures_api)
 
-    reversed_bot = PositionDeal.reverse_position(position_deal)
+    reversed_bot = Lifecycle.reverse_position(position_deal)
 
     assert reversed_bot.position == Position.long
     assert reversed_bot.status == Status.pending
@@ -351,7 +351,7 @@ def test_reverse_position_errors_when_no_position():
     futures_api = NoPositionApi()
     position_deal, controller = make_position_deal(bot, futures_api)
 
-    result = PositionDeal.reverse_position(position_deal)
+    result = Lifecycle.reverse_position(position_deal)
 
     assert result.status == Status.error
     assert len(futures_api.sell_calls) == 0
@@ -370,7 +370,7 @@ def test_reverse_position_errors_when_reduce_only_fails():
     futures_api = FailingApi()
     position_deal, controller = make_position_deal(bot, futures_api)
 
-    result = PositionDeal.reverse_position(position_deal)
+    result = Lifecycle.reverse_position(position_deal)
 
     assert result.status == Status.error
     # Source bot is NOT marked completed — close failed
@@ -462,12 +462,12 @@ def test_first_reversal_creates_recovery_bot_with_source_metadata():
     assert reversed_bot.recovery_params.source_contracts == 68
     assert reversed_bot.recovery_params.source_loss_fiat > 0
     assert reversed_bot.stop_loss == reversed_bot.recovery_params.stop_loss_pct
-    assert reversed_bot.stop_loss <= PositionDeal.RECOVERY_STOP_CAP_PCT
+    assert reversed_bot.stop_loss <= Lifecycle.RECOVERY_STOP_CAP_PCT
     assert reversed_bot.fiat_order_size == 15.0
     assert reversed_bot.trailing_profit >= 0.9 * reversed_bot.stop_loss
     assert (
         reversed_bot.trailing_deviation
-        <= reversed_bot.trailing_profit - PositionDeal.RECOVERY_TRAILING_MIN_GAP_PCT
+        <= reversed_bot.trailing_profit - Lifecycle.RECOVERY_TRAILING_MIN_GAP_PCT
     )
 
 
