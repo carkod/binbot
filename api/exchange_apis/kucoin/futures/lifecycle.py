@@ -1332,8 +1332,9 @@ class Lifecycle(KucoinPositionDeal):
             position = self.base_streaming.kucoin_futures_api.get_futures_position(
                 self.active_bot.pair
             )
-            if position is not None:
-                close_price = position.mark_price
+            close_price = self.base_streaming.kucoin_futures_api.get_mark_price(
+                self.active_bot.pair
+            )
 
         self.active_bot = cls.position_updates(position=position)
         cls.active_bot = self.active_bot

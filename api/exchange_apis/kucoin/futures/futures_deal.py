@@ -878,14 +878,14 @@ class KucoinPositionDeal(KucoinBaseBalance):
         order = OrderModel(**order.model_dump())
         self.active_bot.orders.append(order)
 
-        position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
+        mark_price = self.kucoin_futures_api.get_mark_price(self.kucoin_symbol)
 
         # For Futures, base_order_size is contracts
         # Kucoin only operates with contracts, not underlying asset (qty)
         # so in Binbot we only care about that
         self.active_bot.deal.base_order_size = contracts
         self.active_bot.deal.opening_timestamp = order.timestamp
-        self.active_bot.deal.current_price = position.mark_price
+        self.active_bot.deal.current_price = mark_price
 
         # Check if the order has already been filled on the exchange. Futures
         # market orders settle quickly but not always before this code runs —
@@ -913,7 +913,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         if self.active_bot.deal.opening_price > 0:
             log_message = f"Futures {position_label} opened @ {self.active_bot.deal.opening_price} with {int(self.active_bot.deal.opening_qty)} contracts"
         else:
-            log_message = f"Futures {position_label} order submitted @ {position.mark_price} with {contracts} contracts (awaiting fill)"
+            log_message = f"Futures {position_label} order submitted @ {mark_price} with {contracts} contracts (awaiting fill)"
         self.controller.update_logs(
             bot=self.active_bot,
             log_message=log_message,
