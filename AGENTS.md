@@ -40,6 +40,8 @@ These projects are interconnected, and Codex conversations often refer across th
 - Trust Pydantic model defaults and types for fields such as `active_bot.*` and `active_bot.deal.*`.
 - Do not add fallback expressions like `self.active_bot.deal.stop_loss_price or 0` when the model already defines `0` as the default.
 - Do not wrap model fields in casts like `float(...)` when the Pydantic model already validates the field as a float.
+- Use validated bot fields directly in trading arithmetic and comparisons, for example `self.active_bot.deal.trailing_stop_loss_price`, `self.active_bot.deal.opening_price`, `self.active_bot.stop_loss`, and `self.active_bot.trailing_profit`.
+- Do not write patterns such as `float(self.active_bot.deal.trailing_stop_loss_price or 0)`, `float(self.active_bot.stop_loss)`, or `int(self.active_bot.deal.opening_timestamp)` for validated Pydantic model fields.
 - Add explicit fallbacks or casts only at real trust boundaries, such as raw exchange payloads, database rows before validation, or optional third-party values.
 
 ## Tests

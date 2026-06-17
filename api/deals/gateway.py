@@ -7,7 +7,7 @@ from exchange_apis.kucoin.deals.short_deal import KucoinShortDeal
 from databases.crud.autotrade_crud import AutotradeCrud
 from exchange_apis.binance.deals.short import BinanceShortDeal
 from exchange_apis.binance.deals.long import BinanceLongDeal
-from exchange_apis.kucoin.futures.position_deal import PositionDeal
+from exchange_apis.kucoin.futures.lifecycle import Lifecycle
 
 if TYPE_CHECKING:
     from streaming.base import BaseStreaming
@@ -35,11 +35,11 @@ class DealGateway:
             BinanceShortDeal,
             KucoinLongDeal,
             KucoinShortDeal,
-            PositionDeal,
+            Lifecycle,
         ]
         if self.autotrade_settings.exchange_id == ExchangeId.KUCOIN:
             if bot.market_type == MarketType.FUTURES:
-                self.deal = PositionDeal(
+                self.deal = Lifecycle(
                     bot, db_table=db_table, base_streaming=base_streaming
                 )
             else:
@@ -47,7 +47,7 @@ class DealGateway:
                     self.deal = KucoinShortDeal(bot, db_table=db_table)
                 else:
                     if bot.market_type == MarketType.FUTURES:
-                        self.deal = PositionDeal(
+                        self.deal = Lifecycle(
                             bot, db_table=db_table, base_streaming=base_streaming
                         )
                     else:

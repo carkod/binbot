@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from bots.models import BotModel, DealModel, OrderModel, RecoveryBotModel
 from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
-from exchange_apis.kucoin.futures.position_deal import PositionDeal
+from exchange_apis.kucoin.futures.lifecycle import Lifecycle
 from pybinbot import MarketType, OrderBase, OrderStatus, DealType, Position
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import (
     AddOrderReq,
@@ -41,7 +41,7 @@ def _make_deal(
     if orders is not None:
         deal.active_bot.orders = orders
 
-    deal.controller = types.SimpleNamespace(update_logs=lambda **kwargs: None)
+    deal.controller = types.SimpleNamespace(update_logs=lambda *args, **kwargs: None)
     deal.kucoin_futures_api = types.SimpleNamespace(
         get_all_stop_loss_orders=lambda symbol: [],
         batch_cancel_stop_loss_orders=lambda ids: None,
@@ -52,7 +52,7 @@ def _make_deal(
 
 def _make_position_deal(**kwargs) -> Any:
     base_deal = _make_deal(**kwargs)
-    deal = cast(Any, PositionDeal.__new__(PositionDeal))
+    deal = cast(Any, Lifecycle.__new__(Lifecycle))
     deal.__dict__.update(base_deal.__dict__)
     return deal
 
@@ -204,7 +204,7 @@ def test_reconcile_trailing_stop_loss_replaces_worse_exchange_stop():
     )
     deal.place_trailing_stop_loss = lambda: calls.append("trailing")
 
-    PositionDeal.reconcile_trailing_stop_loss(deal)
+    Lifecycle.reconcile_trailing_stop_loss(deal)
 
     assert calls == ["trailing"]
 
@@ -220,16 +220,275 @@ def test_reconcile_trailing_stop_loss_keeps_better_exchange_stop():
     )
     deal.place_trailing_stop_loss = lambda: calls.append("trailing")
 
-    PositionDeal.reconcile_trailing_stop_loss(deal)
+    Lifecycle.reconcile_trailing_stop_loss(deal)
 
     assert calls == []
+
+
+def test_reconcile_trailing_stop_loss_uses_tracked_trailing_order():
+    calls: list[str] = []
+    now_ms = int(time() * 1000)
+    emergency_order = OrderModel(
+        order_id="emergency-sl",
+        order_type="market",
+        pair="BEATUSDT",
+        order_side="sell",
+        qty=1,
+        price=97.0,
+        status=OrderStatus.NEW,
+        timestamp=now_ms - 20_000,
+        time_in_force="GTC",
+        deal_type=DealType.stop_loss,
+    )
+    trailing_order = OrderModel(
+        order_id="trail-1",
+        order_type="market",
+        pair="BEATUSDT",
+        order_side="sell",
+        qty=1,
+        price=99.0,
+        status=OrderStatus.NEW,
+        timestamp=now_ms - (Lifecycle.TRAILING_STOP_REPLACE_COOLDOWN_MS + 1_000),
+        time_in_force="GTC",
+        deal_type=DealType.trailing_profit,
+    )
+    deal = _make_position_deal(
+        trailing_stop_loss_price=99.0,
+        orders=[emergency_order, trailing_order],
+    )
+    deal.kucoin_futures_api = types.SimpleNamespace(
+        get_all_stop_loss_orders=lambda symbol: [
+            types.SimpleNamespace(stop_price="97.0", id="emergency-sl"),
+            types.SimpleNamespace(stop_price="99.0", id="trail-1"),
+        ],
+        batch_cancel_stop_loss_orders=lambda ids: None,
+    )
+    deal.place_trailing_stop_loss = lambda: calls.append("trailing")
+
+    Lifecycle.reconcile_trailing_stop_loss(deal)
+
+    assert calls == []
+
+
+def test_place_trailing_stop_loss_keeps_existing_exchange_stop_without_cancel():
+    calls: list[str] = []
+    deal = _make_position_deal(trailing_stop_loss_price=99.0)
+    deal.controller = types.SimpleNamespace(
+        update_logs=lambda *args, **kwargs: None,
+        save=lambda bot: None,
+    )
+    deal.kucoin_futures_api = types.SimpleNamespace(
+        get_futures_position=lambda symbol: types.SimpleNamespace(current_qty=1),
+        get_all_stop_loss_orders=lambda symbol: [
+            types.SimpleNamespace(stop_price="99.0", id="trail-1")
+        ],
+        batch_cancel_stop_loss_orders=lambda ids: calls.append("cancel"),
+        place_futures_order=lambda **kwargs: calls.append("place"),
+    )
+
+    Lifecycle.place_trailing_stop_loss(deal)
+
+    assert calls == []
+    assert deal.active_bot.orders == []
+
+
+def test_place_trailing_stop_loss_cancels_only_tracked_trailing_order():
+    cancelled_ids: list[str] = []
+    now_ms = int(time() * 1000)
+    emergency_order = OrderModel(
+        order_id="emergency-sl",
+        order_type="market",
+        pair="BEATUSDT",
+        order_side="sell",
+        qty=1,
+        price=97.0,
+        status=OrderStatus.NEW,
+        timestamp=now_ms - 20_000,
+        time_in_force="GTC",
+        deal_type=DealType.stop_loss,
+    )
+    trailing_order = OrderModel(
+        order_id="trail-1",
+        order_type="market",
+        pair="BEATUSDT",
+        order_side="sell",
+        qty=1,
+        price=98.0,
+        status=OrderStatus.NEW,
+        timestamp=now_ms - (Lifecycle.TRAILING_STOP_REPLACE_COOLDOWN_MS + 1_000),
+        time_in_force="GTC",
+        deal_type=DealType.trailing_profit,
+    )
+
+    def fake_place_futures_order(**kwargs):
+        return OrderBase(
+            order_id="trail-2",
+            order_type="market",
+            pair=kwargs["symbol"],
+            timestamp=now_ms,
+            order_side="sell",
+            qty=1,
+            price=kwargs["stop_price"],
+            status=OrderStatus.NEW,
+            time_in_force="GTC",
+            deal_type=DealType.trailing_profit,
+        )
+
+    deal = _make_position_deal(
+        trailing_stop_loss_price=99.0,
+        orders=[emergency_order, trailing_order],
+    )
+    deal.controller = types.SimpleNamespace(
+        update_logs=lambda *args, **kwargs: None,
+        save=lambda bot: None,
+    )
+    deal.kucoin_futures_api = types.SimpleNamespace(
+        get_futures_position=lambda symbol: types.SimpleNamespace(current_qty=1),
+        get_all_stop_loss_orders=lambda symbol: [
+            types.SimpleNamespace(stop_price="97.0", id="emergency-sl"),
+            types.SimpleNamespace(stop_price="98.0", id="trail-1"),
+        ],
+        batch_cancel_stop_loss_orders=lambda ids: cancelled_ids.extend(ids),
+        place_futures_order=fake_place_futures_order,
+    )
+
+    Lifecycle.place_trailing_stop_loss(deal)
+
+    assert cancelled_ids == ["trail-1"]
+    assert [order.order_id for order in deal.active_bot.orders] == [
+        "emergency-sl",
+        "trail-2",
+    ]
+
+
+def test_place_trailing_stop_loss_blocks_recent_trailing_replace():
+    calls: list[str] = []
+    now_ms = int(time() * 1000)
+    recent_trailing_order = OrderModel(
+        order_id="trail-1",
+        order_type="market",
+        pair="BEATUSDT",
+        order_side="sell",
+        qty=1,
+        price=98.0,
+        status=OrderStatus.NEW,
+        timestamp=now_ms - 1000,
+        time_in_force="GTC",
+        deal_type=DealType.trailing_profit,
+    )
+    deal = _make_position_deal(
+        trailing_stop_loss_price=99.0,
+        orders=[recent_trailing_order],
+    )
+    deal.controller = types.SimpleNamespace(
+        update_logs=lambda *args, **kwargs: None,
+        save=lambda bot: None,
+    )
+    deal.kucoin_futures_api = types.SimpleNamespace(
+        get_futures_position=lambda symbol: types.SimpleNamespace(current_qty=1),
+        get_all_stop_loss_orders=lambda symbol: [
+            types.SimpleNamespace(stop_price="98.0", id="trail-1")
+        ],
+        batch_cancel_stop_loss_orders=lambda ids: calls.append("cancel"),
+        place_futures_order=lambda **kwargs: calls.append("place"),
+    )
+
+    Lifecycle.place_trailing_stop_loss(deal)
+
+    assert calls == []
+    assert deal.active_bot.orders == [recent_trailing_order]
+
+
+def test_last_trailing_stop_replace_ignores_emergency_and_terminal_trailing_orders():
+    now_ms = int(time() * 1000)
+    emergency_order = OrderModel(
+        order_id="emergency-sl",
+        order_type="market",
+        pair="BEATUSDT",
+        order_side="sell",
+        qty=1,
+        price=97.0,
+        status=OrderStatus.NEW,
+        timestamp=now_ms,
+        time_in_force="GTC",
+        deal_type=DealType.stop_loss,
+    )
+    closed_trailing_order = OrderModel(
+        order_id="trail-closed",
+        order_type="market",
+        pair="BEATUSDT",
+        order_side="sell",
+        qty=1,
+        price=98.0,
+        status=OrderStatus.CANCELED,
+        timestamp=now_ms - 1_000,
+        time_in_force="GTC",
+        deal_type=DealType.trailing_profit,
+    )
+    active_trailing_order = OrderModel(
+        order_id="trail-active",
+        order_type="market",
+        pair="BEATUSDT",
+        order_side="sell",
+        qty=1,
+        price=98.5,
+        status=OrderStatus.NEW,
+        timestamp=now_ms - 2_000,
+        time_in_force="GTC",
+        deal_type=DealType.trailing_profit,
+    )
+    deal = _make_position_deal(
+        orders=[emergency_order, closed_trailing_order, active_trailing_order],
+    )
+
+    assert Lifecycle.last_trailing_stop_replace_ts_ms(deal) == now_ms - 2_000
+
+
+def test_place_trailing_stop_loss_logs_new_status_as_armed_stop():
+    calls: list[str] = []
+
+    def fake_place_futures_order(**kwargs):
+        calls.append("place")
+        return OrderBase(
+            order_id="trail-1",
+            order_type="market",
+            pair=kwargs["symbol"],
+            timestamp=1775008219262,
+            order_side="sell",
+            qty=1,
+            price=kwargs["stop_price"],
+            status=OrderStatus.NEW,
+            time_in_force="GTC",
+            deal_type=DealType.trailing_profit,
+        )
+
+    deal = _make_position_deal(trailing_stop_loss_price=99.0)
+    deal.controller = types.SimpleNamespace(
+        update_logs=lambda *args, **kwargs: None,
+        save=lambda bot: None,
+    )
+    deal.kucoin_futures_api = types.SimpleNamespace(
+        get_futures_position=lambda symbol: types.SimpleNamespace(current_qty=1),
+        get_all_stop_loss_orders=lambda symbol: [],
+        batch_cancel_stop_loss_orders=lambda ids: calls.append("cancel"),
+        place_futures_order=fake_place_futures_order,
+    )
+
+    Lifecycle.place_trailing_stop_loss(deal)
+
+    assert calls == ["place"]
+    assert any(
+        "Trailing stop armed on exchange with status" in log
+        for log in deal.active_bot.logs
+    )
+    assert not any("not filled immediately" in log for log in deal.active_bot.logs)
 
 
 def test_should_refresh_trailing_stop_loss_allows_first_stop():
     deal = _make_position_deal()
 
     assert (
-        PositionDeal.should_refresh_trailing_stop_loss(
+        Lifecycle.should_refresh_trailing_stop_loss(
             deal,
             current_stop_price=0.0,
             new_stop_price=99.0,
@@ -243,7 +502,7 @@ def test_should_refresh_trailing_stop_loss_blocks_small_long_improvement():
     deal = _make_position_deal()
 
     assert (
-        PositionDeal.should_refresh_trailing_stop_loss(
+        Lifecycle.should_refresh_trailing_stop_loss(
             deal,
             current_stop_price=100.0,
             new_stop_price=100.1,
@@ -257,7 +516,7 @@ def test_should_refresh_trailing_stop_loss_allows_material_long_improvement():
     deal = _make_position_deal()
 
     assert (
-        PositionDeal.should_refresh_trailing_stop_loss(
+        Lifecycle.should_refresh_trailing_stop_loss(
             deal,
             current_stop_price=100.0,
             new_stop_price=100.2,
@@ -267,11 +526,43 @@ def test_should_refresh_trailing_stop_loss_allows_material_long_improvement():
     )
 
 
+def test_should_refresh_trailing_stop_loss_blocks_recent_replace():
+    deal = _make_position_deal()
+    now_ms = int(time() * 1000)
+
+    assert (
+        Lifecycle.should_refresh_trailing_stop_loss(
+            deal,
+            current_stop_price=100.0,
+            new_stop_price=101.0,
+            direction=1,
+            last_replace_ts_ms=now_ms - 1000,
+        )
+        is False
+    )
+
+
+def test_should_refresh_trailing_stop_loss_blocks_recent_replace_without_local_stop():
+    deal = _make_position_deal()
+    now_ms = int(time() * 1000)
+
+    assert (
+        Lifecycle.should_refresh_trailing_stop_loss(
+            deal,
+            current_stop_price=0.0,
+            new_stop_price=101.0,
+            direction=1,
+            last_replace_ts_ms=now_ms - 1000,
+        )
+        is False
+    )
+
+
 def test_should_refresh_trailing_stop_loss_blocks_small_short_improvement():
     deal = _make_position_deal()
 
     assert (
-        PositionDeal.should_refresh_trailing_stop_loss(
+        Lifecycle.should_refresh_trailing_stop_loss(
             deal,
             current_stop_price=100.0,
             new_stop_price=99.9,
@@ -285,7 +576,7 @@ def test_should_refresh_trailing_stop_loss_allows_material_short_improvement():
     deal = _make_position_deal()
 
     assert (
-        PositionDeal.should_refresh_trailing_stop_loss(
+        Lifecycle.should_refresh_trailing_stop_loss(
             deal,
             current_stop_price=100.0,
             new_stop_price=99.8,
@@ -335,7 +626,7 @@ def test_reconcile_exchange_sl_places_when_exchange_missing():
 
 
 def test_exit_panic_closes_stale_mild_loser_after_three_days(monkeypatch):
-    deal = cast(Any, PositionDeal.__new__(PositionDeal))
+    deal = cast(Any, Lifecycle.__new__(Lifecycle))
     deal.price_precision = 2
     deal.klines = None
     deal.active_bot = BotModel(
@@ -359,17 +650,17 @@ def test_exit_panic_closes_stale_mild_loser_after_three_days(monkeypatch):
     deal.close_all = lambda: closed.append(True)
 
     monkeypatch.setattr(
-        "exchange_apis.kucoin.futures.position_deal.time",
+        "exchange_apis.kucoin.futures.lifecycle.time",
         lambda: (1_000 + (4 * 24 * 60 * 60 * 1000)) / 1000,
     )
 
-    PositionDeal.exit(deal, 99.5)
+    Lifecycle.exit(deal, 99.5)
 
     assert closed == [True]
 
 
 def test_exit_keeps_stale_loser_below_panic_close_band(monkeypatch):
-    deal = cast(Any, PositionDeal.__new__(PositionDeal))
+    deal = cast(Any, Lifecycle.__new__(Lifecycle))
     deal.price_precision = 2
     deal.klines = None
     deal.active_bot = BotModel(
@@ -393,11 +684,11 @@ def test_exit_keeps_stale_loser_below_panic_close_band(monkeypatch):
     deal.close_all = lambda: closed.append(True)
 
     monkeypatch.setattr(
-        "exchange_apis.kucoin.futures.position_deal.time",
+        "exchange_apis.kucoin.futures.lifecycle.time",
         lambda: (1_000 + (4 * 24 * 60 * 60 * 1000)) / 1000,
     )
 
-    PositionDeal.exit(deal, 98.9)
+    Lifecycle.exit(deal, 98.9)
 
     assert closed == []
 
@@ -432,7 +723,7 @@ def test_exit_uses_recovery_stop_and_closes_without_second_flip():
 
     deal.reverse_position = reverse_position
 
-    PositionDeal.exit(deal, 94.9)
+    Lifecycle.exit(deal, 94.9)
 
     assert deal.active_bot.stop_loss == 5
     assert deal.active_bot.deal.stop_loss_price == 95

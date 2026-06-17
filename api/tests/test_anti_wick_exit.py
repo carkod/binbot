@@ -23,7 +23,7 @@ from typing import Any, cast
 
 import pytest
 from bots.models import BotModel, DealModel
-from exchange_apis.kucoin.futures.position_deal import PositionDeal
+from exchange_apis.kucoin.futures.lifecycle import Lifecycle
 from pybinbot import MarketType, OrderBase, OrderStatus, DealType, Position
 
 
@@ -78,8 +78,8 @@ def _make_fheusdtm_deal(
     margin_short_reversal: bool = False,
     position: Position = Position.long,
 ) -> Any:
-    """Minimal PositionDeal stub shaped after the FHEUSDTM production case."""
-    deal = cast(Any, PositionDeal.__new__(PositionDeal))
+    """Minimal Lifecycle stub shaped after the FHEUSDTM production case."""
+    deal = cast(Any, Lifecycle.__new__(Lifecycle))
     deal.price_precision = 5
     deal.kucoin_symbol = "FHEUSDTM"
     deal.symbol_info = types.SimpleNamespace(futures_leverage=2)
@@ -139,7 +139,7 @@ def test_execute_stop_loss_passes_reference_price_to_sell():
     deal = _make_fheusdtm_deal()
     deal.kucoin_futures_api = types.SimpleNamespace(sell=fake_sell)
 
-    PositionDeal.execute_stop_loss(deal, reference_price=0.02252)
+    Lifecycle.execute_stop_loss(deal, reference_price=0.02252)
 
     assert captured.get("reference_price") == pytest.approx(0.02252, abs=1e-6)
 
@@ -169,7 +169,7 @@ def test_execute_stop_loss_passes_reference_price_to_buy_for_short():
     deal = _make_fheusdtm_deal(position=Position.short, stop_loss_price=0.02334)
     deal.kucoin_futures_api = types.SimpleNamespace(buy=fake_buy)
 
-    PositionDeal.execute_stop_loss(deal, reference_price=0.02245)
+    Lifecycle.execute_stop_loss(deal, reference_price=0.02245)
 
     assert captured.get("reference_price") == pytest.approx(0.02245, abs=1e-6)
 
@@ -201,7 +201,7 @@ def test_paper_trading_execute_stop_loss_uses_reference_price_as_fill():
     deal.controller = PaperCtrlStub()
     deal.active_bot.deal.current_price = 0.0224  # the wick low
 
-    PositionDeal.execute_stop_loss(deal, reference_price=0.02252)
+    Lifecycle.execute_stop_loss(deal, reference_price=0.02252)
 
     assert len(saved) > 0
     closing_price = saved[-1].deal.closing_price
@@ -244,6 +244,6 @@ def test_reverse_position_passes_reference_price_to_close_leg():
         create=lambda bot: BotModel(**bot.model_dump()),
     )
 
-    PositionDeal.reverse_position(deal, reference_price=0.02252)
+    Lifecycle.reverse_position(deal, reference_price=0.02252)
 
     assert captured.get("reference_price") == pytest.approx(0.02252, abs=1e-6)

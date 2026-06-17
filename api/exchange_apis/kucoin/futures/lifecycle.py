@@ -31,9 +31,9 @@ from streaming.futures_position import FuturesPosition
 from streaming.spot_position import SpotPosition
 
 
-class PositionDeal(KucoinPositionDeal):
+class Lifecycle(KucoinPositionDeal):
     """
-    Position-based implementation for Kucoin futures trading.
+    Position lifecycle for Kucoin futures trading.
 
     Previously called FuturesLongDeal, but long or short position logic is all handled within this class
     since Kucoin Futures logic allows easy isolated margin and switching positions.
@@ -44,6 +44,7 @@ class PositionDeal(KucoinPositionDeal):
     """
 
     TRAILING_STOP_REFRESH_MIN_IMPROVEMENT_RATIO = 0.002
+    TRAILING_STOP_REPLACE_COOLDOWN_MS = 5 * 60 * 1000
     RECOVERY_ATR_WINDOW = 14
     RECOVERY_STRUCTURE_WINDOW = 4
     RECOVERY_STOP_CAP_PCT = 6.5
@@ -78,8 +79,12 @@ class PositionDeal(KucoinPositionDeal):
         current_stop_price: float,
         new_stop_price: float,
         direction: int,
+        last_replace_ts_ms: int | None = None,
     ) -> bool:
         if new_stop_price <= 0:
+            return False
+
+        if self.trailing_stop_replace_on_cooldown(last_replace_ts_ms):
             return False
 
         if current_stop_price <= 0:
@@ -93,6 +98,17 @@ class PositionDeal(KucoinPositionDeal):
             abs(current_stop_price) * self.TRAILING_STOP_REFRESH_MIN_IMPROVEMENT_RATIO
         )
         return improvement >= min_improvement
+
+    def trailing_stop_replace_on_cooldown(self, last_replace_ts_ms: int | None) -> bool:
+        if not last_replace_ts_ms or last_replace_ts_ms <= 0:
+            return False
+
+        now_ms = int(time() * 1000)
+        return now_ms - last_replace_ts_ms < self.TRAILING_STOP_REPLACE_COOLDOWN_MS
+
+    def last_trailing_stop_replace_ts_ms(self) -> int | None:
+        _, ts, _ = self._bot_known_trailing_stop_loss()
+        return ts
 
     def place_reversal_reentry_order(
         self,
@@ -159,15 +175,13 @@ class PositionDeal(KucoinPositionDeal):
         """
         deal_buy_price = self.active_bot.deal.opening_price
         buy_total_qty = self.active_bot.deal.opening_qty
-        take_profit_pct = float(self.active_bot.take_profit or 0) / 100
+        take_profit_pct = self.active_bot.take_profit / 100
         take_profit_multiplier = (
             1 - take_profit_pct
             if self.active_bot.position == Position.short
             else 1 + take_profit_pct
         )
-        self.active_bot.deal.take_profit_price = take_profit_multiplier * float(
-            deal_buy_price
-        )
+        self.active_bot.deal.take_profit_price = take_profit_multiplier * deal_buy_price
         close_side = (
             OrderSide.buy
             if self.active_bot.position == Position.short
@@ -176,7 +190,11 @@ class PositionDeal(KucoinPositionDeal):
 
         # Paper trading: do not hit the exchange, just simulate an order
         if isinstance(self.controller, PaperTradingTableCrud):
-            price = float(self.active_bot.deal.current_price or deal_buy_price)
+            price = (
+                self.active_bot.deal.current_price
+                if self.active_bot.deal.current_price > 0
+                else deal_buy_price
+            )
             qty = round_numbers(buy_total_qty, 8)
             order_data = OrderModel(
                 timestamp=int(time() * 1000),
@@ -259,10 +277,10 @@ class PositionDeal(KucoinPositionDeal):
 
             # Use reference_price as the simulated fill price when available so
             # paper-trade results reflect the anti-wick capped behaviour.
-            price = float(
+            price = (
                 reference_price
                 if reference_price is not None
-                else (self.active_bot.deal.current_price or 0)
+                else self.active_bot.deal.current_price
             )
             close_side = (
                 OrderSide.buy
@@ -351,7 +369,7 @@ class PositionDeal(KucoinPositionDeal):
         if isinstance(self.controller, PaperTradingTableCrud):
             # all qty simulated
             qty = self.active_bot.deal.opening_qty or 1.0
-            price = float(self.active_bot.deal.current_price or 0)
+            price = self.active_bot.deal.current_price
             close_side = (
                 OrderSide.buy
                 if self.active_bot.position == Position.short
@@ -380,17 +398,38 @@ class PositionDeal(KucoinPositionDeal):
             qty = round_numbers(
                 abs(float(position.current_qty)) * repurchase_multiplier, 8
             )
+            intended_price = self.active_bot.deal.trailing_stop_loss_price
+            _, last_replace_ts_ms, trailing_order_id = (
+                self._bot_known_trailing_stop_loss()
+            )
+            exchange_ok, exchange_price = self._exchange_stop_loss_price(
+                order_id=trailing_order_id
+            )
+            if exchange_ok:
+                if exchange_price is None and self.trailing_stop_replace_on_cooldown(
+                    last_replace_ts_ms
+                ):
+                    return self.active_bot
+                if (
+                    exchange_price is not None
+                    and not self.should_replace_stop_loss_order(
+                        current_stop_price=exchange_price,
+                        new_stop_price=intended_price,
+                        last_replace_ts_ms=last_replace_ts_ms,
+                        cooldown_ms=self.TRAILING_STOP_REPLACE_COOLDOWN_MS,
+                    )
+                ):
+                    return self.active_bot
+            elif self.trailing_stop_replace_on_cooldown(last_replace_ts_ms):
+                return self.active_bot
+
             action = "buy" if self.active_bot.position == Position.short else "sell"
             self.controller.update_logs(
                 f"Dispatching futures {action} order for trailing profit...",
                 self.active_bot,
             )
 
-            # since trailing_profit only runs when trail is broken
-            # we can assume stop loss needs to be replaced
-            # if it constantly runs, then we need to add conditional logic
-            # to avoid cancelling constantly
-            self.cancel_current_sl()
+            self.cancel_current_trailing_sl()
 
             if self.active_bot.position == Position.short:
                 order_base: OrderBase = self.kucoin_futures_api.place_futures_order(
@@ -423,13 +462,17 @@ class PositionDeal(KucoinPositionDeal):
         self.remove_stale_orders()
         self.active_bot.orders.append(order_data)
 
-        if order_data.status != OrderStatus.FILLED:
+        if order_data.status == OrderStatus.FILLED:
             self.active_bot.add_log(
-                f"Trailing profit order not filled immediately, got status {order_data.status}"
+                "Completed futures take profit after failing to break trailing"
+            )
+        elif order_data.status == OrderStatus.NEW:
+            self.active_bot.add_log(
+                f"Trailing stop armed on exchange with status {order_data.status}"
             )
         else:
             self.active_bot.add_log(
-                "Completed futures take profit after failing to break trailing"
+                f"Trailing stop placement returned status {order_data.status}; verify exchange order state"
             )
 
         self.controller.save(self.active_bot)
@@ -441,18 +484,27 @@ class PositionDeal(KucoinPositionDeal):
         a stop order. The bot-side trailing price is the intended exit once
         trailing has armed.
         """
-        intended_price = float(self.active_bot.deal.trailing_stop_loss_price)
+        intended_price = self.active_bot.deal.trailing_stop_loss_price
         if intended_price <= 0:
             return
 
-        exchange_ok, exchange_price = self._exchange_stop_loss_price()
+        _, last_replace_ts_ms, trailing_order_id = self._bot_known_trailing_stop_loss()
+        exchange_ok, exchange_price = self._exchange_stop_loss_price(
+            order_id=trailing_order_id
+        )
         if not exchange_ok:
+            return
+
+        if exchange_price is None and self.trailing_stop_replace_on_cooldown(
+            last_replace_ts_ms
+        ):
             return
 
         if exchange_price is not None and not self.should_replace_stop_loss_order(
             current_stop_price=exchange_price,
             new_stop_price=intended_price,
-            last_replace_ts_ms=None,
+            last_replace_ts_ms=last_replace_ts_ms,
+            cooldown_ms=self.TRAILING_STOP_REPLACE_COOLDOWN_MS,
         ):
             return
 
@@ -521,7 +573,7 @@ class PositionDeal(KucoinPositionDeal):
                 structure_distance_pct + self.RECOVERY_FALLBACK_BUFFER_PCT
             )
             recovery_stop_pct = max(
-                float(self.active_bot.stop_loss),
+                self.active_bot.stop_loss,
                 buffered_structure_pct,
             )
             self.active_bot.add_log(
@@ -533,7 +585,7 @@ class PositionDeal(KucoinPositionDeal):
                 structure_distance_pct + self.RECOVERY_STRUCTURE_ATR_BUFFER * atr_pct
             )
             recovery_stop_pct = max(
-                float(self.active_bot.stop_loss),
+                self.active_bot.stop_loss,
                 buffered_structure_pct,
                 self.RECOVERY_ATR_FLOOR_MULTIPLIER * atr_pct,
             )
@@ -623,7 +675,7 @@ class PositionDeal(KucoinPositionDeal):
 
     def _start_recovery_cooldown(self) -> None:
         configured_symbol_cooldown = int(getattr(self.symbol_info, "cooldown", 0) or 0)
-        bot_cooldown_seconds = int(self.active_bot.cooldown or 0) * 60
+        bot_cooldown_seconds = self.active_bot.cooldown * 60
         cooldown_seconds = max(
             configured_symbol_cooldown,
             bot_cooldown_seconds,
@@ -705,7 +757,7 @@ class PositionDeal(KucoinPositionDeal):
         if self.active_bot.name not in self._NO_REVERSAL_AFTER_LOSS_NAMES:
             return False
         try:
-            cooldown_minutes = max(int(self.active_bot.cooldown or 0), 240)
+            cooldown_minutes = max(self.active_bot.cooldown, 240)
             window_ms = cooldown_minutes * 60 * 1000
             now_ms = int(time() * 1000)
             candidates = self.controller.get(
@@ -931,7 +983,7 @@ class PositionDeal(KucoinPositionDeal):
                 exit_reference_price = closed_close
 
         # panic close low activity assets
-        opening_price = float(self.active_bot.deal.opening_price)
+        opening_price = self.active_bot.deal.opening_price
         bot_profit = (
             ((current_price - opening_price) / opening_price) * 100 * direction
             if opening_price > 0
@@ -952,7 +1004,7 @@ class PositionDeal(KucoinPositionDeal):
             return self.active_bot
 
         recovery_params = self.active_bot.recovery_params
-        sl_pct = float(self.active_bot.stop_loss)
+        sl_pct = self.active_bot.stop_loss
         is_recovery_bot = self._is_recovery_bot()
         if (
             is_recovery_bot
@@ -963,7 +1015,7 @@ class PositionDeal(KucoinPositionDeal):
             self.active_bot.stop_loss = sl_pct
 
         if self.active_bot.deal.stop_loss_price == 0:
-            entry_price = float(self.active_bot.deal.opening_price)
+            entry_price = self.active_bot.deal.opening_price
             # ATR-equivalent floor for low-priced perpetuals: tick-noise on
             # sub-$0.05 contracts routinely exceeds the configured 2.5% SL,
             # so we widen the band to 4% to avoid pure-noise stop-outs.
@@ -999,7 +1051,7 @@ class PositionDeal(KucoinPositionDeal):
             )
 
             if source_reversal_requires_confirmation:
-                stop_loss_price = float(self.active_bot.deal.stop_loss_price)
+                stop_loss_price = self.active_bot.deal.stop_loss_price
                 emergency_price, emergency_pct = self.recovery_emergency_stop_price(
                     stop_loss_price=stop_loss_price,
                     completed_candles=completed_candles,
@@ -1102,15 +1154,15 @@ class PositionDeal(KucoinPositionDeal):
 
             # First activation: derive the next trailing trigger from entry or the last trailing stop.
             if self.active_bot.deal.trailing_stop_loss_price == 0:
-                trailing_price = float(self.active_bot.deal.opening_price) * (
-                    1 + direction * (float(self.active_bot.trailing_profit) / 100)
+                trailing_price = self.active_bot.deal.opening_price * (
+                    1 + direction * (self.active_bot.trailing_profit / 100)
                 )
                 trailing_price = round_numbers(trailing_price, self.price_precision)
             else:
                 # Advance the trailing trigger in the profitable direction.
-                trailing_price = float(
-                    self.active_bot.deal.trailing_stop_loss_price
-                ) * (1 + direction * (self.active_bot.trailing_profit / 100))
+                trailing_price = self.active_bot.deal.trailing_stop_loss_price * (
+                    1 + direction * (self.active_bot.trailing_profit / 100)
+                )
                 trailing_price = round_numbers(trailing_price, self.price_precision)
 
             self.active_bot.deal.trailing_profit_price = round_numbers(
@@ -1144,6 +1196,7 @@ class PositionDeal(KucoinPositionDeal):
                     current_stop_price=self.active_bot.deal.trailing_stop_loss_price,
                     new_stop_price=new_trailing_stop_loss,
                     direction=direction,
+                    last_replace_ts_ms=self.last_trailing_stop_replace_ts_ms(),
                 ):
                     self.active_bot.deal.trailing_stop_loss_price = (
                         new_trailing_stop_loss
@@ -1182,7 +1235,7 @@ class PositionDeal(KucoinPositionDeal):
 
     def update_short_trailing(self, close_price: float) -> None:
         deal = self.active_bot.deal
-        opening_price = float(deal.opening_price)
+        opening_price = deal.opening_price
         if opening_price <= 0:
             return
 
@@ -1190,8 +1243,8 @@ class PositionDeal(KucoinPositionDeal):
             self.close_price = close_price
             self.active_bot.deal.current_price = close_price
 
-        take_profit_pct = float(self.active_bot.take_profit) / 100
-        deviation_pct = float(self.active_bot.trailing_deviation) / 100
+        take_profit_pct = self.active_bot.take_profit / 100
+        deviation_pct = self.active_bot.trailing_deviation / 100
 
         if deal.trailing_stop_loss_price == 0:
             price_reference = (

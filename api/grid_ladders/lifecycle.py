@@ -115,7 +115,7 @@ class GridLadderLifecycle:
                 return
 
             # Panic close stale ladders with flat PnL after 1.5 days (mirrors
-            # PositionDeal.exit stale-position logic).
+            # Lifecycle.exit stale-position logic).
             if self._is_stale(ladder):
                 total_pnl = float(ladder.realized_pnl or 0) + float(
                     ladder.unrealized_pnl or 0
@@ -605,7 +605,7 @@ class GridLadderLifecycle:
 
     def _is_stale(self, ladder: GridLadderTable) -> bool:
         """True when the ladder has been running for 1.5 days with flat PnL
-        (between -1% and +1% of total_margin), mirroring PositionDeal's
+        (between -1% and +1% of total_margin), mirroring Lifecycle's
         panic-close logic for low-activity positions."""
         if not ladder.created_at:
             return False

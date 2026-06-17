@@ -7,7 +7,7 @@ from databases.crud.bot_crud import BotTableCrud
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.tables.deal_table import DealTable
-from exchange_apis.kucoin.futures.position_deal import PositionDeal
+from exchange_apis.kucoin.futures.lifecycle import Lifecycle
 from pybinbot import DealType, MarketType, OrderStatus, Status
 from sqlalchemy.pool import StaticPool
 from sqlmodel import SQLModel, Session, create_engine
@@ -195,13 +195,13 @@ def test_exit_pending_calls_open_deal_and_returns_early():
         self.active_bot.status = Status.active
         return self.active_bot
 
-    position_deal = cast(Any, PositionDeal.__new__(PositionDeal))
+    position_deal = cast(Any, Lifecycle.__new__(Lifecycle))
     position_deal.active_bot = bot
     position_deal.controller = StubController()
     position_deal.price_precision = 2
     position_deal.open_deal = lambda: stub_open_deal(position_deal)
 
-    result = PositionDeal.exit(position_deal, close_price=100.0)
+    result = Lifecycle.exit(position_deal, close_price=100.0)
 
     assert open_deal_calls == [True]
     assert result.status == Status.active
