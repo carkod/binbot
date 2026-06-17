@@ -202,6 +202,9 @@ def test_base_order_downsizes_when_margin_size_exceeds_available_balance():
         def get_futures_position(self, symbol):
             return types.SimpleNamespace(mark_price=10)
 
+        def get_mark_price(self, symbol):
+            return 10
+
         def retrieve_order(self, order_id):
             # Simulate an already-filled entry so base_order() activates immediately.
             return types.SimpleNamespace(filled_size="9", avg_deal_price="10")
