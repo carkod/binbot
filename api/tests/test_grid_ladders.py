@@ -11,6 +11,7 @@ from pybinbot import (
     DealType,
     ExchangeId,
     GridLadderStatus,
+    KucoinErrors,
     MarketType,
     OrderBase,
     OrderStatus,
@@ -81,6 +82,17 @@ def _patch_balance(monkeypatch, fiat_available: float) -> None:
 
         def get_balance(self):
             return balance
+
+    monkeypatch.setattr("grid_ladders.routes.ConsolidatedAccounts", Accounts)
+
+
+def _patch_balance_error(monkeypatch, error: Exception) -> None:
+    class Accounts:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def get_balance(self):
+            raise error
 
     monkeypatch.setattr("grid_ladders.routes.ConsolidatedAccounts", Accounts)
 
@@ -379,6 +391,16 @@ def test_post_grid_ladder_persists_ladder_and_levels(client, monkeypatch):
         "sell",
         "sell",
     ]
+
+
+def test_post_grid_ladder_returns_kucoin_rate_limit_error(client, monkeypatch):
+    _patch_balance_error(monkeypatch, KucoinErrors("Too many requests", "429000"))
+    _patch_contract_meta(monkeypatch)
+
+    response = client.post("/grid-ladders", json=_payload())
+
+    assert response.status_code == 429
+    assert response.json()["detail"] == "Kucoin 429000 Too many requests"
 
 
 def test_post_grid_ladder_rejects_second_active_ladder_for_same_symbol(

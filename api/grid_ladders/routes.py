@@ -11,7 +11,12 @@ from databases.crud.grid_ladder_crud import GridLadderCrud
 from databases.tables.grid_ladder_table import GridLadderTable
 from databases.tables.symbol_table import SymbolTable
 from databases.utils import get_session
-from pybinbot import ExchangeId, GridLadderStatus, KucoinFutures, MarketType
+from pybinbot import (
+    ExchangeId,
+    GridLadderStatus,
+    KucoinFutures,
+    MarketType,
+)
 from pybinbot.models.grid_ladder import (
     GridLadderCloseRequest,
     GridLadderListResponse,
@@ -23,6 +28,7 @@ from grid_ladders.capital import GridCapitalSettings
 from grid_ladders.models import GridLadderCreate
 from grid_ladders.sizing import KucoinGridMarginRules
 from tools.config import Config
+from tools.handle_error import kucoin_rate_limit_detail
 from user.models.user import UserTokenData
 from user.services.auth import get_current_user
 
@@ -186,7 +192,13 @@ def post_grid_ladder(
 
     active_ladders = grid_ladder_crud.get_active()
 
-    balance = ConsolidatedAccounts(session=session).get_balance()
+    try:
+        balance = ConsolidatedAccounts(session=session).get_balance()
+    except Exception as error:
+        detail = kucoin_rate_limit_detail(error)
+        if detail is not None:
+            raise HTTPException(status_code=429, detail=detail) from error
+        raise
     available_fiat_balance = balance.fiat_available
     try:
         GridCapitalSettings(session).evaluate_grid_capital(
@@ -197,12 +209,18 @@ def post_grid_ladder(
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
-    sizer = _build_margin_sizer(
-        session,
-        payload.symbol,
-        payload.exchange,
-        payload.market_type,
-    )
+    try:
+        sizer = _build_margin_sizer(
+            session,
+            payload.symbol,
+            payload.exchange,
+            payload.market_type,
+        )
+    except Exception as error:
+        detail = kucoin_rate_limit_detail(error)
+        if detail is not None:
+            raise HTTPException(status_code=429, detail=detail) from error
+        raise
     try:
         calculated = calculate_grid_levels(
             range_low=payload.range_low,

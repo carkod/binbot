@@ -57,6 +57,22 @@ def json_response_error(message):
     return json_response(body, status=422)
 
 
+def kucoin_rate_limit_detail(error: Exception) -> str | None:
+    code = getattr(error, "code", None)
+    message = getattr(error, "message", None)
+    if str(code) == "429000":
+        return f"Kucoin {code} {message or 'Too many requests'}"
+
+    error_text = str(error)
+    if "429000" in error_text:
+        message_text = (
+            "Too many requests" if "Too many requests" in error_text else error_text
+        )
+        return f"Kucoin 429000 {message_text}"
+
+    return None
+
+
 def encode_json(raw):
     return jsonable_encoder(raw)
 
