@@ -799,16 +799,6 @@ class Lifecycle(KucoinPositionDeal):
         through the anti-wick escalation path so the reversal close doesn't fill
         into a wick.
         """
-        if self._is_recovery_bot():
-            self.active_bot.add_log(
-                "Recovery stop loss reached; closing without another reversal."
-            )
-            self.active_bot = self.execute_stop_loss(reference_price=reference_price)
-            if self.active_bot.status == Status.completed:
-                self._start_recovery_cooldown()
-                self.controller.save(self.active_bot)
-            return self.active_bot
-
         source_bot = self.active_bot
         target_position = (
             Position.short if source_bot.position == Position.long else Position.long
@@ -880,10 +870,7 @@ class Lifecycle(KucoinPositionDeal):
         recovery_trailing_deviation = float(source_bot.trailing_deviation)
         recovery_margin_short_reversal = source_bot.margin_short_reversal
 
-        if (
-            source_recovery_params is not None
-            and source_recovery_params.reversal_path == "source"
-        ):
+        if source_recovery_params is not None:
             recovery_stop_pct = self.compute_recovery_stop_loss_pct(
                 reference_price=float(closing_order.price),
                 target_position=target_position,
@@ -1044,13 +1031,9 @@ class Lifecycle(KucoinPositionDeal):
                 recovery_params is not None
                 and recovery_params.reversal_path == "source"
             )
-            source_reversal_requires_confirmation = (
-                not is_recovery_bot
-                and self.active_bot.margin_short_reversal
-                and recovery_source_enabled
-            )
+            reversal_requires_confirmation = recovery_params is not None
 
-            if source_reversal_requires_confirmation:
+            if reversal_requires_confirmation:
                 stop_loss_price = self.active_bot.deal.stop_loss_price
                 emergency_price, emergency_pct = self.recovery_emergency_stop_price(
                     stop_loss_price=stop_loss_price,
@@ -1108,14 +1091,6 @@ class Lifecycle(KucoinPositionDeal):
                     "Recovery candle confirmation approved: completed candle "
                     f"closed beyond {stop_loss_price} with an opposite "
                     f"{target_position.value} body breakout."
-                )
-                self.active_bot = self.reverse_position(
-                    reference_price=exit_reference_price
-                )
-            elif is_recovery_bot:
-                self.controller.update_logs(
-                    "Recovery stop loss reached; closing and starting symbol cooldown.",
-                    self.active_bot,
                 )
                 self.active_bot = self.reverse_position(
                     reference_price=exit_reference_price

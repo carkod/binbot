@@ -1,3 +1,14 @@
+import aiohttp.streams as _aiohttp_streams
+
+# aiohttp 3.14 removed AsyncStreamReaderMixin; shim it back for vcrpy compatibility
+# until vcrpy#996 lands in a release.
+if not hasattr(_aiohttp_streams, "AsyncStreamReaderMixin"):
+
+    class _AsyncStreamReaderMixin:
+        """Backfill stub — aiohttp 3.14 removed this class."""
+
+    _aiohttp_streams.AsyncStreamReaderMixin = _AsyncStreamReaderMixin  # type: ignore[attr-defined]
+
 from fastapi.testclient import TestClient
 from pybinbot import UserRoles
 import pytest
