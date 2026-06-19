@@ -6,12 +6,15 @@ export function getProfit(
   base_price: number,
   current_price: number,
   position = BotPosition.LONG,
+  qty = 1,
 ) {
-  if (base_price && current_price) {
-    let percent = ((current_price - base_price) / base_price) * 100;
+  if (base_price && current_price && qty) {
+    const costBasis = base_price * qty;
+    let realizedPnl = (current_price - base_price) * qty;
     if (position === BotPosition.SHORT) {
-      percent = percent * -1;
+      realizedPnl = realizedPnl * -1;
     }
+    const percent = (realizedPnl / costBasis) * 100;
     return parseFloat(percent.toFixed(2));
   }
   return 0;
@@ -50,7 +53,11 @@ export function computeSingleBotProfit(
           : bot.deal.current_price;
     const buyPrice = bot.deal.opening_price;
     if (currentPrice > 0) {
-      const profitChange = getProfit(buyPrice, currentPrice, bot.position);
+      const qty =
+        bot.deal.closing_price > 0 && bot.deal.closing_qty > 0
+          ? bot.deal.closing_qty
+          : 1;
+      const profitChange = getProfit(buyPrice, currentPrice, bot.position, qty);
       return roundDecimals(profitChange, 2);
     }
     return 0;
@@ -62,6 +69,7 @@ export function computeSingleBotProfit(
       bot.deal.opening_price,
       bot.deal.closing_price,
       bot.position,
+      bot.deal.closing_qty,
     );
     return roundDecimals(profitChange, 2);
   }
@@ -94,7 +102,9 @@ export function computeTotalProfit(bots: Bot[] = []) {
       return accumulator;
     }
 
-    const profit = getProfit(openingPrice, closingPrice, bot.position);
+    const closingQty = bot?.deal?.closing_qty ?? 0;
+    const qty = closingOverride > 0 && closingQty > 0 ? closingQty : 1;
+    const profit = getProfit(openingPrice, closingPrice, bot.position, qty);
     return accumulator + profit;
   }, 0);
   return roundDecimals(totalProfit, 2);
