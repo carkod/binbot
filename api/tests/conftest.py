@@ -9,33 +9,31 @@ if not hasattr(_aiohttp_streams, "AsyncStreamReaderMixin"):
 
     _aiohttp_streams.AsyncStreamReaderMixin = _AsyncStreamReaderMixin  # type: ignore[attr-defined]
 
-from fastapi.testclient import TestClient
-from pybinbot import UserRoles
-import pytest
-from pathlib import Path
-from unittest.mock import MagicMock, patch, Mock
-from uuid import UUID
 from contextlib import contextmanager
-from sqlmodel import SQLModel, create_engine, Session
-from sqlalchemy.pool import StaticPool
-from user.models.user import UserTokenData
-from user.services.auth import get_current_user
-from databases.utils import get_session
-from databases.tables.autotrade_table import AutotradeTable
-from databases.tables.bot_table import BotTable
-from databases.tables.deal_table import DealTable
-from main import app
+from pathlib import Path
+from unittest.mock import MagicMock, Mock, patch
+from uuid import UUID
 
 # The import below is required to register all models for SQLModel metadata. Do not remove!
 import databases.tables  # noqa: F401
-
+import pytest
+from databases.tables.autotrade_table import AutotradeTable
+from databases.tables.bot_table import BotTable
+from databases.tables.deal_table import DealTable
+from databases.utils import get_session
+from fastapi.testclient import TestClient
+from main import app
+from pybinbot import UserRoles
+from sqlalchemy.pool import StaticPool
+from sqlmodel import Session, SQLModel, create_engine
+from tests.fixtures.paper_trading import seed_paper_trading_defaults
 from tests.fixtures.symbol_fixtures import (
-    get_test_symbols,
     get_test_asset_indices,
     get_test_symbol_index_links,
+    get_test_symbols,
 )
-from tests.fixtures.paper_trading import seed_paper_trading_defaults
-
+from user.models.user import UserTokenData
+from user.services.auth import get_current_user
 
 # Global variable to store test engine for use in patches
 _test_engine = None
