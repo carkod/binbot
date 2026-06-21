@@ -1,4 +1,5 @@
 .DS_Store
+.claude/
 .env.local
 .env.prod
 .env.development.local

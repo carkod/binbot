@@ -94,6 +94,20 @@ class KucoinPositionDeal(KucoinBaseBalance):
             recovery_params is not None and recovery_params.reversal_path == "recovery"
         )
 
+    def _reversal_eligible(self) -> bool:
+        """True for any bot that should exit bot-side and run the gated reversal
+        logic rather than relying on a native exchange stop order.
+
+        Covers:
+        - source bots (margin_short_reversal=True, reversal_path="source")
+        - recovery bots (margin_short_reversal=False, reversal_path="recovery")
+        - plain margin-short bots (margin_short_reversal=True, no recovery_params)
+        """
+        return (
+            self.active_bot.margin_short_reversal
+            or self.active_bot.recovery_params is not None
+        )
+
     @staticmethod
     def partition_klines(
         klines: list,
@@ -278,7 +292,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         current exchange position yet; it estimates contracts from the current
         market and then reuses the internal affordability logic.
         """
-        if not self.active_bot.margin_short_reversal or self.active_bot.stop_loss <= 0:
+        if not self._reversal_eligible() or self.active_bot.stop_loss <= 0:
             return True
 
         side = (
@@ -709,13 +723,15 @@ class KucoinPositionDeal(KucoinBaseBalance):
              move is material and the cooldown has elapsed.
 
         Skipped when:
-          - margin_short_reversal is active (handled elsewhere)
+          - bot is reversal-eligible (margin_short_reversal=True or recovery_params set);
+            those bots exit bot-side via exit() so a native exchange stop must not be
+            placed or it would complete the bot before the gated reversal can run.
           - trailing has armed (trailing_stop_loss_price != 0); in that
             mode the exit is bot-side, the emergency SL is left alone.
         """
         if self.active_bot.stop_loss <= 0:
             return
-        if self.active_bot.margin_short_reversal:
+        if self._reversal_eligible():
             return
         if self.active_bot.deal.trailing_stop_loss_price != 0:
             trailing_reconciler = getattr(self, "reconcile_trailing_stop_loss", None)

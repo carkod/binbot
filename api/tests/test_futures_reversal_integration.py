@@ -495,26 +495,54 @@ def test_source_reversal_skips_recovery_and_starts_cooldown_when_structure_too_w
     ]
 
 
-def test_recovery_reversal_closes_only_and_starts_symbol_cooldown():
+def test_recovery_reversal_with_valid_structure_creates_new_recovery_bot():
+    """A recovery bot stopping out should chain to another recovery hop (infinite chain)."""
+    bot = make_long_bot()
+    bot.stop_loss = 2.5
+    bot.trailing_profit = 2.0
+    bot.trailing_deviation = 1.0
+    mark_as_recovery(bot)
+    futures_api = DummyFuturesApi(current_qty=68)
+    position_deal, controller = make_position_deal(bot, futures_api)
+    position_deal.klines = recovery_klines(
+        high=1.30,
+        low=1.24,
+        close=1.267,
+        closed_count=4,
+    )
+
+    reversed_bot = position_deal.reverse_position()
+
+    assert reversed_bot.position == Position.short
+    assert reversed_bot.status == Status.pending
+    assert reversed_bot.margin_short_reversal is False
+    assert reversed_bot.recovery_params is not None
+    assert reversed_bot.recovery_params.reversal_path == "recovery"
+    assert reversed_bot.recovery_params.source_contracts == 68
+    assert reversed_bot.stop_loss <= Lifecycle.RECOVERY_STOP_CAP_PCT
+    assert len(futures_api.sell_calls) == 1
+    assert futures_api.sell_calls[0]["reduce_only"] is True
+    assert position_deal.symbols_crud.cooldowns == []
+
+
+def test_recovery_reversal_skips_new_bot_when_structure_too_wide():
+    """Wide structure on a recovery bot hop should close and start cooldown, not chain."""
     bot = make_long_bot()
     mark_as_recovery(bot)
     futures_api = DummyFuturesApi(current_qty=68)
     position_deal, controller = make_position_deal(bot, futures_api)
-    stop_loss_calls: list[float | None] = []
+    position_deal.klines = recovery_klines(
+        high=1.40,
+        low=1.20,
+        close=1.267,
+        closed_count=4,
+    )
 
-    def execute_stop_loss(reference_price: float | None = None) -> BotModel:
-        stop_loss_calls.append(reference_price)
-        bot.status = Status.completed
-        return bot
-
-    position_deal.execute_stop_loss = execute_stop_loss
-
-    result = position_deal.reverse_position(reference_price=1.25)
+    result = position_deal.reverse_position()
 
     assert result.status == Status.completed
-    assert stop_loss_calls == [1.25]
     assert controller.created == []
-    assert futures_api.sell_calls == []
+    assert len(futures_api.sell_calls) == 1
     assert position_deal.symbols_crud.cooldowns == [
         {
             "symbol": "BTCUSDT",
@@ -674,4 +702,93 @@ def test_emergency_breach_closes_source_without_recovery(monkeypatch):
     assert reverse_calls == []
     assert controller.created == []
     assert any("Recovery emergency threshold breached" in log for log in result.logs)
+    assert len(position_deal.symbols_crud.cooldowns) == 1
+
+
+# ---------------------------------------------------------------------------
+# Recovery-chain: exit() gated path for recovery bots (infinite hop tests)
+# ---------------------------------------------------------------------------
+
+
+def prepare_kat_recovery_bot() -> BotModel:
+    """Like prepare_kat_source_bot() but marked as a recovery hop."""
+    bot = make_long_bot()
+    bot.pair = "KATUSDTM"
+    bot.stop_loss = 4
+    bot.trailing = False
+    bot.deal.opening_price = 0.00644
+    bot.deal.stop_loss_price = 0.00618
+    bot.margin_short_reversal = False
+    mark_as_recovery(bot, stop_loss_pct=4.0)
+    return bot
+
+
+def test_recovery_bot_exit_all_gates_passed_calls_reverse_position(monkeypatch):
+    """Recovery bot stopping out with a confirmed candle body breakout should
+    call reverse_position(), not close terminally."""
+    event_time = datetime(2026, 6, 10, 0, 0, 1, tzinfo=timezone.utc)
+    set_lifecycle_time(monkeypatch, event_time)
+    bot = prepare_kat_recovery_bot()
+    position_deal, _ = make_position_deal(bot, DummyFuturesApi(150))
+    position_deal.price_precision = 5
+    position_deal.klines = kat_klines(include_2345_close=True)
+    reverse_calls: list[float | None] = []
+
+    def reverse_position(reference_price: float | None = None) -> BotModel:
+        reverse_calls.append(reference_price)
+        bot.position = Position.short
+        return bot
+
+    position_deal.reverse_position = reverse_position
+
+    result = position_deal.exit(0.00615)
+
+    assert result.position == Position.short
+    assert reverse_calls == [0.00616]
+    assert any("Recovery candle confirmation approved" in log for log in result.logs)
+
+
+def test_recovery_bot_exit_body_breakout_rejected_closes_terminally(monkeypatch):
+    """Recovery bot stopping out without a valid body breakout should close via
+    _close_source_without_recovery — no further chain, cooldown started."""
+    event_time = datetime(2026, 6, 10, 0, 0, 1, tzinfo=timezone.utc)
+    set_lifecycle_time(monkeypatch, event_time)
+    bot = prepare_kat_recovery_bot()
+    position_deal, controller = make_position_deal(bot, DummyFuturesApi(150))
+    position_deal.price_precision = 5
+    candles = kat_klines()
+    candles[-1][4] = 0.00615
+    candles.append(
+        timestamped_kline(
+            int(datetime(2026, 6, 9, 23, 45, tzinfo=timezone.utc).timestamp() * 1000),
+            0.00619,
+            0.00622,
+            0.00615,
+            0.00617,
+        )
+    )
+    position_deal.klines = candles
+    stop_calls: list[float | None] = []
+    reverse_calls: list[float | None] = []
+
+    def execute_stop_loss(reference_price: float | None = None) -> BotModel:
+        stop_calls.append(reference_price)
+        bot.status = Status.completed
+        return bot
+
+    position_deal.execute_stop_loss = execute_stop_loss
+
+    def reverse_position(reference_price: float | None = None) -> BotModel:
+        reverse_calls.append(reference_price)
+        return bot
+
+    position_deal.reverse_position = reverse_position
+
+    result = position_deal.exit(0.00616)
+
+    assert result.status == Status.completed
+    assert stop_calls == [0.00617]
+    assert reverse_calls == []
+    assert controller.created == []
+    assert any("Recovery body breakout rejected" in log for log in result.logs)
     assert len(position_deal.symbols_crud.cooldowns) == 1

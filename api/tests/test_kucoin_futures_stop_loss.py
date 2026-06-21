@@ -597,6 +597,31 @@ def test_reconcile_exchange_sl_skips_for_margin_short_reversal():
     assert calls == []
 
 
+def test_reconcile_exchange_sl_skips_for_recovery_bot():
+    """Recovery bots exit bot-side; they must not receive a native exchange stop."""
+    from uuid import uuid4
+
+    calls: list[str] = []
+    deal = _make_deal(margin_short_reversal=False)
+    recovery_id = uuid4()
+    deal.active_bot.recovery_mode_id = recovery_id
+    deal.active_bot.recovery_params = RecoveryBotModel(
+        id=recovery_id,
+        reversal_path="recovery",
+        source_contracts=68,
+        source_loss_fiat=2.5,
+        stop_loss_pct=3.0,
+        created_at=1,
+        updated_at=1,
+    )
+    deal.cancel_current_sl = lambda: calls.append("cancel")
+    deal.place_stop_loss = lambda: calls.append("place")
+
+    KucoinPositionDeal.reconcile_exchange_sl(deal)
+
+    assert calls == []
+
+
 def test_reconcile_exchange_sl_places_when_exchange_missing():
     """Drift case: bot expected an SL, exchange has none — re-place it."""
     calls: list[str] = []
@@ -693,7 +718,10 @@ def test_exit_keeps_stale_loser_below_panic_close_band(monkeypatch):
     assert closed == []
 
 
-def test_exit_uses_recovery_stop_and_closes_without_second_flip():
+def test_exit_uses_recovery_stop_and_defers_without_candle_confirmation():
+    """Recovery bot: recovery_params.stop_loss_pct overrides the bot's stop_loss.
+    When the live price barely breaches the stop but no completed candle confirms it,
+    the exit defers (no close, no flip) until the next tick."""
     deal = _make_position_deal(
         stop_loss=1.0,
         stop_loss_price=0,
@@ -716,18 +744,29 @@ def test_exit_uses_recovery_stop_and_closes_without_second_flip():
         update_logs=lambda *args, **kwargs: None,
     )
     reverse_calls: list[float | None] = []
+    stop_calls: list[float | None] = []
 
     def reverse_position(reference_price: float | None = None) -> BotModel:
         reverse_calls.append(reference_price)
         return deal.active_bot
 
+    def execute_stop_loss(reference_price: float | None = None) -> BotModel:
+        stop_calls.append(reference_price)
+        return deal.active_bot
+
     deal.reverse_position = reverse_position
+    deal.execute_stop_loss = execute_stop_loss
 
     Lifecycle.exit(deal, 94.9)
 
+    # Recovery SL pct applied from recovery_params
     assert deal.active_bot.stop_loss == 5
     assert deal.active_bot.deal.stop_loss_price == 95
-    assert reverse_calls == [None]
+    # Price at 94.9 is only 0.11% below stop — within the emergency buffer (0.75%).
+    # No completed candle to confirm, so exit defers; no close or flip this tick.
+    assert reverse_calls == []
+    assert stop_calls == []
+    assert any("Recovery reversal deferred" in log for log in deal.active_bot.logs)
 
 
 def test_reconcile_exchange_sl_skips_on_api_failure():
