@@ -1,15 +1,13 @@
 from collections.abc import Sequence
-from datetime import datetime, timezone
 from typing import Any
-
 from sqlmodel import Session, col, select
-
 from databases.utils import get_db_session
 from databases.web3_candidates import (
     Web3CandidateCreate,
     Web3CandidateTable,
     Web3CandidateUpdate,
 )
+from tools.utils import utc_now
 
 
 class Web3CandidatesCrud:
@@ -126,7 +124,7 @@ class Web3CandidatesCrud:
             )
             for field, value in updates.items():
                 setattr(row, field, value)
-            row.updated_at = datetime.now(timezone.utc)
+            row.updated_at = utc_now()
             session.add(row)
             session.commit()
             session.refresh(row)

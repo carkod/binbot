@@ -1,12 +1,11 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Any, Sequence, cast
-
 from sqlalchemy.orm import load_only
 from sqlmodel import Session, col, delete, select
 from sqlmodel.sql.expression import SelectOfScalar
-
 from databases.tables.signals_table import SignalsTable
 from databases.utils import get_db_session
+from tools.utils import utc_now
 
 
 class SignalsCrud:
@@ -131,7 +130,7 @@ class SignalsCrud:
             ]
 
     def delete_entries_older_than_14_days(self) -> int:
-        cutoff = datetime.now(timezone.utc) - timedelta(days=14)
+        cutoff = utc_now() - timedelta(days=14)
         stmt = delete(SignalsTable).where(col(SignalsTable.generated_at) < cutoff)
         if self._external_session is not None:
             result = self._external_session.exec(stmt)

@@ -1,7 +1,6 @@
 import logging
 from datetime import datetime, timezone
 from typing import Any, Iterable, cast
-
 from sqlalchemy import Table
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, func
@@ -16,6 +15,7 @@ from kucoin_universal_sdk.generate.spot.market.model_get_symbol_resp import (
 )
 from pybinbot import BinanceApi, ExchangeId, KucoinApi
 from tools.config import Config
+from tools.utils import utc_now
 
 
 class MarketDominationController:
@@ -112,7 +112,7 @@ class MarketDominationController:
         else:
             adp = 0.0
 
-        timestamp = timestamp or datetime.now(timezone.utc)
+        timestamp = timestamp or utc_now()
 
         return AdrSeriesDb(
             timestamp=timestamp,

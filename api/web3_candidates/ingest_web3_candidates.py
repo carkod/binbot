@@ -3,8 +3,8 @@ import logging
 import re
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
-from typing import Any, cast
+from datetime import datetime, timezone
+from typing import Any
 from urllib.parse import urljoin
 
 import requests
@@ -15,15 +15,7 @@ from databases.crud.web3_candidates import Web3CandidatesCrud
 from databases.web3_candidates import Web3CandidateCreate
 
 
-KUCOIN_API_BASE = "https://api.kucoin.com"
 KUCOIN_WEB_BASE = "https://www.kucoin.com"
-ANNOUNCEMENT_ENDPOINT = f"{KUCOIN_API_BASE}/api/v3/announcements"
-
-ANNOUNCEMENT_TYPES = (
-    "latest-announcements",
-    "new-listings",
-    "activities",
-)
 
 KUCOIN_PAGES = {
     "kucoin_announcement": "https://www.kucoin.com/announcement",
@@ -126,15 +118,9 @@ class IngestWeb3Candidates:
         self,
         session: Session | None = None,
         *,
-        days: int = 14,
-        page_size: int = 50,
-        max_pages: int = 5,
         timeout: int = 15,
         sleep_s: float = 0.35,
     ) -> None:
-        self.days = days
-        self.page_size = page_size
-        self.max_pages = max_pages
         self.timeout = timeout
         self.sleep_s = sleep_s
         self.crud = Web3CandidatesCrud(session)
@@ -169,94 +155,7 @@ class IngestWeb3Candidates:
         return {"created": created, "updated": updated, "total": len(candidates)}
 
     def run(self) -> list[LaunchCandidate]:
-        candidates: list[LaunchCandidate] = []
-        candidates.extend(self.fetch_all_announcement_candidates())
-        candidates.extend(self.fetch_all_page_candidates())
-        return self.dedupe(candidates)
-
-    def fetch_all_announcement_candidates(self) -> list[LaunchCandidate]:
-        candidates: list[LaunchCandidate] = []
-        now = datetime.now(timezone.utc)
-        start = now - timedelta(days=self.days)
-        start_ms = int(start.timestamp() * 1000)
-        end_ms = int(now.timestamp() * 1000)
-
-        for announcement_type in ANNOUNCEMENT_TYPES:
-            for page in range(1, self.max_pages + 1):
-                params = {
-                    "currentPage": page,
-                    "pageSize": self.page_size,
-                    "annType": announcement_type,
-                    "lang": "en_US",
-                    "startTime": start_ms,
-                    "endTime": end_ms,
-                }
-                try:
-                    payload = self.get_json(ANNOUNCEMENT_ENDPOINT, params=params)
-                except Exception as exc:
-                    logging.warning(
-                        "KuCoin announcement fetch failed for type=%s page=%s: %s",
-                        announcement_type,
-                        page,
-                        exc,
-                    )
-                    break
-
-                data = cast(dict[str, Any], payload.get("data") or {})
-                items = data.get("items") or []
-                for item in items:
-                    if not isinstance(item, dict):
-                        continue
-                    candidate = self.candidate_from_announcement(
-                        item, announcement_type
-                    )
-                    if candidate:
-                        candidates.append(candidate)
-
-                total_page = int(data.get("totalPage") or 1)
-                if page >= total_page:
-                    break
-                time.sleep(self.sleep_s)
-
-        return candidates
-
-    def candidate_from_announcement(
-        self, item: dict[str, Any], announcement_type: str
-    ) -> LaunchCandidate | None:
-        title = str(item.get("annTitle") or "").strip()
-        description = str(item.get("annDesc") or "").strip()
-        text = f"{title}\n{description}"
-        matched_keywords = self.match_keywords(text)
-        symbol_data = self.extract_project_symbol(text)
-
-        if not matched_keywords and not symbol_data.get("symbol"):
-            return None
-
-        raw_url = item.get("annUrl")
-        url = urljoin(KUCOIN_WEB_BASE, str(raw_url)) if raw_url else None
-        announced_at = self.timestamp_ms_to_datetime(item.get("cTime"))
-
-        confidence = 0.45
-        if matched_keywords:
-            confidence += 0.25
-        if symbol_data.get("symbol"):
-            confidence += 0.20
-        if announcement_type == "new-listings":
-            confidence += 0.10
-
-        return LaunchCandidate(
-            source=f"kucoin_announcements:{announcement_type}",
-            source_type="api",
-            title=title,
-            url=url,
-            project_name=symbol_data.get("project_name"),
-            symbol=symbol_data.get("symbol"),
-            announced_at=announced_at,
-            matched_keywords=matched_keywords,
-            extracted_times=self.extract_times(text),
-            confidence=min(confidence, 1.0),
-            raw=item,
-        )
+        return self.dedupe(self.fetch_all_page_candidates())
 
     def fetch_all_page_candidates(self) -> list[LaunchCandidate]:
         candidates: list[LaunchCandidate] = []
@@ -357,19 +256,6 @@ class IngestWeb3Candidates:
             confidence=min(confidence, 1.0),
             raw=raw,
         )
-
-    def get_json(
-        self, url: str, params: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
-        response = self.request_with_retries("GET", url, params=params)
-        payload = response.json()
-        if not isinstance(payload, dict):
-            raise RuntimeError(f"Unexpected JSON payload from {url}")
-
-        code = payload.get("code")
-        if code and code != "200000":
-            raise RuntimeError(f"KuCoin API error {code}: {payload}")
-        return payload
 
     def get_text(self, url: str) -> str:
         return self.request_with_retries("GET", url).text
@@ -482,12 +368,6 @@ class IngestWeb3Candidates:
     @staticmethod
     def extract_times(text: str) -> list[str]:
         return [match.group(0) for match in UTC_TIME_RE.finditer(text)]
-
-    @staticmethod
-    def timestamp_ms_to_datetime(value: Any) -> datetime | None:
-        if isinstance(value, int | float):
-            return datetime.fromtimestamp(value / 1000, tz=timezone.utc)
-        return None
 
     @staticmethod
     def dedupe(candidates: list[LaunchCandidate]) -> list[LaunchCandidate]:

@@ -1,14 +1,10 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, Field as PydanticField
 from sqlalchemy import BigInteger, Column, DateTime, Integer, String, Text, func
 from sqlmodel import Field, SQLModel
-from tools.utils import JsonVariant
-
-
-def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+from tools.utils import JsonVariant, utc_now
 
 
 class Web3CandidateBase(BaseModel):

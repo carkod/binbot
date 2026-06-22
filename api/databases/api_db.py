@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import timedelta
 from databases.tables.inquiry_table import InquiryTable
 from databases.symbols_etl import SymbolDataEtl
 from databases.tables.autotrade_table import AutotradeTable, TestAutotradeTable
@@ -27,6 +27,7 @@ from exchange_apis.binance.assets import Assets
 from databases.crud.symbols_crud import SymbolsCrud
 from databases.crud.asset_index_crud import AssetIndexCrud
 from tools.config import Config as AppConfig
+from tools.utils import utc_now
 
 
 class ApiDb:
@@ -79,7 +80,7 @@ class ApiDb:
             if autotrade
             else ExchangeId.BINANCE.value
         )
-        now = datetime.now(timezone.utc).replace(microsecond=0) - timedelta(minutes=30)
+        now = utc_now().replace(microsecond=0) - timedelta(minutes=30)
         seed = MarketBreadthTable(
             timestamp=now,
             source=source,
