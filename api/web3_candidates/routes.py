@@ -25,8 +25,7 @@ def create_web3_candidate(
     row = Web3CandidatesCrud(session).create(payload)
     return {
         "message": "Web3 candidate created",
-        "data": row,
-        "error": 0,
+        "detail": row,
     }
 
 
@@ -51,8 +50,7 @@ def list_web3_candidates(
     )
     return {
         "message": "Web3 candidates retrieved",
-        "data": rows,
-        "error": 0,
+        "detail": rows,
     }
 
 
@@ -67,8 +65,7 @@ def get_web3_candidate(
         raise HTTPException(status_code=404, detail="Web3 candidate not found")
     return {
         "message": "Web3 candidate retrieved",
-        "data": row,
-        "error": 0,
+        "detail": row,
     }
 
 

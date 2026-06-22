@@ -3,12 +3,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field as PydanticField
 from sqlalchemy import BigInteger, Column, DateTime, Integer, String, Text, func
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.types import JSON
 from sqlmodel import Field, SQLModel
-
-
-JsonVariant = JSON().with_variant(JSONB(), "postgresql")
+from tools.utils import JsonVariant
 
 
 def utc_now() -> datetime:
