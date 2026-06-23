@@ -109,25 +109,25 @@ class AdrSeriesDb(BaseModel):
     strength_index: float
 
 
-class AdrSeries(BaseModel):
+class MarketBreadthSeries(BaseModel):
     """
-    Read shape returned by GET /charts/adr-series.
+    Read shape returned by GET /charts/market-breadth.
 
     Parallel arrays (newest-first) so the frontend can plot directly without
-    pivoting. Every field except adp_ma is read straight from the stored
-    columns; adp_ma is a rolling window computed in SQL.
+    pivoting. Every field except market_breadth_ma is read straight from the
+    stored columns; market_breadth_ma is a rolling window computed in SQL.
     """
 
     timestamp: list[str]
     advancers: list[int]
     decliners: list[int]
-    adp: list[float]
-    adp_ma: list[float | None]
+    market_breadth: list[float]
+    market_breadth_ma: list[float | None]
     avg_gain: list[float]
     avg_loss: list[float]
     total_volume: list[float]
     strength_index: list[float]
 
 
-class AdrSeriesResponse(StandardResponse):
-    data: AdrSeries
+class MarketBreadthSeriesResponse(StandardResponse):
+    data: MarketBreadthSeries

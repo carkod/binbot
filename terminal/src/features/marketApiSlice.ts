@@ -18,8 +18,8 @@ export interface AdData {
   timestamp: string[];
   advancers: number[];
   decliners: number[];
-  adp: number[];
-  adp_ma: number[];
+  market_breadth: number[];
+  market_breadth_ma: number[];
   total_volume: number[];
   strength_index: number[];
 }
@@ -35,7 +35,7 @@ export const marketApiSlice = userApiSlice.injectEndpoints({
   endpoints: (build) => ({
     adSeries: build.query<AdData, void>({
       query: () => ({
-        url: `${import.meta.env.VITE_AD_SERIES}?size=100`,
+        url: `${import.meta.env.VITE_MARKET_BREADTH}?size=100`,
         providesTags: ["ad-series"],
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {

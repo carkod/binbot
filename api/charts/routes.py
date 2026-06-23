@@ -6,30 +6,30 @@ from tools.handle_error import (
     json_response_error,
 )
 from charts.controllers import MarketDominationController
-from charts.models import AdrSeriesResponse
+from charts.models import MarketBreadthSeriesResponse
 
 charts_blueprint = APIRouter()
 
 
 @charts_blueprint.get(
-    "/adr-series",
+    "/market-breadth",
     tags=["charts"],
-    summary="Similar to market_domination, renamed and lighter data size",
-    response_model=AdrSeriesResponse,
+    summary="Market breadth time-series (advancers/decliners ratio)",
+    response_model=MarketBreadthSeriesResponse,
 )
-def get_adr_series(size: int = 14, session: Session = Depends(get_session)):
+def get_market_breadth(size: int = 14, session: Session = Depends(get_session)):
     try:
         data = MarketDominationController(session=session).get_adrs(size)
         if not data:
-            raise HTTPException(404, detail="No ADR data found")
+            raise HTTPException(404, detail="No market breadth data found")
 
         return json_response(
             {
                 "data": data,
-                "message": "Successfully retrieved ADR series data.",
+                "message": "Successfully retrieved market breadth data.",
                 "error": 0,
             }
         )
 
     except Exception as error:
-        return json_response_error(f"Failed to retrieve ADR series data: {error}")
+        return json_response_error(f"Failed to retrieve market breadth data: {error}")
