@@ -23,6 +23,7 @@ from databases.tables.deal_table import DealTable  # noqa
 from databases.tables.order_table import ExchangeOrderTable, FakeOrderTable  # noqa
 from databases.tables.user_table import UserTable  # noqa
 from databases.tables.bot_table import BotTable, PaperTradingTable  # noqa
+from databases.web3_candidates import Web3CandidateTable  # noqa
 from databases.tables.account_balances import (  # noqa
     BalancesTable,
     ConsolidatedBalancesTable,

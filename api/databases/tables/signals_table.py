@@ -1,13 +1,8 @@
 from datetime import datetime
 from typing import Any
 from sqlalchemy import Column, DateTime
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.types import JSON
 from sqlmodel import SQLModel, Field
-
-
-# JSONB on Postgres, plain JSON on SQLite/other dialects (so tests still work).
-JsonVariant = JSON().with_variant(JSONB(), "postgresql")
+from tools.utils import JsonVariant
 
 
 class SignalsTable(SQLModel, table=True):

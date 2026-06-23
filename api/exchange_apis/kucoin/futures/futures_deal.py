@@ -175,17 +175,12 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self.active_bot.add_log(
                 f"Recovery entry rejected: unable to load reliable candle data ({exc})."
             )
-            raise BinbotErrors(
-                "Unable to load reliable candle data for recovery-enabled entry."
-            ) from exc
+            pass
 
         completed_candles, current_candle = self.partition_klines(klines)
         if not completed_candles or current_candle is None:
-            self.active_bot.add_log(
-                "Recovery entry rejected: current candle or previous completed candle is unavailable."
-            )
             raise BinbotErrors(
-                "Reliable current and completed candles are required for recovery-enabled entry."
+                "Reliable current and completed candles are unavailable for recovery entry."
             )
 
         previous_close = float(completed_candles[-1][4])
@@ -193,9 +188,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
         if previous_close <= 0 or current_open <= 0:
             self.active_bot.add_log(
                 "Recovery entry rejected: candle open or previous close is invalid."
-            )
-            raise BinbotErrors(
-                "Valid candle prices are required for recovery-enabled entry."
             )
 
         if self.active_bot.position == Position.short:
@@ -226,16 +218,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
             f"({allowance_source}), limit={entry_limit_price}."
         )
         return entry_limit_price
-
-    def create_controller(self) -> PaperTradingTableCrud | BotTableCrud:
-        """
-        Separate sessions to avoid locking database
-        when continuously saving (self.controller.save)
-        """
-        if isinstance(self.controller, PaperTradingTableCrud):
-            return PaperTradingTableCrud()
-        else:
-            return BotTableCrud()
 
     def calculate_contracts(self, balance: float, price: float) -> int:
         """

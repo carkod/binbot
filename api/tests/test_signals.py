@@ -2,10 +2,10 @@ from datetime import datetime, timezone, timedelta
 
 import pytest
 from sqlmodel import Session, delete, select
-
 from databases.crud.signals_crud import SignalsCrud
 from databases.tables.signals_table import SignalsTable
 from tests import conftest
+from tools.utils import utc_now
 
 
 def _make_session() -> Session:
@@ -136,7 +136,7 @@ def test_query_can_skip_payload_columns():
 def test_delete_entries_older_than_14_days_removes_only_stale_rows():
     session = _make_session()
     crud = SignalsCrud(session)
-    now = datetime.now(timezone.utc)
+    now = utc_now()
     crud.create(
         algorithm_name="stale_strategy",
         symbol="BTCUSDC",

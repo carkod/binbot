@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import Annotated
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -8,6 +8,7 @@ from passlib.context import CryptContext
 from pybinbot import UserRoles
 from pydantic import BaseModel
 from user.models.user import UserTokenData
+from tools.utils import utc_now
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/user/login")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -34,9 +35,9 @@ def get_password_hash(password):
 def create_access_token(email: str, role: str):
     expires_delta = timedelta(minutes=int(os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"]))
     if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
+        expire = utc_now() + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+        expire = utc_now() + timedelta(minutes=15)
 
     data = {
         "sub": email,

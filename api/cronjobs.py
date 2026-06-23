@@ -7,6 +7,7 @@ from charts.controllers import MarketDominationController
 from databases.utils import independent_session
 from pybinbot import ExchangeId, configure_logging
 from tools.config import Config
+from web3_candidates.ingest_web3_candidates import IngestWeb3Candidates
 
 
 def main():
@@ -18,13 +19,14 @@ def main():
     market_domination = MarketDominationController()
     symbols_crud = SymbolDataEtl(session=independent_session())
     signals_crud = SignalsCrud()
+    web3_candidates_ingester = IngestWeb3Candidates(session=independent_session())
 
     autotrade_settings = assets.autotrade_settings
     exchange = ExchangeId(autotrade_settings.exchange_id)
 
     # Jobs should be distributed as far as possible from each other
     # to avoid overloading RAM and also avoid hitting rate limits due to high weight
-    # that's why they are placed at midnight
+    # that's why they are placed in off-peak windows.
     scheduler.add_job(
         func=symbols_crud.etl_symbols_ingestion,
         trigger="cron",
@@ -50,6 +52,14 @@ def main():
         hour=1,
         minute=5,
         id="delete_old_signals",
+    )
+    scheduler.add_job(
+        func=web3_candidates_ingester.ingest_web3_candidates,
+        trigger="cron",
+        timezone=config.timezone,
+        hour=6,
+        minute=0,
+        id="ingest_web3_candidates",
     )
     if exchange == ExchangeId.BINANCE:
         scheduler.add_job(

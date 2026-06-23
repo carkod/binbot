@@ -23,6 +23,7 @@ from pybinbot import configure_logging
 from signals.routes import signals_blueprint
 from symbols.routes import symbols_blueprint
 from user.routes import user_blueprint
+from web3_candidates.routes import web3_candidates_blueprint
 
 configure_logging()
 
@@ -73,6 +74,7 @@ app.include_router(inquiries_router)
 app.include_router(portfolio_blueprint)
 app.include_router(signals_blueprint)
 app.include_router(grid_ladder_blueprint)
+app.include_router(web3_candidates_blueprint)
 
 
 @app.exception_handler(RequestValidationError)
