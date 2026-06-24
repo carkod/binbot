@@ -1,17 +1,19 @@
-from typing import Type
 from datetime import datetime
+from typing import Type
+
+from pybinbot import (
+    BotModel,
+    DealType,
+    ExchangeId,
+    OrderStatus,
+    Status,
+    convert_to_kucoin_symbol,
+    round_numbers,
+)
+
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from exchange_apis.kucoin.futures.position_market import PositionMarket
 from streaming.base import BaseStreaming
-from bots.models import BotModel
-from pybinbot import (
-    DealType,
-    OrderStatus,
-    Status,
-    ExchangeId,
-    round_numbers,
-    convert_to_kucoin_symbol,
-)
 
 
 class SpotPosition(PositionMarket):

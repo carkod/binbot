@@ -2,14 +2,12 @@ from copy import deepcopy
 from time import time
 from typing import Type, Union
 
-from bots.models import BotModel
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from kucoin_universal_sdk.generate.futures.positions.model_get_position_details_resp import (
     GetPositionDetailsResp,
 )
 from pybinbot import (
     BinanceApi,
+    BotModel,
     Candles,
     ExchangeId,
     HABollinguerSpread,
@@ -22,6 +20,9 @@ from pybinbot import (
     convert_to_kucoin_symbol,
     round_numbers,
 )
+
+from databases.tables.bot_table import BotTable, PaperTradingTable
+from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from streaming.apex_flow_closing import ApexFlowClose
 from streaming.base import BaseStreaming
 from tools.utils import clamp

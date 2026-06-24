@@ -2,13 +2,23 @@ from datetime import datetime, timezone
 from typing import Any, cast
 from uuid import uuid4
 
-from bots.models import BotModel, OrderModel, RecoveryBotModel
+from kucoin_universal_sdk.model.common import RestError
+from pybinbot import (
+    BotModel,
+    DealType,
+    MarketType,
+    OrderModel,
+    OrderStatus,
+    Position,
+    QuoteAssets,
+    RecoveryBotModel,
+    Status,
+)
+
 from databases.tables.bot_table import BotTable
 from databases.tables.deal_table import DealTable
 from databases.tables.recovery_bot_table import RecoveryBotTable
 from exchange_apis.kucoin.futures.lifecycle import Lifecycle
-from kucoin_universal_sdk.model.common import RestError
-from pybinbot import MarketType, OrderStatus, QuoteAssets, Status, DealType, Position
 from tests.fixtures.mock_bot_table import make_mock_bot_active_model
 
 

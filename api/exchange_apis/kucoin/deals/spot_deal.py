@@ -1,22 +1,7 @@
 import logging
-from typing import Type, Union
-from pybinbot import (
-    round_numbers_floor,
-    round_numbers,
-    round_numbers_ceiling,
-    OrderStatus,
-    QuoteAssets,
-    Status,
-    DealType,
-    Position,
-)
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from databases.crud.bot_crud import BotTableCrud
-from databases.crud.symbols_crud import SymbolsCrud
-from bots.models import BotModel, OrderModel
-from exchange_apis.kucoin.deals.base import KucoinBaseBalance
 from time import sleep
+from typing import Type, Union
+
 from kucoin_universal_sdk.generate.margin.order.model_add_order_req import (
     AddOrderReq,
 )
@@ -24,7 +9,25 @@ from kucoin_universal_sdk.generate.margin.order.model_get_order_by_order_id_resp
     GetOrderByOrderIdResp,
 )
 from kucoin_universal_sdk.model.common import RestError
-from pybinbot import BinbotErrors
+from pybinbot import (
+    BinbotErrors,
+    BotModel,
+    DealType,
+    OrderModel,
+    OrderStatus,
+    Position,
+    QuoteAssets,
+    Status,
+    round_numbers,
+    round_numbers_ceiling,
+    round_numbers_floor,
+)
+
+from databases.crud.bot_crud import BotTableCrud
+from databases.crud.paper_trading_crud import PaperTradingTableCrud
+from databases.crud.symbols_crud import SymbolsCrud
+from databases.tables.bot_table import BotTable, PaperTradingTable
+from exchange_apis.kucoin.deals.base import KucoinBaseBalance
 
 
 class KucoinSpotDeal(KucoinBaseBalance):

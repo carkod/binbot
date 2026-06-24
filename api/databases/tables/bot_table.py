@@ -1,25 +1,27 @@
-from uuid import uuid4, UUID
 from typing import TYPE_CHECKING, Optional
-from pydantic import field_validator
-from sqlalchemy import JSON, Column, Enum
+from uuid import UUID, uuid4
+
 from pybinbot import (
-    QuoteAssets,
     BinanceKlineIntervals,
+    CloseConditions,
+    MarketType,
+    Position,
+    QuoteAssets,
     Status,
     timestamp,
-    MarketType,
-    CloseConditions,
-    Position,
 )
-from sqlmodel import Relationship, SQLModel, Field
-from databases.tables.order_table import ExchangeOrderTable, FakeOrderTable
+from pydantic import field_validator
+from sqlalchemy import JSON, Column, Enum
+from sqlmodel import Field, Relationship, SQLModel
+
 from databases.tables.deal_table import DealTable
+from databases.tables.order_table import ExchangeOrderTable, FakeOrderTable
 from databases.tables.recovery_bot_table import RecoveryBotTable
 
 # avoids circular imports
 # https://sqlmodel.tiangolo.com/tutorial/code-structure/#hero-model-file
 if TYPE_CHECKING:
-    from bots.models import BotModel
+    from pybinbot import BotModel
 
 
 class BotTable(SQLModel, table=True):

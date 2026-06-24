@@ -1,23 +1,25 @@
 from datetime import datetime, timedelta
 from time import sleep
-from exchange_apis.binance.orders import BinanceOrderController
-from databases.crud.symbols_crud import SymbolsCrud
-from databases.crud.balances_crud import BalancesCrud
-from databases.tables.bot_table import BotTable
-from databases.crud.autotrade_crud import AutotradeCrud
-from bots.models import BotModel
-from exchange_apis.binance.deals.factory import BinanceDeal
-from tools.handle_error import json_response
+from typing import Sequence
+
 from pybinbot import (
-    round_numbers,
-    ts_to_day,
-    Status,
     BinanceErrors,
+    BotModel,
     LowBalanceCleanupError,
     Position,
+    Status,
+    round_numbers,
+    ts_to_day,
 )
+
+from databases.crud.autotrade_crud import AutotradeCrud
+from databases.crud.balances_crud import BalancesCrud
 from databases.crud.bot_crud import BotTableCrud
-from typing import Sequence
+from databases.crud.symbols_crud import SymbolsCrud
+from databases.tables.bot_table import BotTable
+from exchange_apis.binance.deals.factory import BinanceDeal
+from exchange_apis.binance.orders import BinanceOrderController
+from tools.handle_error import json_response
 
 
 class Assets(BinanceOrderController):

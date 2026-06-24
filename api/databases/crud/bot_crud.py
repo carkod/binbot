@@ -1,33 +1,29 @@
-from typing import Any, List, Sequence, cast
 import re
+from typing import Any, List, Sequence, cast
 from uuid import UUID
 
-from sqlmodel import Session, col, select, asc, desc, case, func
-from sqlalchemy.orm import QueryableAttribute, selectinload
-from sqlalchemy.orm.attributes import flag_modified
-
-from bots.models import (
+from pybinbot import (
     AlgoRankingItem,
+    BinbotErrors,
+    BotBase,
     BotModel,
     OrderModel,
+    Position,
+    RecoveryParams,
+    SaveBotError,
+    Status,
+    timestamp,
+    ts_to_humandate,
 )
+from sqlalchemy.orm import QueryableAttribute, selectinload
+from sqlalchemy.orm.attributes import flag_modified
+from sqlmodel import Session, asc, case, col, desc, func, select
+
 from databases.tables.bot_table import BotTable
 from databases.tables.deal_table import DealTable
 from databases.tables.order_table import ExchangeOrderTable
 from databases.tables.recovery_bot_table import RecoveryBotTable
 from databases.utils import detach_bot_graph, get_db_session
-
-from pybinbot import (
-    Status,
-    ts_to_humandate,
-    timestamp,
-    SaveBotError,
-    BinbotErrors,
-    BotBase,
-    Position,
-    RecoveryParams,
-)
-
 
 # Deal with SQLModel vs mypy issues
 BOT_DEAL_REL = cast(QueryableAttribute[Any], BotTable.deal)

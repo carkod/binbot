@@ -1,9 +1,9 @@
-from pandas import Series
 import numpy as np
-from pybinbot import Indicators, KlineSchema
-from bots.models import BotModel
-from databases.crud.autotrade_crud import AutotradeCrud
+from pandas import Series
 from pandera.typing import DataFrame as TypedDataFrame
+from pybinbot import BotModel, Indicators, KlineSchema
+
+from databases.crud.autotrade_crud import AutotradeCrud
 
 
 class ApexFlowClose:

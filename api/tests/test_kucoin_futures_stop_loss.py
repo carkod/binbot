@@ -1,15 +1,25 @@
+import types
 from time import time
 from typing import Any, cast
-import types
 from uuid import uuid4
 
-from bots.models import BotModel, DealModel, OrderModel, RecoveryBotModel
-from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
-from exchange_apis.kucoin.futures.lifecycle import Lifecycle
-from pybinbot import MarketType, OrderBase, OrderStatus, DealType, Position
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import (
     AddOrderReq,
 )
+from pybinbot import (
+    BotModel,
+    DealModel,
+    DealType,
+    MarketType,
+    OrderBase,
+    OrderModel,
+    OrderStatus,
+    Position,
+    RecoveryBotModel,
+)
+
+from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
+from exchange_apis.kucoin.futures.lifecycle import Lifecycle
 
 
 def _make_deal(

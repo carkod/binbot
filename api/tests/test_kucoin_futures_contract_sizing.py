@@ -1,13 +1,22 @@
+import types
 from datetime import datetime, timezone
 from typing import Any, cast
-import types
 from uuid import uuid4
 
 import pytest
-from bots.models import BotModel, OrderModel, RecoveryBotModel
+from pybinbot import (
+    BinbotErrors,
+    BotModel,
+    DealType,
+    OrderBase,
+    OrderModel,
+    OrderStatus,
+    Position,
+    RecoveryBotModel,
+)
+
 from exchange_apis.kucoin.deals.base import KucoinBaseBalance
 from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
-from pybinbot import BinbotErrors, DealType, OrderBase, OrderStatus, Position
 from streaming.base import BaseStreaming
 from streaming.futures_position import FuturesPosition
 

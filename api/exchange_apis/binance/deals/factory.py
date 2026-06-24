@@ -1,22 +1,25 @@
 from time import sleep
 from typing import Type
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from databases.crud.symbols_crud import SymbolsCrud
-from bots.models import BotModel, OrderModel
+
 from pybinbot import (
-    OrderSide,
-    Status,
-    QuoteAssets,
-    round_numbers,
-    round_timestamp,
-    round_numbers_floor,
-    round_numbers_ceiling,
     BinanceErrors,
+    BotModel,
     DealType,
+    OrderModel,
+    OrderSide,
     Position,
+    QuoteAssets,
+    Status,
+    round_numbers,
+    round_numbers_ceiling,
+    round_numbers_floor,
+    round_timestamp,
 )
-from exchange_apis.binance.deals.base_deal import BaseDeal
+
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
+from databases.crud.symbols_crud import SymbolsCrud
+from databases.tables.bot_table import BotTable, PaperTradingTable
+from exchange_apis.binance.deals.base_deal import BaseDeal
 from tools.exceptions import TakeProfitError
 
 

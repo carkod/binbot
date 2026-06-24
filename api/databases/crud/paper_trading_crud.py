@@ -1,17 +1,17 @@
 import re
+from collections.abc import Sequence
 from typing import Any, List, cast
 from uuid import UUID
-from sqlmodel import Session, select, case, desc, asc
+
+from pybinbot import BinbotErrors, BotBase, BotModel, SaveBotError, Status
 from sqlalchemy.orm import QueryableAttribute, selectinload
+from sqlalchemy.orm.attributes import flag_modified
+from sqlmodel import Session, asc, case, desc, select
+
 from databases.tables.bot_table import PaperTradingTable
-from bots.models import BotModel
-from databases.utils import detach_bot_graph, get_db_session
-from pybinbot import Status, BotBase, BinbotErrors, SaveBotError
-from collections.abc import Sequence
 from databases.tables.deal_table import DealTable
 from databases.tables.order_table import FakeOrderTable
-from sqlalchemy.orm.attributes import flag_modified
-
+from databases.utils import detach_bot_graph, get_db_session
 
 PAPER_DEAL_REL = cast(QueryableAttribute[Any], PaperTradingTable.deal)
 PAPER_ORDERS_REL = cast(QueryableAttribute[Any], PaperTradingTable.orders)

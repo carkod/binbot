@@ -1,7 +1,6 @@
 from copy import deepcopy
 
-from bots.models import BotModel
-
+from pybinbot import BotModel
 
 mock_deal_data = {
     "id": "550e8400-e29b-41d4-a716-446655440000",

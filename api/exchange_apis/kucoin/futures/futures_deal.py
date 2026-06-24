@@ -1,21 +1,16 @@
 from time import time
 from typing import Any, Type
 
-from bots.models import BotModel, OrderModel
-from databases.crud.bot_crud import BotTableCrud
-from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from databases.crud.symbols_crud import SymbolsCrud
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from exchange_apis.kucoin.deals.base import KucoinBaseBalance
-from exchange_apis.kucoin.futures.balance import KucoinFuturesBalance
 from kucoin_universal_sdk.generate.futures.order import GetTradeHistoryReq
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
 from pybinbot import (
     BinanceKlineIntervals,
     BinbotErrors,
+    BotModel,
     DealType,
     KucoinFutures,
     OrderBase,
+    OrderModel,
     OrderStatus,
     OrderType,
     Position,
@@ -23,6 +18,13 @@ from pybinbot import (
     convert_to_kucoin_symbol,
     round_numbers,
 )
+
+from databases.crud.bot_crud import BotTableCrud
+from databases.crud.paper_trading_crud import PaperTradingTableCrud
+from databases.crud.symbols_crud import SymbolsCrud
+from databases.tables.bot_table import BotTable, PaperTradingTable
+from exchange_apis.kucoin.deals.base import KucoinBaseBalance
+from exchange_apis.kucoin.futures.balance import KucoinFuturesBalance
 from streaming.base import BaseStreaming
 
 
