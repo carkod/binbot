@@ -79,11 +79,11 @@ def main():
             id="clean_balance_assets",
         )
     scheduler.add_job(
-        func=market_domination.ingest_adp_data,
+        func=market_domination.ingest_market_breadth,
         trigger="interval",
         timezone=config.timezone,
-        minutes=30,
-        id="ingest_adp_data",
+        minutes=15,
+        id="ingest_market_breadth",
     )
     scheduler.start()
 

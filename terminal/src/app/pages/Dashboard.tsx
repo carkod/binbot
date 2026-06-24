@@ -580,9 +580,9 @@ export const DashboardPage: FC<{}> = () => {
       </Row>
       <Row>
         <Col>
-          {adpSeries?.adp && (
+          {adpSeries?.market_breadth && (
             <AdrCard
-              adr={adpSeries.adp}
+              market_breadth={adpSeries.market_breadth}
               strengthIndex={adpSeries.strength_index}
               timestamps={adpSeries.timestamp}
             />

@@ -5,7 +5,7 @@ from sqlalchemy import Table
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, func
 
-from charts.models import AdrSeries, AdrSeriesDb
+from charts.models import AdrSeriesDb, MarketBreadthSeries
 from databases.crud.autotrade_crud import AutotradeCrud
 from databases.crud.symbols_crud import SymbolsCrud
 from databases.tables.market_breadth_table import MarketBreadthTable
@@ -126,9 +126,9 @@ class MarketDominationController:
             strength_index=strength_index,
         )
 
-    def ingest_adp_data(self) -> dict[str, Any] | None:
+    def ingest_market_breadth(self) -> dict[str, Any] | None:
         """
-        Capture one market-breadth sample. Called every 30 min by the cron.
+        Capture one market-breadth sample. Called every 15 min by the cron.
         """
         if self.exchange == ExchangeId.KUCOIN:
             response = self.kucoin_api.spot_api.get_all_tickers()
@@ -165,8 +165,8 @@ class MarketDominationController:
     ) -> dict[str, list] | None:
         """
         Return parallel arrays (newest-first) for the last `size + window - 1`
-        samples. Every field is read straight from storage; adp_ma is a rolling
-        average over the previous `window` samples computed in SQL.
+        samples. Every field is read straight from storage; market_breadth_ma is
+        a rolling average over the previous `window` samples computed in SQL.
         """
         fetch_size = size + max(int(window) - 1, 0)
         win_preceding = max(int(window) - 1, 0)
@@ -198,7 +198,7 @@ class MarketDominationController:
             .add_columns(
                 func.avg(recent.c.adp)
                 .over(order_by=recent.c.timestamp, rows=(-win_preceding, 0))
-                .label("adp_ma"),
+                .label("market_breadth_ma"),
             )
             .order_by(recent.c.timestamp.desc())
         )
@@ -215,13 +215,13 @@ class MarketDominationController:
                 ts = datetime.fromisoformat(ts)
             return ts.strftime("%Y-%m-%d %H:%M:%S")
 
-        return AdrSeries(
+        return MarketBreadthSeries(
             timestamp=[_format_ts(r["timestamp"]) for r in rows],
             advancers=[r["advancers"] for r in rows],
             decliners=[r["decliners"] for r in rows],
-            adp=[float(r["adp"]) for r in rows],
-            adp_ma=[
-                float(r["adp_ma"]) if r["adp_ma"] is not None else None for r in rows
+            market_breadth=[float(r["adp"]) for r in rows],
+            market_breadth_ma=[
+                float(r["market_breadth_ma"]) if r["market_breadth_ma"] is not None else None for r in rows
             ],
             avg_gain=[float(r["avg_gain"]) for r in rows],
             avg_loss=[float(r["avg_loss"]) for r in rows],

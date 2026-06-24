@@ -39,7 +39,7 @@ def _clean_market_breadth():
         session.commit()
 
 
-def test_ingest_adp_data_uses_binance_ticker_payload():
+def test_ingest_market_breadth_uses_binance_ticker_payload():
     session = _make_session()
     controller = _make_controller(ExchangeId.BINANCE, session)
     controller.binance_api = SimpleNamespace(  # type: ignore[assignment]
@@ -68,7 +68,7 @@ def test_ingest_adp_data_uses_binance_ticker_payload():
         ]
     )
 
-    inserted = controller.ingest_adp_data()
+    inserted = controller.ingest_market_breadth()
 
     assert inserted is not None
     assert inserted["advancers"] == 1
@@ -87,7 +87,7 @@ def test_ingest_adp_data_uses_binance_ticker_payload():
     assert rows[0].source == ExchangeId.BINANCE.value
 
 
-def test_ingest_adp_data_uses_kucoin_all_tickers_payload():
+def test_ingest_market_breadth_uses_kucoin_all_tickers_payload():
     session = _make_session()
     controller = _make_controller(ExchangeId.KUCOIN, session)
     controller.kucoin_api = SimpleNamespace(  # type: ignore[assignment]
@@ -122,7 +122,7 @@ def test_ingest_adp_data_uses_kucoin_all_tickers_payload():
         )
     )
 
-    inserted = controller.ingest_adp_data()
+    inserted = controller.ingest_market_breadth()
 
     assert inserted is not None
     assert inserted["advancers"] == 1
@@ -133,7 +133,7 @@ def test_ingest_adp_data_uses_kucoin_all_tickers_payload():
     assert inserted["source"] == ExchangeId.KUCOIN.value
 
 
-def test_ingest_adp_data_skips_duplicate_timestamp_source():
+def test_ingest_market_breadth_skips_duplicate_timestamp_source():
     session = _make_session()
     controller = _make_controller(ExchangeId.BINANCE, session)
 
@@ -150,8 +150,8 @@ def test_ingest_adp_data_skips_duplicate_timestamp_source():
 
     controller.binance_api = SimpleNamespace(ticker_24=payload_factory)  # type: ignore[assignment]
 
-    first = controller.ingest_adp_data()
-    second = controller.ingest_adp_data()
+    first = controller.ingest_market_breadth()
+    second = controller.ingest_market_breadth()
 
     assert first is not None
     assert second is None  # unique constraint on (timestamp, source)
@@ -195,8 +195,8 @@ def test_get_adrs_returns_parallel_arrays_newest_first():
         "timestamp",
         "advancers",
         "decliners",
-        "adp",
-        "adp_ma",
+        "market_breadth",
+        "market_breadth_ma",
         "avg_gain",
         "avg_loss",
         "total_volume",
@@ -204,8 +204,8 @@ def test_get_adrs_returns_parallel_arrays_newest_first():
     ):
         assert key in result
         assert len(result[key]) == 4
-    # adp_ma is computed; first row in chronological order has just itself in the window
-    assert result["adp_ma"][-1] == pytest.approx(result["adp"][-1])
+    # market_breadth_ma is computed; first row in chronological order has just itself in the window
+    assert result["market_breadth_ma"][-1] == pytest.approx(result["market_breadth"][-1])
 
 
 def test_get_adrs_filters_by_exchange():

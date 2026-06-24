@@ -5,9 +5,10 @@ from sqlmodel import SQLModel, Field
 
 class MarketBreadthTable(SQLModel, table=True):
     """
-    ADR / market-breadth time-series. One row per (timestamp, source) sample,
-    written every 30 min by the ingest cron. Stored fields mirror the API
-    response 1:1 except adp_ma, which is a rolling window computed on read.
+    Market-breadth time-series. One row per (timestamp, source) sample,
+    written every 15 min by the ingest cron. The DB column is named `adp`
+    (advancers-decliners percentage); the API response exposes it as
+    `market_breadth`. `market_breadth_ma` is a rolling window computed on read.
     """
 
     __tablename__ = "market_breadth"

@@ -4,13 +4,13 @@ import { Card, Row, Col } from "react-bootstrap";
 import moment from "moment";
 
 type AdrCardProps = {
-  adr: number[];
+  market_breadth: number[];
   strengthIndex?: number[];
   timestamps: string[];
 };
 
 const AdrCard: React.FC<AdrCardProps> = ({
-  adr,
+  market_breadth,
   strengthIndex,
   timestamps,
 }) => {
@@ -20,15 +20,15 @@ const AdrCard: React.FC<AdrCardProps> = ({
         <Row>
           <Col lg="1" md="1" sm="1">
             <i
-              className={`fs-2 fa fa-suitcase ${adr[adr.length - 1] > 0 ? "text-success" : "text-danger"}`}
+              className={`fs-2 fa fa-suitcase ${market_breadth[market_breadth.length - 1] > 0 ? "text-success" : "text-danger"}`}
             />
           </Col>
           <Col lg="11" md="11" sm="11">
             <Card.Title as="h5" className="mt-0">
-              ADP Trend
+              Market Breadth Trend
             </Card.Title>
             <p className="u-text-left">
-              Shows the Advancers-Decliners percentage difference (ADP).
+              Shows the Advancers-Decliners ratio (market breadth).
               <br />
               Over 0 indicates positive reversal Under 0 indicates negative
               reversal.
@@ -41,14 +41,14 @@ const AdrCard: React.FC<AdrCardProps> = ({
           data={[
             {
               x: timestamps,
-              y: adr,
+              y: market_breadth,
               type: "scatter",
               mode: "lines+markers",
-              name: "ADP",
+              name: "Market Breadth",
               line: { color: "#007bff", width: 2 },
               marker: { size: 6 },
               fill: "tozeroy",
-              fillcolor: adr[adr.length - 1] > 0 ? "#28a74533" : "#dc354533", // green if last value positive, else red
+              fillcolor: market_breadth[market_breadth.length - 1] > 0 ? "#28a74533" : "#dc354533",
             },
             ...(strengthIndex && strengthIndex.length > 0
               ? [
@@ -75,7 +75,7 @@ const AdrCard: React.FC<AdrCardProps> = ({
               showgrid: false,
             },
             yaxis: {
-              title: "ADP",
+              title: "Market Breadth",
               showgrid: true,
               zeroline: false,
             },
