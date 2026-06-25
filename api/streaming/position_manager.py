@@ -1,17 +1,19 @@
 from typing import Type, Union
+
 from pandas import DataFrame
-from deals.gateway import DealGateway
-from bots.models import BotModel
-from databases.crud.autotrade_crud import AutotradeCrud
-from databases.tables.bot_table import BotTable, PaperTradingTable
 from pybinbot import (
-    ExchangeId,
     BinanceApi,
+    BotModel,
+    ExchangeId,
     KucoinApi,
 )
+
+from databases.crud.autotrade_crud import AutotradeCrud
+from databases.tables.bot_table import BotTable, PaperTradingTable
+from deals.gateway import DealGateway
+from exchange_apis.kucoin.futures.futures_deal import KucoinFutures
 from streaming.apex_flow_closing import ApexFlowClose
 from streaming.base import BaseStreaming
-from exchange_apis.kucoin.futures.futures_deal import KucoinFutures
 
 
 class PositionManager:

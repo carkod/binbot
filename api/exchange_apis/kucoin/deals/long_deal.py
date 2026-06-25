@@ -1,20 +1,23 @@
 from typing import Type
+
+from kucoin_universal_sdk.internal.infra.default_transport import RestError
 from pybinbot import (
-    round_numbers,
-    round_timestamp,
-    Status,
+    BotBase,
+    BotModel,
+    DealType,
+    OrderModel,
     OrderSide,
     OrderStatus,
-    BotBase,
-    DealType,
     Position,
+    Status,
+    round_numbers,
+    round_timestamp,
 )
-from databases.tables.bot_table import BotTable, PaperTradingTable
+
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from bots.models import BotModel, OrderModel
-from exchange_apis.kucoin.deals.spot_deal import KucoinSpotDeal
+from databases.tables.bot_table import BotTable, PaperTradingTable
 from exchange_apis.kucoin.deals.margin_deal import KucoinMarginDeal
-from kucoin_universal_sdk.internal.infra.default_transport import RestError
+from exchange_apis.kucoin.deals.spot_deal import KucoinSpotDeal
 
 
 class KucoinLongDeal(KucoinSpotDeal):

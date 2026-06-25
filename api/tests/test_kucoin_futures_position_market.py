@@ -1,13 +1,12 @@
-from typing import Any, cast
 import types
+from typing import Any, cast
 from uuid import uuid4
 
 import pandas as pd
+from pybinbot import BotModel, DealModel, MarketType, Position, RecoveryBotModel
 
-from bots.models import BotModel, DealModel, RecoveryBotModel
 from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from exchange_apis.kucoin.futures.position_market import PositionMarket
-from pybinbot import MarketType, Position
 
 
 class FakeApexFlowClose:

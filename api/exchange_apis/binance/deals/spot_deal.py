@@ -1,23 +1,26 @@
 import logging
 from typing import Type
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from databases.crud.symbols_crud import SymbolsCrud
+from urllib.error import HTTPError
+
 from pybinbot import (
-    OrderSide,
-    Status,
-    OrderStatus,
-    round_numbers,
-    round_timestamp,
     BotBase,
+    BotModel,
     CloseConditions,
     DealType,
+    OrderModel,
+    OrderSide,
+    OrderStatus,
     Position,
+    Status,
+    round_numbers,
+    round_timestamp,
 )
-from bots.models import BotModel, OrderModel
+
+from databases.crud.paper_trading_crud import PaperTradingTableCrud
+from databases.crud.symbols_crud import SymbolsCrud
+from databases.tables.bot_table import BotTable, PaperTradingTable
 from exchange_apis.binance.deals.factory import BinanceDeal
 from exchange_apis.binance.deals.margin_deal import BinanceMarginDeal
-from urllib.error import HTTPError
 
 
 class BinanceSpotDeal(BinanceDeal):

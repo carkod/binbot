@@ -22,10 +22,17 @@ import types
 from typing import Any, cast
 
 import pytest
-from bots.models import BotModel, DealModel
-from exchange_apis.kucoin.futures.lifecycle import Lifecycle
-from pybinbot import MarketType, OrderBase, OrderStatus, DealType, Position
+from pybinbot import (
+    BotModel,
+    DealModel,
+    DealType,
+    MarketType,
+    OrderBase,
+    OrderStatus,
+    Position,
+)
 
+from exchange_apis.kucoin.futures.lifecycle import Lifecycle
 
 # ---------------------------------------------------------------------------
 # Helpers

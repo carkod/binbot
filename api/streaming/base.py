@@ -1,23 +1,25 @@
 from datetime import datetime
 from typing import Union
-from bots.models import BotModel
+
+from pybinbot import (
+    BinanceApi,
+    BinanceKlineIntervals,
+    BinbotErrors,
+    BotModel,
+    ExchangeId,
+    KucoinApi,
+    KucoinFutures,
+    KucoinKlineIntervals,
+    Status,
+    round_numbers,
+)
+
 from databases.crud.autotrade_crud import AutotradeCrud
 from databases.crud.bot_crud import BotTableCrud
 from databases.crud.grid_ladder_crud import GridLadderCrud
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
 from databases.utils import get_db_session
-from pybinbot import (
-    BinanceApi,
-    BinanceKlineIntervals,
-    BinbotErrors,
-    ExchangeId,
-    KucoinKlineIntervals,
-    Status,
-    KucoinApi,
-    KucoinFutures,
-    round_numbers,
-)
 from tools.config import Config
 
 

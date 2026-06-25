@@ -1,33 +1,36 @@
 import logging
-from typing import Type, Tuple, Union
-from pybinbot import (
-    round_numbers_floor,
-    round_timestamp,
-    round_numbers,
-    round_numbers_ceiling,
-    OrderStatus,
-    QuoteAssets,
-    Status,
-    MarginLoanNotFound,
-    DealType,
-    Position,
-)
-from databases.crud.symbols_crud import SymbolsCrud
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from bots.models import BotModel, OrderModel
-from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from databases.crud.bot_crud import BotTableCrud
-from exchange_apis.kucoin.deals.base import KucoinBaseBalance
-from kucoin_universal_sdk.generate.spot.order.model_get_order_by_order_id_resp import (
-    GetOrderByOrderIdResp,
-)
 from time import sleep
-from kucoin_universal_sdk.generate.margin.order.model_add_order_req import (
-    AddOrderReq,
-)
+from typing import Tuple, Type, Union
+
 from kucoin_universal_sdk.generate.account.account.model_get_isolated_margin_account_resp import (
     GetIsolatedMarginAccountAssets,
 )
+from kucoin_universal_sdk.generate.margin.order.model_add_order_req import (
+    AddOrderReq,
+)
+from kucoin_universal_sdk.generate.spot.order.model_get_order_by_order_id_resp import (
+    GetOrderByOrderIdResp,
+)
+from pybinbot import (
+    BotModel,
+    DealType,
+    MarginLoanNotFound,
+    OrderModel,
+    OrderStatus,
+    Position,
+    QuoteAssets,
+    Status,
+    round_numbers,
+    round_numbers_ceiling,
+    round_numbers_floor,
+    round_timestamp,
+)
+
+from databases.crud.bot_crud import BotTableCrud
+from databases.crud.paper_trading_crud import PaperTradingTableCrud
+from databases.crud.symbols_crud import SymbolsCrud
+from databases.tables.bot_table import BotTable, PaperTradingTable
+from exchange_apis.kucoin.deals.base import KucoinBaseBalance
 
 
 class KucoinMarginDeal(KucoinBaseBalance):

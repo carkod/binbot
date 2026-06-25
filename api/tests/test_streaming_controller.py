@@ -1,26 +1,27 @@
-import types
 import time
+import types
+from typing import Any, cast
 
 import pandas as pd
 import pytest
-from bots.models import OrderModel
 from kucoin_universal_sdk.model.common import RestError
-from typing import Any, cast
-from pybinbot import MarketType
-from streaming.position_manager import PositionManager
-from streaming.base import BaseStreaming
+from pybinbot import (
+    BinanceErrors,
+    DealType,
+    ExchangeId,
+    HABollinguerSpread,
+    MarketType,
+    OrderModel,
+    OrderStatus,
+    Position,
+    Status,
+)
+
 from databases.tables.bot_table import BotTable
 from databases.tables.deal_table import DealTable
-from pybinbot import (
-    ExchangeId,
-    BinanceErrors,
-    HABollinguerSpread,
-    OrderStatus,
-    Status,
-    DealType,
-    Position,
-)
+from streaming.base import BaseStreaming
 from streaming.futures_position import FuturesPosition
+from streaming.position_manager import PositionManager
 
 
 class TestPositionManager:

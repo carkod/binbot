@@ -5,9 +5,10 @@ from fastapi.responses import JSONResponse
 from sqlmodel import Session
 from pybinbot import BotBase, Status, BinbotErrors, BinanceErrors, MarketType
 from user.models.user import UserTokenData
-from bots.models import (
+from pybinbot import (
     BotResponse,
     BotListResponse,
+    BotPairsList,
     BulkDeleteRequest,
     BotModel,
     ErrorsRequestBody,
@@ -52,7 +53,7 @@ def get_bots(
         return BotResponse(message=e.message, error=1)
 
 
-@bot_blueprint.get("/bot/active-pairs", response_model=BotListResponse, tags=["bots"])
+@bot_blueprint.get("/bot/active-pairs", response_model=BotPairsList, tags=["bots"])
 def get_active_pairs(
     session: Session = Depends(get_session),
     _: UserTokenData = Depends(get_current_user),
@@ -60,7 +61,9 @@ def get_active_pairs(
     crud = BotTableCrud(session)
     try:
         pairs = crud.get_active_pairs()
-        return BotListResponse(message="Successfully found active pairs.", data=pairs)
+        return BotPairsList(
+            message="Successfully found active pairs.", data=list(pairs)
+        )
     except BinbotErrors as e:
         return BotResponse(message=e.message, error=1)
 

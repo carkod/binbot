@@ -16,8 +16,6 @@ from pybinbot import (
     GridLadderStatus,
     KucoinFutures,
     MarketType,
-)
-from pybinbot.models.grid_ladder import (
     GridLadderCloseRequest,
     GridLadderListResponse,
     GridLadderRecord,
@@ -31,7 +29,6 @@ from tools.config import Config
 from tools.handle_error import kucoin_rate_limit_detail
 from user.models.user import UserTokenData
 from user.services.auth import get_current_user
-
 
 grid_ladder_blueprint = APIRouter(prefix="/grid-ladders", tags=["grid-ladders"])
 

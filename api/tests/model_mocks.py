@@ -1,4 +1,4 @@
-from bots.models import BotModel, OrderModel, DealModel
+from pybinbot import BotModel, DealModel, OrderModel
 
 id = "02031768-fbb9-4cc7-b549-642f15ab787b"
 ts = 1733973560249.0

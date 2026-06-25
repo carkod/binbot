@@ -1,22 +1,25 @@
-from fastapi import APIRouter, Depends
-from sqlmodel import Session
-from pydantic import TypeAdapter, ValidationError
-from deals.gateway import DealGateway
-from pybinbot import Status, BotBase
-from databases.tables.bot_table import PaperTradingTable
-from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from databases.utils import get_session
-from pybinbot import BinanceErrors, BinbotErrors
-from bots.models import (
-    BotResponse,
-    BotListResponse,
-    BotPairsList,
-    BotModel,
-    ErrorsRequestBody,
-    BulkDeleteRequest,
-)
 from typing import Optional
 
+from fastapi import APIRouter, Depends
+from pybinbot import (
+    BinanceErrors,
+    BinbotErrors,
+    BotBase,
+    BotListResponse,
+    BotModel,
+    BotPairsList,
+    BotResponse,
+    BulkDeleteRequest,
+    ErrorsRequestBody,
+    Status,
+)
+from pydantic import TypeAdapter, ValidationError
+from sqlmodel import Session
+
+from databases.crud.paper_trading_crud import PaperTradingTableCrud
+from databases.tables.bot_table import PaperTradingTable
+from databases.utils import get_session
+from deals.gateway import DealGateway
 
 paper_trading_blueprint = APIRouter()
 ta = TypeAdapter(list[BotModel])
@@ -52,7 +55,9 @@ def get(
 def get_active_pairs(session: Session = Depends(get_session)):
     try:
         pairs = PaperTradingTableCrud(session=session).get_active_pairs()
-        return BotPairsList(message="Successfully found active pairs!", data=pairs)
+        return BotPairsList(
+            message="Successfully found active pairs!", data=list(pairs)
+        )
     except BinbotErrors as error:
         return BotResponse(message=error.message, error=1)
     except ValueError as error:

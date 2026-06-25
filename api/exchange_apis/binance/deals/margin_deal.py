@@ -1,28 +1,31 @@
 import logging
+from time import sleep
 from typing import Type
 from urllib.error import HTTPError
-from bots.models import BotModel, OrderModel
-from time import sleep
-from databases.crud.bot_crud import BotTableCrud
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from databases.crud.paper_trading_crud import PaperTradingTableCrud
+
 from pybinbot import (
+    BinanceErrors,
+    BinbotApi,
+    BotBase,
+    BotModel,
+    CloseConditions,
+    DealType,
+    MarginShortError,
+    OrderModel,
     OrderSide,
+    Position,
     QuoteAssets,
     Status,
     round_numbers,
     round_numbers_ceiling,
     round_numbers_floor,
     round_timestamp,
-    BotBase,
-    BinanceErrors,
-    MarginShortError,
-    BinbotApi,
-    CloseConditions,
-    DealType,
-    Position,
 )
+
+from databases.crud.bot_crud import BotTableCrud
+from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.crud.symbols_crud import SymbolsCrud
+from databases.tables.bot_table import BotTable, PaperTradingTable
 from exchange_apis.binance.deals.factory import BinanceDeal
 from tools.config import Config
 

@@ -2,15 +2,24 @@ from contextlib import contextmanager
 from typing import Any, cast
 from uuid import UUID
 
-from bots.models import BotModel, BotListResponse, BotPairsList, OrderModel
+from pybinbot import (
+    BotListResponse,
+    BotModel,
+    BotPairsList,
+    DealType,
+    MarketType,
+    OrderModel,
+    OrderStatus,
+    Status,
+)
+from sqlalchemy.pool import StaticPool
+from sqlmodel import Session, SQLModel, create_engine
+
 from databases.crud.bot_crud import BotTableCrud
 from databases.crud.paper_trading_crud import PaperTradingTableCrud
 from databases.tables.bot_table import BotTable, PaperTradingTable
 from databases.tables.deal_table import DealTable
 from exchange_apis.kucoin.futures.lifecycle import Lifecycle
-from pybinbot import DealType, MarketType, OrderStatus, Status
-from sqlalchemy.pool import StaticPool
-from sqlmodel import SQLModel, Session, create_engine
 
 
 def test_bot_model_orders_are_isolated():
@@ -67,7 +76,7 @@ def test_response_lists_are_isolated():
 
     first_list = BotListResponse(message="")
     second_list = BotListResponse(message="")
-    first_list.data.append("bot")
+    first_list.data.append(BotModel(pair="BTCUSDC"))
     assert second_list.data == []
 
 

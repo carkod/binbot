@@ -2,21 +2,17 @@ from math import ceil
 from time import time
 from typing import Type, Union
 
-from bots.models import BotModel, OrderModel
-from databases.crud.autotrade_crud import AutotradeCrud
-from databases.crud.bot_crud import BotTableCrud
-from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
 from kucoin_universal_sdk.model.common import RestError
 from pybinbot import (
     BotBase,
+    BotModel,
     DealType,
     KucoinApi,
     KucoinFutures,
     MarketType,
     OrderBase,
+    OrderModel,
     OrderSide,
     OrderStatus,
     OrderType,
@@ -27,6 +23,12 @@ from pybinbot import (
     round_numbers,
     round_timestamp,
 )
+
+from databases.crud.autotrade_crud import AutotradeCrud
+from databases.crud.bot_crud import BotTableCrud
+from databases.crud.paper_trading_crud import PaperTradingTableCrud
+from databases.tables.bot_table import BotTable, PaperTradingTable
+from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from streaming.futures_position import FuturesPosition
 from streaming.spot_position import SpotPosition
 
