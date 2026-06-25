@@ -13,7 +13,10 @@ from databases.tables.symbol_table import SymbolTable
 from databases.utils import get_session
 from pybinbot import (
     ExchangeId,
+    GridCalculation,
+    GridCalculationResponse,
     GridLadderStatus,
+    GridLevelCalculation,
     KucoinFutures,
     MarketType,
     GridLadderCloseRequest,
@@ -150,6 +153,54 @@ def _build_margin_sizer(
     )
 
 
+def _calculate_grid(payload: GridLadderCreate, session: Session) -> GridCalculation:
+    try:
+        sizer = _build_margin_sizer(
+            session,
+            payload.symbol,
+            payload.exchange,
+            payload.market_type,
+        )
+        calculated = calculate_grid_levels(
+            range_low=payload.range_low,
+            range_high=payload.range_high,
+            level_count=payload.level_count,
+            total_margin=payload.total_margin,
+            sizer=sizer,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except Exception as error:
+        rate_limit_detail = kucoin_rate_limit_detail(error)
+        if rate_limit_detail is not None:
+            raise HTTPException(status_code=429, detail=rate_limit_detail) from error
+        raise
+
+    return GridCalculation(
+        grid_step=calculated.grid_step,
+        levels=[
+            GridLevelCalculation(
+                level_index=level.level_index,
+                price=level.price,
+                side=level.side,
+                contracts=level.contracts,
+                margin_required=level.margin_required,
+                take_profit_price=level.take_profit_price,
+            )
+            for level in calculated.levels
+        ],
+    )
+
+
+@grid_ladder_blueprint.post("/calculate", response_model=GridCalculationResponse)
+def calculate_grid_ladder(
+    payload: GridLadderCreate,
+    session: Session = Depends(get_session),
+    _: UserTokenData = Depends(get_current_user),
+):
+    return GridCalculationResponse(detail=_calculate_grid(payload, session))
+
+
 @grid_ladder_blueprint.post("", response_model=GridLadderResponse)
 def post_grid_ladder(
     payload: GridLadderCreate,
@@ -191,13 +242,7 @@ def post_grid_ladder(
 
     try:
         balance = ConsolidatedAccounts(session=session).get_balance()
-    except Exception as error:
-        detail = kucoin_rate_limit_detail(error)
-        if detail is not None:
-            raise HTTPException(status_code=429, detail=detail) from error
-        raise
-    available_fiat_balance = balance.fiat_available
-    try:
+        available_fiat_balance = balance.fiat_available
         GridCapitalSettings(session).evaluate_grid_capital(
             active_ladders,
             available_fiat_balance,
@@ -205,29 +250,13 @@ def post_grid_ladder(
         )
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-
-    try:
-        sizer = _build_margin_sizer(
-            session,
-            payload.symbol,
-            payload.exchange,
-            payload.market_type,
-        )
     except Exception as error:
-        detail = kucoin_rate_limit_detail(error)
-        if detail is not None:
-            raise HTTPException(status_code=429, detail=detail) from error
+        rate_limit_detail = kucoin_rate_limit_detail(error)
+        if rate_limit_detail is not None:
+            raise HTTPException(status_code=429, detail=rate_limit_detail) from error
         raise
-    try:
-        calculated = calculate_grid_levels(
-            range_low=payload.range_low,
-            range_high=payload.range_high,
-            level_count=payload.level_count,
-            total_margin=payload.total_margin,
-            sizer=sizer,
-        )
-    except ValueError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    calculated = _calculate_grid(payload, session)
 
     reserved_margin = sum(level.margin_required for level in calculated.levels)
     ladder = grid_ladder_crud.create(

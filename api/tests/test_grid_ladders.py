@@ -370,6 +370,38 @@ def test_rejects_ladder_when_per_level_margin_is_too_small():
         calculate_grid_levels(90, 110, 5, 10, sizer)
 
 
+def test_calculate_grid_ladder_returns_levels_without_persisting(
+    client, monkeypatch, create_test_tables
+):
+    _patch_contract_meta(monkeypatch)
+
+    response = client.post("/grid-ladders/calculate", json=_payload())
+
+    assert response.status_code == 200
+    detail = response.json()["detail"]
+    assert detail["grid_step"] == 5
+    assert [level["side"] for level in detail["levels"]] == [
+        "buy",
+        "buy",
+        "neutral",
+        "sell",
+        "sell",
+    ]
+    with Session(create_test_tables) as session:
+        assert GridLadderCrud(session).get_active() == []
+
+
+def test_calculate_grid_ladder_returns_400_for_unaffordable_level(client, monkeypatch):
+    _patch_contract_meta(monkeypatch)
+
+    response = client.post("/grid-ladders/calculate", json=_payload(total_margin=10))
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "Grid level 0 cannot afford the exchange minimum contract size"
+    )
+
+
 def test_post_grid_ladder_persists_ladder_and_levels(client, monkeypatch):
     _patch_balance(monkeypatch, 10_000)
     _patch_contract_meta(monkeypatch)
