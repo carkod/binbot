@@ -1,11 +1,11 @@
 import logging
 from sqlalchemy import text
-from sqlmodel import Session, select
+from sqlmodel import select
 from databases.crud.symbols_crud import SymbolsCrud
 from databases.crud.autotrade_crud import AutotradeCrud
 from databases.crud.asset_index_crud import AssetIndexCrud
 from databases.tables.symbol_table import SymbolTable
-from databases.utils import get_db_session, independent_session
+from databases.utils import get_db_session
 from pybinbot import QuoteAssets, ExchangeId, BinbotErrors
 from kucoin_universal_sdk.generate.spot.market.model_get_all_symbols_resp import (
     GetAllSymbolsResp,
@@ -21,11 +21,8 @@ class SymbolDataEtl(SymbolsCrud):
     data into the database before CRUD operations.
     """
 
-    def __init__(self, session: Session | None = None):
-        if session is None:
-            session = independent_session()
-
-        super().__init__(session=session)
+    def __init__(self):
+        super().__init__()
         self.autotrade_settings = AutotradeCrud().get_settings()
         self.fiat = self.autotrade_settings.fiat
 

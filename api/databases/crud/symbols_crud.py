@@ -9,7 +9,7 @@ from databases.crud.autotrade_crud import AutotradeCrud
 from databases.tables.asset_index_table import AssetIndexTable, SymbolIndexLink
 from databases.tables.symbol_exchange_table import SymbolExchangeTable
 from databases.tables.symbol_table import SymbolTable
-from databases.utils import independent_session, engine
+from databases.utils import engine
 from symbols.models import SymbolRequestPayload
 from pybinbot import (
     ExchangeId,
@@ -29,13 +29,8 @@ class SymbolsCrud(SymbolsCrudUtils):
     Database operations for SymbolTable using short-lived sessions.
     """
 
-    def __init__(self, session: Optional[Session] = None):
+    def __init__(self):
         super().__init__()
-        if not session:
-            self.session = independent_session()
-        else:
-            self.session = session
-
         self.config = Config()
         self.binance_api = BinanceApi(
             key=self.config.binance_key, secret=self.config.binance_secret
