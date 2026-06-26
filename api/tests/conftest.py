@@ -374,10 +374,6 @@ def create_test_tables():
     patcher1 = patch(
         "databases.utils.independent_session", side_effect=mock_independent_session
     )
-    patcher2 = patch(
-        "databases.crud.symbols_crud.independent_session",
-        side_effect=mock_independent_session,
-    )
     patcher3 = patch(
         "databases.crud.asset_index_crud.independent_session",
         side_effect=mock_independent_session,
@@ -452,7 +448,6 @@ def create_test_tables():
     )
 
     patcher1.start()
-    patcher2.start()
     patcher3.start()
     patcher_charts.start()
     patcher7.start()
@@ -467,7 +462,6 @@ def create_test_tables():
 
     # Clean up
     patcher1.stop()
-    patcher2.stop()
     patcher3.stop()
     patcher_charts.stop()
     patcher7.stop()

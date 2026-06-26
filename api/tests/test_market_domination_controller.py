@@ -205,7 +205,9 @@ def test_get_adrs_returns_parallel_arrays_newest_first():
         assert key in result
         assert len(result[key]) == 4
     # market_breadth_ma is computed; first row in chronological order has just itself in the window
-    assert result["market_breadth_ma"][-1] == pytest.approx(result["market_breadth"][-1])
+    assert result["market_breadth_ma"][-1] == pytest.approx(
+        result["market_breadth"][-1]
+    )
 
 
 def test_get_adrs_filters_by_exchange():

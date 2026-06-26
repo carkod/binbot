@@ -98,17 +98,11 @@ def create_symbol_test_tables():
     patcher1 = patch(
         "databases.utils.independent_session", side_effect=mock_independent_session
     )
-    patcher2 = patch(
-        "databases.crud.symbols_crud.independent_session",
-        side_effect=mock_independent_session,
-    )
     patcher1.start()
-    patcher2.start()
 
     yield test_engine
 
     # Clean up
     patcher1.stop()
-    patcher2.stop()
     app.dependency_overrides.clear()
     SQLModel.metadata.drop_all(test_engine)

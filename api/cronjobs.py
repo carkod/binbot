@@ -17,7 +17,7 @@ def main():
     assets = Assets(session=independent_session())
     consolidated_accounts = ConsolidatedAccounts(session=independent_session())
     market_domination = MarketDominationController()
-    symbols_crud = SymbolDataEtl(session=independent_session())
+    symbols_crud = SymbolDataEtl()
     signals_crud = SignalsCrud()
     web3_candidates_ingester = IngestWeb3Candidates(session=independent_session())
 

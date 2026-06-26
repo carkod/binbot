@@ -42,7 +42,7 @@ class Assets(BinanceOrderController):
         self.exception_list.append(self.fiat)
         self.bot_controller = BotTableCrud(session=session)
         self.balances_controller = BalancesCrud(session=session)
-        self.symbols_crud = SymbolsCrud(session=session)
+        self.symbols_crud = SymbolsCrud()
 
     def get_pnl(self, days=7):
         current_time = datetime.now()

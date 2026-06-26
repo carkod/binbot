@@ -25,7 +25,6 @@ from alembic.config import Config
 from databases.utils import engine
 from exchange_apis.binance.assets import Assets
 from databases.crud.symbols_crud import SymbolsCrud
-from databases.crud.asset_index_crud import AssetIndexCrud
 from tools.config import Config as AppConfig
 from tools.utils import utc_now
 
@@ -461,14 +460,13 @@ class ApiDb:
         First check if symbols have been updated in the last 24 hours.
         Use BNBUSDC, because db init will add BTCUSDC
         """
-        self.symbols = SymbolsCrud(self.session)
-        self.symbols_etl = SymbolDataEtl(self.session)
-        self.asset_indexes = AssetIndexCrud(self.session)
+        symbols = SymbolsCrud()
+        symbols_etl = SymbolDataEtl()
 
         try:
-            self.symbols.get_symbol("DASHBTC")
+            symbols.get_symbol("DASHBTC")
         except BinbotErrors:
-            self.symbols_etl.etl_symbols_ingestion(delete_existing=True)
+            symbols_etl.etl_symbols_ingestion(delete_existing=True)
 
         pass
 

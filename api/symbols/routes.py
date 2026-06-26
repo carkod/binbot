@@ -39,7 +39,7 @@ def get_all_symbols(
         if market_type is not None:
             market_type_enum = MarketType(market_type)
 
-        response_model = SymbolsCrud(session=session).get_all(
+        response_model = SymbolsCrud().get_all(
             active=active, market_type=market_type_enum, index_id=index
         )
         return {
@@ -72,7 +72,7 @@ def get_one_symbol(
     - Active: includes symbols set as True and also cooldown delta is negative
     """
     try:
-        data = SymbolsCrud(session=session).get_symbol(symbol=pair)
+        data = SymbolsCrud().get_symbol(symbol=pair)
         return {
             "message": "Successfully retrieved symbols!",
             "data": data,
@@ -100,7 +100,7 @@ def add_symbol(
     If active=False, the pair is blacklisted
     """
     try:
-        result = SymbolsCrud(session=session).add_symbol(
+        result = SymbolsCrud().add_symbol(
             symbol=data.symbol,
             reason=data.blacklist_reason,
             active=data.active,
@@ -144,7 +144,7 @@ def delete_symbol(
     set active=False
     """
     try:
-        data = SymbolsCrud(session=session).delete_symbol(pair)
+        data = SymbolsCrud().delete_symbol(pair)
         return GetOneSymbolResponse(message="Symbol deleted", data=data)
     except (IntegrityError, DataError, SQLAlchemyError) as e:
         session.rollback()
@@ -167,7 +167,7 @@ def edit_symbol(
     Modify a blacklisted item
     """
     try:
-        result = SymbolsCrud(session=session).edit_symbol_item(data)
+        result = SymbolsCrud().edit_symbol_item(data)
         return {
             "message": "Symbol edited correctly",
             "data": result,
@@ -195,7 +195,7 @@ def store_symbols(
     """
     try:
         background_tasks.add_task(
-            SymbolDataEtl(session=session).etl_symbols_ingestion, delete_existing
+            SymbolDataEtl().etl_symbols_ingestion, delete_existing
         )
         return GetOneSymbolResponse(message="Symbols ingestion started in background!")
     except (IntegrityError, DataError, SQLAlchemyError) as e:
@@ -208,6 +208,7 @@ def store_symbols(
 @symbols_blueprint.get("/symbol/reingest", tags=["Symbols"])
 def reingest_symbols(
     background_tasks: BackgroundTasks,
+    delete_existing: bool = False,
     session: Session = Depends(get_session),
     _: UserTokenData = Depends(get_current_user),
 ):
@@ -215,7 +216,8 @@ def reingest_symbols(
     Reingest all symbols from Binance and Kucoin (runs in background)
     """
     try:
-        background_tasks.add_task(SymbolDataEtl(session=session).etl_symbols_ingestion)
+        ingestion_task = SymbolDataEtl().etl_symbols_ingestion
+        background_tasks.add_task(ingestion_task, delete_existing)
         return GetOneSymbolResponse(
             message="Symbols reingestion started in background!"
         )
@@ -238,7 +240,7 @@ def update_indexes(
     check commit 942c623 in binbot-notebooks
     """
     try:
-        data = SymbolsCrud(session=session).update_symbol_indexes(data)
+        data = SymbolsCrud().update_symbol_indexes(data)
     except (IntegrityError, DataError, SQLAlchemyError) as e:
         session.rollback()
         return StandardResponse(message=format_db_error(e), error=1)

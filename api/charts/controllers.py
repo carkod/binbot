@@ -29,7 +29,7 @@ class MarketDominationController:
         self.autotrade_db = AutotradeCrud(session=self.session)
         self.autotrade_settings = self.autotrade_db.get_settings()
         self.exchange = ExchangeId(self.autotrade_settings.exchange_id)
-        self.symbols_crud = SymbolsCrud(session=self.session)
+        self.symbols_crud = SymbolsCrud()
         self.binance_api = BinanceApi(
             key=self.config.binance_key, secret=self.config.binance_secret
         )
@@ -221,7 +221,10 @@ class MarketDominationController:
             decliners=[r["decliners"] for r in rows],
             market_breadth=[float(r["adp"]) for r in rows],
             market_breadth_ma=[
-                float(r["market_breadth_ma"]) if r["market_breadth_ma"] is not None else None for r in rows
+                float(r["market_breadth_ma"])
+                if r["market_breadth_ma"] is not None
+                else None
+                for r in rows
             ],
             avg_gain=[float(r["avg_gain"]) for r in rows],
             avg_loss=[float(r["avg_loss"]) for r in rows],
