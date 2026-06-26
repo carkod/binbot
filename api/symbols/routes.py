@@ -208,6 +208,7 @@ def store_symbols(
 @symbols_blueprint.get("/symbol/reingest", tags=["Symbols"])
 def reingest_symbols(
     background_tasks: BackgroundTasks,
+    delete_existing: bool = False,
     session: Session = Depends(get_session),
     _: UserTokenData = Depends(get_current_user),
 ):
@@ -215,7 +216,8 @@ def reingest_symbols(
     Reingest all symbols from Binance and Kucoin (runs in background)
     """
     try:
-        background_tasks.add_task(SymbolDataEtl().etl_symbols_ingestion)
+        ingestion_task = SymbolDataEtl().etl_symbols_ingestion
+        background_tasks.add_task(ingestion_task, delete_existing)
         return GetOneSymbolResponse(
             message="Symbols reingestion started in background!"
         )
