@@ -42,11 +42,22 @@ class SignalsCrud:
         )
         with get_db_session(self._external_session) as session:
             session.add(row)
-            session.commit()
-            session.refresh(row)
-            if self._external_session is None:
-                session.expunge(row)
-        return row
+            session.flush()
+            created = SignalsTable(
+                id=row.id,
+                algorithm_name=row.algorithm_name,
+                symbol=row.symbol,
+                generated_at=row.generated_at,
+                direction=row.direction,
+                autotrade=row.autotrade,
+                current_regime=row.current_regime,
+                context=row.context,
+                bot_params=row.bot_params,
+                indicators=row.indicators,
+            )
+            if self._external_session is not None:
+                session.commit()
+        return created
 
     def query(
         self,
