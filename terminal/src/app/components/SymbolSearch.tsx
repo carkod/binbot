@@ -2,7 +2,6 @@ import { type ChangeEvent, useEffect, useState, type FC } from "react";
 import { Typeahead } from "react-bootstrap-typeahead";
 import "react-bootstrap-typeahead/css/Typeahead.css";
 import Form from "react-bootstrap/Form";
-import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 import { useSymbolData } from "../hooks";
 
 type SymbolSearchProps = {
@@ -29,18 +28,19 @@ const SymbolSearch: FC<SymbolSearchProps> = ({
 }) => {
   const [state, setState] = useState<string>(value ?? "");
   const [options, setOptions] = useState<string[]>([]);
-  const { data: autotradeSettings } = useGetSettingsQuery();
   const { symbolsList } = useSymbolData();
 
   useEffect(() => {
-    if (value) {
+    if (value !== undefined) {
       setState(value);
     }
+  }, [value]);
 
+  useEffect(() => {
     if (symbolsList && symbolsList.length > 0) {
       setOptions(symbolsList);
     }
-  }, [value, autotradeSettings?.fiat, symbolsList]);
+  }, [symbolsList]);
 
   return (
     <Form.Group>

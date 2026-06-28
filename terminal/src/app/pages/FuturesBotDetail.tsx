@@ -1,30 +1,27 @@
 import { useContext, type FC, useEffect } from "react";
 import { Card, Col, Container, Row } from "react-bootstrap";
-import { useMatch, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useGetSingleBotQuery } from "../../features/bots/botsApiSlice";
 import {
   resetBot,
   selectBot,
   setBot,
   setCurrentPrice,
-  setField,
 } from "../../features/bots/botSlice";
 import BotDetailTabs from "../components/BotDetailTabs";
 import BotInfo from "../components/BotInfo";
 import ChartContainer from "../components/ChartContainer";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import LogsInfo from "../components/LogsInfo";
-import { singleBot } from "../../features/bots/botInitialState";
 import { SpinnerContext } from "../Layout";
 import { useGetBalanceQuery } from "../../features/balanceApiSlice";
 import BalanceAnalysis from "../components/BalanceAnalysis";
 import { SymbolProvider } from "../providers/SymbolProvider";
 import { MarketType } from "../../utils/enums";
-import { set } from "react-hook-form";
 
 export const FuturesBotDetail: FC<{}> = () => {
   const { id } = useParams();
-  const matchNewRoute = useMatch("/bots/futures/new");
+  const isNewBot = !id;
   const dispatch = useAppDispatch();
   const { bot } = useAppSelector(selectBot);
   const { data, isLoading: loadingBot } = useGetSingleBotQuery(id as string, {
@@ -32,19 +29,17 @@ export const FuturesBotDetail: FC<{}> = () => {
   });
   const { data: accountData, isLoading: loadingEstimates } =
     useGetBalanceQuery();
-  const { spinner, setSpinner } = useContext(SpinnerContext);
-  const currentMarketType = bot?.market_type ?? MarketType.FUTURES;
+  const { setSpinner } = useContext(SpinnerContext);
+  const currentMarketType = MarketType.FUTURES;
 
   useEffect(() => {
-    if (matchNewRoute) {
+    if (isNewBot) {
       dispatch(
         resetBot({
           market_type: MarketType.FUTURES,
         }),
       );
-      return;
-    }
-    if (data?.bot) {
+    } else if (data?.bot) {
       dispatch(
         setBot({
           bot: { ...data.bot, market_type: MarketType.FUTURES },
@@ -52,8 +47,8 @@ export const FuturesBotDetail: FC<{}> = () => {
       );
     } else {
       dispatch(
-        setBot({
-          bot: { ...singleBot, market_type: MarketType.FUTURES },
+        resetBot({
+          market_type: MarketType.FUTURES,
         }),
       );
     }
@@ -63,7 +58,7 @@ export const FuturesBotDetail: FC<{}> = () => {
     } else {
       setSpinner(true);
     }
-  }, [data, matchNewRoute, dispatch, loadingBot, loadingEstimates, setSpinner]);
+  }, [data, isNewBot, dispatch, loadingBot, loadingEstimates, setSpinner]);
 
   return (
     <SymbolProvider marketType={currentMarketType}>

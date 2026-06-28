@@ -1,9 +1,10 @@
 import { useContext, type FC } from "react";
 import { useEffect } from "react";
 import { Card, Col, Container, Row } from "react-bootstrap";
-import { useMatch, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useGetSingleBotQuery } from "../../features/bots/botsApiSlice";
 import {
+  resetBot,
   selectBot,
   setBot,
   setCurrentPrice,
@@ -13,7 +14,6 @@ import BotInfo from "../components/BotInfo";
 import ChartContainer from "../components/ChartContainer";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import LogsInfo from "../components/LogsInfo";
-import { singleBot } from "../../features/bots/botInitialState";
 import { SpinnerContext } from "../Layout";
 import { useGetBalanceQuery } from "../../features/balanceApiSlice";
 import BalanceAnalysis from "../components/BalanceAnalysis";
@@ -22,7 +22,7 @@ import { MarketType } from "../../utils/enums";
 
 export const BotDetail: FC<{}> = () => {
   const { id } = useParams();
-  const matchNewRoute = useMatch("/bots/new");
+  const isNewBot = !id;
   const dispatch = useAppDispatch();
   const { bot } = useAppSelector(selectBot);
   const { data, isLoading: loadingBot } = useGetSingleBotQuery(id, {
@@ -30,16 +30,16 @@ export const BotDetail: FC<{}> = () => {
   });
   const { data: accountData, isLoading: loadingEstimates } =
     useGetBalanceQuery();
-  const { spinner, setSpinner } = useContext(SpinnerContext);
-  const currentMarketType = bot?.market_type ?? MarketType.SPOT;
+  const { setSpinner } = useContext(SpinnerContext);
+  const currentMarketType = MarketType.SPOT;
 
   useEffect(() => {
-    if (data && !matchNewRoute) {
+    if (data && !isNewBot) {
       dispatch(setBot(data));
     } else {
       dispatch(
-        setBot({
-          bot: singleBot,
+        resetBot({
+          market_type: MarketType.SPOT,
         }),
       );
     }
@@ -49,7 +49,7 @@ export const BotDetail: FC<{}> = () => {
     } else {
       setSpinner(true);
     }
-  }, [data, matchNewRoute, dispatch, loadingBot, loadingEstimates]);
+  }, [data, isNewBot, dispatch, loadingBot, loadingEstimates, setSpinner]);
 
   return (
     <SymbolProvider marketType={currentMarketType}>

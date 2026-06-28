@@ -12,12 +12,8 @@ import {
 import { type FieldValues, useForm } from "react-hook-form";
 import { useImmer } from "use-immer";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
-import {
-  resetBot,
-  selectBot,
-  setField,
-  setToggle,
-} from "../../features/bots/botSlice";
+import { selectBot, setField, setToggle } from "../../features/bots/botSlice";
+import { singleBot } from "../../features/bots/botInitialState";
 import {
   BotStatus,
   BotPosition,
@@ -29,10 +25,11 @@ import { useAppDispatch, useAppSelector, useSymbolData } from "../hooks";
 import { type AppDispatch } from "../store";
 import { InputTooltip } from "./InputTooltip";
 import SymbolSearch from "./SymbolSearch";
-import { matchPath, useLocation, useMatch, useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import { SpinnerContext } from "../Layout";
 import {
   selectTestBot,
+  setTestBot,
   setTestBotField,
   setTestBotToggle,
 } from "../../features/bots/paperTradingSlice";
@@ -164,17 +161,17 @@ const BaseOrderTab: FC<{
 
     initializedSymbolRef.current = symbol;
 
-    if (botType === BotType.PAPER_TRADING) {
-      dispatch(resetBot({}));
-    }
-
     reset({
       ...bot,
       pair: symbol,
     });
 
     if (botType === BotType.PAPER_TRADING) {
-      dispatch(setTestBotField({ name: "pair", value: symbol }));
+      dispatch(
+        setTestBot({
+          bot: { ...singleBot, pair: symbol },
+        }),
+      );
     } else {
       dispatch(setField({ name: "pair", value: symbol }));
     }
@@ -193,7 +190,11 @@ const BaseOrderTab: FC<{
     }
 
     if (quoteAsset && bot.quote_asset !== quoteAsset) {
-      dispatch(setField({ name: "quote_asset", value: quoteAsset }));
+      if (botType === BotType.PAPER_TRADING) {
+        dispatch(setTestBotField({ name: "quote_asset", value: quoteAsset }));
+      } else {
+        dispatch(setField({ name: "quote_asset", value: quoteAsset }));
+      }
     }
 
     if (
@@ -211,19 +212,35 @@ const BaseOrderTab: FC<{
         return;
       }
 
-      dispatch(
-        setField({
-          name: "fiat_order_size",
-          value: defaultFiatOrderSize,
-        }),
-      );
+      if (botType === BotType.PAPER_TRADING) {
+        dispatch(
+          setTestBotField({
+            name: "fiat_order_size",
+            value: defaultFiatOrderSize,
+          }),
+        );
+      } else {
+        dispatch(
+          setField({
+            name: "fiat_order_size",
+            value: defaultFiatOrderSize,
+          }),
+        );
+      }
     }
 
     if (autotradeSettings?.fiat && bot.fiat !== autotradeSettings.fiat) {
-      dispatch(setField({ name: "fiat", value: autotradeSettings.fiat }));
+      if (botType === BotType.PAPER_TRADING) {
+        dispatch(
+          setTestBotField({ name: "fiat", value: autotradeSettings.fiat }),
+        );
+      } else {
+        dispatch(setField({ name: "fiat", value: autotradeSettings.fiat }));
+      }
     }
   }, [
     autotradeSettings,
+    botType,
     bot.deal?.closing_price,
     bot.deal?.current_price,
     bot.fiat,

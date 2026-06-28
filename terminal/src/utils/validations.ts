@@ -41,11 +41,13 @@ const intervalOptions = [
 
 const matchNewRoutes = (pathname: string) => {
   const pathnames = [
-    "/bots/futures/new",
-    "/bots/paper-trading/new",
-    "/bots/new",
+    "/bots/futures/new/:symbol?",
+    "/paper-trading/new/:symbol?",
+    "/bots/new/:symbol?",
   ];
-  return pathnames.some((path) => matchPath(pathname, path));
+  return pathnames.some((path) =>
+    Boolean(matchPath({ path, end: true }, pathname)),
+  );
 };
 
 export { dataHeaders, intervalOptions, listCssColors, matchNewRoutes };

@@ -1,6 +1,6 @@
 import type { PayloadAction } from "@reduxjs/toolkit";
 import { createAppSlice } from "../../app/createAppSlice";
-import { singleBot, type RecoveryParams } from "./botInitialState";
+import { singleBot, type Bot, type RecoveryParams } from "./botInitialState";
 import type {
   BotDetailsFormField,
   BotDetailsFormFieldBoolean,
@@ -44,7 +44,7 @@ export const botSlice = createAppSlice({
       },
     ),
     resetBot: create.reducer(
-      (state, action?: PayloadAction<Partial<BotDetailsState>>) => {
+      (state, action?: PayloadAction<Partial<Bot>>) => {
         state.bot = {
           ...singleBot,
           ...(action?.payload || {}),
