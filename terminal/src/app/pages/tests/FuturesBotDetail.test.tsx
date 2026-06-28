@@ -1,14 +1,20 @@
 import React from "react";
 import { Provider } from "react-redux";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { render } from "@testing-library/react";
+import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
+import {
+  fireEvent,
+  render,
+  screen as rtlScreen,
+  waitFor,
+} from "@testing-library/react";
 import { vi } from "vitest";
 
 import FuturesBotDetail from "../FuturesBotDetail";
 import { store } from "../../store";
 import { MarketType } from "../../../utils/enums";
-import { setBot } from "../../../features/bots/botSlice";
+import { resetBot, setBot } from "../../../features/bots/botSlice";
 
+const mockUseGetSingleBotQuery = vi.hoisted(() => vi.fn());
 const { singleBot } = await import("../../../features/bots/botInitialState");
 // Mock singleBot to have market_type FUTURES for the relevant test(s)
 vi.mock("../../../features/bots/botInitialState", async () => {
@@ -24,10 +30,7 @@ vi.mock("../../../features/bots/botsApiSlice", async () => {
   const actual = await vi.importActual("../../../features/bots/botsApiSlice");
   return {
     ...actual,
-    useGetSingleBotQuery: vi.fn(() => ({
-      data: undefined,
-      isLoading: false,
-    })),
+    useGetSingleBotQuery: mockUseGetSingleBotQuery,
   };
 });
 
@@ -103,7 +106,25 @@ const SpinnerContext = React.createContext({
   setSpinner: (_value: boolean) => {},
 });
 
+const NavigateToNew = () => {
+  const navigate = useNavigate();
+
+  return (
+    <button type="button" onClick={() => navigate("/bots/futures/new")}>
+      New futures bot
+    </button>
+  );
+};
+
 describe("FuturesBotDetail page", () => {
+  beforeEach(() => {
+    store.dispatch(resetBot({ market_type: MarketType.FUTURES }));
+    mockUseGetSingleBotQuery.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    });
+  });
+
   it("renders without crashing", () => {
     const { container } = render(
       <Provider store={store}>
@@ -150,6 +171,7 @@ describe("FuturesBotDetail page", () => {
       ...singleBot,
       id: "123",
       name: "Existing spot bot",
+      pair: "RAVEUSDTM",
       market_type: MarketType.SPOT,
     };
 
@@ -174,6 +196,68 @@ describe("FuturesBotDetail page", () => {
     );
 
     const state = store.getState().bot.bot;
+    expect(state.id).toBe("");
+    expect(state.name).toBe("terminal");
+    expect(state.pair).toBe("");
     expect(state.market_type).toBe(MarketType.FUTURES);
+  });
+
+  it("resets stale edit details after navigating from edit to new", async () => {
+    const editResponse = {
+      data: {
+        bot: {
+          ...singleBot,
+          id: "123",
+          name: "RAVE futures bot",
+          pair: "RAVEUSDTM",
+          market_type: MarketType.FUTURES,
+        },
+      },
+      isLoading: false,
+    };
+    const newResponse = {
+      data: undefined,
+      isLoading: false,
+    };
+
+    mockUseGetSingleBotQuery.mockImplementation((id?: string) => ({
+      ...(id ? editResponse : newResponse),
+    }));
+
+    render(
+      <Provider store={store}>
+        <SpinnerContext.Provider
+          value={{ spinner: false, setSpinner: vi.fn() }}
+        >
+          <MemoryRouter initialEntries={["/bots/futures/edit/123"]}>
+            <NavigateToNew />
+            <Routes>
+              <Route
+                path="/bots/futures/edit/:id"
+                element={<FuturesBotDetail />}
+              />
+              <Route path="/bots/futures/new" element={<FuturesBotDetail />} />
+            </Routes>
+          </MemoryRouter>
+        </SpinnerContext.Provider>
+      </Provider>,
+    );
+
+    await waitFor(() => {
+      expect(store.getState().bot.bot.pair).toBe("RAVEUSDTM");
+    });
+
+    fireEvent.click(
+      rtlScreen.getByRole("button", { name: "New futures bot" }),
+    );
+
+    await waitFor(() => {
+      const state = store.getState().bot.bot;
+
+      expect(state.id).toBe("");
+      expect(state.name).toBe("terminal");
+      expect(state.pair).toBe("");
+      expect(state.market_type).toBe(MarketType.FUTURES);
+    });
   });
 });

@@ -1,4 +1,8 @@
-import { render, screen as rtlScreen } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen as rtlScreen,
+} from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { filterSymbolByBaseAsset } from "../../utils/api";
 import SymbolSearch from "./SymbolSearch";
@@ -21,6 +25,18 @@ const mockSymbolContextValue = {
 const renderWithSymbolProvider = (ui: ReactElement) =>
   render(
     <SymbolContext.Provider value={mockSymbolContextValue}>
+      {ui}
+    </SymbolContext.Provider>,
+  );
+
+const renderWithSymbols = (ui: ReactElement, symbolsList: string[]) =>
+  render(
+    <SymbolContext.Provider
+      value={{
+        ...mockSymbolContextValue,
+        symbolsList,
+      }}
+    >
       {ui}
     </SymbolContext.Provider>,
   );
@@ -73,5 +89,47 @@ describe("SymbolSearch component", () => {
       />,
     );
     expect(rtlScreen.getByText("Invalid symbol")).toBeInTheDocument();
+  });
+
+  it("clears the selected symbol when value becomes empty", () => {
+    const { rerender } = renderWithSymbolProvider(
+      <SymbolSearch name="pair" value="RAVEUSDTM" />,
+    );
+
+    expect(rtlScreen.getByRole("combobox")).toHaveValue("RAVEUSDTM");
+
+    rerender(
+      <SymbolContext.Provider value={mockSymbolContextValue}>
+        <SymbolSearch name="pair" value="" />
+      </SymbolContext.Provider>,
+    );
+
+    expect(rtlScreen.getByRole("combobox")).toHaveValue("");
+  });
+
+  it("keeps uncontrolled input when symbols update", () => {
+    const { rerender } = renderWithSymbols(
+      <SymbolSearch name="pair" />,
+      ["BTCUSDT"],
+    );
+
+    fireEvent.change(rtlScreen.getByRole("combobox"), {
+      target: { value: "RAVE" },
+    });
+
+    expect(rtlScreen.getByRole("combobox")).toHaveValue("RAVE");
+
+    rerender(
+      <SymbolContext.Provider
+        value={{
+          ...mockSymbolContextValue,
+          symbolsList: ["BTCUSDT", "RAVEUSDTM"],
+        }}
+      >
+        <SymbolSearch name="pair" />
+      </SymbolContext.Provider>,
+    );
+
+    expect(rtlScreen.getByRole("combobox")).toHaveValue("RAVE");
   });
 });

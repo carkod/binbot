@@ -82,7 +82,10 @@ const BotDetailTabs: FC<{
   }, [isActivating, isDeactivating, dispatch, activatedBot, deactivatedBot]);
 
   return (
-    <Tab.Container defaultActiveKey={TabsKeys.MAIN}>
+    <Tab.Container
+      key={`${marketType}-${id ?? "new"}-${bot.id}`}
+      defaultActiveKey={TabsKeys.MAIN}
+    >
       <Row>
         <Col sm={12}>
           <Nav variant="tabs">

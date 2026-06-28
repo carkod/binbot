@@ -12,4 +12,4 @@ RUN uv sync --frozen --no-cache
 STOPSIGNAL SIGTERM
 EXPOSE 80 443 5432 8000
 
-CMD [".venv/bin/fastapi", "run", "main.py", "--port", "8000", "--workers", "1"]
+CMD ["sh", "-c", "exec .venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --workers 1 --log-level \"$(printf '%s' \"${LOG_LEVEL:-info}\" | tr '[:upper:]' '[:lower:]')\""]
