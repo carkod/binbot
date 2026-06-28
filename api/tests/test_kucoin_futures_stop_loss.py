@@ -779,6 +779,55 @@ def test_exit_uses_recovery_stop_and_defers_without_candle_confirmation():
     assert any("Recovery reversal deferred" in log for log in deal.active_bot.logs)
 
 
+def test_spike_style_recovery_uses_tighter_emergency_breach_without_confirmation():
+    deal = _make_position_deal(
+        stop_loss=1.0,
+        stop_loss_price=0,
+        margin_short_reversal=False,
+    )
+    deal.active_bot.name = "spike_hunter_v3_kucoin"
+    deal.klines = None
+    recovery_id = uuid4()
+    deal.active_bot.recovery_mode_id = recovery_id
+    deal.active_bot.recovery_params = RecoveryBotModel(
+        id=recovery_id,
+        reversal_path="recovery",
+        source_contracts=10,
+        source_loss_fiat=2,
+        stop_loss_pct=5,
+        created_at=1,
+        updated_at=1,
+    )
+    deal.controller = types.SimpleNamespace(
+        save=lambda bot: None,
+        update_logs=lambda *args, **kwargs: None,
+    )
+    reverse_calls: list[float | None] = []
+    stop_calls: list[float | None] = []
+
+    def reverse_position(reference_price: float | None = None) -> BotModel:
+        reverse_calls.append(reference_price)
+        return deal.active_bot
+
+    def execute_stop_loss(reference_price: float | None = None) -> BotModel:
+        stop_calls.append(reference_price)
+        return deal.active_bot
+
+    deal.reverse_position = reverse_position
+    deal.execute_stop_loss = execute_stop_loss
+
+    Lifecycle.exit(deal, 94.6)
+
+    assert deal.active_bot.stop_loss == 5
+    assert deal.active_bot.deal.stop_loss_price == 95
+    assert reverse_calls == []
+    assert stop_calls == [None]
+    assert any(
+        "Recovery emergency threshold breached" in log and "0.35% beyond stop" in log
+        for log in deal.active_bot.logs
+    )
+
+
 def test_reconcile_exchange_sl_skips_on_api_failure():
     """API blip must not cancel/replace a possibly-still-valid SL."""
     calls: list[str] = []
