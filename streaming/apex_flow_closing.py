@@ -3,7 +3,7 @@ from pandas import Series
 from pandera.typing import DataFrame as TypedDataFrame
 from pybinbot import BotModel, Indicators, KlineSchema
 
-from databases.crud.autotrade_crud import AutotradeCrud
+from api.databases.crud.autotrade_crud import AutotradeCrud
 
 
 class ApexFlowClose:

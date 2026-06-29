@@ -27,9 +27,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-    defaults:
-      run:
-        working-directory: api
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6
@@ -39,7 +36,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
-          python-version-file: "./api/.python-version"
+          python-version-file: "./.python-version"
 
       - name: Install the project
         run: |
@@ -47,14 +44,11 @@ jobs:
       - name: Run tests
         env:
           POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
-        run: uv run coverage run -m pytest --vcr-record=none .
+        run: uv run coverage run -m pytest --vcr-record=none api/tests/
 
   python-linting:
     name: Python code linting
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: api
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6
@@ -66,7 +60,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
-          python-version-file: "./api/.python-version"
+          python-version-file: "./.python-version"
       - name: Install the project
         run: uv sync --all-extras --dev
       - name: Run linters

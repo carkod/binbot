@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException, Depends
-from account.controller import ConsolidatedAccounts
-from user.models.user import UserTokenData
-from user.services.auth import get_current_user
-from exchange_apis.binance.assets import Assets
-from account.schemas import (
+from api.account.controller import ConsolidatedAccounts
+from api.user.models.user import UserTokenData
+from api.user.services.auth import get_current_user
+from api.exchange_apis.binance.assets import Assets
+from api.account.schemas import (
     BalanceResponse,
     GainersLosersResponse,
     KucoinBalanceResponse,
@@ -16,11 +16,11 @@ from pybinbot import (
     KucoinApi,
     StandardResponse,
 )
-from tools.handle_error import json_response_error, json_response_message
+from api.tools.handle_error import json_response_error, json_response_message
 from sqlmodel import Session
-from databases.utils import get_session
+from api.databases.utils import get_session
 from typing import Literal
-from tools.config import Config
+from api.tools.config import Config
 
 account_blueprint = APIRouter()
 config = Config()

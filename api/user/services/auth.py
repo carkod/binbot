@@ -7,8 +7,8 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pybinbot import UserRoles
 from pydantic import BaseModel
-from user.models.user import UserTokenData
-from tools.utils import utc_now
+from api.user.models.user import UserTokenData
+from api.tools.utils import utc_now
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/user/login")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

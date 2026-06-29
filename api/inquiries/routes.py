@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import ValidationError
 from sqlmodel import Session
-from user.models.user import UserTokenData
-from user.services.auth import get_current_user
-from databases.utils import get_session
-from databases.crud.inquiry_crud import InquiryCrud
-from inquiries.models import InquiryBase, InquiryResponse, InquiryListResponse
+from api.user.models.user import UserTokenData
+from api.user.services.auth import get_current_user
+from api.databases.utils import get_session
+from api.databases.crud.inquiry_crud import InquiryCrud
+from api.inquiries.models import InquiryBase, InquiryResponse, InquiryListResponse
 from uuid import UUID
 from fastapi.responses import Response
 

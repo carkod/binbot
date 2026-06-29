@@ -1,9 +1,9 @@
 from typing import Annotated
 
 from sqlmodel import Session
-from user.services.auth import get_current_user
-from databases.crud.autotrade_crud import AutotradeCrud
-from databases.utils import get_session
+from api.user.services.auth import get_current_user
+from api.databases.crud.autotrade_crud import AutotradeCrud
+from api.databases.utils import get_session
 from pybinbot import (
     AutotradeSettingsDocument,
     AutotradeSettingsResponse,
@@ -12,7 +12,7 @@ from pybinbot import (
 )
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import ValidationError
-from tools.handle_error import json_response, json_response_error
+from api.tools.handle_error import json_response, json_response_error
 
 autotrade_settings_blueprint = APIRouter()
 SessionDep = Annotated[Session, Depends(get_session)]

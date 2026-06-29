@@ -6,7 +6,7 @@ env:
 on:
   pull_request:
     paths:
-      - "api/database/models/**"
+      - "api/databases/tables/**"
 
 jobs:
   check_files:
@@ -31,7 +31,7 @@ jobs:
           while IFS= read -r file
           do
             echo $file
-            if [[ $file == api/database/models/* && ! $(git diff --name-only HEAD^ HEAD | grep -q '^api/alembic/version/') ]]; then
+            if [[ $file == api/databases/tables/* ]] && ! git diff --name-only HEAD^ HEAD | grep -q '^api/alembic/versions/'; then
               echo "SQL database table models have been modified and no alembic revision was found. Please create a new revision."
               run_job=false
               exit 1

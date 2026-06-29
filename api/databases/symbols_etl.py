@@ -1,11 +1,11 @@
 import logging
 from sqlalchemy import text
 from sqlmodel import select
-from databases.crud.symbols_crud import SymbolsCrud
-from databases.crud.autotrade_crud import AutotradeCrud
-from databases.crud.asset_index_crud import AssetIndexCrud
-from databases.tables.symbol_table import SymbolTable
-from databases.utils import get_db_session
+from api.databases.crud.symbols_crud import SymbolsCrud
+from api.databases.crud.autotrade_crud import AutotradeCrud
+from api.databases.crud.asset_index_crud import AssetIndexCrud
+from api.databases.tables.symbol_table import SymbolTable
+from api.databases.utils import get_db_session
 from pybinbot import QuoteAssets, ExchangeId, BinbotErrors
 from kucoin_universal_sdk.generate.spot.market.model_get_all_symbols_resp import (
     GetAllSymbolsResp,

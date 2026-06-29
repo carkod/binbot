@@ -15,10 +15,10 @@ from pybinbot import (
     Status,
 )
 
-from databases.tables.bot_table import BotTable
-from databases.tables.deal_table import DealTable
-from databases.tables.recovery_bot_table import RecoveryBotTable
-from exchange_apis.kucoin.futures.lifecycle import Lifecycle
+from api.databases.tables.bot_table import BotTable
+from api.databases.tables.deal_table import DealTable
+from api.databases.tables.recovery_bot_table import RecoveryBotTable
+from api.exchange_apis.kucoin.futures.lifecycle import Lifecycle
 from tests.fixtures.mock_bot_table import make_mock_bot_active_model
 
 

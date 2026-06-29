@@ -15,8 +15,8 @@ from pybinbot import (
     RecoveryBotModel,
 )
 
-from exchange_apis.kucoin.deals.base import KucoinBaseBalance
-from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
+from api.exchange_apis.kucoin.deals.base import KucoinBaseBalance
+from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from streaming.base import BaseStreaming
 from streaming.futures_position import FuturesPosition
 

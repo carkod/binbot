@@ -1,17 +1,17 @@
-from account.schemas import BalanceSchema, KucoinBalance
-from databases.crud.balances_crud import BalancesCrud
-from exchange_apis.binance.assets import Assets
+from api.account.schemas import BalanceSchema, KucoinBalance
+from api.databases.crud.balances_crud import BalancesCrud
+from api.exchange_apis.binance.assets import Assets
 from pybinbot import ExchangeId, round_numbers, KucoinApi, KucoinFutures
 from pybinbot.shared.enums import KucoinKlineIntervals
-from databases.utils import get_session
+from api.databases.utils import get_session
 from sqlmodel import Session
-from exchange_apis.kucoin.deals.base import KucoinBaseBalance
+from api.exchange_apis.kucoin.deals.base import KucoinBaseBalance
 from kucoin_universal_sdk.generate.account.account import (
     GetSpotLedgerItems,
 )
 from typing import Dict
 from enum import Enum
-from tools.config import Config
+from api.tools.config import Config
 
 
 class ConsolidatedAccounts:

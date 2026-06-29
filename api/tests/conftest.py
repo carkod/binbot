@@ -15,14 +15,14 @@ from unittest.mock import MagicMock, Mock, patch
 from uuid import UUID
 
 # The import below is required to register all models for SQLModel metadata. Do not remove!
-import databases.tables  # noqa: F401
+import api.databases.tables  # noqa: F401
 import pytest
-from databases.tables.autotrade_table import AutotradeTable
-from databases.tables.bot_table import BotTable
-from databases.tables.deal_table import DealTable
-from databases.utils import get_session
+from api.databases.tables.autotrade_table import AutotradeTable
+from api.databases.tables.bot_table import BotTable
+from api.databases.tables.deal_table import DealTable
+from api.databases.utils import get_session
 from fastapi.testclient import TestClient
-from main import app
+from api.main import app
 from pybinbot import UserRoles
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
@@ -32,8 +32,8 @@ from tests.fixtures.symbol_fixtures import (
     get_test_symbol_index_links,
     get_test_symbols,
 )
-from user.models.user import UserTokenData
-from user.services.auth import get_current_user
+from api.user.models.user import UserTokenData
+from api.user.services.auth import get_current_user
 
 # Global variable to store test engine for use in patches
 _test_engine = None

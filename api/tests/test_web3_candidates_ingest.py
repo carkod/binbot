@@ -7,10 +7,13 @@ import pytest
 import requests
 from sqlmodel import Session, delete
 
-from databases.crud.web3_candidates import Web3CandidatesCrud
-from databases.web3_candidates import Web3CandidateCreate, Web3CandidateTable
+from api.databases.crud.web3_candidates import Web3CandidatesCrud
+from api.databases.web3_candidates import Web3CandidateCreate, Web3CandidateTable
 from tests import conftest
-from web3_candidates.ingest_web3_candidates import LaunchCandidate, IngestWeb3Candidates
+from api.web3_candidates.ingest_web3_candidates import (
+    LaunchCandidate,
+    IngestWeb3Candidates,
+)
 
 
 def _make_session() -> Session:

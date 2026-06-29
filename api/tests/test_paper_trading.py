@@ -1,6 +1,6 @@
 from unittest.mock import patch
 from fastapi.testclient import TestClient
-from main import app
+from api.main import app
 from pytest import fixture
 import pytest
 from tests.fixtures.mock_bot_table import make_mock_bot_active_model

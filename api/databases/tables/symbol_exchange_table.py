@@ -1,7 +1,7 @@
 from sqlmodel import SQLModel, Field, Relationship
 from sqlalchemy import Column, Enum, Float, ForeignKey
 from pybinbot import ExchangeId
-from databases.tables.symbol_table import SymbolTable
+from api.databases.tables.symbol_table import SymbolTable
 
 
 class SymbolExchangeTable(SQLModel, table=True):

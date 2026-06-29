@@ -3,12 +3,12 @@ from contextlib import contextmanager
 from unittest.mock import patch
 from sqlmodel import SQLModel, create_engine, Session
 from sqlalchemy.pool import StaticPool
-from databases.utils import get_session
-from databases.tables.autotrade_table import AutotradeTable
-from main import app
+from api.databases.utils import get_session
+from api.databases.tables.autotrade_table import AutotradeTable
+from api.main import app
 
 # The import below is required to register all models for SQLModel metadata. Do not remove!
-import databases.tables  # noqa: F401
+import api.databases.tables  # noqa: F401
 
 from tests.fixtures.symbol_fixtures import (
     get_test_symbols,

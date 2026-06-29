@@ -14,10 +14,10 @@ from pybinbot import (
     round_timestamp,
 )
 
-from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from exchange_apis.kucoin.deals.margin_deal import KucoinMarginDeal
-from exchange_apis.kucoin.deals.spot_deal import KucoinSpotDeal
+from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
+from api.databases.tables.bot_table import BotTable, PaperTradingTable
+from api.exchange_apis.kucoin.deals.margin_deal import KucoinMarginDeal
+from api.exchange_apis.kucoin.deals.spot_deal import KucoinSpotDeal
 
 
 class KucoinShortDeal(KucoinMarginDeal):

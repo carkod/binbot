@@ -1,6 +1,6 @@
 from typing import Optional, Sequence
 from pybinbot import ExchangeId, StandardResponse, AssetIndexModel, SymbolModel
-from databases.tables.symbol_table import SymbolTable
+from api.databases.tables.symbol_table import SymbolTable
 from pydantic import Field, BaseModel
 
 

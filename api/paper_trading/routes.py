@@ -16,10 +16,10 @@ from pybinbot import (
 from pydantic import TypeAdapter, ValidationError
 from sqlmodel import Session
 
-from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from databases.tables.bot_table import PaperTradingTable
-from databases.utils import get_session
-from deals.gateway import DealGateway
+from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
+from api.databases.tables.bot_table import PaperTradingTable
+from api.databases.utils import get_session
+from api.deals.gateway import DealGateway
 
 paper_trading_blueprint = APIRouter()
 ta = TypeAdapter(list[BotModel])

@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlmodel import Session
-from databases.utils import get_session
-from databases.crud.asset_index_crud import AssetIndexCrud
-from databases.tables.asset_index_table import AssetIndexTable
+from api.databases.utils import get_session
+from api.databases.crud.asset_index_crud import AssetIndexCrud
+from api.databases.tables.asset_index_table import AssetIndexTable
 from typing import List, Optional
 
 

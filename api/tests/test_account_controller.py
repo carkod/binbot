@@ -1,8 +1,8 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from account.controller import ConsolidatedAccounts
-from databases.tables.autotrade_table import AutotradeTable
+from api.account.controller import ConsolidatedAccounts
+from api.databases.tables.autotrade_table import AutotradeTable
 from pybinbot import ExchangeId
 
 

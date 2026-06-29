@@ -1,9 +1,9 @@
-from databases.utils import independent_session
+from api.databases.utils import independent_session
 from sqlmodel import Session, select
-from databases.tables.asset_index_table import AssetIndexTable
+from api.databases.tables.asset_index_table import AssetIndexTable
 from typing import Optional, Sequence
 from sqlalchemy.sql import delete
-from databases.utils import engine
+from api.databases.utils import engine
 
 
 class AssetIndexCrud:

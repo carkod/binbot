@@ -2,12 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from sqlmodel import Session
 
-from databases.crud.web3_candidates import Web3CandidatesCrud
-from databases.utils import get_session
-from databases.web3_candidates import Web3CandidateCreate
-from user.models.user import UserTokenData
-from user.services.auth import get_current_user
-from web3_candidates.models import Web3CandidateListResponse, Web3CandidateResponse
+from api.databases.crud.web3_candidates import Web3CandidatesCrud
+from api.databases.utils import get_session
+from api.databases.web3_candidates import Web3CandidateCreate
+from api.user.models.user import UserTokenData
+from api.user.services.auth import get_current_user
+from api.web3_candidates.models import Web3CandidateListResponse, Web3CandidateResponse
 
 
 web3_candidates_blueprint = APIRouter(

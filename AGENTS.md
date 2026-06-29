@@ -49,5 +49,5 @@ These projects are interconnected, and Codex conversations often refer across th
 
 - Add small regression tests for sizing, rounding, stop placement, and reversal logic whenever those calculations change.
 - Prefer tests that name the business rule being protected, especially for trading risk behavior.
-- Run `make format` from `api/` to check formatting, linting, and mypy.
-- Run `make test` from `api/` to run pytest.
+- Run `make format` from the repo root to check formatting, linting, and mypy across all services (api/, streaming/, cronjobs/).
+- Run `make test` from the repo root to run the api test suite. Use `make test-streaming` and `make test-cronjobs` for entry-point smoke tests.

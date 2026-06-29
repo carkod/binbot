@@ -6,7 +6,7 @@ from pydantic import field_validator
 
 # avoids circular imports
 if TYPE_CHECKING:
-    from databases.tables.bot_table import BotTable, PaperTradingTable
+    from api.databases.tables.bot_table import BotTable, PaperTradingTable
 
 
 class DealBase(SQLModel):

@@ -1,8 +1,8 @@
 from typing import Dict, Tuple
 from enum import Enum
-from databases.crud.autotrade_crud import AutotradeCrud
-from databases.crud.bot_crud import BotTableCrud
-from tools.config import Config
+from api.databases.crud.autotrade_crud import AutotradeCrud
+from api.databases.crud.bot_crud import BotTableCrud
+from api.tools.config import Config
 from pybinbot import QuoteAssets, KucoinApi
 
 

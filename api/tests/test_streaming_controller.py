@@ -17,8 +17,8 @@ from pybinbot import (
     Status,
 )
 
-from databases.tables.bot_table import BotTable
-from databases.tables.deal_table import DealTable
+from api.databases.tables.bot_table import BotTable
+from api.databases.tables.deal_table import DealTable
 from streaming.base import BaseStreaming
 from streaming.futures_position import FuturesPosition
 from streaming.position_manager import PositionManager

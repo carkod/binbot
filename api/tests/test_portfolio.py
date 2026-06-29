@@ -6,8 +6,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import delete
 from sqlmodel import Session
 
-from databases.tables.account_balances import ConsolidatedBalancesTable
-from portfolio.controller import PortfolioController
+from api.databases.tables.account_balances import ConsolidatedBalancesTable
+from api.portfolio.controller import PortfolioController
 
 
 def test_get_benchmark_series(client: TestClient, create_test_tables) -> None:

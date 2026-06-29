@@ -1,29 +1,29 @@
 import logging
 from contextlib import asynccontextmanager
 
-from account.routes import account_blueprint
-from asset_index.routes import asset_index_blueprint
-from autotrade.routes import autotrade_settings_blueprint
-from bots.routes import bot_blueprint
-from charts.routes import charts_blueprint
-from databases.api_db import ApiDb
-from databases.tables import *  # noqa
+from api.account.routes import account_blueprint
+from api.asset_index.routes import asset_index_blueprint
+from api.autotrade.routes import autotrade_settings_blueprint
+from api.bots.routes import bot_blueprint
+from api.charts.routes import charts_blueprint
+from api.databases.api_db import ApiDb
+from api.databases.tables import *  # noqa
 from fastapi import FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from grid_ladders.routes import grid_ladder_blueprint
-from inquiries.routes import inquiries_router
-from orders.routes.binance import binance_order_blueprint
-from orders.routes.kucoin import kucoin_order_blueprint
-from paper_trading.routes import paper_trading_blueprint
-from portfolio.routes import portfolio_blueprint
+from api.grid_ladders.routes import grid_ladder_blueprint
+from api.inquiries.routes import inquiries_router
+from api.orders.routes.binance import binance_order_blueprint
+from api.orders.routes.kucoin import kucoin_order_blueprint
+from api.paper_trading.routes import paper_trading_blueprint
+from api.portfolio.routes import portfolio_blueprint
 from pybinbot import configure_logging
-from signals.routes import signals_blueprint
-from symbols.routes import symbols_blueprint
-from user.routes import user_blueprint
-from web3_candidates.routes import web3_candidates_blueprint
+from api.signals.routes import signals_blueprint
+from api.symbols.routes import symbols_blueprint
+from api.user.routes import user_blueprint
+from api.web3_candidates.routes import web3_candidates_blueprint
 
 configure_logging()
 

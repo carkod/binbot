@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
-from main import app
+from api.main import app
 from unittest.mock import patch, MagicMock
-from databases.tables.asset_index_table import AssetIndexTable
+from api.databases.tables.asset_index_table import AssetIndexTable
 
 client = TestClient(app)
 

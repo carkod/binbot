@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from grid_ladders.sizing import GridMarginSizer, round_price_to_precision
+from api.grid_ladders.sizing import GridMarginSizer, round_price_to_precision
 
 
 @dataclass(frozen=True)

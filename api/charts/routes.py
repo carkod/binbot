@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
-from databases.utils import get_session
-from tools.handle_error import (
+from api.databases.utils import get_session
+from api.tools.handle_error import (
     json_response,
     json_response_error,
 )
-from charts.controllers import MarketDominationController
-from charts.models import MarketBreadthSeriesResponse
+from api.charts.controllers import MarketDominationController
+from api.charts.models import MarketBreadthSeriesResponse
 
 charts_blueprint = APIRouter()
 

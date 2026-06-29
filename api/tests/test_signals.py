@@ -2,10 +2,10 @@ from datetime import datetime, timezone, timedelta
 
 import pytest
 from sqlmodel import Session, delete, select
-from databases.crud.signals_crud import SignalsCrud
-from databases.tables.signals_table import SignalsTable
+from api.databases.crud.signals_crud import SignalsCrud
+from api.databases.tables.signals_table import SignalsTable
 from tests import conftest
-from tools.utils import utc_now
+from api.tools.utils import utc_now
 
 
 def _make_session() -> Session:

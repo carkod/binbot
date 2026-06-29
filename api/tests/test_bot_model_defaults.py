@@ -15,11 +15,11 @@ from pybinbot import (
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
-from databases.crud.bot_crud import BotTableCrud
-from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from databases.tables.deal_table import DealTable
-from exchange_apis.kucoin.futures.lifecycle import Lifecycle
+from api.databases.crud.bot_crud import BotTableCrud
+from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
+from api.databases.tables.bot_table import BotTable, PaperTradingTable
+from api.databases.tables.deal_table import DealTable
+from api.exchange_apis.kucoin.futures.lifecycle import Lifecycle
 
 
 def test_bot_model_orders_are_isolated():

@@ -18,8 +18,8 @@ from pybinbot import (
     RecoveryBotModel,
 )
 
-from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
-from exchange_apis.kucoin.futures.lifecycle import Lifecycle
+from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
+from api.exchange_apis.kucoin.futures.lifecycle import Lifecycle
 
 
 def _make_deal(

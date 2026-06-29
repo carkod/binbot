@@ -16,11 +16,11 @@ from pybinbot import (
     round_timestamp,
 )
 
-from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from databases.crud.symbols_crud import SymbolsCrud
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from exchange_apis.binance.deals.base_deal import BaseDeal
-from tools.exceptions import TakeProfitError
+from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
+from api.databases.crud.symbols_crud import SymbolsCrud
+from api.databases.tables.bot_table import BotTable, PaperTradingTable
+from api.exchange_apis.binance.deals.base_deal import BaseDeal
+from api.tools.exceptions import TakeProfitError
 
 
 class BinanceDeal(BaseDeal):

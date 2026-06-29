@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends
 from fastapi.exceptions import ResponseValidationError
-from user.models.user import UserDetails, UserTokenData
+from api.user.models.user import UserDetails, UserTokenData
 from pybinbot import StandardResponse, BinbotErrors, UserRoles
-from user.models.user import UserResponse, GetOneUser, LoginResponse
-from user.services.auth import decode_access_token, FormData, get_current_user
-from databases.crud.user_crud import UserTableCrud
+from api.user.models.user import UserResponse, GetOneUser, LoginResponse
+from api.user.services.auth import decode_access_token, FormData, get_current_user
+from api.databases.crud.user_crud import UserTableCrud
 from sqlmodel import Session
-from databases.utils import get_session
+from api.databases.utils import get_session
 from sqlalchemy.exc import IntegrityError
 
 user_blueprint = APIRouter()

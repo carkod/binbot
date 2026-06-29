@@ -5,8 +5,8 @@ from uuid import uuid4
 import pandas as pd
 from pybinbot import BotModel, DealModel, MarketType, Position, RecoveryBotModel
 
-from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
-from exchange_apis.kucoin.futures.position_market import PositionMarket
+from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
+from api.exchange_apis.kucoin.futures.position_market import PositionMarket
 
 
 class FakeApexFlowClose:

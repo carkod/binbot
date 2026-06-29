@@ -4,7 +4,7 @@ Tests for symbol ingestion functions to verify TRY symbols are excluded from Bin
 
 import pytest
 from unittest.mock import patch, MagicMock
-from databases.symbols_etl import SymbolDataEtl
+from api.databases.symbols_etl import SymbolDataEtl
 
 
 @pytest.fixture(autouse=True)

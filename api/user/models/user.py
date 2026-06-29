@@ -4,7 +4,7 @@ from sqlmodel import Field
 from pybinbot import UserRoles, timestamp
 from uuid import UUID, uuid4
 from typing import Sequence
-from databases.tables.user_table import UserTable
+from api.databases.tables.user_table import UserTable
 from pybinbot import StandardResponse
 
 

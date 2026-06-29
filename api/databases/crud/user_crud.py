@@ -1,13 +1,13 @@
 from fastapi import HTTPException
 from sqlmodel import Session, desc, select
-from databases.tables.user_table import UserTable
-from databases.utils import independent_session
+from api.databases.tables.user_table import UserTable
+from api.databases.utils import independent_session
 from collections.abc import Sequence
 from pybinbot import BinbotErrors
-from user.models.user import UserDetails
-from user.services.auth import create_access_token, FormData
+from api.user.models.user import UserDetails
+from api.user.services.auth import create_access_token, FormData
 from typing import Optional
-from tools.config import Config
+from api.tools.config import Config
 
 
 class UserTableCrud:
