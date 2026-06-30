@@ -17,7 +17,7 @@ def mock_asset_index():
     return index
 
 
-@patch("asset_index.routes.AssetIndexCrud")
+@patch("api.asset_index.routes.AssetIndexCrud")
 def test_add_asset_index(mock_crud_class):
     """Test adding an asset index"""
     mock_crud = MagicMock()
@@ -32,7 +32,7 @@ def test_add_asset_index(mock_crud_class):
     assert data["name"] == values["name"]
 
 
-@patch("asset_index.routes.AssetIndexCrud")
+@patch("api.asset_index.routes.AssetIndexCrud")
 def test_get_all_asset_indices(mock_crud_class):
     """Test getting all asset indices"""
     mock_crud = MagicMock()
@@ -44,7 +44,7 @@ def test_get_all_asset_indices(mock_crud_class):
     assert isinstance(response.json(), list)
 
 
-@patch("asset_index.routes.AssetIndexCrud")
+@patch("api.asset_index.routes.AssetIndexCrud")
 def test_get_asset_index(mock_crud_class):
     """Test getting a single asset index"""
     mock_crud = MagicMock()
@@ -58,7 +58,7 @@ def test_get_asset_index(mock_crud_class):
     assert data["id"] == payload["id"]
 
 
-@patch("asset_index.routes.AssetIndexCrud")
+@patch("api.asset_index.routes.AssetIndexCrud")
 def test_edit_asset_index(mock_crud_class):
     """Test editing an asset index"""
     mock_crud = MagicMock()
@@ -72,7 +72,7 @@ def test_edit_asset_index(mock_crud_class):
     assert data["name"] == payload["name"]
 
 
-@patch("asset_index.routes.AssetIndexCrud")
+@patch("api.asset_index.routes.AssetIndexCrud")
 def test_delete_asset_index(mock_crud_class):
     """Test deleting an asset index"""
     mock_crud = MagicMock()

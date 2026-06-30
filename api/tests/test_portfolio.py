@@ -38,15 +38,15 @@ def test_get_benchmark_series(client: TestClient, create_test_tables) -> None:
 
     with (
         patch(
-            "portfolio.controller.BinanceApi.get_ui_klines",
+            "api.portfolio.controller.BinanceApi.get_ui_klines",
             return_value=klines,
         ),
         patch(
-            "portfolio.controller.BinanceApi.get_ticker_price",
+            "api.portfolio.controller.BinanceApi.get_ticker_price",
             return_value=98000.0,
         ),
         patch(
-            "portfolio.controller.ConsolidatedAccounts.get_balance",
+            "api.portfolio.controller.ConsolidatedAccounts.get_balance",
             return_value=SimpleNamespace(
                 estimated_total_fiat=130.0,
                 total_deposit=5.0,

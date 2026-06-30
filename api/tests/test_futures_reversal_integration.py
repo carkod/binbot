@@ -302,11 +302,11 @@ def prepare_kat_source_bot() -> BotModel:
 def set_lifecycle_time(monkeypatch, when: datetime) -> None:
     timestamp_seconds = when.timestamp()
     monkeypatch.setattr(
-        "exchange_apis.kucoin.futures.lifecycle.time",
+        "api.exchange_apis.kucoin.futures.lifecycle.time",
         lambda: timestamp_seconds,
     )
     monkeypatch.setattr(
-        "exchange_apis.kucoin.futures.futures_deal.time",
+        "api.exchange_apis.kucoin.futures.futures_deal.time",
         lambda: timestamp_seconds,
     )
 

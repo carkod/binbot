@@ -149,7 +149,7 @@ class TestPositionManager:
             return DummySymbolInfo()
 
         monkeypatch.setattr(
-            "exchange_apis.kucoin.futures.futures_deal.KucoinFutures.get_symbol_info",
+            "api.exchange_apis.kucoin.futures.futures_deal.KucoinFutures.get_symbol_info",
             dummy_get_symbol_info,
         )
 

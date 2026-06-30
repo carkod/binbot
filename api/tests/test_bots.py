@@ -41,10 +41,10 @@ def bot_models():
 def mock_deal_gateway(bot_models):
     with (
         patch(
-            "deals.gateway.DealGateway.open_deal", return_value=bot_models["epic"]
+            "api.deals.gateway.DealGateway.open_deal", return_value=bot_models["epic"]
         ) as mock_open,
         patch(
-            "deals.gateway.DealGateway.deactivation",
+            "api.deals.gateway.DealGateway.deactivation",
             return_value=bot_models["active"],
         ) as mock_deactivate,
     ):

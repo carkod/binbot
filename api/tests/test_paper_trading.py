@@ -178,7 +178,7 @@ def test_paper_trading_deactivate_algorithmic_close(client: TestClient):
     active_bot = make_mock_bot_active_model()
 
     with patch(
-        "deals.gateway.DealGateway.deactivation",
+        "api.deals.gateway.DealGateway.deactivation",
         return_value=active_bot,
     ) as mock_deactivate:
         response = client.delete(

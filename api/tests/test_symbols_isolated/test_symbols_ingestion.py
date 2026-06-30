@@ -42,7 +42,7 @@ def _patch_symbol_crud_apis(monkeypatch):
             ]
             return SimpleNamespace(data=items)
 
-    monkeypatch.setattr("databases.crud.symbols_crud.KucoinFutures", DummyKucoinFutures)
+    monkeypatch.setattr("api.databases.crud.symbols_crud.KucoinFutures", DummyKucoinFutures)
 
 
 @pytest.fixture
@@ -106,7 +106,7 @@ def test_binance_symbols_ingestion_excludes_try(
     create_symbol_test_tables, mock_binance_exchange_info
 ):
     """Test that binance_symbols_ingestion excludes symbols with TRY as quote asset"""
-    with patch("databases.crud.symbols_crud.BinanceApi") as MockBinanceApi:
+    with patch("api.databases.crud.symbols_crud.BinanceApi") as MockBinanceApi:
         # Create a mock instance
         mock_instance = MagicMock()
         mock_instance.exchange_info.return_value = mock_binance_exchange_info

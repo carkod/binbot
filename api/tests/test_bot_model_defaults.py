@@ -108,7 +108,7 @@ def test_bot_crud_get_one_returns_loaded_deal_after_read_session_commit(monkeypa
         finally:
             session.close()
 
-    monkeypatch.setattr("databases.crud.bot_crud.get_db_session", committing_session)
+    monkeypatch.setattr("api.databases.crud.bot_crud.get_db_session", committing_session)
 
     bot = BotTableCrud().get_one(bot_id=str(bot_id))
     model = BotModel.dump_from_table(bot)
@@ -154,7 +154,7 @@ def test_get_active_pairs_includes_pending_and_active(monkeypatch):
         with session_for(engine) as sess:
             yield sess
 
-    monkeypatch.setattr("databases.crud.bot_crud.get_db_session", patched_session)
+    monkeypatch.setattr("api.databases.crud.bot_crud.get_db_session", patched_session)
 
     pairs = BotTableCrud().get_active_pairs()
 
@@ -179,7 +179,7 @@ def test_paper_trading_active_pairs_only_includes_active(monkeypatch):
             yield sess
 
     monkeypatch.setattr(
-        "databases.crud.paper_trading_crud.get_db_session", patched_session
+        "api.databases.crud.paper_trading_crud.get_db_session", patched_session
     )
 
     pairs = PaperTradingTableCrud().get_active_pairs()

@@ -10,7 +10,7 @@ from api.main import app
 # The import below is required to register all models for SQLModel metadata. Do not remove!
 import api.databases.tables  # noqa: F401
 
-from tests.fixtures.symbol_fixtures import (
+from api.tests.fixtures.symbol_fixtures import (
     get_test_symbols,
     get_test_asset_indices,
     get_test_symbol_index_links,
@@ -96,7 +96,7 @@ def create_symbol_test_tables():
 
     # Start patching independent_session for symbol tests only
     patcher1 = patch(
-        "databases.utils.independent_session", side_effect=mock_independent_session
+        "api.databases.utils.independent_session", side_effect=mock_independent_session
     )
     patcher1.start()
 

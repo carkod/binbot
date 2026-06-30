@@ -13,7 +13,7 @@ def test_initialization_releases_settings_read_transaction():
         fiat="USDT",
     )
 
-    with patch("account.controller.Assets") as assets_class:
+    with patch("api.account.controller.Assets") as assets_class:
         assets_class.return_value.autotrade_settings = settings
         ConsolidatedAccounts(session=session)
 
