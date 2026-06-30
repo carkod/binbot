@@ -4,17 +4,20 @@ import pytest
 from sqlmodel import Session, delete, select
 from api.databases.crud.signals_crud import SignalsCrud
 from api.databases.tables.signals_table import SignalsTable
-from tests import conftest
 from api.tools.utils import utc_now
+
+_engine = None
 
 
 def _make_session() -> Session:
-    assert conftest._test_engine is not None
-    return Session(conftest._test_engine, expire_on_commit=False)
+    assert _engine is not None
+    return Session(_engine, expire_on_commit=False)
 
 
 @pytest.fixture(autouse=True)
-def _clean_signals():
+def _clean_signals(test_engine):
+    global _engine
+    _engine = test_engine
     with _make_session() as session:
         session.execute(delete(SignalsTable))
         session.commit()

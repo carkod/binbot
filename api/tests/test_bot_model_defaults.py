@@ -108,7 +108,9 @@ def test_bot_crud_get_one_returns_loaded_deal_after_read_session_commit(monkeypa
         finally:
             session.close()
 
-    monkeypatch.setattr("api.databases.crud.bot_crud.get_db_session", committing_session)
+    monkeypatch.setattr(
+        "api.databases.crud.bot_crud.get_db_session", committing_session
+    )
 
     bot = BotTableCrud().get_one(bot_id=str(bot_id))
     model = BotModel.dump_from_table(bot)

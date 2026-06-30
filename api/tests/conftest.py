@@ -489,6 +489,11 @@ def paper_trading_table_fixture(create_test_tables):
 
 
 @pytest.fixture(scope="session")
+def test_engine(create_test_tables):
+    return create_test_tables
+
+
+@pytest.fixture(scope="session")
 def mock_lifespan():
     with patch("api.main.lifespan") as mock_lifespan:
         yield mock_lifespan

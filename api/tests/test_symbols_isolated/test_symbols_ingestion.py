@@ -42,7 +42,9 @@ def _patch_symbol_crud_apis(monkeypatch):
             ]
             return SimpleNamespace(data=items)
 
-    monkeypatch.setattr("api.databases.crud.symbols_crud.KucoinFutures", DummyKucoinFutures)
+    monkeypatch.setattr(
+        "api.databases.crud.symbols_crud.KucoinFutures", DummyKucoinFutures
+    )
 
 
 @pytest.fixture
