@@ -59,6 +59,11 @@ class Lifecycle(KucoinPositionDeal):
     RECOVERY_EMERGENCY_ATR_MULTIPLIER = 1.0
     RECOVERY_EMERGENCY_MIN_PCT = 0.75
     RECOVERY_EMERGENCY_MAX_PCT = 1.5
+    RECOVERY_TIGHT_EMERGENCY_ALGORITHMS = frozenset(
+        {"spike_hunter_v3_kucoin", "liquidation_sweep_pump"}
+    )
+    RECOVERY_TIGHT_EMERGENCY_MIN_PCT = 0.35
+    RECOVERY_TIGHT_EMERGENCY_MAX_PCT = 0.75
 
     def __init__(
         self,
@@ -638,16 +643,17 @@ class Lifecycle(KucoinPositionDeal):
         stop_loss_price: float,
         completed_candles: list,
     ) -> tuple[float, float]:
+        min_emergency_pct, max_emergency_pct = self.recovery_emergency_stop_bounds()
         atr = self.closed_candle_atr(completed_candles)
         if atr is None:
-            emergency_pct = self.RECOVERY_EMERGENCY_MIN_PCT
+            emergency_pct = min_emergency_pct
         else:
             atr_pct = (
                 self.RECOVERY_EMERGENCY_ATR_MULTIPLIER * atr / stop_loss_price * 100
             )
             emergency_pct = max(
-                self.RECOVERY_EMERGENCY_MIN_PCT,
-                min(atr_pct, self.RECOVERY_EMERGENCY_MAX_PCT),
+                min_emergency_pct,
+                min(atr_pct, max_emergency_pct),
             )
 
         direction = self._direction_multiplier()
@@ -656,6 +662,14 @@ class Lifecycle(KucoinPositionDeal):
             self.price_precision,
         )
         return emergency_price, emergency_pct
+
+    def recovery_emergency_stop_bounds(self) -> tuple[float, float]:
+        if self.active_bot.name in self.RECOVERY_TIGHT_EMERGENCY_ALGORITHMS:
+            return (
+                self.RECOVERY_TIGHT_EMERGENCY_MIN_PCT,
+                self.RECOVERY_TIGHT_EMERGENCY_MAX_PCT,
+            )
+        return self.RECOVERY_EMERGENCY_MIN_PCT, self.RECOVERY_EMERGENCY_MAX_PCT
 
     def _add_recovery_log_once(self, marker: str, message: str) -> None:
         if any(marker in str(log) for log in self.active_bot.logs):

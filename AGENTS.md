@@ -16,6 +16,7 @@ These projects are interconnected, and Codex conversations often refer across th
 
 ## Function Shape
 
+- When making technical decisions, do not give much weight to development cost.
 - Do not add wrapper methods whose only job is to pass instance state into another method.
 - Prefer one clearly named function with explicit parameters over a public method that delegates to a private method with the real logic.
 - If a helper is needed, it should remove meaningful duplication or isolate a distinct concept, not just rename the same operation.
