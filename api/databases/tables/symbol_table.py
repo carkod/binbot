@@ -2,12 +2,12 @@ from sqlmodel import SQLModel, Field, Relationship
 from pybinbot import timestamp
 from sqlalchemy import BigInteger, Column
 from pydantic import field_validator
-from databases.tables.asset_index_table import SymbolIndexLink
+from api.databases.tables.asset_index_table import SymbolIndexLink
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from databases.tables.asset_index_table import AssetIndexTable
-    from databases.tables.symbol_exchange_table import SymbolExchangeTable
+    from api.databases.tables.asset_index_table import AssetIndexTable
+    from api.databases.tables.symbol_exchange_table import SymbolExchangeTable
 
 
 class SymbolTable(SQLModel, table=True):

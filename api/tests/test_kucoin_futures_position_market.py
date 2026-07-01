@@ -5,8 +5,8 @@ from uuid import uuid4
 import pandas as pd
 from pybinbot import BotModel, DealModel, MarketType, Position, RecoveryBotModel
 
-from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
-from exchange_apis.kucoin.futures.position_market import PositionMarket
+from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
+from api.exchange_apis.kucoin.futures.position_market import PositionMarket
 
 
 class FakeApexFlowClose:
@@ -87,7 +87,7 @@ def test_market_trailing_analytics_keeps_stop_loss_percent_when_pullback_missing
     monkeypatch,
 ):
     monkeypatch.setattr(
-        "exchange_apis.kucoin.futures.position_market.ApexFlowClose",
+        "api.exchange_apis.kucoin.futures.position_market.ApexFlowClose",
         FakeApexFlowClose,
     )
     market = make_position_market(
@@ -120,7 +120,7 @@ def test_market_trailing_analytics_preserves_recovery_parameters(monkeypatch):
         updated_at=1,
     )
     monkeypatch.setattr(
-        "exchange_apis.kucoin.futures.position_market.ApexFlowClose",
+        "api.exchange_apis.kucoin.futures.position_market.ApexFlowClose",
         lambda *_: (_ for _ in ()).throw(
             AssertionError("recovery analytics should return before recalculation")
         ),
@@ -248,7 +248,7 @@ def _make_klines_with_range(
 def test_bb_extreme_reversion_uses_atr_based_stop_loss(monkeypatch):
     """bb_extreme_reversion must dispatch to the ATR path; SL = 2x ATR%."""
     monkeypatch.setattr(
-        "exchange_apis.kucoin.futures.position_market.ApexFlowClose",
+        "api.exchange_apis.kucoin.futures.position_market.ApexFlowClose",
         FakeApexFlowClose,
     )
     # 20 candles each with 1.5% range; ATR_pct ≈ 1.5; SL = 2.0 * 1.5 = 3.0
@@ -273,7 +273,7 @@ def test_bb_extreme_reversion_atr_sl_pins_to_existing_when_set(monkeypatch):
     """Once a bb_extreme_reversion bot has SL, it stays pinned even if ATR
     derives differently."""
     monkeypatch.setattr(
-        "exchange_apis.kucoin.futures.position_market.ApexFlowClose",
+        "api.exchange_apis.kucoin.futures.position_market.ApexFlowClose",
         FakeApexFlowClose,
     )
     klines = _make_klines_with_range(n=20, price=100.0, range_pct=1.5)
@@ -294,7 +294,7 @@ def test_bb_extreme_reversion_atr_sl_pins_to_existing_when_set(monkeypatch):
 def test_bb_extreme_reversion_atr_sl_works_for_short(monkeypatch):
     """bb_extreme_reversion shorts must reach the ATR path (no long-only gate)."""
     monkeypatch.setattr(
-        "exchange_apis.kucoin.futures.position_market.ApexFlowClose",
+        "api.exchange_apis.kucoin.futures.position_market.ApexFlowClose",
         FakeApexFlowClose,
     )
     klines = _make_klines_with_range(n=20, price=100.0, range_pct=2.0)
@@ -318,7 +318,7 @@ def test_non_bb_extreme_bot_still_uses_bb_path(monkeypatch):
     """Non-bb_extreme bots must NOT take the ATR path; the existing long-only
     BB flow stays unchanged."""
     monkeypatch.setattr(
-        "exchange_apis.kucoin.futures.position_market.ApexFlowClose",
+        "api.exchange_apis.kucoin.futures.position_market.ApexFlowClose",
         FakeApexFlowClose,
     )
     market = make_position_market(

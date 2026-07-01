@@ -4,7 +4,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from sqlmodel import Session
 from pybinbot import BotBase, Status, BinbotErrors, BinanceErrors, MarketType
-from user.models.user import UserTokenData
+from api.user.models.user import UserTokenData
 from pybinbot import (
     BotResponse,
     BotListResponse,
@@ -13,14 +13,14 @@ from pybinbot import (
     BotModel,
     ErrorsRequestBody,
 )
-from databases.crud.bot_crud import BotTableCrud
-from databases.crud.grid_ladder_crud import GridLadderCrud
-from databases.utils import get_session
-from deals.gateway import DealGateway
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from exchange_apis.kucoin.futures.lifecycle import Lifecycle
+from api.databases.crud.bot_crud import BotTableCrud
+from api.databases.crud.grid_ladder_crud import GridLadderCrud
+from api.databases.utils import get_session
+from api.deals.gateway import DealGateway
+from api.databases.tables.bot_table import BotTable, PaperTradingTable
+from api.exchange_apis.kucoin.futures.lifecycle import Lifecycle
 from kucoin_universal_sdk.model.common import RestError
-from user.services.auth import get_current_user
+from api.user.services.auth import get_current_user
 from uuid import UUID
 
 bot_blueprint = APIRouter()

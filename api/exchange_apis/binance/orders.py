@@ -1,7 +1,7 @@
 from time import time
 from uuid import uuid4
-from exchange_apis.binance.account import BinanceAccount
-from databases.crud.autotrade_crud import AutotradeCrud
+from api.exchange_apis.binance.account import BinanceAccount
+from api.databases.crud.autotrade_crud import AutotradeCrud
 from pybinbot import (
     ExchangeId,
     OrderType,
@@ -12,8 +12,8 @@ from pybinbot import (
     round_timestamp,
     DeleteOrderError,
 )
-from tools.handle_error import json_response, json_response_message
-from databases.crud.symbols_crud import SymbolsCrud
+from api.tools.handle_error import json_response, json_response_message
+from api.databases.crud.symbols_crud import SymbolsCrud
 
 
 class BinanceOrderController(BinanceAccount):

@@ -15,25 +15,25 @@ from unittest.mock import MagicMock, Mock, patch
 from uuid import UUID
 
 # The import below is required to register all models for SQLModel metadata. Do not remove!
-import databases.tables  # noqa: F401
+import api.databases.tables  # noqa: F401
 import pytest
-from databases.tables.autotrade_table import AutotradeTable
-from databases.tables.bot_table import BotTable
-from databases.tables.deal_table import DealTable
-from databases.utils import get_session
+from api.databases.tables.autotrade_table import AutotradeTable
+from api.databases.tables.bot_table import BotTable
+from api.databases.tables.deal_table import DealTable
+from api.databases.utils import get_session
 from fastapi.testclient import TestClient
-from main import app
+from api.main import app
 from pybinbot import UserRoles
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
-from tests.fixtures.paper_trading import seed_paper_trading_defaults
-from tests.fixtures.symbol_fixtures import (
+from api.tests.fixtures.paper_trading import seed_paper_trading_defaults
+from api.tests.fixtures.symbol_fixtures import (
     get_test_asset_indices,
     get_test_symbol_index_links,
     get_test_symbols,
 )
-from user.models.user import UserTokenData
-from user.services.auth import get_current_user
+from api.user.models.user import UserTokenData
+from api.user.services.auth import get_current_user
 
 # Global variable to store test engine for use in patches
 _test_engine = None
@@ -372,14 +372,14 @@ def create_test_tables():
     # Start patching independent_session for the entire test session
     # Patch in locations where it's imported directly.
     patcher1 = patch(
-        "databases.utils.independent_session", side_effect=mock_independent_session
+        "api.databases.utils.independent_session", side_effect=mock_independent_session
     )
     patcher3 = patch(
-        "databases.crud.asset_index_crud.independent_session",
+        "api.databases.crud.asset_index_crud.independent_session",
         side_effect=mock_independent_session,
     )
     patcher_charts = patch(
-        "charts.controllers.independent_session",
+        "api.charts.controllers.independent_session",
         side_effect=mock_independent_session,
     )
 
@@ -405,15 +405,15 @@ def create_test_tables():
     }
 
     patcher7 = patch(
-        "exchange_apis.binance.deals.spot_deal.BinanceSpotDeal.buy_order",
+        "api.exchange_apis.binance.deals.spot_deal.BinanceSpotDeal.buy_order",
         return_value=mock_buy_order_response,
     )
     patcher8 = patch(
-        "exchange_apis.binance.deals.spot_deal.BinanceSpotDeal.sell_order",
+        "api.exchange_apis.binance.deals.spot_deal.BinanceSpotDeal.sell_order",
         return_value=mock_buy_order_response,
     )
     patcher9 = patch(
-        "exchange_apis.binance.deals.spot_deal.BinanceSpotDeal.delete_order",
+        "api.exchange_apis.binance.deals.spot_deal.BinanceSpotDeal.delete_order",
         return_value={"msg": "success"},
     )
 
@@ -429,11 +429,11 @@ def create_test_tables():
 
     # Mock additional exchange API methods
     patcher11 = patch(
-        "exchange_apis.binance.account.BinanceAccount.get_single_spot_balance",
+        "api.exchange_apis.binance.account.BinanceAccount.get_single_spot_balance",
         return_value=100.0,
     )
     patcher12 = patch(
-        "exchange_apis.binance.orders.BinanceOrderController.get_ticker_price",
+        "api.exchange_apis.binance.orders.BinanceOrderController.get_ticker_price",
         return_value=1.0,
     )
 
@@ -443,7 +443,7 @@ def create_test_tables():
     mock_consolidated_accounts.autotrade_settings.exchange_id.name = "binance"
 
     patcher13 = patch(
-        "account.routes.ConsolidatedAccounts",
+        "api.account.routes.ConsolidatedAccounts",
         return_value=mock_consolidated_accounts,
     )
 
@@ -489,8 +489,13 @@ def paper_trading_table_fixture(create_test_tables):
 
 
 @pytest.fixture(scope="session")
+def test_engine(create_test_tables):
+    return create_test_tables
+
+
+@pytest.fixture(scope="session")
 def mock_lifespan():
-    with patch("main.lifespan") as mock_lifespan:
+    with patch("api.main.lifespan") as mock_lifespan:
         yield mock_lifespan
 
 

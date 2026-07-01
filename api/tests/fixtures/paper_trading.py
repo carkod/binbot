@@ -5,7 +5,7 @@ from typing import List
 from sqlalchemy import delete
 from sqlmodel import Session
 
-from databases.tables.bot_table import PaperTradingTable
+from api.databases.tables.bot_table import PaperTradingTable
 
 PAPER_TRADING_FIXTURE_ROWS = [
     {

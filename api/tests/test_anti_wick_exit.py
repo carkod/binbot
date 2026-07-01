@@ -32,7 +32,7 @@ from pybinbot import (
     Position,
 )
 
-from exchange_apis.kucoin.futures.lifecycle import Lifecycle
+from api.exchange_apis.kucoin.futures.lifecycle import Lifecycle
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -186,8 +186,8 @@ def test_paper_trading_execute_stop_loss_uses_reference_price_as_fill():
     Paper-trading branch: when reference_price is provided the simulated fill
     price should be reference_price, not the current mark price.
     """
-    from databases.crud.paper_trading_crud import PaperTradingTableCrud
-    from databases.tables.bot_table import PaperTradingTable
+    from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
+    from api.databases.tables.bot_table import PaperTradingTable
 
     saved: list[BotModel] = []
 

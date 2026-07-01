@@ -4,7 +4,7 @@ from typing import Any
 from pydantic import BaseModel, Field as PydanticField
 from sqlalchemy import BigInteger, Column, DateTime, Integer, String, Text, func
 from sqlmodel import Field, SQLModel
-from tools.utils import JsonVariant, utc_now
+from api.tools.utils import JsonVariant, utc_now
 
 
 class Web3CandidateBase(BaseModel):

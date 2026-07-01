@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends
 from datetime import datetime, timedelta
-from portfolio.models import BenchmarkSeriesResponse
-from portfolio.controller import PortfolioController
-from user.models.user import UserTokenData
-from user.services.auth import get_current_user
+from api.portfolio.models import BenchmarkSeriesResponse
+from api.portfolio.controller import PortfolioController
+from api.user.models.user import UserTokenData
+from api.user.services.auth import get_current_user
 from sqlmodel import Session
-from databases.utils import get_session
+from api.databases.utils import get_session
 
 portfolio_blueprint = APIRouter(prefix="/portfolio")
 

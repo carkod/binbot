@@ -17,8 +17,8 @@ from pybinbot import (
     Status,
 )
 
-from databases.tables.bot_table import BotTable
-from databases.tables.deal_table import DealTable
+from api.databases.tables.bot_table import BotTable
+from api.databases.tables.deal_table import DealTable
 from streaming.base import BaseStreaming
 from streaming.futures_position import FuturesPosition
 from streaming.position_manager import PositionManager
@@ -149,7 +149,7 @@ class TestPositionManager:
             return DummySymbolInfo()
 
         monkeypatch.setattr(
-            "exchange_apis.kucoin.futures.futures_deal.KucoinFutures.get_symbol_info",
+            "api.exchange_apis.kucoin.futures.futures_deal.KucoinFutures.get_symbol_info",
             dummy_get_symbol_info,
         )
 

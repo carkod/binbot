@@ -7,10 +7,13 @@ import pytest
 import requests
 from sqlmodel import Session, delete
 
-from databases.crud.web3_candidates import Web3CandidatesCrud
-from databases.web3_candidates import Web3CandidateCreate, Web3CandidateTable
+from api.databases.crud.web3_candidates import Web3CandidatesCrud
+from api.databases.web3_candidates import Web3CandidateCreate, Web3CandidateTable
 from tests import conftest
-from web3_candidates.ingest_web3_candidates import LaunchCandidate, IngestWeb3Candidates
+from api.web3_candidates.ingest_web3_candidates import (
+    LaunchCandidate,
+    IngestWeb3Candidates,
+)
 
 
 def _make_session() -> Session:
@@ -224,7 +227,7 @@ def test_request_with_retries_all_429_raises_http_error():
     """When every attempt returns 429, raise HTTPError rather than AssertionError."""
     ingester = _make_ingester()
     with (
-        patch("web3_candidates.ingest_web3_candidates.time.sleep"),
+        patch("api.web3_candidates.ingest_web3_candidates.time.sleep"),
         patch.object(ingester.session, "request", return_value=_make_429_response()),
     ):
         with pytest.raises(requests.HTTPError):
@@ -240,7 +243,7 @@ def test_request_with_retries_eventual_success_after_429():
 
     responses = [_make_429_response(), good]
     with (
-        patch("web3_candidates.ingest_web3_candidates.time.sleep"),
+        patch("api.web3_candidates.ingest_web3_candidates.time.sleep"),
         patch.object(ingester.session, "request", side_effect=responses),
     ):
         result = ingester.request_with_retries("GET", "https://example.com", retries=3)
@@ -264,7 +267,7 @@ def test_fetch_all_page_candidates_skips_rate_limited_page():
     mock_request = MagicMock(return_value=_make_429_response())
 
     with (
-        patch("web3_candidates.ingest_web3_candidates.time.sleep"),
+        patch("api.web3_candidates.ingest_web3_candidates.time.sleep"),
         patch.object(ingester.session, "request", side_effect=mock_request),
     ):
         # Should complete without raising; all pages rate-limited → no candidates

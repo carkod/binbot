@@ -4,9 +4,9 @@ from types import SimpleNamespace
 import pytest
 from sqlmodel import Session, delete, select
 
-from charts.controllers import MarketDominationController
-from databases.tables.autotrade_table import AutotradeTable
-from databases.tables.market_breadth_table import MarketBreadthTable
+from api.charts.controllers import MarketDominationController
+from api.databases.tables.autotrade_table import AutotradeTable
+from api.databases.tables.market_breadth_table import MarketBreadthTable
 from pybinbot import ExchangeId
 from tests import conftest
 

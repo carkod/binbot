@@ -15,10 +15,10 @@ from pybinbot import (
     Status,
 )
 
-from databases.tables.bot_table import BotTable
-from databases.tables.deal_table import DealTable
-from databases.tables.recovery_bot_table import RecoveryBotTable
-from exchange_apis.kucoin.futures.lifecycle import Lifecycle
+from api.databases.tables.bot_table import BotTable
+from api.databases.tables.deal_table import DealTable
+from api.databases.tables.recovery_bot_table import RecoveryBotTable
+from api.exchange_apis.kucoin.futures.lifecycle import Lifecycle
 from tests.fixtures.mock_bot_table import make_mock_bot_active_model
 
 
@@ -302,11 +302,11 @@ def prepare_kat_source_bot() -> BotModel:
 def set_lifecycle_time(monkeypatch, when: datetime) -> None:
     timestamp_seconds = when.timestamp()
     monkeypatch.setattr(
-        "exchange_apis.kucoin.futures.lifecycle.time",
+        "api.exchange_apis.kucoin.futures.lifecycle.time",
         lambda: timestamp_seconds,
     )
     monkeypatch.setattr(
-        "exchange_apis.kucoin.futures.futures_deal.time",
+        "api.exchange_apis.kucoin.futures.futures_deal.time",
         lambda: timestamp_seconds,
     )
 

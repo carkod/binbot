@@ -19,12 +19,12 @@ from pybinbot import (
     round_numbers,
 )
 
-from databases.crud.bot_crud import BotTableCrud
-from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from databases.crud.symbols_crud import SymbolsCrud
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from exchange_apis.kucoin.deals.base import KucoinBaseBalance
-from exchange_apis.kucoin.futures.balance import KucoinFuturesBalance
+from api.databases.crud.bot_crud import BotTableCrud
+from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
+from api.databases.crud.symbols_crud import SymbolsCrud
+from api.databases.tables.bot_table import BotTable, PaperTradingTable
+from api.exchange_apis.kucoin.deals.base import KucoinBaseBalance
+from api.exchange_apis.kucoin.futures.balance import KucoinFuturesBalance
 from streaming.base import BaseStreaming
 
 

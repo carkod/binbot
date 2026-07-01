@@ -11,8 +11,8 @@ from pybinbot import (
     round_numbers,
 )
 
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from exchange_apis.kucoin.futures.position_market import PositionMarket
+from api.databases.tables.bot_table import BotTable, PaperTradingTable
+from api.exchange_apis.kucoin.futures.position_market import PositionMarket
 from streaming.base import BaseStreaming
 
 

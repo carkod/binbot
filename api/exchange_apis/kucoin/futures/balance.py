@@ -1,11 +1,11 @@
 from typing import Dict, Tuple
-from databases.crud.autotrade_crud import AutotradeCrud
-from databases.crud.bot_crud import BotTableCrud
+from api.databases.crud.autotrade_crud import AutotradeCrud
+from api.databases.crud.bot_crud import BotTableCrud
 from pybinbot import KucoinFutures
 from kucoin_universal_sdk.generate.account.account import (
     GetFuturesAccountReqBuilder,
 )
-from tools.config import Config
+from api.tools.config import Config
 
 
 class KucoinFuturesBalance:

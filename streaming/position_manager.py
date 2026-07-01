@@ -8,10 +8,10 @@ from pybinbot import (
     KucoinApi,
 )
 
-from databases.crud.autotrade_crud import AutotradeCrud
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from deals.gateway import DealGateway
-from exchange_apis.kucoin.futures.futures_deal import KucoinFutures
+from api.databases.crud.autotrade_crud import AutotradeCrud
+from api.databases.tables.bot_table import BotTable, PaperTradingTable
+from api.deals.gateway import DealGateway
+from api.exchange_apis.kucoin.futures.futures_deal import KucoinFutures
 from streaming.apex_flow_closing import ApexFlowClose
 from streaming.base import BaseStreaming
 

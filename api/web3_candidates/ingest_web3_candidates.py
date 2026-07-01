@@ -11,8 +11,8 @@ import requests
 from bs4 import BeautifulSoup
 from sqlmodel import Session
 
-from databases.crud.web3_candidates import Web3CandidatesCrud
-from databases.web3_candidates import Web3CandidateCreate
+from api.databases.crud.web3_candidates import Web3CandidatesCrud
+from api.databases.web3_candidates import Web3CandidateCreate
 
 
 KUCOIN_WEB_BASE = "https://www.kucoin.com"

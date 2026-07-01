@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends
 from pybinbot import BinanceErrors, KucoinApi, KucoinFutures
-from tools.config import Config
-from tools.handle_error import json_response_error
-from user.models.user import UserTokenData
-from user.services.auth import get_current_user
+from api.tools.config import Config
+from api.tools.handle_error import json_response_error
+from api.user.models.user import UserTokenData
+from api.user.services.auth import get_current_user
 
 config = Config()
 kucoin_order_blueprint = APIRouter()

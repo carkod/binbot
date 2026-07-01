@@ -1,8 +1,8 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from databases.crud.autotrade_crud import AutotradeCrud
-from databases.tables.grid_ladder_table import GridLadderTable
+from api.databases.crud.autotrade_crud import AutotradeCrud
+from api.databases.tables.grid_ladder_table import GridLadderTable
 from sqlmodel import Session
 
 

@@ -14,7 +14,7 @@ from sqlalchemy.orm import QueryableAttribute, selectinload
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session, select, desc
 
-from databases.tables.grid_ladder_table import (
+from api.databases.tables.grid_ladder_table import (
     GridLadderTable,
     GridLevelTable,
     GridOrderTable,

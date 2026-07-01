@@ -12,10 +12,10 @@ from pybinbot import (
     round_timestamp,
 )
 
-from databases.crud.autotrade_crud import AutotradeCrud
-from databases.crud.paper_trading_crud import PaperTradingTableCrud
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from exchange_apis.binance.deals.spot_deal import BinanceSpotDeal
+from api.databases.crud.autotrade_crud import AutotradeCrud
+from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
+from api.databases.tables.bot_table import BotTable, PaperTradingTable
+from api.exchange_apis.binance.deals.spot_deal import BinanceSpotDeal
 
 
 class LongDeal(BinanceSpotDeal):

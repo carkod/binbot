@@ -1,7 +1,7 @@
 from uuid import UUID, uuid4
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from pybinbot import StandardResponse
-from databases.tables.inquiry_table import InquiryTable
+from api.databases.tables.inquiry_table import InquiryTable
 
 
 class InquiryBase(BaseModel):

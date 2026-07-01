@@ -3,14 +3,14 @@ from typing import Optional, cast
 from sqlalchemy.orm import QueryableAttribute
 from sqlalchemy.sql.expression import ColumnElement
 from sqlmodel import select, Session
-from databases.crud.symbols_crud_utils import SymbolsCrudUtils
-from tools.config import Config
-from databases.crud.autotrade_crud import AutotradeCrud
-from databases.tables.asset_index_table import AssetIndexTable, SymbolIndexLink
-from databases.tables.symbol_exchange_table import SymbolExchangeTable
-from databases.tables.symbol_table import SymbolTable
-from databases.utils import engine
-from symbols.models import SymbolRequestPayload
+from api.databases.crud.symbols_crud_utils import SymbolsCrudUtils
+from api.tools.config import Config
+from api.databases.crud.autotrade_crud import AutotradeCrud
+from api.databases.tables.asset_index_table import AssetIndexTable, SymbolIndexLink
+from api.databases.tables.symbol_exchange_table import SymbolExchangeTable
+from api.databases.tables.symbol_table import SymbolTable
+from api.databases.utils import engine
+from api.symbols.models import SymbolRequestPayload
 from pybinbot import (
     ExchangeId,
     BinanceApi,
@@ -21,7 +21,7 @@ from pybinbot import (
     SymbolModel,
 )
 from sqlalchemy.sql import delete
-from databases.utils import get_db_session
+from api.databases.utils import get_db_session
 
 
 class SymbolsCrud(SymbolsCrudUtils):

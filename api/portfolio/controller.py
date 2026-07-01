@@ -1,9 +1,9 @@
 from datetime import datetime
 from math import sqrt
 from typing import Union
-from account.controller import ConsolidatedAccounts
-from databases.crud.autotrade_crud import AutotradeCrud
-from databases.crud.balances_crud import BalancesCrud
+from api.account.controller import ConsolidatedAccounts
+from api.databases.crud.autotrade_crud import AutotradeCrud
+from api.databases.crud.balances_crud import BalancesCrud
 from pybinbot import (
     BinanceApi,
     BinanceKlineIntervals,
@@ -15,8 +15,8 @@ from pybinbot import (
     ts_to_day,
 )
 from sqlmodel import Session
-from tools.config import Config
-from portfolio.models import BenchmarkData, BenchmarkSeries, Stats
+from api.tools.config import Config
+from api.portfolio.models import BenchmarkData, BenchmarkSeries, Stats
 
 
 class PortfolioController:

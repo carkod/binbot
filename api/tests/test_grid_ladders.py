@@ -19,20 +19,20 @@ from pybinbot import (
 )
 from sqlmodel import Session, delete
 
-from databases.crud.grid_ladder_crud import GridLadderCrud
-from databases.tables.bot_table import BotTable
-from databases.tables.deal_table import DealTable
-from databases.tables.grid_ladder_table import (
+from api.databases.crud.grid_ladder_crud import GridLadderCrud
+from api.databases.tables.bot_table import BotTable
+from api.databases.tables.deal_table import DealTable
+from api.databases.tables.grid_ladder_table import (
     GridLadderTable,
     GridLevelTable,
     GridOrderTable,
 )
-from grid_ladders.calculations import calculate_grid_levels
-from grid_ladders.capital import GridCapitalSettings
-from grid_ladders.lifecycle import GridLadderLifecycle
-from grid_ladders.models import GridLadderCreate
-from grid_ladders.routes import GridContractMeta
-from grid_ladders.sizing import KucoinGridMarginRules
+from api.grid_ladders.calculations import calculate_grid_levels
+from api.grid_ladders.capital import GridCapitalSettings
+from api.grid_ladders.lifecycle import GridLadderLifecycle
+from api.grid_ladders.models import GridLadderCreate
+from api.grid_ladders.routes import GridContractMeta
+from api.grid_ladders.sizing import KucoinGridMarginRules
 
 
 def _order_details(
@@ -68,7 +68,7 @@ def _fake_meta(
 
 def _patch_contract_meta(monkeypatch, meta: GridContractMeta | None = None) -> None:
     monkeypatch.setattr(
-        "grid_ladders.routes._fetch_kucoin_futures_contract_meta",
+        "api.grid_ladders.routes._fetch_kucoin_futures_contract_meta",
         lambda symbol_row: meta or _fake_meta(),
     )
 
@@ -83,7 +83,7 @@ def _patch_balance(monkeypatch, fiat_available: float) -> None:
         def get_balance(self):
             return balance
 
-    monkeypatch.setattr("grid_ladders.routes.ConsolidatedAccounts", Accounts)
+    monkeypatch.setattr("api.grid_ladders.routes.ConsolidatedAccounts", Accounts)
 
 
 def _patch_balance_error(monkeypatch, error: Exception) -> None:
@@ -94,7 +94,7 @@ def _patch_balance_error(monkeypatch, error: Exception) -> None:
         def get_balance(self):
             raise error
 
-    monkeypatch.setattr("grid_ladders.routes.ConsolidatedAccounts", Accounts)
+    monkeypatch.setattr("api.grid_ladders.routes.ConsolidatedAccounts", Accounts)
 
 
 @pytest.fixture(autouse=True)
@@ -245,7 +245,7 @@ def test_rejects_fourth_active_ladder_when_hard_max_is_used(monkeypatch):
         _active_ladder("SOLUSDC"),
     ]
     monkeypatch.setattr(
-        "grid_ladders.capital.AutotradeCrud.get_settings",
+        "api.grid_ladders.capital.AutotradeCrud.get_settings",
         lambda self: SimpleNamespace(
             grid_max_active_ladders=3,
             grid_allocation_pct=1.0,
@@ -263,7 +263,7 @@ def test_rejects_fourth_active_ladder_when_hard_max_is_used(monkeypatch):
 def test_allows_full_grid_budget_while_keeping_per_ladder_cap(monkeypatch):
     active_ladders = [_active_ladder("BTCUSDC", reserved_margin=100)]
     monkeypatch.setattr(
-        "grid_ladders.capital.AutotradeCrud.get_settings",
+        "api.grid_ladders.capital.AutotradeCrud.get_settings",
         lambda self: SimpleNamespace(
             grid_max_active_ladders=3,
             grid_allocation_pct=1.0,

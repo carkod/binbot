@@ -3,9 +3,9 @@ from typing import Any, Sequence, cast
 from sqlalchemy.orm import load_only
 from sqlmodel import Session, col, delete, select
 from sqlmodel.sql.expression import SelectOfScalar
-from databases.tables.signals_table import SignalsTable
-from databases.utils import get_db_session
-from tools.utils import utc_now
+from api.databases.tables.signals_table import SignalsTable
+from api.databases.utils import get_db_session
+from api.tools.utils import utc_now
 
 
 class SignalsCrud:

@@ -1,16 +1,16 @@
 from fastapi import APIRouter, Depends, BackgroundTasks
-from user.models.user import UserTokenData
-from user.services.auth import get_current_user
-from databases.symbols_etl import SymbolDataEtl
-from databases.crud.symbols_crud import SymbolsCrud
-from symbols.models import GetOneSymbolResponse
-from databases.utils import get_session
+from api.user.models.user import UserTokenData
+from api.user.services.auth import get_current_user
+from api.databases.symbols_etl import SymbolDataEtl
+from api.databases.crud.symbols_crud import SymbolsCrud
+from api.symbols.models import GetOneSymbolResponse
+from api.databases.utils import get_session
 from sqlmodel import Session
 from pybinbot import StandardResponse, BinbotErrors, MarketType
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError, DataError
-from symbols.models import SymbolRequestPayload
+from api.symbols.models import SymbolRequestPayload
 from typing import Optional
-from tools.handle_error import format_db_error
+from api.tools.handle_error import format_db_error
 
 symbols_blueprint = APIRouter()
 

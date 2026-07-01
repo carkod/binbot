@@ -14,9 +14,9 @@ from pydantic import field_validator
 from sqlalchemy import JSON, Column, Enum
 from sqlmodel import Field, Relationship, SQLModel
 
-from databases.tables.deal_table import DealTable
-from databases.tables.order_table import ExchangeOrderTable, FakeOrderTable
-from databases.tables.recovery_bot_table import RecoveryBotTable
+from api.databases.tables.deal_table import DealTable
+from api.databases.tables.order_table import ExchangeOrderTable, FakeOrderTable
+from api.databases.tables.recovery_bot_table import RecoveryBotTable
 
 # avoids circular imports
 # https://sqlmodel.tiangolo.com/tutorial/code-structure/#hero-model-file

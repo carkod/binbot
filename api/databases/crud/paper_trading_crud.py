@@ -8,10 +8,10 @@ from sqlalchemy.orm import QueryableAttribute, selectinload
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session, asc, case, desc, select
 
-from databases.tables.bot_table import PaperTradingTable
-from databases.tables.deal_table import DealTable
-from databases.tables.order_table import FakeOrderTable
-from databases.utils import detach_bot_graph, get_db_session
+from api.databases.tables.bot_table import PaperTradingTable
+from api.databases.tables.deal_table import DealTable
+from api.databases.tables.order_table import FakeOrderTable
+from api.databases.utils import detach_bot_graph, get_db_session
 
 PAPER_DEAL_REL = cast(QueryableAttribute[Any], PaperTradingTable.deal)
 PAPER_ORDERS_REL = cast(QueryableAttribute[Any], PaperTradingTable.orders)

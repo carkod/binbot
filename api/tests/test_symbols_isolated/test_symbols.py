@@ -8,7 +8,9 @@ def _patch_symbol_crud_apis(monkeypatch):
         def __init__(self, *args, **kwargs):
             pass
 
-    monkeypatch.setattr("databases.crud.symbols_crud.KucoinFutures", DummyKucoinFutures)
+    monkeypatch.setattr(
+        "api.databases.crud.symbols_crud.KucoinFutures", DummyKucoinFutures
+    )
 
 
 test_symbol = "GASBTC"

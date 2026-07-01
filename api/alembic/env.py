@@ -1,5 +1,5 @@
 from alembic import context
-from databases.utils import engine
+from api.databases.utils import engine
 from sqlmodel import SQLModel
 
 # this is the Alembic Config object, which provides
@@ -18,13 +18,13 @@ config = context.config
 # target_metadata = mymodel.Base.metadata
 
 # Import all models to populate SQLModel metadata
-from databases.tables.autotrade_table import AutotradeTable, TestAutotradeTable  # noqa
-from databases.tables.deal_table import DealTable  # noqa
-from databases.tables.order_table import ExchangeOrderTable, FakeOrderTable  # noqa
-from databases.tables.user_table import UserTable  # noqa
-from databases.tables.bot_table import BotTable, PaperTradingTable  # noqa
-from databases.web3_candidates import Web3CandidateTable  # noqa
-from databases.tables.account_balances import (  # noqa
+from api.databases.tables.autotrade_table import AutotradeTable, TestAutotradeTable  # noqa
+from api.databases.tables.deal_table import DealTable  # noqa
+from api.databases.tables.order_table import ExchangeOrderTable, FakeOrderTable  # noqa
+from api.databases.tables.user_table import UserTable  # noqa
+from api.databases.tables.bot_table import BotTable, PaperTradingTable  # noqa
+from api.databases.web3_candidates import Web3CandidateTable  # noqa
+from api.databases.tables.account_balances import (  # noqa
     BalancesTable,
     ConsolidatedBalancesTable,
 )

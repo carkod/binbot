@@ -5,17 +5,17 @@ from sqlalchemy import Table
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, func
 
-from charts.models import AdrSeriesDb, MarketBreadthSeries
-from databases.crud.autotrade_crud import AutotradeCrud
-from databases.crud.symbols_crud import SymbolsCrud
-from databases.tables.market_breadth_table import MarketBreadthTable
-from databases.utils import independent_session
+from api.charts.models import AdrSeriesDb, MarketBreadthSeries
+from api.databases.crud.autotrade_crud import AutotradeCrud
+from api.databases.crud.symbols_crud import SymbolsCrud
+from api.databases.tables.market_breadth_table import MarketBreadthTable
+from api.databases.utils import independent_session
 from kucoin_universal_sdk.generate.spot.market.model_get_symbol_resp import (
     GetSymbolResp,
 )
 from pybinbot import BinanceApi, ExchangeId, KucoinApi
-from tools.config import Config
-from tools.utils import utc_now
+from api.tools.config import Config
+from api.tools.utils import utc_now
 
 
 class MarketDominationController:

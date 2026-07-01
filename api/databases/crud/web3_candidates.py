@@ -1,13 +1,13 @@
 from collections.abc import Sequence
 from typing import Any
 from sqlmodel import Session, col, select
-from databases.utils import get_db_session
-from databases.web3_candidates import (
+from api.databases.utils import get_db_session
+from api.databases.web3_candidates import (
     Web3CandidateCreate,
     Web3CandidateTable,
     Web3CandidateUpdate,
 )
-from tools.utils import utc_now
+from api.tools.utils import utc_now
 
 
 class Web3CandidatesCrud:

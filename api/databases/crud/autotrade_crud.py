@@ -1,9 +1,9 @@
-from databases.tables.autotrade_table import (
+from api.databases.tables.autotrade_table import (
     AutotradeTable,
     TestAutotradeTable,
     SettingsDocument,
 )
-from databases.utils import get_db_session
+from api.databases.utils import get_db_session
 from sqlmodel import Session, select
 from sqlmodel.sql._expression_select_cls import SelectOfScalar
 from pybinbot import (

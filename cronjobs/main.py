@@ -1,13 +1,13 @@
 from apscheduler.schedulers.blocking import BlockingScheduler
-from account.controller import ConsolidatedAccounts
-from exchange_apis.binance.assets import Assets
-from databases.crud.signals_crud import SignalsCrud
-from databases.symbols_etl import SymbolDataEtl
-from charts.controllers import MarketDominationController
-from databases.utils import independent_session
+from api.account.controller import ConsolidatedAccounts
+from api.exchange_apis.binance.assets import Assets
+from api.databases.crud.signals_crud import SignalsCrud
+from api.databases.symbols_etl import SymbolDataEtl
+from api.charts.controllers import MarketDominationController
+from api.databases.utils import independent_session
 from pybinbot import ExchangeId, configure_logging
-from tools.config import Config
-from web3_candidates.ingest_web3_candidates import IngestWeb3Candidates
+from api.tools.config import Config
+from api.web3_candidates.ingest_web3_candidates import IngestWeb3Candidates
 
 
 def main():

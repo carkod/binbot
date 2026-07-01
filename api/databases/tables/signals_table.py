@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any
 from sqlalchemy import Column, DateTime
 from sqlmodel import SQLModel, Field
-from tools.utils import JsonVariant
+from api.tools.utils import JsonVariant
 
 
 class SignalsTable(SQLModel, table=True):

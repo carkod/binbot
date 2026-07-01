@@ -1,8 +1,8 @@
 from typing import Sequence
 from sqlmodel import Session, select
-from inquiries.models import InquiryBase
-from databases.tables.inquiry_table import InquiryTable
-from databases.utils import get_session
+from api.inquiries.models import InquiryBase
+from api.databases.tables.inquiry_table import InquiryTable
+from api.databases.utils import get_session
 from uuid import UUID
 
 

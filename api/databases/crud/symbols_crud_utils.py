@@ -4,9 +4,9 @@ from sqlalchemy import exists
 from sqlalchemy.orm import selectinload, QueryableAttribute
 from sqlalchemy.sql.expression import ColumnElement
 from sqlmodel import select, Session
-from databases.tables.symbol_exchange_table import SymbolExchangeTable
-from databases.tables.symbol_table import SymbolTable
-from databases.utils import get_db_session
+from api.databases.tables.symbol_exchange_table import SymbolExchangeTable
+from api.databases.tables.symbol_table import SymbolTable
+from api.databases.utils import get_db_session
 from pybinbot import ExchangeId, MarketType
 
 

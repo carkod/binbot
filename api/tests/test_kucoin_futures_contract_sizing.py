@@ -15,8 +15,8 @@ from pybinbot import (
     RecoveryBotModel,
 )
 
-from exchange_apis.kucoin.deals.base import KucoinBaseBalance
-from exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
+from api.exchange_apis.kucoin.deals.base import KucoinBaseBalance
+from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from streaming.base import BaseStreaming
 from streaming.futures_position import FuturesPosition
 
@@ -114,19 +114,19 @@ def test_constructor_reuses_injected_base_streaming(monkeypatch):
 
     monkeypatch.setattr(KucoinBaseBalance, "__init__", base_balance_init)
     monkeypatch.setattr(
-        "exchange_apis.kucoin.futures.futures_deal.KucoinFutures",
+        "api.exchange_apis.kucoin.futures.futures_deal.KucoinFutures",
         DummyFuturesApi,
     )
     monkeypatch.setattr(
-        "exchange_apis.kucoin.futures.futures_deal.SymbolsCrud",
+        "api.exchange_apis.kucoin.futures.futures_deal.SymbolsCrud",
         DummySymbolsCrud,
     )
     monkeypatch.setattr(
-        "exchange_apis.kucoin.futures.futures_deal.BotTableCrud",
+        "api.exchange_apis.kucoin.futures.futures_deal.BotTableCrud",
         DummyBotCrud,
     )
     monkeypatch.setattr(
-        "exchange_apis.kucoin.futures.futures_deal.BaseStreaming",
+        "api.exchange_apis.kucoin.futures.futures_deal.BaseStreaming",
         ExplodingBaseStreaming,
     )
 
@@ -304,7 +304,7 @@ def prepare_recovery_entry_deal(
 ) -> Any:
     event_time = datetime(2026, 6, 9, 23, 4, 7, tzinfo=timezone.utc)
     monkeypatch.setattr(
-        "exchange_apis.kucoin.futures.futures_deal.time",
+        "api.exchange_apis.kucoin.futures.futures_deal.time",
         lambda: event_time.timestamp(),
     )
     deal = make_sizing_deal(multiplier=1)

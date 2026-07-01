@@ -2,13 +2,13 @@ from typing import TYPE_CHECKING, Type, Union
 
 from pybinbot import BotModel, ExchangeId, MarketType, Position
 
-from databases.crud.autotrade_crud import AutotradeCrud
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from exchange_apis.binance.deals.long import BinanceLongDeal
-from exchange_apis.binance.deals.short import BinanceShortDeal
-from exchange_apis.kucoin.deals.long_deal import KucoinLongDeal
-from exchange_apis.kucoin.deals.short_deal import KucoinShortDeal
-from exchange_apis.kucoin.futures.lifecycle import Lifecycle
+from api.databases.crud.autotrade_crud import AutotradeCrud
+from api.databases.tables.bot_table import BotTable, PaperTradingTable
+from api.exchange_apis.binance.deals.long import BinanceLongDeal
+from api.exchange_apis.binance.deals.short import BinanceShortDeal
+from api.exchange_apis.kucoin.deals.long_deal import KucoinLongDeal
+from api.exchange_apis.kucoin.deals.short_deal import KucoinShortDeal
+from api.exchange_apis.kucoin.futures.lifecycle import Lifecycle
 
 if TYPE_CHECKING:
     from streaming.base import BaseStreaming

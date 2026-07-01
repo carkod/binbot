@@ -4,11 +4,11 @@ from unittest.mock import MagicMock
 
 from pybinbot import UserRoles
 from pytest import fixture
-from user.models.user import UserTokenData
-from user.services.auth import get_current_user
-from databases.utils import get_session
-from databases.tables.autotrade_table import AutotradeTable
-from main import app
+from api.user.models.user import UserTokenData
+from api.user.services.auth import get_current_user
+from api.databases.utils import get_session
+from api.databases.tables.autotrade_table import AutotradeTable
+from api.main import app
 
 mocked_db_data = AutotradeTable(
     id="autotrade_settings",

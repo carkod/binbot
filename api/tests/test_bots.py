@@ -11,10 +11,10 @@ from tests.fixtures.mock_bot_table import (
     make_mock_bot_active_model,
     make_mock_bot_superusdt_model,
 )
-from databases.crud.grid_ladder_crud import GridLadderCrud
-from databases.tables.bot_table import BotTable
-from databases.tables.grid_ladder_table import GridLadderTable
-from databases.tables.recovery_bot_table import RecoveryBotTable
+from api.databases.crud.grid_ladder_crud import GridLadderCrud
+from api.databases.tables.bot_table import BotTable
+from api.databases.tables.grid_ladder_table import GridLadderTable
+from api.databases.tables.recovery_bot_table import RecoveryBotTable
 from uuid import UUID, uuid4
 
 
@@ -41,10 +41,10 @@ def bot_models():
 def mock_deal_gateway(bot_models):
     with (
         patch(
-            "deals.gateway.DealGateway.open_deal", return_value=bot_models["epic"]
+            "api.deals.gateway.DealGateway.open_deal", return_value=bot_models["epic"]
         ) as mock_open,
         patch(
-            "deals.gateway.DealGateway.deactivation",
+            "api.deals.gateway.DealGateway.deactivation",
             return_value=bot_models["active"],
         ) as mock_deactivate,
     ):

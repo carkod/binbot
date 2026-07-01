@@ -24,8 +24,8 @@ services:
 
   # api:
   #   build:
-  #     context: api/
-  #     dockerfile: Dockerfile
+  #     context: .
+  #     dockerfile: api/Dockerfile
   #   networks:
   #     - kafka_network
   #   restart: no
@@ -69,8 +69,8 @@ services:
 
   # streaming:
   #   build:
-  #     context: api/
-  #     dockerfile: Dockerfile.streaming
+  #     context: .
+  #     dockerfile: streaming/Dockerfile
   #   image: binbot_streaming
   #   env_file:
   #     - .env
@@ -79,10 +79,10 @@ services:
   #   depends_on:
   #     - api
 
-  # crobjobs:
+  # cronjobs:
   #   build:
-  #     context: api/
-  #     dockerfile: Dockerfile.cronjobs
+  #     context: .
+  #     dockerfile: cronjobs/Dockerfile
   #   image: binbot_cronjobs
   #   env_file:
   #     - .env

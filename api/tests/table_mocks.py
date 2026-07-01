@@ -1,6 +1,6 @@
-from databases.tables.bot_table import BotTable
-from databases.tables.deal_table import DealTable
-from databases.tables.order_table import ExchangeOrderTable
+from api.databases.tables.bot_table import BotTable
+from api.databases.tables.deal_table import DealTable
+from api.databases.tables.order_table import ExchangeOrderTable
 from pybinbot import DealType, OrderType
 from uuid import UUID
 

@@ -1,13 +1,13 @@
 import logging
 from datetime import timedelta
-from databases.tables.inquiry_table import InquiryTable
-from databases.symbols_etl import SymbolDataEtl
-from databases.tables.autotrade_table import AutotradeTable, TestAutotradeTable
-from databases.tables.deal_table import DealTable
-from databases.tables.market_breadth_table import MarketBreadthTable
-from databases.tables.order_table import ExchangeOrderTable, FakeOrderTable
-from databases.tables.user_table import UserTable
-from databases.tables.bot_table import BotTable, PaperTradingTable
+from api.databases.tables.inquiry_table import InquiryTable
+from api.databases.symbols_etl import SymbolDataEtl
+from api.databases.tables.autotrade_table import AutotradeTable, TestAutotradeTable
+from api.databases.tables.deal_table import DealTable
+from api.databases.tables.market_breadth_table import MarketBreadthTable
+from api.databases.tables.order_table import ExchangeOrderTable, FakeOrderTable
+from api.databases.tables.user_table import UserTable
+from api.databases.tables.bot_table import BotTable, PaperTradingTable
 from sqlmodel import SQLModel, Session, select, text
 from pybinbot import (
     BinanceKlineIntervals,
@@ -22,11 +22,11 @@ from pybinbot.shared.enums import AutotradeSettingsDocument
 from alembic import command
 from alembic.script import ScriptDirectory
 from alembic.config import Config
-from databases.utils import engine
-from exchange_apis.binance.assets import Assets
-from databases.crud.symbols_crud import SymbolsCrud
-from tools.config import Config as AppConfig
-from tools.utils import utc_now
+from api.databases.utils import engine
+from api.exchange_apis.binance.assets import Assets
+from api.databases.crud.symbols_crud import SymbolsCrud
+from api.tools.config import Config as AppConfig
+from api.tools.utils import utc_now
 
 
 class ApiDb:

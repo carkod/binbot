@@ -22,3 +22,5 @@ pg_data
 .flake8
 mypy.ini
 .*_cache
+terminal/node_modules
+terminal/dist
