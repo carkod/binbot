@@ -2,11 +2,9 @@ from sqlmodel import SQLModel, Field, Relationship
 from pybinbot import timestamp
 from sqlalchemy import BigInteger, Column
 from pydantic import field_validator
-from api.databases.tables.asset_index_table import SymbolIndexLink
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from api.databases.tables.asset_index_table import AssetIndexTable
     from api.databases.tables.symbol_exchange_table import SymbolExchangeTable
 
 
@@ -43,14 +41,6 @@ class SymbolTable(SQLModel, table=True):
     )
     exchange_values: list["SymbolExchangeTable"] = Relationship(
         back_populates="symbol",
-        sa_relationship_kwargs={
-            "lazy": "selectin",
-            "single_parent": True,
-        },
-    )
-    asset_indices: list["AssetIndexTable"] = Relationship(
-        back_populates="symbols",
-        link_model=SymbolIndexLink,
         sa_relationship_kwargs={
             "lazy": "selectin",
             "single_parent": True,

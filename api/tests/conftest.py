@@ -28,8 +28,6 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 from api.tests.fixtures.paper_trading import seed_paper_trading_defaults
 from api.tests.fixtures.symbol_fixtures import (
-    get_test_asset_indices,
-    get_test_symbol_index_links,
     get_test_symbols,
 )
 from api.user.models.user import UserTokenData
@@ -353,19 +351,11 @@ def create_test_tables():
         # Add paper trading bots via shared fixture helper
         seed_paper_trading_defaults(session, commit=False)
 
-        # Add asset indices
-        for asset_index in get_test_asset_indices():
-            session.add(asset_index)
-
         # Add symbols with their exchange values
         for symbol_data in get_test_symbols():
             session.add(symbol_data["symbol"])
             for exchange_value in symbol_data["exchange_values"]:
                 session.add(exchange_value)
-
-        # Add symbol-index links
-        for link in get_test_symbol_index_links():
-            session.add(link)
 
         session.commit()
 
@@ -373,10 +363,6 @@ def create_test_tables():
     # Patch in locations where it's imported directly.
     patcher1 = patch(
         "api.databases.utils.independent_session", side_effect=mock_independent_session
-    )
-    patcher3 = patch(
-        "api.databases.crud.asset_index_crud.independent_session",
-        side_effect=mock_independent_session,
     )
     patcher_charts = patch(
         "api.charts.controllers.independent_session",
@@ -448,7 +434,6 @@ def create_test_tables():
     )
 
     patcher1.start()
-    patcher3.start()
     patcher_charts.start()
     patcher7.start()
     patcher8.start()
@@ -462,7 +447,6 @@ def create_test_tables():
 
     # Clean up
     patcher1.stop()
-    patcher3.stop()
     patcher_charts.stop()
     patcher7.stop()
     patcher8.stop()
