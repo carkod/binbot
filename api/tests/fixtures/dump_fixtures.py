@@ -26,7 +26,6 @@ from sqlmodel import Session, select
 from api.databases.utils import engine
 from api.databases.tables.symbol_table import SymbolTable
 from api.databases.tables.symbol_exchange_table import SymbolExchangeTable
-from api.databases.tables.asset_index_table import AssetIndexTable, SymbolIndexLink
 
 
 def dump_symbols(session: Session, limit: int = 10):
@@ -90,42 +89,8 @@ def dump_symbols(session: Session, limit: int = 10):
     return "\n".join(output)
 
 
-def dump_asset_indices(session: Session, limit: int = 20):
-    """Dump asset index data from database"""
-    statement = select(AssetIndexTable).limit(limit)
-    indices = session.exec(statement).unique().all()
-
-    output = []
-    output.append("def get_test_asset_indices():")
-    output.append('    """Returns test asset index data"""')
-    output.append("    return [")
-    for idx in indices:
-        output.append(f'        AssetIndexTable(id="{idx.id}", name="{idx.name}"),')
-    output.append("    ]")
-    output.append("\n")
-    return "\n".join(output)
-
-
-def dump_symbol_index_links(session: Session, limit: int = 50):
-    """Dump symbol-to-index associations from database"""
-    statement = select(SymbolIndexLink).limit(limit)
-    links = session.exec(statement).unique().all()
-
-    output = []
-    output.append("def get_test_symbol_index_links():")
-    output.append('    """Returns symbol-to-index associations"""')
-    output.append("    return [")
-    for link in links:
-        output.append(
-            f'        SymbolIndexLink(symbol_id="{link.symbol_id}", asset_index_id="{link.asset_index_id}"),'
-        )
-    output.append("    ]")
-    output.append("\n")
-    return "\n".join(output)
-
-
 def generate_fixture_file(
-    symbols_limit: int = 10, indices_limit: int = 20, links_limit: int = 50
+    symbols_limit: int = 10,
 ):
     """Generate the complete fixture file"""
 
@@ -137,7 +102,6 @@ To regenerate: make dump-fixtures
 
 from api.databases.tables.symbol_table import SymbolTable
 from api.databases.tables.symbol_exchange_table import SymbolExchangeTable
-from api.databases.tables.asset_index_table import AssetIndexTable, SymbolIndexLink
 from pybinbot import ExchangeId
 
 
@@ -145,10 +109,8 @@ from pybinbot import ExchangeId
 
     with Session(engine) as session:
         symbols_code = dump_symbols(session, symbols_limit)
-        indices_code = dump_asset_indices(session, indices_limit)
-        links_code = dump_symbol_index_links(session, links_limit)
 
-    output = header + symbols_code + "\n" + indices_code + "\n" + links_code
+    output = header + symbols_code
 
     # Write to file
     fixture_file = Path(__file__).parent / "symbol_fixtures.py"
@@ -156,8 +118,6 @@ from pybinbot import ExchangeId
 
     print(f"✅ Fixtures dumped to {fixture_file}")
     print(f"   - Symbols: {symbols_limit} (with exchange values)")
-    print(f"   - Asset indices: {indices_limit}")
-    print(f"   - Symbol-index links: {links_limit}")
 
 
 if __name__ == "__main__":
@@ -167,17 +127,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--symbols", type=int, default=10, help="Number of symbols to dump"
     )
-    parser.add_argument(
-        "--indices", type=int, default=20, help="Number of asset indices to dump"
-    )
-    parser.add_argument(
-        "--links", type=int, default=50, help="Number of symbol-index links to dump"
-    )
 
     args = parser.parse_args()
 
     try:
-        generate_fixture_file(args.symbols, args.indices, args.links)
+        generate_fixture_file(args.symbols)
     except Exception as e:
         print(f"❌ Error dumping fixtures: {e}")
         sys.exit(1)

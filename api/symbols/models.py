@@ -1,5 +1,5 @@
 from typing import Optional, Sequence
-from pybinbot import ExchangeId, StandardResponse, AssetIndexModel, SymbolModel
+from pybinbot import ExchangeId, StandardResponse, SymbolModel
 from api.databases.tables.symbol_table import SymbolTable
 from pydantic import Field, BaseModel
 
@@ -20,10 +20,6 @@ class SymbolsResponse(StandardResponse):
         new_data = []
         for s in symbols:
             symbol = s.model_dump()
-            symbol["asset_indices"] = []
-            if len(s.asset_indices) > 0:
-                for asset in s.asset_indices:
-                    symbol["asset_indices"].append(asset.model_dump())
 
             if len(s.exchange_values) > 0:
                 symbol["is_margin_trading_allowed"] = s.exchange_values[
@@ -62,9 +58,6 @@ class SymbolRequestPayload(BaseModel):
     qty_precision: int = 0
     quote_asset: str = Field(default="")
     base_asset: str = Field(default="")
-    asset_indices: list[AssetIndexModel] = Field(
-        default=[], description="List of asset index IDs"
-    )
 
 
 class GetOneSymbolResponse(StandardResponse):

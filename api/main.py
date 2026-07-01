@@ -2,7 +2,6 @@ import logging
 from contextlib import asynccontextmanager
 
 from api.account.routes import account_blueprint
-from api.asset_index.routes import asset_index_blueprint
 from api.autotrade.routes import autotrade_settings_blueprint
 from api.bots.routes import bot_blueprint
 from api.charts.routes import charts_blueprint
@@ -69,7 +68,6 @@ app.include_router(kucoin_order_blueprint, prefix="/order/kucoin")
 app.include_router(charts_blueprint, prefix="/charts")
 app.include_router(symbols_blueprint)
 app.include_router(autotrade_settings_blueprint, prefix="/autotrade-settings")
-app.include_router(asset_index_blueprint, prefix="/asset-index")
 app.include_router(inquiries_router)
 app.include_router(portfolio_blueprint)
 app.include_router(signals_blueprint)

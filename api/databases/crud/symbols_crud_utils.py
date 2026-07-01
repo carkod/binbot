@@ -31,7 +31,6 @@ class SymbolsCrudUtils:
             select(SymbolTable)
             .options(
                 selectinload(cast(QueryableAttribute, SymbolTable.exchange_values)),
-                selectinload(cast(QueryableAttribute, SymbolTable.asset_indices)),
             )
             .where(exchange_exists)
         )
