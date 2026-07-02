@@ -63,6 +63,88 @@ export const defaultStatusValidator = (res: Response) => {
 
 export type NotificationType = "info" | "warning" | "success" | "error";
 
+const apiErrorMessageFromData = (data: unknown): string | undefined => {
+  if (typeof data === "string") {
+    return data;
+  }
+
+  if (!data || typeof data !== "object") {
+    return undefined;
+  }
+
+  const payload = data as {
+    detail?: unknown;
+    message?: unknown;
+    error?: unknown;
+  };
+
+  if (typeof payload.message === "string") {
+    return payload.message;
+  }
+
+  if (typeof payload.detail === "string") {
+    return payload.detail;
+  }
+
+  if (Array.isArray(payload.detail)) {
+    return payload.detail
+      .map((detail) => {
+        if (typeof detail === "string") {
+          return detail;
+        }
+        if (
+          detail &&
+          typeof detail === "object" &&
+          "msg" in detail &&
+          typeof detail.msg === "string"
+        ) {
+          return detail.msg;
+        }
+        return undefined;
+      })
+      .filter(Boolean)
+      .join(", ");
+  }
+
+  if (typeof payload.error === "string") {
+    return payload.error;
+  }
+
+  return undefined;
+};
+
+export const getApiErrorMessage = (
+  error: unknown,
+  fallback = "Request failed",
+): string => {
+  const candidate =
+    error && typeof error === "object" && "error" in error
+      ? (error as { error?: unknown }).error
+      : error;
+
+  if (candidate && typeof candidate === "object") {
+    if ("data" in candidate) {
+      const dataMessage = apiErrorMessageFromData(candidate.data);
+      if (dataMessage) {
+        return dataMessage;
+      }
+    }
+
+    if (
+      "message" in candidate &&
+      typeof (candidate as { message?: unknown }).message === "string"
+    ) {
+      return (candidate as { message: string }).message;
+    }
+
+    if ("status" in candidate) {
+      return `${fallback} (${String(candidate.status)})`;
+    }
+  }
+
+  return fallback;
+};
+
 export const notifification = (type: NotificationType, message: string) => {
   return toast[type](message, {
     position: "top-right",

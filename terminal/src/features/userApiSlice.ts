@@ -1,5 +1,9 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
-import { binbotBaseQuery, notifification } from "../utils/api";
+import {
+  binbotBaseQuery,
+  getApiErrorMessage,
+  notifification,
+} from "../utils/api";
 import { setToken } from "../utils/login";
 
 export interface LoginCredentials {
@@ -51,6 +55,13 @@ export const userApiSlice = createApi({
         }
         if (data.access_token) setToken(data.access_token);
         return data;
+      },
+      async onQueryStarted(_, { queryFulfilled }) {
+        try {
+          await queryFulfilled;
+        } catch (error) {
+          notifification("error", getApiErrorMessage(error, "Login failed"));
+        }
       },
     }),
     getUsers: build.query<LoginResponse, void>({

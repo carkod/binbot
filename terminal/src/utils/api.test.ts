@@ -1,4 +1,4 @@
-import { buildBackUrl } from "./api";
+import { buildBackUrl, getApiErrorMessage } from "./api";
 
 describe("buildBackUrl", () => {
   it("uses the API path for a staging machine hostname", () => {
@@ -29,5 +29,35 @@ describe("buildBackUrl", () => {
         protocol: "https:",
       }),
     ).toBe("https://api.binbot.in");
+  });
+});
+
+describe("getApiErrorMessage", () => {
+  it("reads FastAPI detail messages from RTK query errors", () => {
+    expect(
+      getApiErrorMessage(
+        {
+          error: {
+            status: 405,
+            data: { detail: "Method Not Allowed" },
+          },
+        },
+        "Login failed",
+      ),
+    ).toBe("Method Not Allowed");
+  });
+
+  it("falls back to a status-qualified message when no payload message exists", () => {
+    expect(
+      getApiErrorMessage(
+        {
+          error: {
+            status: 405,
+            data: {},
+          },
+        },
+        "Login failed",
+      ),
+    ).toBe("Login failed (405)");
   });
 });
