@@ -1,14 +1,14 @@
 import { buildBackUrl, getApiErrorMessage } from "./api";
 
 describe("buildBackUrl", () => {
-  it("uses the API path for a staging machine hostname", () => {
+  it("uses the same-origin API path for a staging terminal port", () => {
     expect(
       buildBackUrl({
         hostname: "desktop-mkotse4",
         port: "8007",
         protocol: "http:",
       }),
-    ).toBe("http://desktop-mkotse4/api");
+    ).toBe("/api");
   });
 
   it("uses port 8008 for localhost", () => {

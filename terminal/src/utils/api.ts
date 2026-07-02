@@ -10,7 +10,7 @@ export function buildBackUrl(
   location: Pick<Location, "hostname" | "port" | "protocol"> = window.location,
 ) {
   if (location.port === "8007") {
-    return `${location.protocol}//${location.hostname}/api`;
+    return "/api";
   }
 
   const host = location.hostname.includes(".")
