@@ -389,13 +389,3 @@ def get_test_symbols():
             ],
         },
     ]
-
-
-def get_test_asset_indices():
-    """Returns test asset index data"""
-    return []
-
-
-def get_test_symbol_index_links():
-    """Returns symbol-to-index associations"""
-    return []

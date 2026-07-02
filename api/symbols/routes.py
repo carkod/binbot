@@ -19,7 +19,6 @@ symbols_blueprint = APIRouter()
 def get_all_symbols(
     active: Optional[bool] = None,
     market_type: str | None = None,
-    index: Optional[str] = None,
     session: Session = Depends(get_session),
     _: UserTokenData = Depends(get_current_user),
 ):
@@ -40,7 +39,7 @@ def get_all_symbols(
             market_type_enum = MarketType(market_type)
 
         response_model = SymbolsCrud().get_all(
-            active=active, market_type=market_type_enum, index_id=index
+            active=active, market_type=market_type_enum
         )
         return {
             "message": "Successfully retrieved active symbols",
@@ -226,29 +225,3 @@ def reingest_symbols(
         return StandardResponse(message=format_db_error(e), error=1)
     except BinbotErrors as e:
         return StandardResponse(message=str(e), error=1)
-
-
-@symbols_blueprint.put("/symbol/asset-index", tags=["Symbols"])
-def update_indexes(
-    data: SymbolRequestPayload,
-    session: Session = Depends(get_session),
-    _: UserTokenData = Depends(get_current_user),
-):
-    """
-    Modify a symbol's asset index
-
-    check commit 942c623 in binbot-notebooks
-    """
-    try:
-        data = SymbolsCrud().update_symbol_indexes(data)
-    except (IntegrityError, DataError, SQLAlchemyError) as e:
-        session.rollback()
-        return StandardResponse(message=format_db_error(e), error=1)
-    except BinbotErrors as e:
-        return StandardResponse(message=str(e), error=1)
-    except Exception as e:
-        return StandardResponse(
-            message=f"Unexpected error updating symbol indexes: {e}", error=1
-        )
-
-    return GetOneSymbolResponse(message="Symbol asset index updated", data=data)

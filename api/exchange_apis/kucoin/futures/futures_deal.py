@@ -233,12 +233,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
         if balance <= 0 or price <= 0:
             return 0
 
-        symbol_data = getattr(self, "kucoin_symbol_data", None)
-        multiplier = float(
-            getattr(symbol_data, "multiplier", 0)
-            or getattr(self.kucoin_futures_api, "DEFAULT_MULTIPLIER", 1)
-            or 1
-        )
+        symbol_data = self.kucoin_symbol_data
+        multiplier = symbol_data.multiplier or self.kucoin_futures_api.DEFAULT_MULTIPLIER or 1
 
         contracts = balance * self.symbol_info.futures_leverage / (price * multiplier)
         return int(round_numbers(contracts, self.symbol_info.qty_precision))
