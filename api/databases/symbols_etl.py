@@ -3,7 +3,6 @@ from sqlalchemy import text
 from sqlmodel import select
 from api.databases.crud.symbols_crud import SymbolsCrud
 from api.databases.crud.autotrade_crud import AutotradeCrud
-from api.databases.crud.asset_index_crud import AssetIndexCrud
 from api.databases.tables.symbol_table import SymbolTable
 from api.databases.utils import get_db_session
 from pybinbot import QuoteAssets, ExchangeId, BinbotErrors
@@ -252,9 +251,6 @@ class SymbolDataEtl(SymbolsCrud):
             # TRUNCATE in its own fresh session so it never conflicts with earlier SELECTs
             with get_db_session() as s:
                 s.execute(text("TRUNCATE TABLE symbol CASCADE"))
-
-            asset_index_crud = AssetIndexCrud()
-            asset_index_crud.delete_all()
 
         exchange_id = self.autotrade_settings.exchange_id
 

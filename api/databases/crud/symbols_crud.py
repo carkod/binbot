@@ -1,12 +1,9 @@
 from time import time
-from typing import Optional, cast
-from sqlalchemy.orm import QueryableAttribute
-from sqlalchemy.sql.expression import ColumnElement
+from typing import Optional
 from sqlmodel import select, Session
 from api.databases.crud.symbols_crud_utils import SymbolsCrudUtils
 from api.tools.config import Config
 from api.databases.crud.autotrade_crud import AutotradeCrud
-from api.databases.tables.asset_index_table import AssetIndexTable, SymbolIndexLink
 from api.databases.tables.symbol_exchange_table import SymbolExchangeTable
 from api.databases.tables.symbol_table import SymbolTable
 from api.databases.utils import engine
@@ -107,7 +104,6 @@ class SymbolsCrud(SymbolsCrudUtils):
                 price_precision=exchange_link.price_precision,
                 qty_precision=exchange_link.qty_precision,
                 min_notional=exchange_link.min_notional,
-                asset_indices=[],
             )
         return result
 
@@ -115,16 +111,10 @@ class SymbolsCrud(SymbolsCrudUtils):
         self,
         active: Optional[bool] = None,
         market_type: MarketType | None = None,
-        index_id: Optional[str] = None,
     ) -> list[SymbolModel]:
         statement = self._exchange_combined_statement(
             self.exchange_id, market_type=market_type
         )
-
-        if index_id is not None:
-            statement = statement.join(
-                cast(QueryableAttribute, SymbolTable.asset_indices)
-            ).where(AssetIndexTable.id == index_id)
 
         if active is not None:
             statement = statement.where(SymbolTable.active == active)
@@ -151,10 +141,6 @@ class SymbolsCrud(SymbolsCrudUtils):
                     id=result.id,
                     quote_asset=result.quote_asset,
                     base_asset=result.base_asset,
-                    asset_indices=[
-                        AssetIndexTable(id=index.id, name=index.name)
-                        for index in result.asset_indices
-                    ],
                     exchange_id=ev.exchange_id,
                     is_margin_trading_allowed=ev.is_margin_trading_allowed,
                     price_precision=ev.price_precision,
@@ -192,10 +178,6 @@ class SymbolsCrud(SymbolsCrudUtils):
                     id=result.id,
                     quote_asset=result.quote_asset,
                     base_asset=result.base_asset,
-                    asset_indices=[
-                        AssetIndexTable(id=index.id, name=index.name)
-                        for index in result.asset_indices
-                    ],
                     exchange_id=ev.exchange_id,
                     is_margin_trading_allowed=ev.is_margin_trading_allowed,
                     price_precision=ev.price_precision,
@@ -253,39 +235,8 @@ class SymbolsCrud(SymbolsCrudUtils):
                 price_precision=data.price_precision,
                 qty_precision=data.qty_precision,
                 min_notional=data.min_notional,
-                asset_indices=[
-                    AssetIndexTable(id=index.id, name=index.name)
-                    for index in symbol_table.asset_indices
-                ],
             )
             return result
-
-    def update_symbol_indexes(self, data: SymbolRequestPayload):
-        data_id = getattr(data, "id", None) or getattr(data, "symbol", None)
-        symbol_model = self.get_symbol(cast(str, data_id))
-
-        with get_db_session() as s:
-            stmt = delete(SymbolIndexLink).where(
-                cast(ColumnElement, SymbolIndexLink.symbol_id == symbol_model.id)
-            )
-            s.execute(stmt)
-
-            for index_id in data.asset_indices:
-                asset_index = s.exec(
-                    select(AssetIndexTable).where(AssetIndexTable.id == index_id.id)
-                ).first()
-                if not asset_index:
-                    asset_index = AssetIndexTable(id=index_id.id, name=index_id.name)
-                    s.add(asset_index)
-                    s.flush()
-                link = SymbolIndexLink(
-                    symbol_id=symbol_model.id, asset_index_id=asset_index.id
-                )
-                s.add(link)
-
-            s.flush()
-            s.refresh(symbol_model)
-            return symbol_model
 
     def delete_symbol(self, symbol: str):
         symbol_model = self.get_symbol(symbol)
@@ -301,9 +252,6 @@ class SymbolsCrud(SymbolsCrudUtils):
             return symbol_model
 
     def delete_all(self):
-        # keep this as-is but using a fresh session
         with Session(engine) as session:
-            session.execute(delete(SymbolIndexLink))
-            session.commit()
             session.execute(delete(SymbolTable))
             session.commit()

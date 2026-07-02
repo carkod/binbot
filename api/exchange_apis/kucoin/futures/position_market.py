@@ -150,9 +150,10 @@ class PositionMarket(KucoinPositionDeal):
         expansion_range: float,
         trail_tighten_mult: float,
         current_price: float,
+        direction: int = 1,
     ) -> tuple[float, float, float]:
         """
-        LONG trailing logic.
+        LONG + SHORT trailing logic (direction=+1 long, -1 short).
 
         Rules:
         - stop_loss is the emergency safety net. It is initialised once
@@ -161,8 +162,21 @@ class PositionMarket(KucoinPositionDeal):
         - trailing_profit is a ceiling trigger only.
         - trailing_deviation is the real stop once trailing starts; it can
           tighten/widen freely, since it lives in the bot, not the exchange.
+
+        top_spread/bottom_spread are absolute (direction-agnostic) distances
+        from the Bollinger mid band to the upper/lower band. The favourable
+        side of the band — the one price must travel through to profit — is
+        the top for a long and the bottom for a short, mirroring the same
+        long/short spread assignment binquant uses at bot creation
+        (shared/autotrade.py:_set_bollinguer_spreads). trailing_profit tracks
+        the favourable spread; trailing_deviation tracks the opposite one.
         """
-        raw_trail_profit = top_spread * trail_tighten_mult * expansion_multiplier
+        profit_spread, deviation_spread = (
+            (top_spread, bottom_spread)
+            if direction > 0
+            else (bottom_spread, top_spread)
+        )
+        raw_trail_profit = profit_spread * trail_tighten_mult * expansion_multiplier
 
         # Progressive tightening as profits grow
         if bot_profit >= 5:
@@ -176,7 +190,7 @@ class PositionMarket(KucoinPositionDeal):
             self.MAX_TRAILING_PROFIT,
         )
         trailing_deviation = clamp(
-            bottom_spread * trail_tighten_mult,
+            deviation_spread * trail_tighten_mult,
             self.MIN_TRAILING_DEVIATION,
             self.MAX_TRAILING_DEVIATION,
         )
@@ -436,7 +450,12 @@ class PositionMarket(KucoinPositionDeal):
         current_price: float,
     ) -> None:
         """
-        ApexFlow-aware trailing manager.
+        ApexFlow-aware trailing manager. Works for both long and short futures
+        positions — the direction multiplier flips which side of the band
+        feeds trailing_profit vs trailing_deviation and which trend direction
+        counts as "favourable" for the tightening schedule; the downstream
+        exit() already applies the same direction multiplier when placing
+        orders.
 
         Philosophy:
         1. Initiates PositionMarket (abstraction layer to reduce complexity of KucoinPositionDeal)
@@ -455,16 +474,14 @@ class PositionMarket(KucoinPositionDeal):
             return self.bb_extreme_reversion_trailing_analytics(current_price)
 
         original_bot = deepcopy(self.active_bot)
-        market_type = getattr(
-            self.active_bot.market_type, "value", self.active_bot.market_type
-        )
-        position = getattr(self.active_bot.position, "value", self.active_bot.position)
         if (
-            str(market_type).lower() != MarketType.FUTURES.value.lower()
-            or str(position).lower() != Position.long.value.lower()
+            self.active_bot.market_type != MarketType.FUTURES
+            or self.active_bot.position not in {Position.long, Position.short}
             or self.active_bot.deal.opening_price <= 0
         ):
             return
+
+        direction = self._direction_multiplier()
 
         # ─────────────────────────────
         # Bollinger spreads
@@ -499,6 +516,8 @@ class PositionMarket(KucoinPositionDeal):
         # ─────────────────────────────
         ema_fast, ema_slow = self.apex_flow_closing.get_trend_ema()
         trend_up = ema_fast > ema_slow if ema_fast and ema_slow else True
+        # The favourable trend for a short is down, not up.
+        trend_favorable = trend_up if direction > 0 else not trend_up
 
         # ─────────────────────────────
         # Expansion multiplier
@@ -521,7 +540,7 @@ class PositionMarket(KucoinPositionDeal):
             trail_tighten_mult = 0.45
 
         # Do not tighten against trend while signals are alive
-        if (vce_signal or mcd_signal or lcrs_signal) and trend_up:
+        if (vce_signal or mcd_signal or lcrs_signal) and trend_favorable:
             trail_tighten_mult = max(trail_tighten_mult, 0.7)
 
         # ─────────────────────────────
@@ -537,6 +556,7 @@ class PositionMarket(KucoinPositionDeal):
                 expansion_range=expansion_range,
                 trail_tighten_mult=trail_tighten_mult,
                 current_price=current_price,
+                direction=direction,
             )
         )
         self.active_bot.stop_loss = stop_loss

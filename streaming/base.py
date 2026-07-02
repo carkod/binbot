@@ -10,6 +10,8 @@ from pybinbot import (
     KucoinApi,
     KucoinFutures,
     KucoinKlineIntervals,
+    MarketType,
+    Position,
     Status,
     round_numbers,
 )
@@ -140,7 +142,17 @@ class BaseStreaming:
             )
             if bot.deal.opening_price > 0:
                 buy_price = bot.deal.opening_price
-                profit_change = ((price - buy_price) / buy_price) * 100
+                # Futures shorts profit when price falls, so the raw
+                # (price - buy_price) return must be flipped; spot/margin
+                # bots only ever go long here (margin short is handled by
+                # the branch below) so direction stays +1 for them.
+                direction = (
+                    -1
+                    if bot.market_type == MarketType.FUTURES
+                    and bot.position == Position.short
+                    else 1
+                )
+                profit_change = ((price - buy_price) / buy_price) * 100 * direction
                 if price == 0:
                     profit_change = 0
                 return round_numbers(profit_change)

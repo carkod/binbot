@@ -12,8 +12,6 @@ import api.databases.tables  # noqa: F401
 
 from api.tests.fixtures.symbol_fixtures import (
     get_test_symbols,
-    get_test_asset_indices,
-    get_test_symbol_index_links,
 )
 
 
@@ -78,19 +76,11 @@ def create_symbol_test_tables():
         )
         session.add(mock_autotrade)
 
-        # Add asset indices
-        for asset_index in get_test_asset_indices():
-            session.add(asset_index)
-
         # Add symbols with their exchange values
         for symbol_data in get_test_symbols():
             session.add(symbol_data["symbol"])
             for exchange_value in symbol_data["exchange_values"]:
                 session.add(exchange_value)
-
-        # Add symbol-index links
-        for link in get_test_symbol_index_links():
-            session.add(link)
 
         session.commit()
 
