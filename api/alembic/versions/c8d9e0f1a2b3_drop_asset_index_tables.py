@@ -1,7 +1,7 @@
 """Drop asset_index and symbol_index_link tables
 
-Revision ID: a1b2c3d4e5f6
-Revises: fdbf67d71448
+Revision ID: c8d9e0f1a2b3
+Revises: b6c7d8e9f0a1
 Create Date: 2026-07-01 00:00:00.000000
 
 """
@@ -12,8 +12,8 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = "a1b2c3d4e5f6"
-down_revision: Union[str, None] = "fdbf67d71448"
+revision: str = "c8d9e0f1a2b3"
+down_revision: Union[str, None] = "b6c7d8e9f0a1"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

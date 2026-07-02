@@ -103,6 +103,32 @@ def test_market_trailing_analytics_keeps_stop_loss_percent_when_pullback_missing
     assert market.active_bot.trailing_deviation == 2.0
 
 
+def test_market_trailing_analytics_runs_for_short_position(monkeypatch):
+    """Shorts must reach the BB trailing path (no long-only early return), and
+    the profit/deviation spread assignment must be swapped vs. long: for a
+    short, trailing_profit tracks bottom_spread and trailing_deviation tracks
+    top_spread."""
+    monkeypatch.setattr(
+        "api.exchange_apis.kucoin.futures.position_market.ApexFlowClose",
+        FakeApexFlowClose,
+    )
+    market = make_position_market(
+        bot_profit=1.5,
+        opening_timestamp=9_999,
+        name="aggressive momo bot",
+        position=Position.short,
+    )
+
+    market.market_trailing_analytics(current_price=104.0)
+
+    # stop_loss is a direction-agnostic magnitude, same as the long case.
+    assert market.active_bot.stop_loss == 4.0
+    # Swapped vs. the long test's trailing_profit=3.5 / trailing_deviation=2.0:
+    # profit now tracks bottom_spread (2.0), deviation tracks top_spread (~5.66).
+    assert market.active_bot.trailing_profit == 2.0
+    assert market.active_bot.trailing_deviation == 1.65
+
+
 def test_market_trailing_analytics_preserves_recovery_parameters(monkeypatch):
     market = make_position_market()
     recovery_id = uuid4()
@@ -176,6 +202,33 @@ def test_derive_dynamic_trailing_params_tightens_on_deep_pullback():
     assert stop_loss == 3.0
     assert trailing_profit == 2.7
     assert trailing_deviation == 1.29
+    assert trailing_deviation < trailing_profit
+
+
+def test_derive_dynamic_trailing_params_swaps_spreads_for_short_direction():
+    """For a short (direction=-1), trailing_profit tracks bottom_spread and
+    trailing_deviation tracks top_spread — the mirror of the long mapping."""
+    market = make_position_market(bot_profit=4.0, opening_timestamp=9_999)
+
+    stop_loss, trailing_profit, trailing_deviation = (
+        market.derive_dynamic_trailing_params(
+            top_spread=5.66,
+            bottom_spread=2.0,
+            bot_profit=4.0,
+            expansion_multiplier=1.0,
+            is_aggressive_momo=False,
+            expansion_range=10.0,
+            trail_tighten_mult=0.7,
+            current_price=105.6,
+            direction=-1,
+        )
+    )
+
+    assert stop_loss == 3.0
+    assert trailing_profit == 1.4
+    # round_numbers floors rather than rounds: 1.4 - 0.35 = 1.0499999999999998
+    # (float imprecision) floors to 1.04, not 1.05.
+    assert trailing_deviation == 1.04
     assert trailing_deviation < trailing_profit
 
 
