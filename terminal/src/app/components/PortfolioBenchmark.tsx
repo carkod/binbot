@@ -14,7 +14,7 @@ import { type BenchmarkSeriesData } from "../../features/features.types";
 import { listCssColors } from "../../utils/validations";
 import { useBreakpoint } from "../hooks";
 import { formatTimestamp } from "../../utils/time";
-import Plot from "react-plotly.js";
+import PlotlyChart from "./PlotlyChart";
 
 ChartJS.register(
   CategoryScale,
@@ -107,7 +107,7 @@ const PortfolioBenchmarkChart: FC<{ chartData: BenchmarkSeriesData }> = ({
         </Row>
       </Card.Header>
       <Card.Body className="px-0 w-10">
-        <Plot
+        <PlotlyChart
           data={plotlyData}
           layout={PBLayout}
           style={{ width: breakpoint === "xs" ? "100%" : "100%" }}

@@ -1,7 +1,7 @@
 import { type FC } from "react";
 import { Nav } from "react-bootstrap";
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { routes } from "../../App";
+import { routes } from "../routes";
 
 export const Sidebar: FC = () => {
   const location = useLocation();

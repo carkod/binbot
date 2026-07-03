@@ -1,7 +1,7 @@
 import React from "react";
-import Plot from "react-plotly.js";
 import { Card, Row, Col } from "react-bootstrap";
 import moment from "moment";
+import PlotlyChart from "./PlotlyChart";
 
 type AdrCardProps = {
   market_breadth: number[];
@@ -37,7 +37,7 @@ const AdrCard: React.FC<AdrCardProps> = ({
         </Row>
       </Card.Header>
       <Card.Body>
-        <Plot
+        <PlotlyChart
           data={[
             {
               x: timestamps,
@@ -48,7 +48,10 @@ const AdrCard: React.FC<AdrCardProps> = ({
               line: { color: "#007bff", width: 2 },
               marker: { size: 6 },
               fill: "tozeroy",
-              fillcolor: market_breadth[market_breadth.length - 1] > 0 ? "#28a74533" : "#dc354533",
+              fillcolor:
+                market_breadth[market_breadth.length - 1] > 0
+                  ? "#28a74533"
+                  : "#dc354533",
             },
             ...(strengthIndex && strengthIndex.length > 0
               ? [

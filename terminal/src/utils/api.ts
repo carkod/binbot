@@ -9,13 +9,18 @@ import { getToken, removeToken } from "./login";
 export function buildBackUrl(
   location: Pick<Location, "hostname" | "port" | "protocol"> = window.location,
 ) {
-  if (location.port === "8007") {
-    return `${location.protocol}//${location.hostname}/api`;
+  const isSingleLabelHost = !location.hostname.includes(".");
+  const isLocalDevHost =
+    location.hostname === "localhost" || location.hostname === "127.0.0.1";
+
+  if (location.hostname === "staging-binbot") {
+    return "/api";
   }
 
-  const host = location.hostname.includes(".")
-    ? `api.${location.hostname}`
-    : `${location.hostname}:8008`;
+  const host =
+    !isSingleLabelHost && !isLocalDevHost
+      ? `api.${location.hostname}`
+      : `${location.hostname}:8008`;
   return `${location.protocol}//${host}`;
 }
 
@@ -40,6 +45,9 @@ export const binbotBaseQuery = async (
 
   if (result?.error?.status === 401) {
     removeToken();
+    if (window.location.pathname !== "/login") {
+      window.location.assign("/login");
+    }
   }
   return result;
 };
@@ -62,6 +70,88 @@ export const defaultStatusValidator = (res: Response) => {
 };
 
 export type NotificationType = "info" | "warning" | "success" | "error";
+
+const apiErrorMessageFromData = (data: unknown): string | undefined => {
+  if (typeof data === "string") {
+    return data;
+  }
+
+  if (!data || typeof data !== "object") {
+    return undefined;
+  }
+
+  const payload = data as {
+    detail?: unknown;
+    message?: unknown;
+    error?: unknown;
+  };
+
+  if (typeof payload.message === "string") {
+    return payload.message;
+  }
+
+  if (typeof payload.detail === "string") {
+    return payload.detail;
+  }
+
+  if (Array.isArray(payload.detail)) {
+    return payload.detail
+      .map((detail) => {
+        if (typeof detail === "string") {
+          return detail;
+        }
+        if (
+          detail &&
+          typeof detail === "object" &&
+          "msg" in detail &&
+          typeof detail.msg === "string"
+        ) {
+          return detail.msg;
+        }
+        return undefined;
+      })
+      .filter(Boolean)
+      .join(", ");
+  }
+
+  if (typeof payload.error === "string") {
+    return payload.error;
+  }
+
+  return undefined;
+};
+
+export const getApiErrorMessage = (
+  error: unknown,
+  fallback = "Request failed",
+): string => {
+  const candidate =
+    error && typeof error === "object" && "error" in error
+      ? (error as { error?: unknown }).error
+      : error;
+
+  if (candidate && typeof candidate === "object") {
+    if ("data" in candidate) {
+      const dataMessage = apiErrorMessageFromData(candidate.data);
+      if (dataMessage) {
+        return dataMessage;
+      }
+    }
+
+    if (
+      "message" in candidate &&
+      typeof (candidate as { message?: unknown }).message === "string"
+    ) {
+      return (candidate as { message: string }).message;
+    }
+
+    if ("status" in candidate) {
+      return `${fallback} (${String(candidate.status)})`;
+    }
+  }
+
+  return fallback;
+};
 
 export const notifification = (type: NotificationType, message: string) => {
   return toast[type](message, {

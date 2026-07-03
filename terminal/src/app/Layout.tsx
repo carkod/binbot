@@ -1,4 +1,4 @@
-import { createContext, useState, type FC } from "react";
+import { useState, type FC } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { Slide, ToastContainer } from "react-toastify";
 import { getToken } from "../utils/login";
@@ -6,11 +6,7 @@ import Footer from "./components/Footer";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import { useBreakpoint } from "./hooks";
-
-export const SpinnerContext = createContext({
-  spinner: false,
-  setSpinner: (value: boolean) => {},
-});
+import { SpinnerContext } from "./spinner-context";
 
 export const Layout: FC<{}> = () => {
   const token = getToken();

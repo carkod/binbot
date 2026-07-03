@@ -14,7 +14,7 @@ import BotsDateFilter from "../components/BotsCalendar";
 import ConfirmModal from "../components/ConfirmModal";
 import { useAppDispatch } from "../hooks";
 import { BotStatus } from "../../utils/enums";
-import { SpinnerContext } from "../Layout";
+import { SpinnerContext } from "../spinner-context";
 import SymbolSearch from "../components/SymbolSearch";
 import { useGetSymbolsQuery } from "../../features/symbolsApiSlice";
 

@@ -12,7 +12,7 @@ import {
 import BotsDateFilter from "../components/BotsCalendar";
 import ConfirmModal from "../components/ConfirmModal";
 import GridLadderCard from "../components/GridLadderCard";
-import { SpinnerContext } from "../Layout";
+import { SpinnerContext } from "../spinner-context";
 import {
   GridLadderStatus,
   isActiveGridLadder,

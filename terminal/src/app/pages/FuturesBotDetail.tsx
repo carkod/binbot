@@ -13,7 +13,7 @@ import BotInfo from "../components/BotInfo";
 import ChartContainer from "../components/ChartContainer";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import LogsInfo from "../components/LogsInfo";
-import { SpinnerContext } from "../Layout";
+import { SpinnerContext } from "../spinner-context";
 import { useGetBalanceQuery } from "../../features/balanceApiSlice";
 import BalanceAnalysis from "../components/BalanceAnalysis";
 import { SymbolProvider } from "../providers/SymbolProvider";

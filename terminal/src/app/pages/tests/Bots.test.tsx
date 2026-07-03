@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import { Provider } from "react-redux";
 import BotsPage from "../Bots";
-import { SpinnerContext } from "../../Layout";
+import { SpinnerContext } from "../../spinner-context";
 import { BulkAction } from "../../components/BotsActions";
 import { makeStore } from "../../store";
 import { SymbolContext } from "../../hooks";

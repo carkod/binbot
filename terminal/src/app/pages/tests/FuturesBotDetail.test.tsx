@@ -247,9 +247,7 @@ describe("FuturesBotDetail page", () => {
       expect(store.getState().bot.bot.pair).toBe("RAVEUSDTM");
     });
 
-    fireEvent.click(
-      rtlScreen.getByRole("button", { name: "New futures bot" }),
-    );
+    fireEvent.click(rtlScreen.getByRole("button", { name: "New futures bot" }));
 
     await waitFor(() => {
       const state = store.getState().bot.bot;

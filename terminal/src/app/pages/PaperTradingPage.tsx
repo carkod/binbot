@@ -8,7 +8,7 @@ import {
   useDeleteTestBotMutation,
   useGetTestBotsQuery,
 } from "../../features/bots/paperTradingApiSlice";
-import { SpinnerContext } from "../Layout";
+import { SpinnerContext } from "../spinner-context";
 import { weekAgo } from "../../utils/time";
 import BotCard from "../components/BotCard";
 import BotsActions, { BulkAction } from "../components/BotsActions";

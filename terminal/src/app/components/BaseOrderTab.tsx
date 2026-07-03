@@ -26,7 +26,7 @@ import { type AppDispatch } from "../store";
 import { InputTooltip } from "./InputTooltip";
 import SymbolSearch from "./SymbolSearch";
 import { useLocation, useParams } from "react-router-dom";
-import { SpinnerContext } from "../Layout";
+import { SpinnerContext } from "../spinner-context";
 import {
   selectTestBot,
   setTestBot,
