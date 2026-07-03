@@ -20,7 +20,7 @@ import { formatTimestamp } from "../../utils/time";
 import { getNetProfit } from "../../features/bots/profits";
 import GainersLosers from "../components/GainersLosers";
 import PortfolioBenchmarkChart from "../components/PortfolioBenchmark";
-import { SpinnerContext } from "../Layout";
+import { SpinnerContext } from "../spinner-context";
 import AdrCard from "../components/AdrCard";
 import {
   useFilteredFuturesRankings,

@@ -3,7 +3,7 @@ import { screen as rtlScreen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 import DashboardPage from "../Dashboard";
-import { SpinnerContext } from "../../Layout";
+import { SpinnerContext } from "../../spinner-context";
 import { renderWithProviders } from "../../../utils/test-utils";
 import { useGetSignalsQuery } from "../../../features/signalsApiSlice";
 

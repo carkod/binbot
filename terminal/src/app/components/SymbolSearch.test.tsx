@@ -1,8 +1,4 @@
-import {
-  fireEvent,
-  render,
-  screen as rtlScreen,
-} from "@testing-library/react";
+import { fireEvent, render, screen as rtlScreen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { filterSymbolByBaseAsset } from "../../utils/api";
 import SymbolSearch from "./SymbolSearch";
@@ -108,10 +104,9 @@ describe("SymbolSearch component", () => {
   });
 
   it("keeps uncontrolled input when symbols update", () => {
-    const { rerender } = renderWithSymbols(
-      <SymbolSearch name="pair" />,
-      ["BTCUSDT"],
-    );
+    const { rerender } = renderWithSymbols(<SymbolSearch name="pair" />, [
+      "BTCUSDT",
+    ]);
 
     fireEvent.change(rtlScreen.getByRole("combobox"), {
       target: { value: "RAVE" },

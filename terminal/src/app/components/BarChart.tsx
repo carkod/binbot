@@ -1,7 +1,7 @@
-import Plot from "react-plotly.js";
 import { listCssColors } from "../../utils/validations";
 import { type FC } from "react";
 import { type GainerLosersData } from "../../features/marketApiSlice";
+import PlotlyChart from "./PlotlyChart";
 
 interface BarChartProps {
   data: GainerLosersData;
@@ -78,7 +78,7 @@ const BarChart: FC<BarChartProps> = ({
   };
 
   return (
-    <Plot
+    <PlotlyChart
       data={[
         {
           x: data.dates,

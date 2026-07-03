@@ -9,13 +9,18 @@ import { getToken, removeToken } from "./login";
 export function buildBackUrl(
   location: Pick<Location, "hostname" | "port" | "protocol"> = window.location,
 ) {
-  if (location.port === "8007") {
+  const isSingleLabelHost = !location.hostname.includes(".");
+  const isLocalDevHost =
+    location.hostname === "localhost" || location.hostname === "127.0.0.1";
+
+  if (location.hostname === "staging-binbot") {
     return "/api";
   }
 
-  const host = location.hostname.includes(".")
-    ? `api.${location.hostname}`
-    : `${location.hostname}:8008`;
+  const host =
+    !isSingleLabelHost && !isLocalDevHost
+      ? `api.${location.hostname}`
+      : `${location.hostname}:8008`;
   return `${location.protocol}//${host}`;
 }
 
@@ -40,6 +45,9 @@ export const binbotBaseQuery = async (
 
   if (result?.error?.status === 401) {
     removeToken();
+    if (window.location.pathname !== "/login") {
+      window.location.assign("/login");
+    }
   }
   return result;
 };

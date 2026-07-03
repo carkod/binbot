@@ -17,9 +17,7 @@ const settingsResponse = vi.hoisted(() => ({
 }));
 
 vi.mock("../../../features/autotradeApiSlice", async () => {
-  const actual = await vi.importActual(
-    "../../../features/autotradeApiSlice",
-  );
+  const actual = await vi.importActual("../../../features/autotradeApiSlice");
 
   return {
     ...actual,
