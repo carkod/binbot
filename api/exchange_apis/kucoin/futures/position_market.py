@@ -157,8 +157,8 @@ class PositionMarket(KucoinPositionDeal):
 
         Rules:
         - stop_loss is the emergency safety net. It is initialised once
-          (when the bot has no SL yet) and then left fixed — it is never
-          trailed by bb_spread.
+          (when the bot has no SL yet), then only ever tightened — never
+          widened — toward the live band's protective-side distance.
         - trailing_profit is a ceiling trigger only.
         - trailing_deviation is the real stop once trailing starts; it can
           tighten/widen freely, since it lives in the bot, not the exchange.
@@ -169,7 +169,10 @@ class PositionMarket(KucoinPositionDeal):
         the top for a long and the bottom for a short, mirroring the same
         long/short spread assignment binquant uses at bot creation
         (shared/autotrade.py:_set_bollinguer_spreads). trailing_profit tracks
-        the favourable spread; trailing_deviation tracks the opposite one.
+        the favourable spread; trailing_deviation tracks the opposite
+        (protective) spread — the same protective spread also seeds the SL
+        ratchet below, since it's the band's read on how far price could
+        move against the position.
         """
         profit_spread, deviation_spread = (
             (top_spread, bottom_spread)
@@ -195,12 +198,19 @@ class PositionMarket(KucoinPositionDeal):
             self.MAX_TRAILING_DEVIATION,
         )
 
-        # Emergency SL: pin to existing value if already set, otherwise derive
-        # an initial one. Never re-trail it from market state.
+        # Emergency SL: once set, only ever ratchet tighter toward the band's
+        # protective-side distance (deviation_spread) — never widen, and
+        # never loosen based on market state. Before that, derive an initial
+        # value the same way as before.
         existing_stop_loss = self.active_bot.stop_loss
         if existing_stop_loss > 0:
+            band_sl_candidate = clamp(
+                deviation_spread, self.MIN_STOP_LOSS, self.MAX_STOP_LOSS
+            )
             stop_loss = clamp(
-                existing_stop_loss, self.MIN_STOP_LOSS, self.MAX_STOP_LOSS
+                min(existing_stop_loss, band_sl_candidate),
+                self.MIN_STOP_LOSS,
+                self.MAX_STOP_LOSS,
             )
         else:
             opening_price = self.active_bot.deal.opening_price

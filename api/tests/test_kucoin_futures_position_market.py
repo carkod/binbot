@@ -232,8 +232,10 @@ def test_derive_dynamic_trailing_params_swaps_spreads_for_short_direction():
     assert trailing_deviation < trailing_profit
 
 
-def test_derive_dynamic_trailing_params_pins_existing_stop_loss():
-    """Once a bot has a stop_loss set, derive must return it as-is."""
+def test_derive_dynamic_trailing_params_tightens_existing_stop_loss_toward_band():
+    """Once a bot has a stop_loss set, it must ratchet tighter toward the
+    band's protective-side distance (deviation_spread — bottom_spread for a
+    long) rather than staying pinned indefinitely."""
     market = make_position_market(bot_profit=4.0)
     market.active_bot.stop_loss = 2.5
 
@@ -248,7 +250,50 @@ def test_derive_dynamic_trailing_params_pins_existing_stop_loss():
         current_price=105.6,
     )
 
-    assert stop_loss == 2.5
+    # deviation_spread (bottom_spread for a long) = 2.0 < existing 2.5.
+    assert stop_loss == 2.0
+
+
+def test_derive_dynamic_trailing_params_never_widens_stop_loss():
+    """If the band-derived candidate is looser than the existing SL, the SL
+    must hold at its current (tighter) value rather than widening."""
+    market = make_position_market(bot_profit=4.0)
+    market.active_bot.stop_loss = 1.0
+
+    stop_loss, _, _ = market.derive_dynamic_trailing_params(
+        top_spread=5.66,
+        bottom_spread=2.0,  # deviation_spread for a long = 2.0 > existing 1.0
+        bot_profit=4.0,
+        expansion_multiplier=1.0,
+        is_aggressive_momo=True,
+        expansion_range=10.0,
+        trail_tighten_mult=0.7,
+        current_price=105.6,
+    )
+
+    assert stop_loss == 1.0
+
+
+def test_derive_dynamic_trailing_params_tightens_short_stop_loss_toward_top_spread():
+    """For a short, the protective side is the top of the band, so the SL
+    ratchet candidate is top_spread, not bottom_spread."""
+    market = make_position_market(bot_profit=4.0, opening_timestamp=9_999)
+    market.active_bot.stop_loss = 3.5
+
+    stop_loss, _, _ = market.derive_dynamic_trailing_params(
+        top_spread=1.8,
+        bottom_spread=5.66,
+        bot_profit=4.0,
+        expansion_multiplier=1.0,
+        is_aggressive_momo=True,
+        expansion_range=10.0,
+        trail_tighten_mult=0.7,
+        current_price=105.6,
+        direction=-1,
+    )
+
+    # deviation_spread (top_spread for a short) = 1.8 < existing 3.5.
+    assert stop_loss == 1.8
 
 
 def test_update_parameters_translates_percent_values_into_prices():
