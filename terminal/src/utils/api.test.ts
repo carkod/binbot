@@ -4,11 +4,11 @@ describe("buildBackUrl", () => {
   it("uses the API path for a staging machine hostname", () => {
     expect(
       buildBackUrl({
-        hostname: "desktop-mkotse4",
+        hostname: "staging-binbot",
         port: "8007",
         protocol: "http:",
       }),
-    ).toBe("http://desktop-mkotse4/api");
+    ).toBe("http://staging-binbot/api");
   });
 
   it("uses port 8008 for localhost", () => {
