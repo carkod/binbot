@@ -9,7 +9,7 @@ import { getToken, removeToken } from "./login";
 export function buildBackUrl(
   location: Pick<Location, "hostname" | "port" | "protocol"> = window.location,
 ) {
-  if (location.port === "8007") {
+  if (location.hostname === "staging-binbot") {
     return `${location.protocol}//${location.hostname}/api`;
   }
 
@@ -40,6 +40,9 @@ export const binbotBaseQuery = async (
 
   if (result?.error?.status === 401) {
     removeToken();
+    if (window.location.pathname !== "/login") {
+      window.location.assign("/login");
+    }
   }
   return result;
 };
