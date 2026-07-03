@@ -21,11 +21,11 @@
       "type": "debugpy",
       "request": "launch",
       "module": "uvicorn",
-      "cwd": "${workspaceFolder}/api",
+      "cwd": "${workspaceFolder}",
       "justMyCode": false,
       "console": "internalConsole",
       "envFile": "${workspaceFolder}/.env",
-      "args": ["main:app", "--port", "8008"]
+      "args": ["api.main:app", "--port", "8008"]
     },
     {
       "name": "Python: streaming",
