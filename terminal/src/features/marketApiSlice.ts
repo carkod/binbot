@@ -14,7 +14,7 @@ export interface GainerLosersData {
   adr_ma: number[];
 }
 
-export interface AdData {
+export interface MarketBreadthData {
   timestamp: string[];
   advancers: number[];
   decliners: number[];
@@ -33,10 +33,10 @@ export interface AdData {
  */
 export const marketApiSlice = userApiSlice.injectEndpoints({
   endpoints: (build) => ({
-    adSeries: build.query<AdData, void>({
+    marketBreadthSeries: build.query<MarketBreadthData, void>({
       query: () => ({
         url: `${import.meta.env.VITE_MARKET_BREADTH}?size=100`,
-        providesTags: ["ad-series"],
+        providesTags: ["market-breadth-series"],
       }),
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
@@ -49,4 +49,4 @@ export const marketApiSlice = userApiSlice.injectEndpoints({
   }),
 });
 
-export const { useAdSeriesQuery } = marketApiSlice;
+export const { useMarketBreadthSeriesQuery } = marketApiSlice;
