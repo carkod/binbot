@@ -1,7 +1,8 @@
-import React from "react";
 import { Badge, Card, Row, Col } from "react-bootstrap";
 import moment from "moment";
 import PlotlyChart from "./PlotlyChart";
+import { roundDecimals } from "../../utils/math";
+import type { FC } from "react";
 
 type MarketBreadthCardProps = {
   marketBreadth: number[];
@@ -15,15 +16,17 @@ const resolveDeltaBadge = (marketBreadthMa?: Array<number | null>) => {
   const previous = marketBreadthMa?.[1];
 
   if (
-    typeof latest !== "number" ||
-    typeof previous !== "number" ||
+    latest === null ||
+    latest === undefined ||
+    previous === null ||
+    previous === undefined ||
     !Number.isFinite(latest) ||
     !Number.isFinite(previous)
   ) {
     return { bg: "secondary", label: "N/A" };
   }
 
-  const roundedDeltaPoints = Number(((latest - previous) * 100).toFixed(1));
+  const roundedDeltaPoints = roundDecimals((latest - previous) * 100, 1);
 
   if (roundedDeltaPoints > 0) {
     return { bg: "success", label: `+${roundedDeltaPoints.toFixed(1)} pts` };
@@ -36,15 +39,13 @@ const resolveDeltaBadge = (marketBreadthMa?: Array<number | null>) => {
   return { bg: "secondary", label: "0.0 pts" };
 };
 
-const MarketBreadthCard: React.FC<MarketBreadthCardProps> = ({
+const MarketBreadthCard: FC<MarketBreadthCardProps> = ({
   marketBreadth,
   marketBreadthMa,
   strengthIndex,
   timestamps,
 }) => {
-  const latestMarketBreadth = marketBreadth[0];
-  const marketBreadthIsPositive =
-    typeof latestMarketBreadth === "number" && latestMarketBreadth > 0;
+  const marketBreadthIsPositive = marketBreadth[0] > 0;
   const deltaBadge = resolveDeltaBadge(marketBreadthMa);
   const chartTimestamps = [...timestamps].reverse();
   const chartMarketBreadth = [...marketBreadth].reverse();
@@ -93,7 +94,7 @@ const MarketBreadthCard: React.FC<MarketBreadthCardProps> = ({
               fill: "tozeroy",
               fillcolor: marketBreadthIsPositive ? "#28a74533" : "#dc354533",
             },
-            ...(chartMarketBreadthMa.length > 0
+            ...(chartMarketBreadthMa.some((value) => value !== null)
               ? [
                   {
                     x: chartTimestamps,
@@ -125,7 +126,7 @@ const MarketBreadthCard: React.FC<MarketBreadthCardProps> = ({
           layout={{
             autosize: true,
             height: 380,
-            margin: { t: 30, l: 40, r: 20, b: 40 },
+            margin: { t: 30, l: 40, r: 55, b: 40 },
             xaxis: {
               title: "Time",
               tickformat: "%d/%m %H:%M",

@@ -115,7 +115,8 @@ class MarketBreadthSeries(BaseModel):
 
     Parallel arrays (newest-first) so the frontend can plot directly without
     pivoting. Every field except market_breadth_ma is read straight from the
-    stored columns; market_breadth_ma is a rolling window computed in SQL.
+    stored columns; market_breadth_ma is an EMA-smoothed breadth level
+    computed on read.
     """
 
     timestamp: list[str]

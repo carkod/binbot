@@ -178,6 +178,18 @@ def _seed_rows(session: Session, source: str, count: int):
     session.commit()
 
 
+def _ema(values: list[float], window: int) -> list[float]:
+    alpha = 2 / (window + 1)
+    smoothed: list[float] = []
+    current: float | None = None
+
+    for value in values:
+        current = value if current is None else alpha * value + (1 - alpha) * current
+        smoothed.append(current)
+
+    return smoothed
+
+
 def test_get_adrs_returns_parallel_arrays_newest_first():
     session = _make_session()
     _seed_rows(session, ExchangeId.BINANCE.value, count=5)
@@ -204,10 +216,9 @@ def test_get_adrs_returns_parallel_arrays_newest_first():
     ):
         assert key in result
         assert len(result[key]) == 4
-    # market_breadth_ma is computed; first row in chronological order has just itself in the window
-    assert result["market_breadth_ma"][-1] == pytest.approx(
-        result["market_breadth"][-1]
-    )
+    chronological_adp = [5 / (15 + 2 * i) for i in range(5)]
+    expected_ema_newest_first = list(reversed(_ema(chronological_adp, window=2)))[:4]
+    assert result["market_breadth_ma"] == pytest.approx(expected_ema_newest_first)
 
 
 def test_get_adrs_filters_by_exchange():
@@ -221,6 +232,7 @@ def test_get_adrs_filters_by_exchange():
     # only kucoin rows should be returned
     assert result is not None
     assert len(result["timestamp"]) == 3
+    assert result["market_breadth_ma"] == pytest.approx(result["market_breadth"])
 
 
 def test_get_adrs_returns_none_when_empty():
