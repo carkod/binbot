@@ -92,17 +92,17 @@ class CandlestickResponse(StandardResponse):
     data: list[CandlestickData]
 
 
-class AdrSeriesDb(BaseModel):
+class MarketBreadthSample(BaseModel):
     """
-    Ingest payload for one market_breadth row. Mirrors the SQL columns 1:1
-    so model_dump() can be passed straight into MarketBreadthTable(**dump).
+    Ingest payload for one market-breadth sample before it is mapped to the
+    database column names.
     """
 
     timestamp: datetime.datetime
     source: str
     advancers: int
     decliners: int
-    adp: float
+    market_breadth: float
     avg_gain: float
     avg_loss: float
     total_volume: float

@@ -19,7 +19,9 @@ charts_blueprint = APIRouter()
 )
 def get_market_breadth(size: int = 14, session: Session = Depends(get_session)):
     try:
-        data = MarketDominationController(session=session).get_adrs(size)
+        data = MarketDominationController(session=session).get_market_breadth_series(
+            size
+        )
         if not data:
             raise HTTPException(404, detail="No market breadth data found")
 
