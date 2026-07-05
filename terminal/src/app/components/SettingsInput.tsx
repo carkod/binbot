@@ -10,6 +10,7 @@ type SettingsInputProps = {
   errorMsg?: string;
   infoText?: string;
   type?: "text" | "number";
+  step?: string | number;
   register?: any;
   required?: boolean;
 };
@@ -24,8 +25,11 @@ const SettingsInput: FC<SettingsInputProps> = ({
   infoText,
   register,
   type = "text",
+  step,
   required = false,
 }) => {
+  const inputStep = step ?? (type === "number" ? "any" : undefined);
+
   return (
     <Form.Group>
       <Form.Label htmlFor={name}>{label}</Form.Label>
@@ -36,6 +40,7 @@ const SettingsInput: FC<SettingsInputProps> = ({
         defaultValue={type === "number" ? String(value) : value}
         isInvalid={!!errorMsg}
         type={type}
+        step={inputStep}
         {...register(name, { required: required })}
       />
       {errorMsg && <Form.Control.Feedback>{errorMsg}</Form.Control.Feedback>}

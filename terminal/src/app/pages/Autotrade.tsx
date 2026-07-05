@@ -440,6 +440,7 @@ export const AutotradePage: FC<{}> = () => {
                     name={"grid_level_count"}
                     label={"Grid level count"}
                     type="number"
+                    step={1}
                     register={register}
                   />
                 </Col>
@@ -449,6 +450,7 @@ export const AutotradePage: FC<{}> = () => {
                     name={"grid_max_active_ladders"}
                     label={"Grid max active ladders"}
                     type="number"
+                    step={1}
                     register={register}
                   />
                 </Col>
