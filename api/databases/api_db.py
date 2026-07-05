@@ -46,7 +46,6 @@ class ApiDb:
         try:
             self.run_migrations()
             self.init_users()
-            self.init_autotrade_settings()
             self.init_test_autotrade_settings()
             self.create_dummy_bot()
             self.init_symbols()
@@ -192,41 +191,6 @@ class ApiDb:
             conn.execute(text(f"DROP TABLE IF EXISTS {table_name} CASCADE"))
             conn.commit()
             SQLModel.metadata.create_all(engine)
-
-    def init_autotrade_settings(self, delete_existing: bool = False):
-        """
-        Dummy data for testing autotrade_settings table
-        """
-        if delete_existing:
-            self.delete_autotrade_settings_table("autotrade")
-
-        statement = select(AutotradeTable).where(
-            AutotradeTable.id == AutotradeSettingsDocument.settings
-        )
-        results = self.session.exec(statement)
-        if results.first():
-            return
-
-        autotrade_data = AutotradeTable(
-            id=AutotradeSettingsDocument.settings,
-            fiat="USDC",
-            base_order_size=20,
-            candlestick_interval=BinanceKlineIntervals.fifteen_minutes,
-            max_active_autotrade_bots=3,
-            max_request=500,
-            stop_loss=3,
-            take_profit=2.3,
-            telegram_signals=True,
-            trailing=True,
-            trailing_deviation=1.63,
-            trailing_profit=2.3,
-            autotrade=True,
-            autoswitch=False,
-            exchange_id=ExchangeId.BINANCE,
-        )
-
-        self.session.add(autotrade_data)
-        pass
 
     def init_test_autotrade_settings(self, delete_existing: bool = False):
         if delete_existing:
