@@ -16,15 +16,12 @@ class GridCapitalDecision:
 
 
 class GridCapitalSettings:
-    # Per-ladder margin cap as a fraction of available balance. Not yet in
-    # autotrade settings; stored here until a settings field is added.
-    MAX_MARGIN_PER_LADDER_PCT = 0.25
-
     def __init__(self, session: Session | None = None) -> None:
         settings = AutotradeCrud(session).get_settings()
         self.max_active_ladders: int = settings.grid_max_active_ladders
         self.grid_allocation_pct: float = settings.grid_allocation_pct
         self.cash_reserve_pct: float = settings.grid_cash_reserve_pct
+        self.max_margin_per_ladder_pct: float = settings.max_margin_per_ladder_pct
 
     def evaluate_grid_capital(
         self,
@@ -44,7 +41,7 @@ class GridCapitalSettings:
         )
         allowed_grid_margin = available_fiat_balance * self.grid_allocation_pct
         remaining_grid_margin = max(allowed_grid_margin - reserved_grid_margin, 0)
-        per_ladder_cap = available_fiat_balance * self.MAX_MARGIN_PER_LADDER_PCT
+        per_ladder_cap = available_fiat_balance * self.max_margin_per_ladder_pct
         allowed_margin_for_new_ladder = min(
             available_after_cash_reserve,
             remaining_grid_margin,

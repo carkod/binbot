@@ -56,7 +56,7 @@ vi.mock("../../../features/bots/botsApiSlice", () => ({
 }));
 
 vi.mock("../../../features/marketApiSlice", () => ({
-  useAdSeriesQuery: vi.fn(() => ({
+  useMarketBreadthSeriesQuery: vi.fn(() => ({
     data: [],
     isLoading: false,
   })),
@@ -88,8 +88,8 @@ vi.mock("../../components/PortfolioBenchmark", () => ({
   default: () => <div>PortfolioBenchmarkChart</div>,
 }));
 
-vi.mock("../../components/AdrCard", () => ({
-  default: () => <div>AdrCard</div>,
+vi.mock("../../components/MarketBreadthCard", () => ({
+  default: () => <div>MarketBreadthCard</div>,
 }));
 
 describe("Dashboard page", () => {

@@ -75,7 +75,7 @@ def test_ingest_market_breadth_uses_binance_ticker_payload():
     assert inserted["decliners"] == 1
     assert inserted["total_volume"] == 7.0
     assert inserted["strength_index"] == pytest.approx(1 / 3)
-    assert inserted["adp"] == 0.0
+    assert inserted["market_breadth"] == 0.0
     assert inserted["avg_gain"] == pytest.approx(10.0)
     assert inserted["avg_loss"] == pytest.approx(5.0)
     assert inserted["source"] == ExchangeId.BINANCE.value
@@ -129,7 +129,7 @@ def test_ingest_market_breadth_uses_kucoin_all_tickers_payload():
     assert inserted["decliners"] == 1
     assert inserted["total_volume"] == 700.0
     assert inserted["strength_index"] == pytest.approx(1 / 3)
-    assert inserted["adp"] == 0.0
+    assert inserted["market_breadth"] == 0.0
     assert inserted["source"] == ExchangeId.KUCOIN.value
 
 
@@ -178,12 +178,24 @@ def _seed_rows(session: Session, source: str, count: int):
     session.commit()
 
 
-def test_get_adrs_returns_parallel_arrays_newest_first():
+def _ema(values: list[float], window: int) -> list[float]:
+    alpha = 2 / (window + 1)
+    smoothed: list[float] = []
+    current: float | None = None
+
+    for value in values:
+        current = value if current is None else alpha * value + (1 - alpha) * current
+        smoothed.append(current)
+
+    return smoothed
+
+
+def test_get_market_breadth_series_returns_parallel_arrays_newest_first():
     session = _make_session()
     _seed_rows(session, ExchangeId.BINANCE.value, count=5)
 
     controller = _make_controller(ExchangeId.BINANCE, session)
-    result = controller.get_adrs(size=3, window=2)
+    result = controller.get_market_breadth_series(size=3, window=2)
 
     # fetch_size = size + window - 1 = 4
     assert result is not None
@@ -204,26 +216,30 @@ def test_get_adrs_returns_parallel_arrays_newest_first():
     ):
         assert key in result
         assert len(result[key]) == 4
-    # market_breadth_ma is computed; first row in chronological order has just itself in the window
-    assert result["market_breadth_ma"][-1] == pytest.approx(
-        result["market_breadth"][-1]
-    )
+    chronological_market_breadth = [5 / (15 + 2 * i) for i in range(5)]
+    expected_ema_newest_first = list(
+        reversed(_ema(chronological_market_breadth, window=2))
+    )[:4]
+    assert result["market_breadth_ma"] == pytest.approx(expected_ema_newest_first)
 
 
-def test_get_adrs_filters_by_exchange():
+def test_get_market_breadth_series_filters_by_exchange():
     session = _make_session()
     _seed_rows(session, ExchangeId.BINANCE.value, count=3)
     _seed_rows(session, ExchangeId.KUCOIN.value, count=3)
 
     controller = _make_controller(ExchangeId.BINANCE, session)
-    result = controller.get_adrs(size=10, window=1, exchange=ExchangeId.KUCOIN)
+    result = controller.get_market_breadth_series(
+        size=10, window=1, exchange=ExchangeId.KUCOIN
+    )
 
     # only kucoin rows should be returned
     assert result is not None
     assert len(result["timestamp"]) == 3
+    assert result["market_breadth_ma"] == pytest.approx(result["market_breadth"])
 
 
-def test_get_adrs_returns_none_when_empty():
+def test_get_market_breadth_series_returns_none_when_empty():
     session = _make_session()
     controller = _make_controller(ExchangeId.BINANCE, session)
-    assert controller.get_adrs() is None
+    assert controller.get_market_breadth_series() is None

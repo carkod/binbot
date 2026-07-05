@@ -8,7 +8,7 @@ import {
   useGetBotsQuery,
   useGetAlgoRankingQuery,
 } from "../../features/bots/botsApiSlice";
-import { useAdSeriesQuery } from "../../features/marketApiSlice";
+import { useMarketBreadthSeriesQuery } from "../../features/marketApiSlice";
 import { useGetSignalsQuery } from "../../features/signalsApiSlice";
 import type {
   BalanceData,
@@ -21,7 +21,7 @@ import { getNetProfit } from "../../features/bots/profits";
 import GainersLosers from "../components/GainersLosers";
 import PortfolioBenchmarkChart from "../components/PortfolioBenchmark";
 import { SpinnerContext } from "../spinner-context";
-import AdrCard from "../components/AdrCard";
+import MarketBreadthCard from "../components/MarketBreadthCard";
 import {
   useFilteredFuturesRankings,
   useFilteredGainerLosers,
@@ -109,7 +109,8 @@ export const DashboardPage: FC<{}> = () => {
     isLoading: loadingFuturesRankings,
   } = useFilteredFuturesRankings();
 
-  const { data: adpSeries, isLoading: loadingAdpSeries } = useAdSeriesQuery();
+  const { data: marketBreadthSeries, isLoading: loadingMarketBreadthSeries } =
+    useMarketBreadthSeriesQuery();
 
   const { data: algoRanking, isLoading: loadingAlgoRanking } =
     useGetAlgoRankingQuery();
@@ -251,7 +252,7 @@ export const DashboardPage: FC<{}> = () => {
       !loadingErrorBots &&
       !loadingCombined &&
       !loadingFuturesRankings &&
-      !loadingAdpSeries &&
+      !loadingMarketBreadthSeries &&
       !loadingAlgoRanking &&
       !loadingSignals
     ) {
@@ -273,7 +274,7 @@ export const DashboardPage: FC<{}> = () => {
     loadingEstimates,
     loadingErrorBots,
     loadingCombined,
-    loadingAdpSeries,
+    loadingMarketBreadthSeries,
     loadingFuturesRankings,
     loadingAlgoRanking,
     loadingSignals,
@@ -580,11 +581,12 @@ export const DashboardPage: FC<{}> = () => {
       </Row>
       <Row>
         <Col>
-          {adpSeries?.market_breadth && (
-            <AdrCard
-              market_breadth={adpSeries.market_breadth}
-              strengthIndex={adpSeries.strength_index}
-              timestamps={adpSeries.timestamp}
+          {marketBreadthSeries?.market_breadth && (
+            <MarketBreadthCard
+              marketBreadth={marketBreadthSeries.market_breadth}
+              marketBreadthMa={marketBreadthSeries.market_breadth_ma}
+              strengthIndex={marketBreadthSeries.strength_index}
+              timestamps={marketBreadthSeries.timestamp}
             />
           )}
         </Col>

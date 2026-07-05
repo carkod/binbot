@@ -3,9 +3,9 @@ from datetime import datetime, timezone
 from typing import Any, Iterable, cast
 from sqlalchemy import Table
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import Session, func
+from sqlmodel import Session
 
-from api.charts.models import AdrSeriesDb, MarketBreadthSeries
+from api.charts.models import MarketBreadthSample, MarketBreadthSeries
 from api.databases.crud.autotrade_crud import AutotradeCrud
 from api.databases.crud.symbols_crud import SymbolsCrud
 from api.databases.tables.market_breadth_table import MarketBreadthTable
@@ -15,12 +15,12 @@ from kucoin_universal_sdk.generate.spot.market.model_get_symbol_resp import (
 )
 from pybinbot import BinanceApi, ExchangeId, KucoinApi
 from api.tools.config import Config
-from api.tools.utils import utc_now
+from api.tools.utils import datetime_to_iso, utc_now
 
 
 class MarketDominationController:
     """
-    Reads/writes market-breadth (ADR) samples in Postgres.
+    Reads/writes market-breadth samples in Postgres.
     """
 
     def __init__(self, session: Session | None = None) -> None:
@@ -65,9 +65,9 @@ class MarketDominationController:
             ),
         }
 
-    def _calculate_adr_series_data(
+    def _calculate_market_breadth_sample(
         self, market_tickers: Iterable[Any], fallback_timestamp: datetime | None = None
-    ) -> AdrSeriesDb:
+    ) -> MarketBreadthSample:
         advancers = 0
         decliners = 0
         total_volume = 0.0
@@ -108,18 +108,18 @@ class MarketDominationController:
             strength_index = 0.0
 
         if (advancers + decliners) > 0:
-            adp = (advancers - decliners) / (advancers + decliners)
+            market_breadth = (advancers - decliners) / (advancers + decliners)
         else:
-            adp = 0.0
+            market_breadth = 0.0
 
         timestamp = timestamp or utc_now()
 
-        return AdrSeriesDb(
+        return MarketBreadthSample(
             timestamp=timestamp,
             source=self.exchange.value,
             advancers=advancers,
             decliners=decliners,
-            adp=adp,
+            market_breadth=market_breadth,
             avg_gain=avg_gain,
             avg_loss=avg_loss,
             total_volume=total_volume,
@@ -141,10 +141,22 @@ class MarketDominationController:
             market_tickers = ticker_data or []
             fallback_timestamp = None
 
-        adr_data = self._calculate_adr_series_data(market_tickers, fallback_timestamp)
-        payload = adr_data.model_dump()
+        market_breadth_sample = self._calculate_market_breadth_sample(
+            market_tickers, fallback_timestamp
+        )
+        payload = market_breadth_sample.model_dump()
 
-        row = MarketBreadthTable(**payload)
+        row = MarketBreadthTable(
+            timestamp=market_breadth_sample.timestamp,
+            source=market_breadth_sample.source,
+            advancers=market_breadth_sample.advancers,
+            decliners=market_breadth_sample.decliners,
+            adp=market_breadth_sample.market_breadth,
+            avg_gain=market_breadth_sample.avg_gain,
+            avg_loss=market_breadth_sample.avg_loss,
+            total_volume=market_breadth_sample.total_volume,
+            strength_index=market_breadth_sample.strength_index,
+        )
         self.session.add(row)
         try:
             self.session.commit()
@@ -153,23 +165,37 @@ class MarketDominationController:
             self.session.rollback()
             logging.warning(
                 "market_breadth integrity error for ts=%s src=%s: %s",
-                adr_data.timestamp,
-                adr_data.source,
+                market_breadth_sample.timestamp,
+                market_breadth_sample.source,
                 exc,
             )
             return None
         return payload
 
-    def get_adrs(
-        self, size: int = 7, window: int = 3, exchange: ExchangeId | None = None
+    @staticmethod
+    def _ema(values: list[float], window: int) -> list[float]:
+        alpha = 2 / (max(int(window), 1) + 1)
+        smoothed: list[float] = []
+        current: float | None = None
+
+        for value in values:
+            current = (
+                value if current is None else alpha * value + (1 - alpha) * current
+            )
+            smoothed.append(current)
+
+        return smoothed
+
+    def get_market_breadth_series(
+        self, size: int = 7, window: int = 8, exchange: ExchangeId | None = None
     ) -> dict[str, list] | None:
         """
-        Return parallel arrays (newest-first) for the last `size + window - 1`
-        samples. Every field is read straight from storage; market_breadth_ma is
-        a rolling average over the previous `window` samples computed in SQL.
+        Return parallel arrays (newest-first). Every field is read straight from
+        storage except market_breadth_ma, which is an EMA-smoothed market
+        breadth level computed over chronological samples.
         """
-        fetch_size = size + max(int(window) - 1, 0)
-        win_preceding = max(int(window) - 1, 0)
+        output_size = size + max(int(window) - 1, 0)
+        fetch_size = output_size + max(int(window) * 3, 0)
         market_breadth = cast(Table, getattr(MarketBreadthTable, "__table__"))
 
         recent_columns = (
@@ -178,7 +204,7 @@ class MarketDominationController:
             market_breadth.c.decliners,
             market_breadth.c.total_volume,
             market_breadth.c.strength_index,
-            market_breadth.c.adp,
+            market_breadth.c.adp.label("market_breadth"),
             market_breadth.c.avg_gain,
             market_breadth.c.avg_loss,
         )
@@ -187,49 +213,31 @@ class MarketDominationController:
         if exchange:
             recent_stmt = recent_stmt.where(market_breadth.c.source == exchange.value)
 
-        recent = (
-            recent_stmt.order_by(market_breadth.c.timestamp.desc())
-            .limit(fetch_size)
-            .subquery("recent")
-        )
-
-        stmt = (
-            recent.select()
-            .add_columns(
-                func.avg(recent.c.adp)
-                .over(order_by=recent.c.timestamp, rows=(-win_preceding, 0))
-                .label("market_breadth_ma"),
-            )
-            .order_by(recent.c.timestamp.desc())
-        )
-
+        stmt = recent_stmt.order_by(market_breadth.c.timestamp.desc()).limit(fetch_size)
         result = self.session.execute(stmt)
         rows = result.mappings().all()
 
         if not rows:
             return None
 
-        def _format_ts(ts):
-            # Postgres returns datetime, SQLite returns ISO-format str.
-            if isinstance(ts, str):
-                ts = datetime.fromisoformat(ts)
-            return ts.strftime("%Y-%m-%d %H:%M:%S")
+        chronological_rows = list(reversed(rows))
+        chronological_market_breadth = [
+            float(r["market_breadth"]) for r in chronological_rows
+        ]
+        chronological_ema = self._ema(chronological_market_breadth, window)
+        rows_with_ema = list(zip(chronological_rows, chronological_ema, strict=True))
+        output_rows = list(reversed(rows_with_ema))[:output_size]
 
         return MarketBreadthSeries(
-            timestamp=[_format_ts(r["timestamp"]) for r in rows],
-            advancers=[r["advancers"] for r in rows],
-            decliners=[r["decliners"] for r in rows],
-            market_breadth=[float(r["adp"]) for r in rows],
-            market_breadth_ma=[
-                float(r["market_breadth_ma"])
-                if r["market_breadth_ma"] is not None
-                else None
-                for r in rows
-            ],
-            avg_gain=[float(r["avg_gain"]) for r in rows],
-            avg_loss=[float(r["avg_loss"]) for r in rows],
-            total_volume=[float(r["total_volume"]) for r in rows],
-            strength_index=[float(r["strength_index"]) for r in rows],
+            timestamp=[datetime_to_iso(r["timestamp"]) for r, _ in output_rows],
+            advancers=[r["advancers"] for r, _ in output_rows],
+            decliners=[r["decliners"] for r, _ in output_rows],
+            market_breadth=[float(r["market_breadth"]) for r, _ in output_rows],
+            market_breadth_ma=[float(ema) for _, ema in output_rows],
+            avg_gain=[float(r["avg_gain"]) for r, _ in output_rows],
+            avg_loss=[float(r["avg_loss"]) for r, _ in output_rows],
+            total_volume=[float(r["total_volume"]) for r, _ in output_rows],
+            strength_index=[float(r["strength_index"]) for r, _ in output_rows],
         ).model_dump()
 
     def gainers_losers(self) -> tuple[Iterable[Any], Iterable[Any]]:

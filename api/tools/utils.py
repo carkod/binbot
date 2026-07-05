@@ -3,6 +3,12 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.types import JSON
 
 
+def datetime_to_iso(value: datetime | str) -> str:
+    if isinstance(value, str):
+        value = datetime.fromisoformat(value)
+    return value.isoformat(sep=" ", timespec="seconds")
+
+
 def clamp(value: float, minimum: float, maximum: float) -> float:
     return max(minimum, min(value, maximum))
 

@@ -76,4 +76,29 @@ describe("Autotrade page", () => {
       ).value,
     ).toBe(String(initialAutotradeSettings.max_margin_per_ladder_pct));
   });
+
+  it("allows fractional grid trading values", () => {
+    renderAutotradePage();
+
+    [
+      "Grid allocation pct",
+      "Grid cash reserve pct",
+      "Grid total margin",
+      "Max margin per ladder pct",
+    ].forEach((label) => {
+      expect((rtlScreen.getByLabelText(label) as HTMLInputElement).step).toBe(
+        "any",
+      );
+    });
+  });
+
+  it("keeps grid count fields on whole-number steps", () => {
+    renderAutotradePage();
+
+    ["Grid level count", "Grid max active ladders"].forEach((label) => {
+      expect((rtlScreen.getByLabelText(label) as HTMLInputElement).step).toBe(
+        "1",
+      );
+    });
+  });
 });

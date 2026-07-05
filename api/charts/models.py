@@ -92,17 +92,17 @@ class CandlestickResponse(StandardResponse):
     data: list[CandlestickData]
 
 
-class AdrSeriesDb(BaseModel):
+class MarketBreadthSample(BaseModel):
     """
-    Ingest payload for one market_breadth row. Mirrors the SQL columns 1:1
-    so model_dump() can be passed straight into MarketBreadthTable(**dump).
+    Ingest payload for one market-breadth sample before it is mapped to the
+    database column names.
     """
 
     timestamp: datetime.datetime
     source: str
     advancers: int
     decliners: int
-    adp: float
+    market_breadth: float
     avg_gain: float
     avg_loss: float
     total_volume: float
@@ -115,7 +115,8 @@ class MarketBreadthSeries(BaseModel):
 
     Parallel arrays (newest-first) so the frontend can plot directly without
     pivoting. Every field except market_breadth_ma is read straight from the
-    stored columns; market_breadth_ma is a rolling window computed in SQL.
+    stored columns; market_breadth_ma is an EMA-smoothed breadth level
+    computed on read.
     """
 
     timestamp: list[str]

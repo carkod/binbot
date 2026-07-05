@@ -8,7 +8,8 @@ class MarketBreadthTable(SQLModel, table=True):
     Market-breadth time-series. One row per (timestamp, source) sample,
     written every 15 min by the ingest cron. The DB column is named `adp`
     (advancers-decliners percentage); the API response exposes it as
-    `market_breadth`. `market_breadth_ma` is a rolling window computed on read.
+    `market_breadth`. `market_breadth_ma` is an EMA-smoothed level computed
+    on read.
     """
 
     __tablename__ = "market_breadth"

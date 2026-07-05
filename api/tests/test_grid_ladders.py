@@ -250,6 +250,7 @@ def test_rejects_fourth_active_ladder_when_hard_max_is_used(monkeypatch):
             grid_max_active_ladders=3,
             grid_allocation_pct=1.0,
             grid_cash_reserve_pct=0.0,
+            max_margin_per_ladder_pct=0.25,
         ),
     )
     with pytest.raises(ValueError, match="max_active_ladders=3"):
@@ -268,6 +269,7 @@ def test_allows_full_grid_budget_while_keeping_per_ladder_cap(monkeypatch):
             grid_max_active_ladders=3,
             grid_allocation_pct=1.0,
             grid_cash_reserve_pct=0.0,
+            max_margin_per_ladder_pct=0.25,
         ),
     )
     settings = GridCapitalSettings()
@@ -288,6 +290,27 @@ def test_allows_full_grid_budget_while_keeping_per_ladder_cap(monkeypatch):
             available_fiat_balance=1_000,
             requested_margin=251,
         )
+
+
+def test_uses_configured_max_margin_per_ladder_pct(monkeypatch):
+    monkeypatch.setattr(
+        "api.grid_ladders.capital.AutotradeCrud.get_settings",
+        lambda self: SimpleNamespace(
+            grid_max_active_ladders=3,
+            grid_allocation_pct=1.0,
+            grid_cash_reserve_pct=0.0,
+            max_margin_per_ladder_pct=1.0,
+        ),
+    )
+    settings = GridCapitalSettings()
+
+    decision = settings.evaluate_grid_capital(
+        active_ladders=[],
+        available_fiat_balance=1_000,
+        requested_margin=1_000,
+    )
+
+    assert decision.allowed_margin_for_new_ladder == 1000
 
 
 def test_calculates_fixed_grid_levels_correctly():
