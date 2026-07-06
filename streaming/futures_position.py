@@ -1,6 +1,10 @@
 from datetime import datetime
 from typing import Type
 
+from kucoin_universal_sdk.generate.futures.order.model_get_order_by_order_id_resp import (
+    GetOrderByOrderIdResp,
+)
+from kucoin_universal_sdk.generate.futures.order import CancelOrderByIdReqBuilder
 from kucoin_universal_sdk.model.common import RestError
 from pybinbot import (
     BotModel,
@@ -89,17 +93,29 @@ class FuturesPosition(PositionMarket):
 
         return True
 
-    @staticmethod
-    def _is_not_found_error(error: RestError) -> bool:
-        return float(error.response.code) == 100001
-
-    def _retrieve_order_or_none(self, order_id: str):
+    def _retrieve_order_or_none(self, order_id: str) -> GetOrderByOrderIdResp | None:
         try:
             return self.base_streaming.kucoin_futures_api.retrieve_order(order_id)
         except RestError as error:
-            if self._is_not_found_error(error):
+            if float(error.response.code) == 100001:
                 return None
             raise error
+
+    @staticmethod
+    def _cancel_futures_order_by_id(api, order_id: str) -> bool:
+        cancel_by_id = getattr(api, "cancel_futures_order", None)
+        if callable(cancel_by_id):
+            cancel_by_id(order_id)
+            return True
+
+        futures_order_api = getattr(api, "futures_order_api", None)
+        sdk_cancel_by_id = getattr(futures_order_api, "cancel_order_by_id", None)
+        if callable(sdk_cancel_by_id):
+            request = CancelOrderByIdReqBuilder().set_order_id(order_id).build()
+            sdk_cancel_by_id(request)
+            return True
+
+        return False
 
     def _cancel_pending_entry_order(
         self, order: OrderModel, kucoin_symbol: str
@@ -107,14 +123,12 @@ class FuturesPosition(PositionMarket):
         api = self.base_streaming.kucoin_futures_api
         order_id = str(order.order_id)
 
+        if self._cancel_futures_order_by_id(api, order_id):
+            return
+
         batch_cancel = getattr(api, "batch_cancel_stop_loss_orders", None)
         if callable(batch_cancel):
             batch_cancel([order_id])
-            return
-
-        cancel_by_id = getattr(api, "cancel_futures_order", None)
-        if callable(cancel_by_id):
-            cancel_by_id(order_id)
             return
 
         position = api.get_futures_position(kucoin_symbol)
@@ -137,12 +151,12 @@ class FuturesPosition(PositionMarket):
     def _apply_system_order_update(
         self,
         order: OrderModel,
-        system_order,
+        system_order: GetOrderByOrderIdResp,
         status: OrderStatus,
         filled_size: float,
         price_used: float,
     ) -> None:
-        system_price = float(getattr(system_order, "price", 0) or 0)
+        system_price = float(system_order.price or 0)
         if system_price > 0:
             order.price = round_numbers(system_price, self.price_precision)
 
@@ -200,6 +214,47 @@ class FuturesPosition(PositionMarket):
             f"Entry limit order {order.order_id} expired after 5 minutes without fill. "
             "Order cancelled and bot set to inactive."
         )
+        self.base_streaming.bot_controller.save(data=self.active_bot)
+
+    def backfill_missing_stop_loss(self) -> None:
+        """
+        Safety net for an active futures position whose emergency stop loss
+        order has disappeared from the local order list (cancelled but never
+        replaced, or a replace that failed between cancel and place). Rebuilds
+        one directly from bot.stop_loss and the entry price rather than
+        leaving the position unprotected until the next dynamic-trailing tick.
+
+        Skipped for reversal-eligible bots (they exit bot-side via exit(),
+        so a native exchange stop must never be placed for them, per
+        reconcile_exchange_sl) and once trailing has armed (the protective
+        order there is a trailing_profit order, not a stop_loss order).
+        """
+        if (
+            self.active_bot.status != Status.active
+            or self.active_bot.stop_loss <= 0
+            or self.active_bot.deal.opening_price <= 0
+            or self._reversal_eligible()
+            or self.active_bot.deal.trailing_stop_loss_price != 0
+        ):
+            return
+
+        has_live_stop_loss = any(
+            order.deal_type == DealType.stop_loss
+            and order.status not in self.TERMINAL_ORDER_STATUSES
+            for order in self.active_bot.orders
+        )
+        if has_live_stop_loss:
+            return
+
+        self.active_bot.add_log(
+            "No live stop loss order found for active futures position. "
+            "Placing emergency stop loss from bot.stop_loss and entry price."
+        )
+        try:
+            self.recompute_derived_prices()
+            self.place_stop_loss()
+        except Exception as exc:
+            self.active_bot.add_log(f"Failed to place missing stop loss: {exc}")
         self.base_streaming.bot_controller.save(data=self.active_bot)
 
     def order_updates(self) -> BotModel:
@@ -387,4 +442,5 @@ class FuturesPosition(PositionMarket):
                     else:
                         raise e
 
+        self.backfill_missing_stop_loss()
         return self.active_bot

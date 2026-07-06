@@ -834,6 +834,8 @@ class TestPositionManager:
         ]
 
         deleted: list[str] = []
+        canceled_futures_orders: list[str] = []
+        canceled_stop_orders: list[str] = []
         saved: list[Any] = []
 
         monkeypatch.setattr(
@@ -855,8 +857,11 @@ class TestPositionManager:
             created_at=bot.orders[0].timestamp,
             price=0.000611,
         )
+        base.kucoin_futures_api.cancel_futures_order = lambda order_id: (
+            canceled_futures_orders.append(order_id)
+        )
         base.kucoin_futures_api.batch_cancel_stop_loss_orders = lambda order_ids: (
-            deleted.extend(order_ids)
+            canceled_stop_orders.extend(order_ids)
         )
         base.bot_controller.update_order = lambda order: retrieve_calls.append(
             order.order_id
@@ -878,11 +883,60 @@ class TestPositionManager:
         FuturesPosition.order_updates(fp)
 
         assert bot.status == Status.inactive
-        assert deleted == ["455559324140359680"]
+        assert canceled_futures_orders == ["455559324140359680"]
+        assert canceled_stop_orders == []
+        assert deleted == []
         assert retrieve_calls == ["455559324140359680"]
         assert saved == [bot]
         assert bot.orders[0].status == OrderStatus.EXPIRED
         assert any("expired after 5 minutes without fill" in log for log in logs)
+
+    def test_pending_entry_cancel_uses_sdk_standard_cancel_before_stop_cancel(
+        self, monkeypatch
+    ):
+        base = self._make_base_streaming(monkeypatch, active_pairs=["MEMEUSDT"])
+        bot = self._make_bot(
+            pair="MEMEUSDT",
+            position=Position.long,
+            market_type=MarketType.FUTURES,
+        )
+        order = OrderModel(
+            order_id="entry-order-1",
+            order_type="limit",
+            pair="MEMEUSDTM",
+            timestamp=int(time.time() * 1000) - (6 * 60 * 1000),
+            order_side="buy",
+            qty=0,
+            price=0.000611,
+            status=OrderStatus.NEW,
+            time_in_force="GTC",
+            deal_type=DealType.base_order,
+        )
+        bot.orders = [order]
+
+        canceled_futures_orders: list[str] = []
+        canceled_stop_orders: list[str] = []
+
+        def cancel_order_by_id(request):
+            canceled_futures_orders.append(request.order_id)
+
+        base.kucoin_futures_api = types.SimpleNamespace(
+            futures_order_api=types.SimpleNamespace(
+                cancel_order_by_id=cancel_order_by_id
+            ),
+            batch_cancel_stop_loss_orders=lambda order_ids: canceled_stop_orders.extend(
+                order_ids
+            ),
+        )
+
+        fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
+        fp.base_streaming = base
+        fp.active_bot = bot
+
+        fp._cancel_pending_entry_order(order, "MEMEUSDTM")
+
+        assert canceled_futures_orders == ["entry-order-1"]
+        assert canceled_stop_orders == []
 
     def test_futures_order_updates_does_not_cancel_live_stops_for_missing_protective_order(
         self, monkeypatch
@@ -944,3 +998,85 @@ class TestPositionManager:
         assert deleted == ["missing-trail-stop"]
         assert [order.order_id for order in bot.orders] == []
         assert saved == [bot]
+
+    def test_futures_order_updates_backfills_missing_stop_loss_for_active_position(
+        self, monkeypatch
+    ):
+        base = self._make_base_streaming(monkeypatch, active_pairs=["BTCUSDT"])
+        base.exchange = ExchangeId.KUCOIN
+        base.interval = types.SimpleNamespace(get_ms=lambda: 15 * 60 * 1000)
+
+        bot = self._make_bot(
+            pair="BTCUSDT",
+            position=Position.long,
+            market_type=MarketType.FUTURES,
+        )
+        bot.status = Status.active
+        bot.stop_loss = 2.0
+        bot.margin_short_reversal = False
+        bot.recovery_params = None
+        bot.deal.trailing_stop_loss_price = 0
+        bot.orders = []
+
+        logs: list[str] = []
+        bot.add_log = lambda msg: logs.append(msg)
+
+        saved: list[Any] = []
+        base.bot_controller.save = lambda *args, **kwargs: saved.append(
+            kwargs.get("data") if "data" in kwargs else args[0]
+        )
+
+        fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
+        fp.base_streaming = base
+        fp.active_bot = bot
+        fp.price_precision = 4
+        fp.qty_precision = 4
+
+        placed: list[float] = []
+        fp.place_stop_loss = lambda: placed.append(bot.deal.stop_loss_price)
+
+        FuturesPosition.order_updates(fp)
+
+        # entry 100.0, stop_loss 2% long -> 98.0, computed by
+        # recompute_derived_prices() before place_stop_loss() is called.
+        assert placed == [98.0]
+        assert any("No live stop loss order found" in log for log in logs)
+        assert saved == [bot]
+
+    def test_futures_order_updates_skips_stop_loss_backfill_for_reversal_bot(
+        self, monkeypatch
+    ):
+        base = self._make_base_streaming(monkeypatch, active_pairs=["BTCUSDT"])
+        base.exchange = ExchangeId.KUCOIN
+        base.interval = types.SimpleNamespace(get_ms=lambda: 15 * 60 * 1000)
+
+        bot = self._make_bot(
+            pair="BTCUSDT",
+            position=Position.long,
+            market_type=MarketType.FUTURES,
+        )
+        bot.status = Status.active
+        bot.stop_loss = 2.0
+        bot.margin_short_reversal = True
+        bot.recovery_params = None
+        bot.deal.trailing_stop_loss_price = 0
+        bot.orders = []
+
+        saved: list[Any] = []
+        base.bot_controller.save = lambda *args, **kwargs: saved.append(
+            kwargs.get("data") if "data" in kwargs else args[0]
+        )
+
+        fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
+        fp.base_streaming = base
+        fp.active_bot = bot
+        fp.price_precision = 4
+        fp.qty_precision = 4
+
+        placed: list[float] = []
+        fp.place_stop_loss = lambda: placed.append(bot.deal.stop_loss_price)
+
+        FuturesPosition.order_updates(fp)
+
+        assert placed == []
+        assert saved == []
