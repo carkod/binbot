@@ -757,27 +757,34 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self.place_stop_loss()
             return
 
-        # Case 2: exchange disagrees with our local record. The exchange
-        # is authoritative — adopt it. Only replace if it's now unsafe vs.
-        # the bot's intended (ratcheted) price.
+        # Case 2: exchange disagrees with our local record. Log the drift,
+        # but keep the bot's freshly-ratcheted target (already computed into
+        # deal.stop_loss_price by recompute_derived_prices) intact so Case 3
+        # can judge it against the exchange price below. Overwriting it here
+        # would make current_stop_price == new_stop_price in Case 3 and
+        # permanently disable the ratchet the first time drift is seen.
+        ratcheted_target = self.active_bot.deal.stop_loss_price
         if bot_known_price is not None and abs(exchange_price - bot_known_price) > (
             10**-self.price_precision
         ):
             self.active_bot.add_log(
                 f"Exchange SL drift detected: bot={bot_known_price} exchange={exchange_price}; trusting exchange."
             )
-            self.active_bot.deal.stop_loss_price = round_numbers(
-                exchange_price, self.price_precision
-            )
 
         # Case 3: ratchet — replace only if materially better and not on cooldown.
         if self.should_replace_stop_loss_order(
             current_stop_price=exchange_price,
-            new_stop_price=self.active_bot.deal.stop_loss_price,
+            new_stop_price=ratcheted_target,
             last_replace_ts_ms=last_replace_ts_ms,
         ):
             self.cancel_current_sl()
             self.place_stop_loss()
+        else:
+            # Not replacing — the exchange price is what's actually
+            # protecting the position, so adopt it as truth.
+            self.active_bot.deal.stop_loss_price = round_numbers(
+                exchange_price, self.price_precision
+            )
 
     def base_order(self) -> BotModel:
         """

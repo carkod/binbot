@@ -895,3 +895,46 @@ def test_reconcile_exchange_sl_adopts_exchange_drift_without_replacing():
     assert calls == []
     # Exchange price was adopted as truth
     assert deal.active_bot.deal.stop_loss_price == 97.5
+
+
+def test_reconcile_exchange_sl_replaces_after_drift_once_ratchet_is_material():
+    """
+    Regression for the ratchet going permanently dead after the first drift:
+    real KuCoin stop-market orders report price=0 (only stop_price lives on
+    the exchange), so _bot_known_stop_order always falls back to
+    deal.stop_loss_price — the bot's freshly-ratcheted target. Case 2 used to
+    overwrite that target with the exchange's stale price before Case 3 could
+    compare them, so current == new and the ratchet could never fire again
+    for the life of the deal. It must still replace once the ratcheted
+    target is materially tighter and the cooldown has elapsed.
+    """
+    calls: list[str] = []
+    old_timestamp = int(time() * 1000) - 60_000  # past the 30s cooldown
+    deal = _make_deal(stop_loss_price=98.5)
+    deal.active_bot.orders = [
+        OrderModel(
+            order_id="sl-1",
+            order_type="market",
+            pair="BEATUSDT",
+            order_side="sell",
+            qty=1,
+            price=0.0,
+            status=OrderStatus.NEW,
+            timestamp=old_timestamp,
+            time_in_force="GTC",
+            deal_type=DealType.stop_loss,
+        )
+    ]
+    # Exchange still has the stale SL from placement time.
+    deal.kucoin_futures_api = types.SimpleNamespace(
+        get_all_stop_loss_orders=lambda symbol: [
+            types.SimpleNamespace(stop_price="97.5", id="x-1")
+        ],
+        batch_cancel_stop_loss_orders=lambda ids: None,
+    )
+    deal.cancel_current_sl = lambda: calls.append("cancel")
+    deal.place_stop_loss = lambda: calls.append("place")
+
+    KucoinPositionDeal.reconcile_exchange_sl(deal)
+
+    assert calls == ["cancel", "place"]
