@@ -19,6 +19,14 @@ from streaming.base import BaseStreaming
 
 
 class FuturesPosition(PositionMarket):
+    PENDING_ENTRY_TTL_MS = 5 * 60 * 1000
+    TERMINAL_ORDER_STATUSES = {
+        OrderStatus.FILLED,
+        OrderStatus.CANCELED,
+        OrderStatus.EXPIRED,
+        OrderStatus.REJECTED,
+    }
+
     def __init__(
         self,
         base_streaming: BaseStreaming,
@@ -41,12 +49,21 @@ class FuturesPosition(PositionMarket):
         self.api = self.base_streaming.kucoin_futures_api
         self.active_bot: BotModel = bot
 
+    def is_pending_base_entry_expired(self, order: OrderModel, now_ms: int) -> bool:
+        return (
+            self.active_bot.status == Status.pending
+            and order.deal_type == DealType.base_order
+            and self.active_bot.deal.opening_price == 0
+            and now_ms - int(order.timestamp) > self.PENDING_ENTRY_TTL_MS
+        )
+
     def should_expire_order_by_age(self, order: OrderModel) -> bool:
         """
-        Futures GTC entries and protective orders must remain owned by the bot
-        until the exchange reports a terminal state. Relinquishing a live base
-        order allows it to fill later without an active bot managing the
-        resulting position.
+        Legacy interval-based expiry is still valid for transient non-position
+        orders. Pending futures entries use the explicit 5-minute TTL path so
+        they can be cancelled at the exchange before the bot is inactivated.
+        Protective orders must remain owned until the exchange reports a
+        terminal state.
         """
         return order.deal_type in {
             DealType.algorithmic_close,
@@ -72,13 +89,126 @@ class FuturesPosition(PositionMarket):
 
         return True
 
+    @staticmethod
+    def _is_not_found_error(error: RestError) -> bool:
+        return float(error.response.code) == 100001
+
+    def _retrieve_order_or_none(self, order_id: str):
+        try:
+            return self.base_streaming.kucoin_futures_api.retrieve_order(order_id)
+        except RestError as error:
+            if self._is_not_found_error(error):
+                return None
+            raise error
+
+    def _cancel_pending_entry_order(
+        self, order: OrderModel, kucoin_symbol: str
+    ) -> None:
+        api = self.base_streaming.kucoin_futures_api
+        order_id = str(order.order_id)
+
+        batch_cancel = getattr(api, "batch_cancel_stop_loss_orders", None)
+        if callable(batch_cancel):
+            batch_cancel([order_id])
+            return
+
+        cancel_by_id = getattr(api, "cancel_futures_order", None)
+        if callable(cancel_by_id):
+            cancel_by_id(order_id)
+            return
+
+        position = api.get_futures_position(kucoin_symbol)
+        current_qty = abs(float(getattr(position, "current_qty", 0) or 0))
+        live_base_orders = [
+            active_order
+            for active_order in self.active_bot.orders
+            if active_order.deal_type == DealType.base_order
+            and active_order.status not in self.TERMINAL_ORDER_STATUSES
+        ]
+        if current_qty == 0 and len(live_base_orders) == 1:
+            api.cancel_all_futures_orders(kucoin_symbol)
+            return
+
+        raise RuntimeError(
+            f"Refusing symbol-wide cancel for pending entry {order_id}; "
+            "position or additional live base orders exist."
+        )
+
+    def _apply_system_order_update(
+        self,
+        order: OrderModel,
+        system_order,
+        status: OrderStatus,
+        filled_size: float,
+        price_used: float,
+    ) -> None:
+        system_price = float(getattr(system_order, "price", 0) or 0)
+        if system_price > 0:
+            order.price = round_numbers(system_price, self.price_precision)
+
+        if status == OrderStatus.FILLED or filled_size > 0:
+            order.qty = round_numbers(filled_size, self.qty_precision)
+        order.status = status
+        order.timestamp = system_order.created_at
+        if price_used > 0:
+            order.price = round_numbers(price_used, self.price_precision)
+
+    def _activate_filled_base_order(
+        self, order: OrderModel, log_message: str | None = None
+    ) -> None:
+        self.active_bot.deal.opening_price = order.price
+        self.active_bot.deal.opening_qty = order.qty
+        self.active_bot.deal.opening_timestamp = order.timestamp
+        if log_message:
+            self.active_bot.add_log(log_message)
+        self.active_bot = self.open_deal()
+
+    def _expire_unfilled_base_order(
+        self, order: OrderModel, kucoin_symbol: str
+    ) -> None:
+        self._cancel_pending_entry_order(order, kucoin_symbol)
+
+        refreshed_order = self._retrieve_order_or_none(str(order.order_id))
+        if refreshed_order is not None:
+            refreshed_status = OrderStatus.map_from_kucoin_status(
+                refreshed_order.status.value
+            )
+            refreshed_filled_size = float(refreshed_order.filled_size)
+            refreshed_price_used = float(refreshed_order.avg_deal_price)
+            self._apply_system_order_update(
+                order,
+                refreshed_order,
+                refreshed_status,
+                refreshed_filled_size,
+                refreshed_price_used,
+            )
+            if refreshed_filled_size > 0 and refreshed_price_used > 0:
+                self.base_streaming.bot_controller.update_order(order)
+                self._activate_filled_base_order(
+                    order,
+                    "Entry order filled while expiry cancellation was being processed. "
+                    "Bot activated with confirmed fill.",
+                )
+                self.base_streaming.bot_controller.save(data=self.active_bot)
+                return
+
+        order.status = OrderStatus.EXPIRED
+        order.qty = 0
+        self.base_streaming.bot_controller.update_order(order)
+        self.active_bot.status = Status.inactive
+        self.active_bot.add_log(
+            f"Entry limit order {order.order_id} expired after 5 minutes without fill. "
+            "Order cancelled and bot set to inactive."
+        )
+        self.base_streaming.bot_controller.save(data=self.active_bot)
+
     def order_updates(self) -> BotModel:
         """
         Take order id from list of bot.orders
         and fetch order details from exchange
         """
         for order in list(self.active_bot.orders):
-            if order.status == OrderStatus.FILLED:
+            if order.status in self.TERMINAL_ORDER_STATUSES:
                 continue
 
             if self.base_streaming.exchange == ExchangeId.KUCOIN:
@@ -90,6 +220,9 @@ class FuturesPosition(PositionMarket):
                 now_ms = int(datetime.now().timestamp() * 1000)
                 order_ms = int(order.timestamp)
                 is_expired = (now_ms - order_ms) > interval_ms
+                is_pending_entry_expired = self.is_pending_base_entry_expired(
+                    order, now_ms
+                )
 
                 try:
                     # Fetch order details as source of truth for status/fills
@@ -115,24 +248,60 @@ class FuturesPosition(PositionMarket):
                     )
                     filled_size = float(system_order.filled_size)
                     price_used = float(system_order.avg_deal_price)
-                    timestamp = system_order.created_at
-
-                    if float(float(system_order.price)) > 0:
-                        order.price = round_numbers(
-                            float(system_order.price), self.price_precision
-                        )
 
                     previous_qty = float(order.qty)
+                    previous_status = order.status
+                    self._apply_system_order_update(
+                        order, system_order, status, filled_size, price_used
+                    )
+
+                    if (
+                        order.deal_type == DealType.base_order
+                        and self.active_bot.deal.opening_price == 0
+                        and filled_size > 0
+                    ):
+                        if status != OrderStatus.FILLED:
+                            self._cancel_pending_entry_order(order, kucoin_symbol)
+                            order.status = OrderStatus.CANCELED
+                        self.base_streaming.bot_controller.update_order(order)
+                        self.active_bot.add_log(
+                            f"Order {order.order_id} updated from system"
+                        )
+                        self._activate_filled_base_order(order)
+                        self.base_streaming.bot_controller.save(data=self.active_bot)
+                        continue
+
+                    if (
+                        order.deal_type == DealType.base_order
+                        and self.active_bot.deal.opening_price == 0
+                        and status
+                        in {
+                            OrderStatus.CANCELED,
+                            OrderStatus.EXPIRED,
+                            OrderStatus.REJECTED,
+                        }
+                    ):
+                        self.base_streaming.bot_controller.update_order(order)
+                        self.active_bot.status = Status.inactive
+                        self.active_bot.add_log(
+                            f"Entry limit order {order.order_id} ended with status {status.value} before fill. "
+                            "Bot set to inactive."
+                        )
+                        self.base_streaming.bot_controller.save(data=self.active_bot)
+                        continue
+
+                    if is_pending_entry_expired:
+                        self._expire_unfilled_base_order(order, kucoin_symbol)
+                        continue
+
                     if order.status == status and (
                         filled_size == 0 or previous_qty == filled_size
                     ):
-                        continue
+                        if previous_status == status:
+                            continue
 
-                    if status == OrderStatus.FILLED or filled_size > 0:
-                        order.qty = round_numbers(filled_size, self.qty_precision)
-                    order.status = status
-                    order.timestamp = timestamp
-                    order.price = round_numbers(price_used, self.price_precision)
+                    if previous_status == status and previous_qty == filled_size:
+                        continue
 
                     self.base_streaming.bot_controller.update_order(order)
                     self.active_bot.add_log(

@@ -803,9 +803,7 @@ class TestPositionManager:
         assert saved == []
         assert bot.orders[0].qty == 116
 
-    def test_futures_order_updates_keeps_aged_live_base_order_pending(
-        self, monkeypatch
-    ):
+    def test_futures_order_updates_expires_aged_pending_base_order(self, monkeypatch):
         base = self._make_base_streaming(monkeypatch, active_pairs=["MEMEUSDT"])
         base.exchange = ExchangeId.KUCOIN
         base.interval = types.SimpleNamespace(get_ms=lambda: 15 * 60 * 1000)
@@ -817,12 +815,15 @@ class TestPositionManager:
         )
         bot.id = "meme-bot"
         bot.status = Status.pending
+        bot.deal.opening_price = 0
+        logs: list[str] = []
+        bot.add_log = lambda msg: logs.append(msg)
         bot.orders = [
             OrderModel(
                 order_id="455559324140359680",
                 order_type="limit",
                 pair="MEMEUSDTM",
-                timestamp=int(time.time() * 1000) - (16 * 60 * 1000),
+                timestamp=int(time.time() * 1000) - (6 * 60 * 1000),
                 order_side="buy",
                 qty=0,
                 price=0.000611,
@@ -845,6 +846,8 @@ class TestPositionManager:
             lambda _bot: "MEMEUSDTM",
         )
 
+        retrieve_calls: list[str] = []
+
         base.kucoin_futures_api.retrieve_order = lambda order_id: types.SimpleNamespace(
             status=types.SimpleNamespace(value="open"),
             filled_size=0,
@@ -852,7 +855,12 @@ class TestPositionManager:
             created_at=bot.orders[0].timestamp,
             price=0.000611,
         )
-        base.bot_controller.update_order = lambda order: order
+        base.kucoin_futures_api.batch_cancel_stop_loss_orders = lambda order_ids: (
+            deleted.extend(order_ids)
+        )
+        base.bot_controller.update_order = lambda order: retrieve_calls.append(
+            order.order_id
+        )
         base.bot_controller.save = lambda *args, **kwargs: saved.append(
             kwargs.get("data") if "data" in kwargs else args[0]
         )
@@ -869,10 +877,12 @@ class TestPositionManager:
 
         FuturesPosition.order_updates(fp)
 
-        assert bot.status == Status.pending
-        assert deleted == []
-        assert saved == []
-        assert bot.orders[0].status == OrderStatus.NEW
+        assert bot.status == Status.inactive
+        assert deleted == ["455559324140359680"]
+        assert retrieve_calls == ["455559324140359680"]
+        assert saved == [bot]
+        assert bot.orders[0].status == OrderStatus.EXPIRED
+        assert any("expired after 5 minutes without fill" in log for log in logs)
 
     def test_futures_order_updates_does_not_cancel_live_stops_for_missing_protective_order(
         self, monkeypatch
