@@ -24,11 +24,15 @@ class SignalsTable(SQLModel, table=True):
     direction: str = Field(nullable=False, max_length=16)
     autotrade: bool = Field(default=False, nullable=False)
     current_regime: str | None = Field(default=None, max_length=32, index=True)
+    signal_kind: str = Field(default="bot", nullable=False, max_length=32)
 
     # Schemaless payloads — strategies dump whatever they have. Postgres uses
     # JSONB (queryable + GIN-indexable); SQLite falls back to text JSON for tests.
     context: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JsonVariant))
     bot_params: dict[str, Any] = Field(
+        default_factory=dict, sa_column=Column(JsonVariant)
+    )
+    grid_params: dict[str, Any] = Field(
         default_factory=dict, sa_column=Column(JsonVariant)
     )
     indicators: dict[str, Any] = Field(
