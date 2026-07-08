@@ -4,7 +4,6 @@ from typing import Type
 from kucoin_universal_sdk.generate.futures.order.model_get_order_by_order_id_resp import (
     GetOrderByOrderIdResp,
 )
-from kucoin_universal_sdk.generate.futures.order import CancelOrderByIdReqBuilder
 from kucoin_universal_sdk.model.common import RestError
 from pybinbot import (
     BotModel,
@@ -101,52 +100,8 @@ class FuturesPosition(PositionMarket):
                 return None
             raise error
 
-    @staticmethod
-    def _cancel_futures_order_by_id(api, order_id: str) -> bool:
-        cancel_by_id = getattr(api, "cancel_futures_order", None)
-        if callable(cancel_by_id):
-            cancel_by_id(order_id)
-            return True
-
-        futures_order_api = getattr(api, "futures_order_api", None)
-        sdk_cancel_by_id = getattr(futures_order_api, "cancel_order_by_id", None)
-        if callable(sdk_cancel_by_id):
-            request = CancelOrderByIdReqBuilder().set_order_id(order_id).build()
-            sdk_cancel_by_id(request)
-            return True
-
-        return False
-
-    def _cancel_pending_entry_order(
-        self, order: OrderModel, kucoin_symbol: str
-    ) -> None:
-        api = self.base_streaming.kucoin_futures_api
-        order_id = str(order.order_id)
-
-        if self._cancel_futures_order_by_id(api, order_id):
-            return
-
-        batch_cancel = getattr(api, "batch_cancel_stop_loss_orders", None)
-        if callable(batch_cancel):
-            batch_cancel([order_id])
-            return
-
-        position = api.get_futures_position(kucoin_symbol)
-        current_qty = abs(float(getattr(position, "current_qty", 0) or 0))
-        live_base_orders = [
-            active_order
-            for active_order in self.active_bot.orders
-            if active_order.deal_type == DealType.base_order
-            and active_order.status not in self.TERMINAL_ORDER_STATUSES
-        ]
-        if current_qty == 0 and len(live_base_orders) == 1:
-            api.cancel_all_futures_orders(kucoin_symbol)
-            return
-
-        raise RuntimeError(
-            f"Refusing symbol-wide cancel for pending entry {order_id}; "
-            "position or additional live base orders exist."
-        )
+    def _cancel_pending_entry_order(self, order: OrderModel) -> None:
+        self.base_streaming.kucoin_futures_api.cancel_futures_order(str(order.order_id))
 
     def _apply_system_order_update(
         self,
@@ -177,10 +132,8 @@ class FuturesPosition(PositionMarket):
             self.active_bot.add_log(log_message)
         self.active_bot = self.open_deal()
 
-    def _expire_unfilled_base_order(
-        self, order: OrderModel, kucoin_symbol: str
-    ) -> None:
-        self._cancel_pending_entry_order(order, kucoin_symbol)
+    def _expire_unfilled_base_order(self, order: OrderModel) -> None:
+        self._cancel_pending_entry_order(order)
 
         refreshed_order = self._retrieve_order_or_none(str(order.order_id))
         if refreshed_order is not None:
@@ -316,7 +269,7 @@ class FuturesPosition(PositionMarket):
                         and filled_size > 0
                     ):
                         if status != OrderStatus.FILLED:
-                            self._cancel_pending_entry_order(order, kucoin_symbol)
+                            self._cancel_pending_entry_order(order)
                             order.status = OrderStatus.CANCELED
                         self.base_streaming.bot_controller.update_order(order)
                         self.active_bot.add_log(
@@ -346,7 +299,7 @@ class FuturesPosition(PositionMarket):
                         continue
 
                     if is_pending_entry_expired:
-                        self._expire_unfilled_base_order(order, kucoin_symbol)
+                        self._expire_unfilled_base_order(order)
                         continue
 
                     if order.status == status and (

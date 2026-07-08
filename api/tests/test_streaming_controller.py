@@ -891,9 +891,7 @@ class TestPositionManager:
         assert bot.orders[0].status == OrderStatus.EXPIRED
         assert any("expired after 5 minutes without fill" in log for log in logs)
 
-    def test_pending_entry_cancel_uses_sdk_standard_cancel_before_stop_cancel(
-        self, monkeypatch
-    ):
+    def test_pending_entry_cancel_uses_cancel_futures_order(self, monkeypatch):
         base = self._make_base_streaming(monkeypatch, active_pairs=["MEMEUSDT"])
         bot = self._make_bot(
             pair="MEMEUSDT",
@@ -915,17 +913,10 @@ class TestPositionManager:
         bot.orders = [order]
 
         canceled_futures_orders: list[str] = []
-        canceled_stop_orders: list[str] = []
-
-        def cancel_order_by_id(request):
-            canceled_futures_orders.append(request.order_id)
 
         base.kucoin_futures_api = types.SimpleNamespace(
-            futures_order_api=types.SimpleNamespace(
-                cancel_order_by_id=cancel_order_by_id
-            ),
-            batch_cancel_stop_loss_orders=lambda order_ids: canceled_stop_orders.extend(
-                order_ids
+            cancel_futures_order=lambda order_id: canceled_futures_orders.append(
+                order_id
             ),
         )
 
@@ -933,10 +924,9 @@ class TestPositionManager:
         fp.base_streaming = base
         fp.active_bot = bot
 
-        fp._cancel_pending_entry_order(order, "MEMEUSDTM")
+        fp._cancel_pending_entry_order(order)
 
         assert canceled_futures_orders == ["entry-order-1"]
-        assert canceled_stop_orders == []
 
     def test_futures_order_updates_does_not_cancel_live_stops_for_missing_protective_order(
         self, monkeypatch
