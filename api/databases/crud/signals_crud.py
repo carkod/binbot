@@ -25,8 +25,10 @@ class SignalsCrud:
         direction: str,
         autotrade: bool = False,
         current_regime: str | None = None,
+        signal_kind: str = "bot",
         context: dict[str, Any] | None = None,
         bot_params: dict[str, Any] | None = None,
+        grid_params: dict[str, Any] | None = None,
         indicators: dict[str, Any] | None = None,
     ) -> SignalsTable:
         row = SignalsTable(
@@ -36,8 +38,10 @@ class SignalsCrud:
             direction=direction,
             autotrade=autotrade,
             current_regime=current_regime,
+            signal_kind=signal_kind,
             context=context or {},
             bot_params=bot_params or {},
+            grid_params=grid_params or {},
             indicators=indicators or {},
         )
         with get_db_session(self._external_session) as session:
@@ -51,8 +55,10 @@ class SignalsCrud:
                 direction=row.direction,
                 autotrade=row.autotrade,
                 current_regime=row.current_regime,
+                signal_kind=row.signal_kind,
                 context=row.context,
                 bot_params=row.bot_params,
+                grid_params=row.grid_params,
                 indicators=row.indicators,
             )
             if self._external_session is not None:
@@ -119,6 +125,7 @@ class SignalsCrud:
                     cast(Any, SignalsTable.direction),
                     cast(Any, SignalsTable.autotrade),
                     cast(Any, SignalsTable.current_regime),
+                    cast(Any, SignalsTable.signal_kind),
                 )
             )
             .order_by(col(SignalsTable.generated_at).desc())
@@ -136,6 +143,7 @@ class SignalsCrud:
                     "direction": row.direction,
                     "autotrade": row.autotrade,
                     "current_regime": row.current_regime,
+                    "signal_kind": row.signal_kind,
                 }
                 for row in rows
             ]

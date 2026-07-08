@@ -37,8 +37,10 @@ def test_create_signal_persists_columns_and_jsonb():
         direction="LONG",
         autotrade=True,
         current_regime="TRENDING_UP",
+        signal_kind="grid_deploy",
         context={"market_regime": "TRENDING_UP", "advancers_ratio": 1.4},
         bot_params={"pair": "BTCUSDC", "fiat_order_size": 20},
+        grid_params={"symbol": "BTCUSDC", "range_low": 0.9, "range_high": 1.1},
         indicators={"bb_high": 1.1, "bb_mid": 1.0, "bb_low": 0.9, "score": 0.83},
     )
 
@@ -50,8 +52,10 @@ def test_create_signal_persists_columns_and_jsonb():
     assert persisted.direction == "LONG"
     assert persisted.autotrade is True
     assert persisted.current_regime == "TRENDING_UP"
+    assert persisted.signal_kind == "grid_deploy"
     assert persisted.context == {"market_regime": "TRENDING_UP", "advancers_ratio": 1.4}
     assert persisted.bot_params["fiat_order_size"] == 20
+    assert persisted.grid_params["range_low"] == 0.9
     assert persisted.indicators["score"] == 0.83
 
 
@@ -117,8 +121,10 @@ def test_query_can_skip_payload_columns():
         symbol="BTCUSDC",
         generated_at=datetime(2026, 4, 30, 12, 0, tzinfo=timezone.utc),
         direction="LONG",
+        signal_kind="grid_deploy",
         context={"large": "payload"},
         bot_params={"pair": "BTCUSDC"},
+        grid_params={"symbol": "BTCUSDC"},
         indicators={"score": 0.83},
     )
 
@@ -131,8 +137,10 @@ def test_query_can_skip_payload_columns():
     assert rows[0]["direction"] == "LONG"
     assert rows[0]["autotrade"] is False
     assert rows[0]["current_regime"] is None
+    assert rows[0]["signal_kind"] == "grid_deploy"
     assert "context" not in rows[0]
     assert "bot_params" not in rows[0]
+    assert "grid_params" not in rows[0]
     assert "indicators" not in rows[0]
 
 
@@ -170,15 +178,19 @@ def test_post_signal_endpoint(client):
             "direction": "LONG",
             "autotrade": True,
             "current_regime": "TRENDING_UP",
+            "signal_kind": "grid_deploy",
             "context": {"market_regime": "TRENDING_UP"},
             "bot_params": {"pair": "BTCUSDC"},
+            "grid_params": {"symbol": "BTCUSDC", "level_count": 3},
             "indicators": {"score": 0.83},
         },
     )
     assert response.status_code == 200, response.text
     body = response.json()
     assert body["data"]["algorithm_name"] == "spike_hunter_v3"
+    assert body["data"]["signal_kind"] == "grid_deploy"
     assert body["data"]["context"]["market_regime"] == "TRENDING_UP"
+    assert body["data"]["grid_params"]["level_count"] == 3
 
 
 def test_get_signals_endpoint_filters(client):
@@ -215,8 +227,10 @@ def test_get_signals_endpoint_can_skip_payload(client):
         symbol="BTCUSDC",
         generated_at=datetime(2026, 4, 30, 12, 0, tzinfo=timezone.utc),
         direction="LONG",
+        signal_kind="grid_deploy",
         context={"large": "payload"},
         bot_params={"pair": "BTCUSDC"},
+        grid_params={"symbol": "BTCUSDC"},
         indicators={"score": 0.83},
     )
 
@@ -225,6 +239,8 @@ def test_get_signals_endpoint_can_skip_payload(client):
     assert response.status_code == 200
     signal = response.json()["data"][0]
     assert signal["algorithm_name"] == "spike_hunter_v3"
+    assert signal["signal_kind"] == "grid_deploy"
     assert signal["context"] is None
     assert signal["bot_params"] is None
+    assert signal["grid_params"] is None
     assert signal["indicators"] is None

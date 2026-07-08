@@ -13,6 +13,7 @@ from pybinbot import (
     OrderStatus,
     Position,
     RecoveryBotModel,
+    Status,
 )
 
 from api.exchange_apis.kucoin.deals.base import KucoinBaseBalance
@@ -188,13 +189,18 @@ def test_base_order_downsizes_when_margin_size_exceeds_available_balance():
         DEFAULT_LEVERAGE = 1
 
         def __init__(self):
-            self.sell_calls: list[int] = []
+            self.sell_calls: list[dict[str, float]] = []
 
         def matching_engine(self, symbol, side, size):
             return 10
 
         def sell(self, symbol, qty, leverage, entry_limit_price=None):
-            self.sell_calls.append(qty)
+            self.sell_calls.append(
+                {
+                    "qty": qty,
+                    "entry_limit_price": entry_limit_price,
+                }
+            )
             return OrderBase(
                 order_id="base-order-1",
                 order_type="limit",
@@ -242,15 +248,72 @@ def test_base_order_downsizes_when_margin_size_exceeds_available_balance():
         save=lambda bot: bot,
     )
     deal.compute_available_balance = lambda: 1000
-    deal.recovery_entry_limit_price = lambda: 10
+    deal.body_capped_entry_limit_price = lambda: 10
 
     opened_bot = KucoinPositionDeal.base_order(deal)
 
-    assert deal.kucoin_futures_api.sell_calls == [9]
+    assert deal.kucoin_futures_api.sell_calls == [{"qty": 9, "entry_limit_price": 10}]
     assert opened_bot.deal.base_order_size == 9
     assert opened_bot.deal.opening_qty == 9
     assert any("Futures order downsized from 15 to 9" in log for log in opened_bot.logs)
     assert any("underpowered_recovery" in log for log in opened_bot.logs)
+
+
+def test_unfilled_base_order_logs_pending_wait_queue():
+    class DummyFuturesApi:
+        DEFAULT_MULTIPLIER = 1
+        DEFAULT_LEVERAGE = 1
+
+        def __init__(self):
+            self.buy_calls: list[dict[str, float]] = []
+
+        def buy(self, symbol, qty, entry_limit_price=None):
+            self.buy_calls.append(
+                {
+                    "qty": qty,
+                    "entry_limit_price": entry_limit_price,
+                }
+            )
+            return OrderBase(
+                order_id="pending-entry-1",
+                order_type="limit",
+                pair=symbol,
+                timestamp=1775008219262,
+                order_side="buy",
+                qty=0,
+                price=entry_limit_price,
+                status=OrderStatus.NEW,
+                time_in_force="GTC",
+                deal_type=DealType.base_order,
+            )
+
+        def get_mark_price(self, symbol):
+            return 10
+
+        def retrieve_order(self, order_id):
+            return types.SimpleNamespace(filled_size="0", avg_deal_price="0")
+
+    logged: list[str] = []
+    saved: list[BotModel] = []
+    deal = make_sizing_deal(fiat_order_size=10, multiplier=1)
+    deal.active_bot.position = Position.long
+    deal.active_bot.fiat = "USDT"
+    deal.fiat = "USDT"
+    deal.kucoin_symbol = "TESTUSDTM"
+    deal.kucoin_futures_api = DummyFuturesApi()
+    deal.controller = types.SimpleNamespace(
+        update_logs=lambda **kwargs: logged.append(kwargs["log_message"]),
+        save=lambda bot: saved.append(bot),
+    )
+    deal.compute_available_balance = lambda: 100
+    deal.body_capped_entry_limit_price = lambda: 10
+
+    opened_bot = KucoinPositionDeal.base_order(deal)
+
+    assert deal.kucoin_futures_api.buy_calls == [{"qty": 1, "entry_limit_price": 10}]
+    assert opened_bot.status == Status.pending
+    assert saved == [opened_bot]
+    assert any("pending for up to 5 minutes awaiting fill" in log for log in logged)
 
 
 def entry_klines(
@@ -417,16 +480,23 @@ def test_recovery_entry_rejects_activation_without_current_candle(monkeypatch):
         deal.recovery_entry_limit_price()
 
 
-def test_non_recovery_entry_keeps_legacy_market_matching_path():
-    deal = make_sizing_deal()
-    deal.kucoin_futures_api.get_ui_klines = lambda **kwargs: (_ for _ in ()).throw(
-        AssertionError("non-recovery entry should not request klines")
+def test_non_recovery_entry_uses_body_capped_limit_price(monkeypatch):
+    deal = prepare_recovery_entry_deal(
+        monkeypatch,
+        position=Position.long,
+        previous_close=0.00616,
+        current_open=0.00619,
+        candle_range=0.000135,
     )
+    deal.active_bot.recovery_params = None
 
-    assert deal.recovery_entry_limit_price() is None
+    limit_price = deal.body_capped_entry_limit_price()
+
+    assert limit_price == 0.00625
+    assert any("Body-capped entry" in log for log in deal.active_bot.logs)
 
 
-def test_unfilled_capped_base_order_remains_owned_until_exchange_is_terminal():
+def test_unfilled_capped_base_order_uses_pending_entry_ttl_not_legacy_age_expiry():
     position = cast(Any, FuturesPosition.__new__(FuturesPosition))
     order = OrderModel(
         order_id="capped-entry",
@@ -440,8 +510,16 @@ def test_unfilled_capped_base_order_remains_owned_until_exchange_is_terminal():
         time_in_force="GTC",
         deal_type=DealType.base_order,
     )
+    bot = types.SimpleNamespace(
+        status=Status.pending,
+        deal=types.SimpleNamespace(opening_price=0),
+    )
+    position.active_bot = bot
 
     assert position.should_expire_order_by_age(order) is False
+    assert (
+        position.is_pending_base_entry_expired(order, now_ms=5 * 60 * 1000 + 2) is True
+    )
 
 
 @pytest.mark.parametrize(

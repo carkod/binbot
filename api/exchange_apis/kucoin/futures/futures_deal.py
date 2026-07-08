@@ -160,10 +160,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             return None
         return sum(true_ranges[-cls.ENTRY_ATR_WINDOW :]) / cls.ENTRY_ATR_WINDOW
 
-    def recovery_entry_limit_price(self) -> float | None:
-        if self.active_bot.recovery_params is None:
-            return None
-
+    def body_capped_entry_limit_price(self) -> float:
         interval = BinanceKlineIntervals(
             self.active_bot.candlestick_interval
         ).to_kucoin_interval()
@@ -175,21 +172,26 @@ class KucoinPositionDeal(KucoinBaseBalance):
             )
         except Exception as exc:
             self.active_bot.add_log(
-                f"Recovery entry rejected: unable to load reliable candle data ({exc})."
+                f"Entry rejected: unable to load reliable candle data ({exc})."
             )
-            pass
+            raise BinbotErrors(
+                "Reliable current and completed candles are unavailable for futures entry."
+            ) from exc
 
         completed_candles, current_candle = self.partition_klines(klines)
         if not completed_candles or current_candle is None:
             raise BinbotErrors(
-                "Reliable current and completed candles are unavailable for recovery entry."
+                "Reliable current and completed candles are unavailable for futures entry."
             )
 
         previous_close = float(completed_candles[-1][4])
         current_open = float(current_candle[1])
         if previous_close <= 0 or current_open <= 0:
             self.active_bot.add_log(
-                "Recovery entry rejected: candle open or previous close is invalid."
+                "Entry rejected: candle open or previous close is invalid."
+            )
+            raise BinbotErrors(
+                "Reliable candle open and previous close are unavailable for futures entry."
             )
 
         if self.active_bot.position == Position.short:
@@ -214,12 +216,23 @@ class KucoinPositionDeal(KucoinBaseBalance):
             anchor_price * (1 + direction * allowance_pct / 100),
             self.price_precision,
         )
+        entry_label = (
+            "Recovery body-capped entry"
+            if self.active_bot.recovery_params is not None
+            else "Body-capped entry"
+        )
         self.active_bot.add_log(
-            "Recovery body-capped entry: "
+            f"{entry_label}: "
             f"anchor={anchor_price}, allowance={allowance_pct:.2f}% "
             f"({allowance_source}), limit={entry_limit_price}."
         )
         return entry_limit_price
+
+    def recovery_entry_limit_price(self) -> float | None:
+        if self.active_bot.recovery_params is None:
+            return None
+
+        return self.body_capped_entry_limit_price()
 
     def calculate_contracts(self, balance: float, price: float) -> int:
         """
@@ -744,27 +757,34 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self.place_stop_loss()
             return
 
-        # Case 2: exchange disagrees with our local record. The exchange
-        # is authoritative — adopt it. Only replace if it's now unsafe vs.
-        # the bot's intended (ratcheted) price.
+        # Case 2: exchange disagrees with our local record. Log the drift,
+        # but keep the bot's freshly-ratcheted target (already computed into
+        # deal.stop_loss_price by recompute_derived_prices) intact so Case 3
+        # can judge it against the exchange price below. Overwriting it here
+        # would make current_stop_price == new_stop_price in Case 3 and
+        # permanently disable the ratchet the first time drift is seen.
+        ratcheted_target = self.active_bot.deal.stop_loss_price
         if bot_known_price is not None and abs(exchange_price - bot_known_price) > (
             10**-self.price_precision
         ):
             self.active_bot.add_log(
                 f"Exchange SL drift detected: bot={bot_known_price} exchange={exchange_price}; trusting exchange."
             )
-            self.active_bot.deal.stop_loss_price = round_numbers(
-                exchange_price, self.price_precision
-            )
 
         # Case 3: ratchet — replace only if materially better and not on cooldown.
         if self.should_replace_stop_loss_order(
             current_stop_price=exchange_price,
-            new_stop_price=self.active_bot.deal.stop_loss_price,
+            new_stop_price=ratcheted_target,
             last_replace_ts_ms=last_replace_ts_ms,
         ):
             self.cancel_current_sl()
             self.place_stop_loss()
+        else:
+            # Not replacing — the exchange price is what's actually
+            # protecting the position, so adopt it as truth.
+            self.active_bot.deal.stop_loss_price = round_numbers(
+                exchange_price, self.price_precision
+            )
 
     def base_order(self) -> BotModel:
         """
@@ -774,19 +794,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
             raise BinbotErrors("Fiat order size must be set.")
 
         available_balance = self.compute_available_balance()
-        entry_limit_price = self.recovery_entry_limit_price()
-        if entry_limit_price is not None:
-            price = entry_limit_price
-        else:
-            price = self.kucoin_futures_api.matching_engine(
-                symbol=self.kucoin_symbol,
-                side=AddOrderReq.SideEnum.BUY,
-                size=available_balance,
-            )
-            if price is None:
-                raise BinbotErrors(
-                    "matching_engine returned no price for sizing calculation — order book may be empty."
-                )
+        entry_limit_price = self.body_capped_entry_limit_price()
+        price = entry_limit_price
 
         margin_sized_contracts = self.calculate_contracts(
             self.active_bot.fiat_order_size, price
@@ -846,31 +855,18 @@ class KucoinPositionDeal(KucoinBaseBalance):
         )
 
         if self.active_bot.position == Position.short:
-            if entry_limit_price is None:
-                order: OrderBase = self.kucoin_futures_api.sell(
-                    symbol=self.kucoin_symbol,
-                    qty=contracts,
-                    leverage=self.symbol_info.futures_leverage,
-                )
-            else:
-                order = self.kucoin_futures_api.sell(
-                    symbol=self.kucoin_symbol,
-                    qty=contracts,
-                    leverage=self.symbol_info.futures_leverage,
-                    entry_limit_price=entry_limit_price,
-                )
+            order: OrderBase = self.kucoin_futures_api.sell(
+                symbol=self.kucoin_symbol,
+                qty=contracts,
+                leverage=self.symbol_info.futures_leverage,
+                entry_limit_price=entry_limit_price,
+            )
         else:
-            if entry_limit_price is None:
-                order = self.kucoin_futures_api.buy(
-                    symbol=self.kucoin_symbol,
-                    qty=contracts,
-                )
-            else:
-                order = self.kucoin_futures_api.buy(
-                    symbol=self.kucoin_symbol,
-                    qty=contracts,
-                    entry_limit_price=entry_limit_price,
-                )
+            order = self.kucoin_futures_api.buy(
+                symbol=self.kucoin_symbol,
+                qty=contracts,
+                entry_limit_price=entry_limit_price,
+            )
 
         order.deal_type = DealType.base_order
         order = OrderModel(**order.model_dump())
@@ -901,7 +897,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self.active_bot.deal.opening_price = avg_price
             self.active_bot.deal.opening_qty = filled_size
             self.active_bot.status = Status.active
-        # else: opening_price stays 0; open_deal() will set Status.pending
+        else:
+            self.active_bot.status = Status.pending
 
         position_label = getattr(
             self.active_bot.position,
@@ -911,7 +908,11 @@ class KucoinPositionDeal(KucoinBaseBalance):
         if self.active_bot.deal.opening_price > 0:
             log_message = f"Futures {position_label} opened @ {self.active_bot.deal.opening_price} with {int(self.active_bot.deal.opening_qty)} contracts"
         else:
-            log_message = f"Futures {position_label} order submitted @ {mark_price} with {contracts} contracts (awaiting fill)"
+            log_message = (
+                f"Futures {position_label} entry limit order {order.order_id} submitted "
+                f"at {entry_limit_price} with {contracts} contracts. Bot is pending "
+                "for up to 5 minutes awaiting fill."
+            )
         self.controller.update_logs(
             bot=self.active_bot,
             log_message=log_message,

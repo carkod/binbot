@@ -13,8 +13,10 @@ class SignalCreate(BaseModel):
     direction: str = Field(..., max_length=16)
     autotrade: bool = False
     current_regime: str | None = Field(default=None, max_length=32)
+    signal_kind: str = Field(default="bot", max_length=32)
     context: dict[str, Any] = Field(default_factory=dict)
     bot_params: dict[str, Any] = Field(default_factory=dict)
+    grid_params: dict[str, Any] = Field(default_factory=dict)
     indicators: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -30,8 +32,10 @@ class SignalListRecord(BaseModel):
     direction: str = Field(..., max_length=16)
     autotrade: bool = False
     current_regime: str | None = Field(default=None, max_length=32)
+    signal_kind: str = Field(default="bot", max_length=32)
     context: dict[str, Any] | None = None
     bot_params: dict[str, Any] | None = None
+    grid_params: dict[str, Any] | None = None
     indicators: dict[str, Any] | None = None
 
 
