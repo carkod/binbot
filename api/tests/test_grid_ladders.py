@@ -37,7 +37,8 @@ from api.grid_ladders.sizing import KucoinGridMarginRules
 
 def _order_details(
     *,
-    status: GetOrderByOrderIdResp.StatusEnum = GetOrderByOrderIdResp.StatusEnum.OPEN,
+    status: GetOrderByOrderIdResp.StatusEnum
+    | None = GetOrderByOrderIdResp.StatusEnum.OPEN,
     filled_size: int = 0,
     avg_deal_price: float = 0,
     price: float = 0,
@@ -814,6 +815,52 @@ def test_grid_lifecycle_finalizes_entry_after_partial_then_full_fill(
     assert filled_level["status"] == "take_profit_open"
     tp_order = next(order for order in fake_api.orders if order["reduce_only"])
     assert tp_order["size"] == entry_order.contracts
+
+
+def test_grid_lifecycle_tracks_fill_even_with_unparseable_terminal_status(
+    client, monkeypatch, create_test_tables
+):
+    """Regression: a terminal order with an unreadable/unexpected status must
+    still have its fill tracked (and a take-profit placed) rather than being
+    silently discarded as a no-fill cancellation — an untracked fill is
+    exactly the unhedged-position bug this reconciliation logic prevents."""
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+    created = client.post("/grid-ladders", json=_payload())
+    fake_api = FakeFuturesApi()
+
+    with Session(create_test_tables) as session:
+        lifecycle = GridLadderLifecycle(_grid_base(fake_api), session)
+        lifecycle.process_symbol("ADAUSDC")
+        ladder = GridLadderCrud(session).get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        entry_order = next(order for order in ladder.orders if order.side == "buy")
+        fake_api.order_details[entry_order.exchange_order_id] = _order_details(
+            status=None,
+            filled_size=entry_order.contracts,
+            avg_deal_price=entry_order.price,
+            price=entry_order.price,
+        )
+        lifecycle.process_symbol("ADAUSDC")
+
+    detail = client.get(f"/grid-ladders/{created.json()['detail']['id']}").json()[
+        "detail"
+    ]
+    filled_level = next(
+        level
+        for level in detail["levels"]
+        if level["entry_order_id"] == entry_order.exchange_order_id
+    )
+    finalized_order = next(
+        order
+        for order in detail["orders"]
+        if order["exchange_order_id"] == entry_order.exchange_order_id
+    )
+    assert finalized_order["status"] == "FILLED"
+    assert finalized_order["filled_qty"] == entry_order.contracts
+    assert filled_level["filled_entry_qty"] == entry_order.contracts
+    assert filled_level["status"] == "take_profit_open"
+    assert any(order["reduce_only"] for order in fake_api.orders)
 
 
 def test_grid_lifecycle_keeps_used_margin_for_filled_entry_that_errors(

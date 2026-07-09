@@ -450,27 +450,32 @@ class GridLadderLifecycle:
                     self._record_partial_fill(ladder, order, filled_qty, filled_price)
                 continue
 
-            if status != OrderStatus.FILLED.value:
-                # Exchange reports a terminal non-fill status (cancelled/expired/
-                # unrecognized) but our DB still shows the order as open. Persist
-                # the terminal state so we stop polling it.
-                self.crud.update_order(order.id, status=GRID_ORDER_CANCELLED_STATUS)
-                if order.level_id:
-                    self.crud.update_level_order(
-                        order.level_id, status=GridLevelStatus.cancelled.value
-                    )
-                self.crud.update_logs(
-                    ladder.id,
-                    f"Order {order.exchange_order_id} {status} on exchange; marked terminal",
-                )
-                continue
-
-            # KuCoin's get-order-by-id endpoint sometimes reports "done" with a
-            # blank fill payload even for genuinely fully-filled orders — fall
-            # back to the requested size rather than losing the fill.
             if filled_qty <= 0:
-                filled_qty = float(order.contracts)
+                if status == OrderStatus.FILLED.value:
+                    # KuCoin's get-order-by-id endpoint sometimes reports "done"
+                    # with a blank fill payload even for genuinely fully-filled
+                    # orders — fall back to the requested size rather than
+                    # losing the fill.
+                    filled_qty = float(order.contracts)
+                else:
+                    # Exchange reports a terminal non-fill status (cancelled/
+                    # expired/unrecognized) with nothing filled — the order
+                    # died without executing.
+                    self.crud.update_order(order.id, status=GRID_ORDER_CANCELLED_STATUS)
+                    if order.level_id:
+                        self.crud.update_level_order(
+                            order.level_id, status=GridLevelStatus.cancelled.value
+                        )
+                    self.crud.update_logs(
+                        ladder.id,
+                        f"Order {order.exchange_order_id} {status} on exchange; marked terminal",
+                    )
+                    continue
 
+            # filled_qty > 0 here — a real fill occurred (however the terminal
+            # status is labeled), so it must be tracked and never silently
+            # discarded (an untracked fill is exactly the unhedged-position
+            # incident this reconciliation logic exists to prevent).
             self.crud.update_order(
                 order.id,
                 status=GRID_ORDER_FILLED_STATUS,
