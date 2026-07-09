@@ -748,6 +748,72 @@ def test_grid_lifecycle_scales_used_margin_for_partial_entry_fill(
         8,
     )
     assert detail["used_margin"] == expected_used_margin
+    # A resting partial fill must not be finalized: the order stays open (kept
+    # in the polling loop) and no take-profit is sized off the partial amount.
+    partial_order = next(
+        order
+        for order in detail["orders"]
+        if order["exchange_order_id"] == entry_order.exchange_order_id
+    )
+    assert partial_order["status"] == "NEW"
+    assert filled_level["status"] == "open"
+    assert not any(order["reduce_only"] for order in fake_api.orders)
+
+
+def test_grid_lifecycle_finalizes_entry_after_partial_then_full_fill(
+    client, monkeypatch, create_test_tables
+):
+    """Regression for the production incident: an entry order that was
+    partially filled on one reconciliation tick and fully filled on a later
+    tick must end up fully tracked — not permanently stuck at the first
+    partial amount with an undersized take-profit."""
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+    created = client.post("/grid-ladders", json=_payload())
+    fake_api = FakeFuturesApi()
+
+    with Session(create_test_tables) as session:
+        lifecycle = GridLadderLifecycle(_grid_base(fake_api), session)
+        lifecycle.process_symbol("ADAUSDC")
+        ladder = GridLadderCrud(session).get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        entry_order = next(order for order in ladder.orders if order.side == "buy")
+
+        fake_api.order_details[entry_order.exchange_order_id] = _order_details(
+            status=GetOrderByOrderIdResp.StatusEnum.OPEN,
+            filled_size=max(entry_order.contracts // 2, 1),
+            avg_deal_price=entry_order.price,
+            price=entry_order.price,
+        )
+        lifecycle.process_symbol("ADAUSDC")
+
+        fake_api.order_details[entry_order.exchange_order_id] = _order_details(
+            status=GetOrderByOrderIdResp.StatusEnum.DONE,
+            filled_size=entry_order.contracts,
+            avg_deal_price=entry_order.price,
+            price=entry_order.price,
+        )
+        lifecycle.process_symbol("ADAUSDC")
+
+    detail = client.get(f"/grid-ladders/{created.json()['detail']['id']}").json()[
+        "detail"
+    ]
+    filled_level = next(
+        level
+        for level in detail["levels"]
+        if level["entry_order_id"] == entry_order.exchange_order_id
+    )
+    finalized_order = next(
+        order
+        for order in detail["orders"]
+        if order["exchange_order_id"] == entry_order.exchange_order_id
+    )
+    assert finalized_order["status"] == "FILLED"
+    assert finalized_order["filled_qty"] == entry_order.contracts
+    assert filled_level["filled_entry_qty"] == entry_order.contracts
+    assert filled_level["status"] == "take_profit_open"
+    tp_order = next(order for order in fake_api.orders if order["reduce_only"])
+    assert tp_order["size"] == entry_order.contracts
 
 
 def test_grid_lifecycle_keeps_used_margin_for_filled_entry_that_errors(
@@ -781,9 +847,18 @@ def test_grid_lifecycle_keeps_used_margin_for_filled_entry_that_errors(
         for level in detail["levels"]
         if level["entry_order_id"] == entry_order.exchange_order_id
     )
+    finalized_entry_order = next(
+        order
+        for order in detail["orders"]
+        if order["exchange_order_id"] == entry_order.exchange_order_id
+    )
     assert detail["status"] == "error"
     assert errored_level["status"] == "error"
     assert detail["used_margin"] == errored_level["margin_required"]
+    # The entry order genuinely filled — a downstream take-profit placement
+    # failure must not overwrite its real FILLED status/quantity.
+    assert finalized_entry_order["status"] == "FILLED"
+    assert finalized_entry_order["filled_qty"] == entry_order.contracts
 
 
 def test_grid_lifecycle_ignores_zero_avg_deal_price_for_filled_order(

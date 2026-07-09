@@ -30,6 +30,7 @@ ZERO_USED_MARGIN_STATUSES = (
     GridLadderStatus.cancelled.value,
 )
 OPEN_EXPOSURE_LEVEL_STATUSES = {
+    "open",
     "filled",
     "take_profit_open",
     "error",
@@ -441,12 +442,13 @@ class GridLadderCrud:
             self.session.add(order)
         self.session.commit()
 
-    def mark_level_entry_filled(
+    def record_level_entry_fill(
         self,
         level_id: UUID,
         *,
         filled_entry_price: float,
         filled_entry_qty: float,
+        status: str,
     ) -> GridLevelTable | None:
         level = self.session.get(GridLevelTable, level_id)
         if level is None:
@@ -454,7 +456,7 @@ class GridLadderCrud:
 
         level.filled_entry_price = filled_entry_price
         level.filled_entry_qty = filled_entry_qty
-        level.status = "filled"
+        level.status = status
         level.updated_at = timestamp()
         self.session.add(level)
         self.session.commit()

@@ -38,9 +38,11 @@ TERMINAL_GRID_ORDER_STATUSES = {
     GRID_ORDER_ERROR_STATUS,
     OrderStatus.EXPIRED.value,
 }
-# Exchange-terminal statuses that are not a fill — the order died without executing.
-CANCELLED_GRID_ORDER_STATUSES = TERMINAL_GRID_ORDER_STATUSES - {
-    GRID_ORDER_FILLED_STATUS
+# Statuses meaning the order is still resting on the exchange book (possibly
+# partially filled) — must keep being polled rather than finalized.
+NON_TERMINAL_EXCHANGE_ORDER_STATUSES = {
+    OrderStatus.NEW.value,
+    OrderStatus.PARTIALLY_FILLED.value,
 }
 _STALE_LADDER_AGE_MS = int(1.5 * 24 * 60 * 60 * 1000)
 _STALE_LADDER_PNL_PCT_LOW = -1.0
@@ -438,35 +440,21 @@ class GridLadderLifecycle:
 
             status = self._order_status(details.status)
             filled_qty = self._filled_size(details)
-            if status == OrderStatus.FILLED.value and filled_qty <= 0:
-                filled_qty = float(order.contracts)
             filled_price = self._filled_price(details, order.price)
 
-            if status == OrderStatus.FILLED.value or filled_qty > 0:
-                self.crud.update_order(
-                    order.id,
-                    status=GRID_ORDER_FILLED_STATUS,
-                    filled_qty=filled_qty,
-                    filled_price=filled_price,
-                )
-                self.crud.update_logs(
-                    ladder.id,
-                    (
-                        f"Order {order.exchange_order_id} filled: "
-                        f"{order.order_role} {filled_qty} contracts @ {filled_price}"
-                    ),
-                )
-                try:
-                    self._handle_filled_order(ladder, order, filled_qty, filled_price)
-                except Exception as error:
-                    self._mark_order_error(ladder, order, error)
+            if status in NON_TERMINAL_EXCHANGE_ORDER_STATUSES:
+                # Still resting on the exchange book — keep polling. Record any
+                # partial progress so far, but don't finalize the order or act
+                # on it (e.g. sizing a take-profit) until it's actually done.
+                if filled_qty > 0:
+                    self._record_partial_fill(ladder, order, filled_qty, filled_price)
                 continue
 
-            # Exchange reports a terminal non-fill status (cancelled/expired) but our DB
-            # still shows the order as open. Persist the terminal state so we stop
-            # polling this order and the ladder can be closed as an orphan.
-            if status in CANCELLED_GRID_ORDER_STATUSES:
-                self.crud.update_order(order.id, status=status)
+            if status != OrderStatus.FILLED.value:
+                # Exchange reports a terminal non-fill status (cancelled/expired/
+                # unrecognized) but our DB still shows the order as open. Persist
+                # the terminal state so we stop polling it.
+                self.crud.update_order(order.id, status=GRID_ORDER_CANCELLED_STATUS)
                 if order.level_id:
                     self.crud.update_level_order(
                         order.level_id, status=GridLevelStatus.cancelled.value
@@ -477,10 +465,61 @@ class GridLadderLifecycle:
                 )
                 continue
 
+            # KuCoin's get-order-by-id endpoint sometimes reports "done" with a
+            # blank fill payload even for genuinely fully-filled orders — fall
+            # back to the requested size rather than losing the fill.
+            if filled_qty <= 0:
+                filled_qty = float(order.contracts)
+
             self.crud.update_order(
                 order.id,
-                status=GRID_ORDER_OPEN_STATUS,
+                status=GRID_ORDER_FILLED_STATUS,
+                filled_qty=filled_qty,
+                filled_price=filled_price,
             )
+            self.crud.update_logs(
+                ladder.id,
+                (
+                    f"Order {order.exchange_order_id} filled: "
+                    f"{order.order_role} {filled_qty} contracts @ {filled_price}"
+                ),
+            )
+            try:
+                self._handle_filled_order(ladder, order, filled_qty, filled_price)
+            except Exception as error:
+                self._handle_post_fill_error(ladder, order, error)
+
+    def _record_partial_fill(
+        self,
+        ladder: GridLadderTable,
+        order: GridOrderTable,
+        filled_qty: float,
+        filled_price: float,
+    ) -> None:
+        if filled_qty <= order.filled_qty:
+            return
+
+        self.crud.update_order(
+            order.id,
+            filled_qty=filled_qty,
+            filled_price=filled_price,
+        )
+        self.crud.update_logs(
+            ladder.id,
+            (
+                f"Order {order.exchange_order_id} partially filled: "
+                f"{order.order_role} {filled_qty}/{order.contracts} contracts "
+                f"@ {filled_price}"
+            ),
+        )
+        if order.order_role == GridOrderRole.entry.value and order.level_id:
+            self.crud.record_level_entry_fill(
+                order.level_id,
+                filled_entry_price=filled_price,
+                filled_entry_qty=filled_qty,
+                status=GridLevelStatus.open.value,
+            )
+            self.crud.recalculate_used_margin(ladder.id)
 
     def _handle_filled_order(
         self,
@@ -494,10 +533,11 @@ class GridLadderLifecycle:
             return
 
         if order.order_role == GridOrderRole.entry.value:
-            self.crud.mark_level_entry_filled(
+            self.crud.record_level_entry_fill(
                 level.id,
                 filled_entry_price=filled_price,
                 filled_entry_qty=filled_qty,
+                status=GridLevelStatus.filled.value,
             )
             self.crud.recalculate_used_margin(ladder.id)
             self._place_take_profit_order(ladder, level)
@@ -581,6 +621,18 @@ class GridLadderLifecycle:
         error: Exception | str,
     ) -> None:
         self.crud.update_order(order.id, status=GRID_ORDER_ERROR_STATUS)
+        self._handle_post_fill_error(ladder, order, error)
+
+    def _handle_post_fill_error(
+        self,
+        ladder: GridLadderTable,
+        order: GridOrderTable,
+        error: Exception | str,
+    ) -> None:
+        """Flag the level/ladder as needing attention without touching the
+        order's own status — used when a fill was recorded successfully but a
+        downstream step (e.g. placing the take-profit order) failed, so the
+        order's real FILLED status and quantity must not be overwritten."""
         if order.level_id:
             self.crud.update_level_order(
                 order.level_id,
