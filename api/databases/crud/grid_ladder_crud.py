@@ -463,6 +463,24 @@ class GridLadderCrud:
         self.session.refresh(level)
         return level
 
+    def reset_level_for_rearm(self, level_id: UUID) -> GridLevelTable | None:
+        """Clear a level's prior round-trip state before placing a fresh entry
+        order. Without this, a stale take_profit_order_id from the previous
+        round would make _place_take_profit_order's idempotency guard skip
+        placing a new one the next time this level fills."""
+        level = self.session.get(GridLevelTable, level_id)
+        if level is None:
+            return None
+
+        level.take_profit_order_id = None
+        level.filled_entry_qty = 0
+        level.filled_entry_price = None
+        level.updated_at = timestamp()
+        self.session.add(level)
+        self.session.commit()
+        self.session.refresh(level)
+        return level
+
     def mark_level_take_profit_filled(
         self,
         level_id: UUID,

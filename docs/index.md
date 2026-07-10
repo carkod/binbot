@@ -17,6 +17,7 @@ permalink: /
   - [Filters](#a-filters)
   - [Orders](#b-orders)
 - [Autotrade](autotrade.md)
+- [Grid Ladders](grid-ladders.md)
 - [Account](account/)
   - [Bot](account/bot.md)
   - [Bot Status](account/bot-status.md)
