@@ -38,9 +38,11 @@ TERMINAL_GRID_ORDER_STATUSES = {
     GRID_ORDER_ERROR_STATUS,
     OrderStatus.EXPIRED.value,
 }
-# Exchange-terminal statuses that are not a fill — the order died without executing.
-CANCELLED_GRID_ORDER_STATUSES = TERMINAL_GRID_ORDER_STATUSES - {
-    GRID_ORDER_FILLED_STATUS
+# Statuses meaning the order is still resting on the exchange book (possibly
+# partially filled) — must keep being polled rather than finalized.
+NON_TERMINAL_EXCHANGE_ORDER_STATUSES = {
+    OrderStatus.NEW.value,
+    OrderStatus.PARTIALLY_FILLED.value,
 }
 _STALE_LADDER_AGE_MS = int(1.5 * 24 * 60 * 60 * 1000)
 _STALE_LADDER_PNL_PCT_LOW = -1.0
@@ -209,6 +211,25 @@ class GridLadderLifecycle:
             levels,
         ) or self._has_exchange_position(ladder.symbol)
 
+    def _has_side_exposure(self, ladder: GridLadderTable, side: str) -> bool:
+        """True when a level on the given side has a filled entry not yet
+        closed by its take-profit — real, live exchange exposure on that
+        side. Used to keep only one directional side live at a time on a
+        netted futures symbol. Includes `error` levels: those were flagged
+        for manual review precisely because their exposure is unresolved,
+        so it's still real and must still block the opposite side."""
+        return any(
+            level.side == side
+            and level.filled_entry_qty > 0
+            and level.status
+            in (
+                GridLevelStatus.filled.value,
+                GridLevelStatus.take_profit_open.value,
+                GridLevelStatus.error.value,
+            )
+            for level in ladder.levels
+        )
+
     def _breach_candles_required(self, ladder: GridLadderTable) -> int:
         if self._has_open_exposure(ladder):
             return self.BREACH_CANDLES_REQUIRED
@@ -270,6 +291,9 @@ class GridLadderLifecycle:
         if side == "sell":
             return AddOrderReq.SideEnum.BUY
         raise ValueError(f"Unsupported grid side: {side}")
+
+    def _opposite_side(self, side: str) -> str:
+        return "sell" if side == "buy" else "buy"
 
     def _range_break(self, ladder: GridLadderTable) -> tuple[str, float] | None:
         price = self._current_market_price(ladder.symbol)
@@ -370,39 +394,8 @@ class GridLadderLifecycle:
                 if level.entry_order_id:
                     continue
 
-                price = round_price_to_precision(level.price, price_precision)
-                order = self.base_streaming.kucoin_futures_api.place_futures_order(
-                    symbol=symbol_row.get_futures_symbol(),
-                    side=self._side_enum(level.side),
-                    size=level.contracts,
-                    price=price,
-                    leverage=symbol_row.futures_leverage,
-                    order_type=OrderType.limit,
-                    reduce_only=False,
-                )
-                placed_order_ids.append(str(order.order_id))
-                self.crud.create_order(
-                    ladder_id=ladder.id,
-                    level_id=level.id,
-                    exchange_order_id=str(order.order_id),
-                    order_role=GridOrderRole.entry.value,
-                    side=level.side,
-                    price=price,
-                    contracts=level.contracts,
-                    status=GRID_ORDER_OPEN_STATUS,
-                )
-                self.crud.update_logs(
-                    ladder.id,
-                    (
-                        f"Placed entry order {order.order_id} for level "
-                        f"{level.level_index}: {level.side} {level.contracts} "
-                        f"contracts @ {price}"
-                    ),
-                )
-                self.crud.update_level_order(
-                    level.id,
-                    entry_order_id=str(order.order_id),
-                    status=GridLevelStatus.open.value,
+                placed_order_ids.append(
+                    self._arm_level_entry(ladder, symbol_row, price_precision, level)
                 )
 
             self.crud.update_status(ladder.id, GridLadderStatus.active)
@@ -419,6 +412,99 @@ class GridLadderLifecycle:
                 context_updates={"cancelled_order_ids": placed_order_ids},
             )
             self.crud.update_error_logs(ladder.id, error)
+
+    def _arm_level_entry(
+        self,
+        ladder: GridLadderTable,
+        symbol_row: SymbolTable,
+        price_precision: int | None,
+        level: GridLevelTable,
+    ) -> str:
+        """Place a fresh entry limit order for a level and mark it open.
+
+        Shared by the ladder's initial placement and by re-arming a level
+        whose entry/take-profit cycle has just completed or been paused —
+        resets the level's prior round-trip state first so it can't block
+        the next one (see `reset_level_for_rearm`).
+        """
+        self.crud.reset_level_for_rearm(level.id)
+
+        price = round_price_to_precision(level.price, price_precision)
+        order = self.base_streaming.kucoin_futures_api.place_futures_order(
+            symbol=symbol_row.get_futures_symbol(),
+            side=self._side_enum(level.side),
+            size=level.contracts,
+            price=price,
+            leverage=symbol_row.futures_leverage,
+            order_type=OrderType.limit,
+            reduce_only=False,
+        )
+        self.crud.create_order(
+            ladder_id=ladder.id,
+            level_id=level.id,
+            exchange_order_id=str(order.order_id),
+            order_role=GridOrderRole.entry.value,
+            side=level.side,
+            price=price,
+            contracts=level.contracts,
+            status=GRID_ORDER_OPEN_STATUS,
+        )
+        self.crud.update_logs(
+            ladder.id,
+            (
+                f"Placed entry order {order.order_id} for level "
+                f"{level.level_index}: {level.side} {level.contracts} "
+                f"contracts @ {price}"
+            ),
+        )
+        self.crud.update_level_order(
+            level.id,
+            entry_order_id=str(order.order_id),
+            status=GridLevelStatus.open.value,
+        )
+        return str(order.order_id)
+
+    def _cancel_side_entries(self, ladder: GridLadderTable, side: str) -> bool:
+        """Cancel every still-resting entry order on the given side. Called
+        the instant the opposite side fills, so only one directional side
+        ever has live exposure at a time on a netted futures symbol.
+
+        Before cancelling, checks each order's live exchange state — a local
+        "still resting" status can be stale if that order filled on the
+        exchange in the same tick. Returns False (and cancels nothing) the
+        moment that's found, so the caller can escalate instead of treating
+        this side as the only one with exposure.
+        """
+        for order in ladder.orders:
+            if order.order_role != GridOrderRole.entry.value:
+                continue
+            if order.side != side:
+                continue
+            if order.status in TERMINAL_GRID_ORDER_STATUSES:
+                continue
+
+            details = self.base_streaming.kucoin_futures_api.retrieve_order(
+                order.exchange_order_id
+            )
+            if self._filled_size(details) > 0:
+                return False
+
+            self.base_streaming.kucoin_futures_api.cancel_futures_order(
+                order.exchange_order_id
+            )
+            self.crud.update_order(order.id, status=GRID_ORDER_CANCELLED_STATUS)
+            if order.level_id:
+                self.crud.update_level_order(
+                    order.level_id, status=GridLevelStatus.pending.value
+                )
+            self.crud.update_logs(
+                ladder.id,
+                (
+                    f"Cancelled resting {side} entry order "
+                    f"{order.exchange_order_id} — opposite side now live"
+                ),
+            )
+        return True
 
     def _reconcile_active_ladder(self, ladder: GridLadderTable) -> None:
         for order in ladder.orders:
@@ -438,49 +524,91 @@ class GridLadderLifecycle:
 
             status = self._order_status(details.status)
             filled_qty = self._filled_size(details)
-            if status == OrderStatus.FILLED.value and filled_qty <= 0:
-                filled_qty = float(order.contracts)
             filled_price = self._filled_price(details, order.price)
 
-            if status == OrderStatus.FILLED.value or filled_qty > 0:
-                self.crud.update_order(
-                    order.id,
-                    status=GRID_ORDER_FILLED_STATUS,
-                    filled_qty=filled_qty,
-                    filled_price=filled_price,
-                )
-                self.crud.update_logs(
-                    ladder.id,
-                    (
-                        f"Order {order.exchange_order_id} filled: "
-                        f"{order.order_role} {filled_qty} contracts @ {filled_price}"
-                    ),
-                )
-                try:
-                    self._handle_filled_order(ladder, order, filled_qty, filled_price)
-                except Exception as error:
-                    self._mark_order_error(ladder, order, error)
+            if status in NON_TERMINAL_EXCHANGE_ORDER_STATUSES:
+                # Still resting on the exchange book — keep polling. Record any
+                # partial progress so far, but don't finalize the order or act
+                # on it (e.g. sizing a take-profit) until it's actually done.
+                if filled_qty > 0:
+                    self._record_partial_fill(ladder, order, filled_qty, filled_price)
                 continue
 
-            # Exchange reports a terminal non-fill status (cancelled/expired) but our DB
-            # still shows the order as open. Persist the terminal state so we stop
-            # polling this order and the ladder can be closed as an orphan.
-            if status in CANCELLED_GRID_ORDER_STATUSES:
-                self.crud.update_order(order.id, status=status)
-                if order.level_id:
-                    self.crud.update_level_order(
-                        order.level_id, status=GridLevelStatus.cancelled.value
+            if filled_qty <= 0:
+                if status == OrderStatus.FILLED.value:
+                    # KuCoin's get-order-by-id endpoint sometimes reports "done"
+                    # with a blank fill payload even for genuinely fully-filled
+                    # orders — fall back to the requested size rather than
+                    # losing the fill.
+                    filled_qty = float(order.contracts)
+                else:
+                    # Exchange reports a terminal non-fill status (cancelled/
+                    # expired/unrecognized) with nothing filled — the order
+                    # died without executing.
+                    self.crud.update_order(order.id, status=GRID_ORDER_CANCELLED_STATUS)
+                    if order.level_id:
+                        self.crud.update_level_order(
+                            order.level_id, status=GridLevelStatus.cancelled.value
+                        )
+                    self.crud.update_logs(
+                        ladder.id,
+                        f"Order {order.exchange_order_id} {status} on exchange; marked terminal",
                     )
-                self.crud.update_logs(
-                    ladder.id,
-                    f"Order {order.exchange_order_id} {status} on exchange; marked terminal",
-                )
-                continue
+                    continue
 
+            # filled_qty > 0 here — a real fill occurred (however the terminal
+            # status is labeled), so it must be tracked and never silently
+            # discarded (an untracked fill is exactly the unhedged-position
+            # incident this reconciliation logic exists to prevent).
             self.crud.update_order(
                 order.id,
-                status=GRID_ORDER_OPEN_STATUS,
+                status=GRID_ORDER_FILLED_STATUS,
+                filled_qty=filled_qty,
+                filled_price=filled_price,
             )
+            self.crud.update_logs(
+                ladder.id,
+                (
+                    f"Order {order.exchange_order_id} filled: "
+                    f"{order.order_role} {filled_qty} contracts @ {filled_price}"
+                ),
+            )
+            try:
+                self._handle_filled_order(ladder, order, filled_qty, filled_price)
+            except Exception as error:
+                self._handle_post_fill_error(ladder, order, error)
+
+    def _record_partial_fill(
+        self,
+        ladder: GridLadderTable,
+        order: GridOrderTable,
+        filled_qty: float,
+        filled_price: float,
+    ) -> None:
+        if filled_qty <= order.filled_qty:
+            return
+
+        self.crud.update_order(
+            order.id,
+            filled_qty=filled_qty,
+            filled_price=filled_price,
+        )
+        self.crud.update_logs(
+            ladder.id,
+            (
+                f"Order {order.exchange_order_id} partially filled: "
+                f"{order.order_role} {filled_qty}/{order.contracts} contracts "
+                f"@ {filled_price}"
+            ),
+        )
+        if order.order_role == GridOrderRole.entry.value and order.level_id:
+            self.crud.record_level_entry_fill(
+                order.level_id,
+                filled_entry_price=filled_price,
+                filled_entry_qty=filled_qty,
+                status=GridLevelStatus.open.value,
+            )
+            self.crud.recalculate_used_margin(ladder.id)
 
     def _handle_filled_order(
         self,
@@ -494,10 +622,29 @@ class GridLadderLifecycle:
             return
 
         if order.order_role == GridOrderRole.entry.value:
-            self.crud.mark_level_entry_filled(
+            opposite_side = self._opposite_side(level.side)
+            if self._has_side_exposure(ladder, opposite_side):
+                # A prior tick already recorded real exposure on the
+                # opposite side — escalate rather than guess at the net
+                # position instead of proceeding as if this side were alone.
+                self._handle_conflicting_exposure(
+                    ladder, level, filled_qty, filled_price
+                )
+                return
+            if not self._cancel_side_entries(ladder, opposite_side):
+                # _cancel_side_entries found an opposite-side order already
+                # filled on the exchange when it went to cancel it — a
+                # same-tick race the check above can't see on its own.
+                self._handle_conflicting_exposure(
+                    ladder, level, filled_qty, filled_price
+                )
+                return
+
+            self.crud.record_level_entry_fill(
                 level.id,
                 filled_entry_price=filled_price,
                 filled_entry_qty=filled_qty,
+                status=GridLevelStatus.filled.value,
             )
             self.crud.recalculate_used_margin(ladder.id)
             self._place_take_profit_order(ladder, level)
@@ -506,10 +653,81 @@ class GridLadderLifecycle:
         if order.order_role == GridOrderRole.take_profit.value:
             self.crud.mark_level_take_profit_filled(
                 level.id,
-                realized_pnl=self._realized_pnl(ladder, level, filled_price),
+                realized_pnl=level.realized_pnl
+                + self._realized_pnl(ladder, level, filled_price),
             )
             self.crud.recalculate_used_margin(ladder.id)
             self.crud.recalculate_realized_pnl(ladder.id)
+            self._rearm_after_flat(ladder, level)
+
+    def _rearm_after_flat(
+        self,
+        ladder: GridLadderTable,
+        level: GridLevelTable,
+    ) -> None:
+        """A leg's take-profit just closed it back to flat. Re-arm this
+        level immediately (same-side levels never conflict with each other),
+        and only re-arm the paused opposite side once this side has no
+        remaining live exposure at all — otherwise resting opposite-side
+        orders would recreate the exact netting hazard this fix prevents."""
+        symbol_row = self._symbol_row(ladder.symbol)
+        price_precision = self._price_precision(symbol_row)
+        self._arm_level_entry(ladder, symbol_row, price_precision, level)
+
+        if self._has_side_exposure(ladder, level.side):
+            return
+
+        opposite_side = self._opposite_side(level.side)
+        for other_level in ladder.levels:
+            if (
+                other_level.side == opposite_side
+                and other_level.status == GridLevelStatus.pending.value
+            ):
+                self._arm_level_entry(ladder, symbol_row, price_precision, other_level)
+
+    def _handle_conflicting_exposure(
+        self,
+        ladder: GridLadderTable,
+        level: GridLevelTable,
+        filled_qty: float,
+        filled_price: float,
+    ) -> None:
+        """Both directional sides ended up filled and exposed at the same
+        time (the guard's cancel lost a race to an in-flight fill). Mark
+        both sides' levels as error and halt automation for this ladder —
+        an error-status ladder is untouched by process_symbol — so a human
+        reconciles the real exchange position rather than the code guessing.
+
+        Records this level's real fill (rather than leaving filled_entry_qty
+        at 0) so _has_side_exposure still recognizes it as live exposure if
+        another fill on the same side arrives in this same tick.
+        """
+        opposite_side = self._opposite_side(level.side)
+        self.crud.record_level_entry_fill(
+            level.id,
+            filled_entry_price=filled_price,
+            filled_entry_qty=filled_qty,
+            status=GridLevelStatus.error.value,
+        )
+        for other_level in ladder.levels:
+            if other_level.side == opposite_side and other_level.status in (
+                GridLevelStatus.filled.value,
+                GridLevelStatus.take_profit_open.value,
+                GridLevelStatus.error.value,
+            ):
+                self.crud.update_level_order(
+                    other_level.id, status=GridLevelStatus.error.value
+                )
+        self.crud.update_status_with_context(ladder.id, GridLadderStatus.error)
+        self.crud.recalculate_used_margin(ladder.id)
+        self.crud.update_error_logs(
+            ladder.id,
+            (
+                f"Conflicting exposure: level {level.level_index} ({level.side}) "
+                "filled while the opposite side already had live exposure — "
+                "manual reconciliation required"
+            ),
+        )
 
     def _place_take_profit_order(
         self,
@@ -524,6 +742,7 @@ class GridLadderLifecycle:
             level.take_profit_price,
             self._price_precision(symbol_row),
         )
+        opposite_side = self._opposite_side(level.side)
         order = self.base_streaming.kucoin_futures_api.place_futures_order(
             symbol=symbol_row.get_futures_symbol(),
             side=self._opposite_side_enum(level.side),
@@ -538,7 +757,7 @@ class GridLadderLifecycle:
             level_id=level.id,
             exchange_order_id=str(order.order_id),
             order_role=GridOrderRole.take_profit.value,
-            side="sell" if level.side == "buy" else "buy",
+            side=opposite_side,
             price=price,
             contracts=int(level.filled_entry_qty or level.contracts),
             status=GRID_ORDER_OPEN_STATUS,
@@ -547,7 +766,7 @@ class GridLadderLifecycle:
             ladder.id,
             (
                 f"Placed take-profit order {order.order_id} for level "
-                f"{level.level_index}: {'sell' if level.side == 'buy' else 'buy'} "
+                f"{level.level_index}: {opposite_side} "
                 f"{int(level.filled_entry_qty or level.contracts)} contracts "
                 f"@ {price}"
             ),
@@ -581,6 +800,18 @@ class GridLadderLifecycle:
         error: Exception | str,
     ) -> None:
         self.crud.update_order(order.id, status=GRID_ORDER_ERROR_STATUS)
+        self._handle_post_fill_error(ladder, order, error)
+
+    def _handle_post_fill_error(
+        self,
+        ladder: GridLadderTable,
+        order: GridOrderTable,
+        error: Exception | str,
+    ) -> None:
+        """Flag the level/ladder as needing attention without touching the
+        order's own status — used when a fill was recorded successfully but a
+        downstream step (e.g. placing the take-profit order) failed, so the
+        order's real FILLED status and quantity must not be overwritten."""
         if order.level_id:
             self.crud.update_level_order(
                 order.level_id,

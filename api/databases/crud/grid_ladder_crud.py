@@ -30,6 +30,7 @@ ZERO_USED_MARGIN_STATUSES = (
     GridLadderStatus.cancelled.value,
 )
 OPEN_EXPOSURE_LEVEL_STATUSES = {
+    "open",
     "filled",
     "take_profit_open",
     "error",
@@ -441,12 +442,13 @@ class GridLadderCrud:
             self.session.add(order)
         self.session.commit()
 
-    def mark_level_entry_filled(
+    def record_level_entry_fill(
         self,
         level_id: UUID,
         *,
         filled_entry_price: float,
         filled_entry_qty: float,
+        status: str,
     ) -> GridLevelTable | None:
         level = self.session.get(GridLevelTable, level_id)
         if level is None:
@@ -454,7 +456,25 @@ class GridLadderCrud:
 
         level.filled_entry_price = filled_entry_price
         level.filled_entry_qty = filled_entry_qty
-        level.status = "filled"
+        level.status = status
+        level.updated_at = timestamp()
+        self.session.add(level)
+        self.session.commit()
+        self.session.refresh(level)
+        return level
+
+    def reset_level_for_rearm(self, level_id: UUID) -> GridLevelTable | None:
+        """Clear a level's prior round-trip state before placing a fresh entry
+        order. Without this, a stale take_profit_order_id from the previous
+        round would make _place_take_profit_order's idempotency guard skip
+        placing a new one the next time this level fills."""
+        level = self.session.get(GridLevelTable, level_id)
+        if level is None:
+            return None
+
+        level.take_profit_order_id = None
+        level.filled_entry_qty = 0
+        level.filled_entry_price = None
         level.updated_at = timestamp()
         self.session.add(level)
         self.session.commit()
