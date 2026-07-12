@@ -92,7 +92,6 @@ jobs:
       - name: Test run script
         run: |
           docker run --network host --name binbot_streaming \
-          -e PYTHONUNBUFFERED=TRUE \
           -e ENV=${{ env.ENV }} -d carloswufei/binbot_streaming:${{ github.sha }}
 
       - name: Push to Docker Hub
@@ -114,7 +113,6 @@ jobs:
       - name: Test run script
         run: |
           docker run --network host --name binbot_cronjobs \
-          -e PYTHONUNBUFFERED=TRUE \
           -e ENV=${{ env.ENV }} -d carloswufei/binbot_cronjobs:${{ github.sha }}
 
       - name: Push to Docker Hub

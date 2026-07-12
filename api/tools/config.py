@@ -52,7 +52,6 @@ class Config:
     def _validate_required_vars(self):
         """Validate that all required environment variables are present"""
         required_vars = [
-            "PYTHONUNBUFFERED",
             "DEBUG",
             "LOG_LEVEL",
             "TZ",

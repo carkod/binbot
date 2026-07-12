@@ -987,6 +987,48 @@ def test_grid_lifecycle_scales_used_margin_for_partial_entry_fill(
     assert not any(order["reduce_only"] for order in fake_api.orders)
 
 
+def test_partial_entry_fill_cancels_resting_opposite_side_entries(
+    client, monkeypatch, create_test_tables
+):
+    """Any real entry exposure must immediately remove the netting hazard."""
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+    created = client.post("/grid-ladders", json=_payload())
+    fake_api = FakeFuturesApi()
+
+    with Session(create_test_tables) as session:
+        lifecycle = GridLadderLifecycle(_grid_base(fake_api), session)
+        lifecycle.process_symbol("ADAUSDC")
+        ladder = GridLadderCrud(session).get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        entry_order = next(order for order in ladder.orders if order.side == "buy")
+        opposite_entries = [
+            order
+            for order in ladder.orders
+            if order.order_role == "entry" and order.side == "sell"
+        ]
+
+        fake_api.order_details[entry_order.exchange_order_id] = _order_details(
+            status=GetOrderByOrderIdResp.StatusEnum.OPEN,
+            filled_size=max(entry_order.contracts // 2, 1),
+            avg_deal_price=entry_order.price,
+            price=entry_order.price,
+        )
+        lifecycle.process_symbol("ADAUSDC")
+
+    detail = client.get(f"/grid-ladders/{created.json()['detail']['id']}").json()[
+        "detail"
+    ]
+    opposite_order_ids = {order.exchange_order_id for order in opposite_entries}
+    assert set(fake_api.cancelled_order_ids) == opposite_order_ids
+    assert all(
+        order["status"] == "CANCELED"
+        for order in detail["orders"]
+        if order["exchange_order_id"] in opposite_order_ids
+    )
+    assert not any(order["reduce_only"] for order in fake_api.orders)
+
+
 def test_grid_lifecycle_finalizes_entry_after_partial_then_full_fill(
     client, monkeypatch, create_test_tables
 ):
