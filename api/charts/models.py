@@ -107,28 +107,3 @@ class MarketBreadthSample(BaseModel):
     avg_loss: float
     total_volume: float
     strength_index: float
-
-
-class MarketBreadthSeries(BaseModel):
-    """
-    Read shape returned by GET /charts/market-breadth.
-
-    Parallel arrays (newest-first) so the frontend can plot directly without
-    pivoting. Every field except market_breadth_ma is read straight from the
-    stored columns; market_breadth_ma is an EMA-smoothed breadth level
-    computed on read.
-    """
-
-    timestamp: list[str]
-    advancers: list[int]
-    decliners: list[int]
-    market_breadth: list[float]
-    market_breadth_ma: list[float | None]
-    avg_gain: list[float]
-    avg_loss: list[float]
-    total_volume: list[float]
-    strength_index: list[float]
-
-
-class MarketBreadthSeriesResponse(StandardResponse):
-    data: MarketBreadthSeries

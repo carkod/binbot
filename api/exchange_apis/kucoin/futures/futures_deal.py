@@ -7,6 +7,7 @@ from pybinbot import (
     BinanceKlineIntervals,
     BinbotErrors,
     BotModel,
+    Candles,
     DealType,
     KucoinFutures,
     OrderBase,
@@ -110,33 +111,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
             or self.active_bot.recovery_params is not None
         )
 
-    @staticmethod
-    def partition_klines(
-        klines: list,
-        now_ms: int | None = None,
-    ) -> tuple[list, list | None]:
-        current_time_ms = now_ms if now_ms is not None else int(time() * 1000)
-        completed: list = []
-        current: list | None = None
-
-        for candle in sorted(klines, key=lambda item: float(item[0])):
-            if len(candle) < 7:
-                continue
-
-            open_time = float(candle[0])
-            close_time = float(candle[6])
-            if open_time < 100_000_000_000:
-                open_time *= 1000
-            if close_time < 100_000_000_000:
-                close_time *= 1000
-
-            if close_time < current_time_ms:
-                completed.append(candle)
-            elif open_time <= current_time_ms <= close_time:
-                current = candle
-
-        return completed, current
-
     @classmethod
     def closed_candle_atr(cls, completed_candles: list) -> float | None:
         if len(completed_candles) < cls.ENTRY_ATR_WINDOW + 1:
@@ -178,7 +152,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 "Reliable current and completed candles are unavailable for futures entry."
             ) from exc
 
-        completed_candles, current_candle = self.partition_klines(klines)
+        completed_candles, current_candle = Candles.partition_closed_candles(
+            klines,
+            now_ms=int(time() * 1000),
+        )
         if not completed_candles or current_candle is None:
             raise BinbotErrors(
                 "Reliable current and completed candles are unavailable for futures entry."

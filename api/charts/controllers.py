@@ -5,7 +5,7 @@ from sqlalchemy import Table
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
-from api.charts.models import MarketBreadthSample, MarketBreadthSeries
+from api.charts.models import MarketBreadthSample
 from api.databases.crud.autotrade_crud import AutotradeCrud
 from api.databases.crud.symbols_crud import SymbolsCrud
 from api.databases.tables.market_breadth_table import MarketBreadthTable
@@ -13,7 +13,7 @@ from api.databases.utils import independent_session
 from kucoin_universal_sdk.generate.spot.market.model_get_symbol_resp import (
     GetSymbolResp,
 )
-from pybinbot import BinanceApi, ExchangeId, KucoinApi
+from pybinbot import BinanceApi, ExchangeId, KucoinApi, MarketBreadthSeries
 from api.tools.config import Config
 from api.tools.utils import datetime_to_iso, utc_now
 

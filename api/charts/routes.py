@@ -6,7 +6,7 @@ from api.tools.handle_error import (
     json_response_error,
 )
 from api.charts.controllers import MarketDominationController
-from api.charts.models import MarketBreadthSeriesResponse
+from pybinbot import MarketBreadthSeriesResponse
 
 charts_blueprint = APIRouter()
 

@@ -215,14 +215,14 @@ class GridLadderLifecycle:
         """True when a level on the given side has a filled entry not yet
         closed by its take-profit — real, live exchange exposure on that
         side. Used to keep only one directional side live at a time on a
-        netted futures symbol. Includes `error` levels: those were flagged
-        for manual review precisely because their exposure is unresolved,
-        so it's still real and must still block the opposite side."""
+        netted futures symbol. Includes partially filled `open` levels and
+        `error` levels because both still represent unresolved exposure."""
         return any(
             level.side == side
             and level.filled_entry_qty > 0
             and level.status
             in (
+                GridLevelStatus.open.value,
                 GridLevelStatus.filled.value,
                 GridLevelStatus.take_profit_open.value,
                 GridLevelStatus.error.value,
@@ -532,6 +532,17 @@ class GridLadderLifecycle:
                 # on it (e.g. sizing a take-profit) until it's actually done.
                 if filled_qty > 0:
                     self._record_partial_fill(ladder, order, filled_qty, filled_price)
+                    level = order.level
+                    if (
+                        order.order_role == GridOrderRole.entry.value
+                        and level is not None
+                    ):
+                        try:
+                            self._guard_entry_side(
+                                ladder, level, filled_qty, filled_price
+                            )
+                        except Exception as error:
+                            self._handle_post_fill_error(ladder, order, error)
                 continue
 
             if filled_qty <= 0:
@@ -610,6 +621,27 @@ class GridLadderLifecycle:
             )
             self.crud.recalculate_used_margin(ladder.id)
 
+    def _guard_entry_side(
+        self,
+        ladder: GridLadderTable,
+        level: GridLevelTable,
+        filled_qty: float,
+        filled_price: float,
+    ) -> bool:
+        """Keep opposite-side entries off the book after any entry fill.
+
+        Escalate to manual reconciliation if recorded exposure already exists
+        or an opposite order wins the race while its cancellation is pending.
+        """
+        opposite_side = self._opposite_side(level.side)
+        if self._has_side_exposure(ladder, opposite_side):
+            self._handle_conflicting_exposure(ladder, level, filled_qty, filled_price)
+            return False
+        if not self._cancel_side_entries(ladder, opposite_side):
+            self._handle_conflicting_exposure(ladder, level, filled_qty, filled_price)
+            return False
+        return True
+
     def _handle_filled_order(
         self,
         ladder: GridLadderTable,
@@ -622,22 +654,7 @@ class GridLadderLifecycle:
             return
 
         if order.order_role == GridOrderRole.entry.value:
-            opposite_side = self._opposite_side(level.side)
-            if self._has_side_exposure(ladder, opposite_side):
-                # A prior tick already recorded real exposure on the
-                # opposite side — escalate rather than guess at the net
-                # position instead of proceeding as if this side were alone.
-                self._handle_conflicting_exposure(
-                    ladder, level, filled_qty, filled_price
-                )
-                return
-            if not self._cancel_side_entries(ladder, opposite_side):
-                # _cancel_side_entries found an opposite-side order already
-                # filled on the exchange when it went to cancel it — a
-                # same-tick race the check above can't see on its own.
-                self._handle_conflicting_exposure(
-                    ladder, level, filled_qty, filled_price
-                )
+            if not self._guard_entry_side(ladder, level, filled_qty, filled_price):
                 return
 
             self.crud.record_level_entry_fill(

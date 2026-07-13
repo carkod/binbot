@@ -7,6 +7,7 @@ from kucoin_universal_sdk.model.common import RestError
 from pybinbot import (
     BotBase,
     BotModel,
+    Candles,
     DealType,
     KucoinApi,
     KucoinFutures,
@@ -537,7 +538,10 @@ class Lifecycle(KucoinPositionDeal):
         if reference_price <= 0 or self.klines is None:
             return None
 
-        closed_candles, _ = self.partition_klines(self.klines)
+        closed_candles, _ = Candles.partition_closed_candles(
+            self.klines,
+            now_ms=int(time() * 1000),
+        )
         atr = self.closed_candle_atr(closed_candles)
         if atr is None:
             return None
@@ -555,7 +559,10 @@ class Lifecycle(KucoinPositionDeal):
             )
             return None
 
-        closed_candles, _ = self.partition_klines(self.klines)
+        closed_candles, _ = Candles.partition_closed_candles(
+            self.klines,
+            now_ms=int(time() * 1000),
+        )
         if len(closed_candles) < self.RECOVERY_STRUCTURE_WINDOW:
             self.active_bot.add_log(
                 "Recovery skipped: fewer than four closed candles available for structure invalidation."
@@ -979,7 +986,10 @@ class Lifecycle(KucoinPositionDeal):
         completed_candles: list = []
         exit_reference_price: float | None = None
         if self.klines is not None:
-            completed_candles, _ = self.partition_klines(self.klines)
+            completed_candles, _ = Candles.partition_closed_candles(
+                self.klines,
+                now_ms=int(time() * 1000),
+            )
         if completed_candles:
             closed_close = float(completed_candles[-1][4])
             if closed_close > 0:
