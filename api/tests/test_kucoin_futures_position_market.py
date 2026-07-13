@@ -70,7 +70,8 @@ def make_position_market(
     )
     market.btc_df = pd.DataFrame([{"close": 1.0}])
     market.base_streaming = types.SimpleNamespace(
-        compute_single_bot_profit=lambda bot, price: bot_profit
+        compute_single_bot_profit=lambda bot, price: bot_profit,
+        interval=types.SimpleNamespace(get_ms=lambda: 15 * 60 * 1000),
     )
     market.controller = types.SimpleNamespace(save=lambda data: None)
     market.symbol_data = types.SimpleNamespace(price_precision=2)
@@ -410,6 +411,169 @@ def test_bb_extreme_reversion_atr_sl_works_for_short(monkeypatch):
     assert market.active_bot.stop_loss == 4.0
     assert market.active_bot.trailing_profit == 1.8
     assert market.active_bot.trailing_deviation == 1.2
+
+
+def test_mean_reversion_fade_uses_atr_based_stop_loss(monkeypatch):
+    """mean_reversion_fade must dispatch to the ATR+RSI path; SL = 2x ATR%,
+    well under its own (tighter) conservative ceiling."""
+    monkeypatch.setattr(
+        "api.exchange_apis.kucoin.futures.position_market.ApexFlowClose",
+        FakeApexFlowClose,
+    )
+    klines = _make_klines_with_range(n=20, price=100.0, range_pct=1.0)
+    market = make_position_market(
+        opening_timestamp=20_000,
+        position=Position.short,
+        klines=klines,
+        name=PositionMarket.MEAN_REVERSION_FADE_ALGO,
+    )
+    market.build_bb_metrics = lambda: (2.0, 1.5)
+
+    market.market_trailing_analytics(current_price=100.0)
+
+    assert market.active_bot.stop_loss == 2.0  # 2.0 * 1.0, well under the 3.0 cap
+    assert market.active_bot.trailing_profit == 2.0
+    assert market.active_bot.trailing_deviation == 1.5
+
+
+def test_mean_reversion_fade_atr_sl_clamped_to_conservative_max(monkeypatch):
+    """mean_reversion_fade's own MRF_MAX_STOP_LOSS=3.0 ceiling applies, not
+    the shared MAX_STOP_LOSS=4.0 used by other dynamic-trailing algos."""
+    monkeypatch.setattr(
+        "api.exchange_apis.kucoin.futures.position_market.ApexFlowClose",
+        FakeApexFlowClose,
+    )
+    klines = _make_klines_with_range(n=20, price=100.0, range_pct=3.0)
+    market = make_position_market(
+        opening_timestamp=20_000,
+        position=Position.long,
+        klines=klines,
+        name=PositionMarket.MEAN_REVERSION_FADE_ALGO,
+    )
+    market.build_bb_metrics = lambda: (1.8, 1.2)
+
+    market.market_trailing_analytics(current_price=100.0)
+
+    # ATR ~= 3.0% -> 2.0 * 3.0 = 6.0, clamped to MRF_MAX_STOP_LOSS=3.0 (not 4.0)
+    assert market.active_bot.stop_loss == 3.0
+
+
+def test_mean_reversion_fade_atr_sl_pins_to_existing_when_set(monkeypatch):
+    """Once a mean_reversion_fade bot has SL, it stays pinned even if ATR
+    derives differently — same ratchet behaviour as bb_extreme_reversion."""
+    monkeypatch.setattr(
+        "api.exchange_apis.kucoin.futures.position_market.ApexFlowClose",
+        FakeApexFlowClose,
+    )
+    klines = _make_klines_with_range(n=20, price=100.0, range_pct=1.0)
+    market = make_position_market(
+        opening_timestamp=20_000,
+        position=Position.long,
+        klines=klines,
+        name=PositionMarket.MEAN_REVERSION_FADE_ALGO,
+    )
+    market.active_bot.stop_loss = 1.5  # already set
+    market.build_bb_metrics = lambda: (2.0, 1.5)
+
+    market.market_trailing_analytics(current_price=100.0)
+
+    assert market.active_bot.stop_loss == 1.5  # pinned, not re-derived
+
+
+def _make_invalidation_klines() -> list[list[float]]:
+    """
+    Oscillating decline for 18 bars (keeps RSI off the 0 floor, unlike a
+    pure monotonic decline), then a further 6-bar decline with no up-ticks
+    so RSI keeps dropping past the entry candle. Entry sits on the last
+    pre-entry bar (index 17); price is still falling and RSI is still
+    making new lows 3 bars later — the invalidation condition.
+    """
+    pre: list[float] = []
+    price = 110.0
+    for i in range(18):
+        price += 0.4 if i % 3 == 2 else -0.9
+        pre.append(price)
+    post: list[float] = []
+    p = pre[-1]
+    for _ in range(6):
+        p -= 0.8
+        post.append(p)
+    closes = pre + post
+    return [
+        [(i + 1) * 1_000, close, close + 2.0, close - 2.0, close]
+        for i, close in enumerate(closes)
+    ]
+
+
+def test_mean_reversion_fade_thesis_invalidation_tightens_stop_loss(monkeypatch):
+    """Within the first MRF_INVALIDATION_BARS bars, if price hasn't bounced
+    and RSI keeps making new lows against a long, the stop tightens toward
+    the actual adverse move instead of riding the full ATR stop."""
+    monkeypatch.setattr(
+        "api.exchange_apis.kucoin.futures.position_market.ApexFlowClose",
+        FakeApexFlowClose,
+    )
+    klines = _make_invalidation_klines()
+    entry_index = 17
+    current_index = entry_index + 3  # within MRF_INVALIDATION_BARS
+    market = make_position_market(
+        opening_timestamp=int(klines[entry_index][0]),
+        opening_price=klines[entry_index][4],
+        position=Position.long,
+        klines=klines[: current_index + 1],
+        name=PositionMarket.MEAN_REVERSION_FADE_ALGO,
+    )
+    market.build_bb_metrics = lambda: None  # isolate the SL path
+
+    current_price = klines[current_index][4]
+    market.market_trailing_analytics(current_price=current_price)
+
+    # Baseline ATR-derived stop would clamp to the 3.0 ceiling; the
+    # invalidation check tightens it to the actual ~2.36% adverse move.
+    assert market.active_bot.stop_loss == 2.36
+    assert market.active_bot.stop_loss < 3.0
+    assert any("thesis invalidation" in str(log) for log in market.active_bot.logs)
+
+
+def test_mean_reversion_fade_no_invalidation_when_price_recovers(monkeypatch):
+    """If price has recovered back above entry, the early-exit check must
+    not fire even within the invalidation window."""
+    monkeypatch.setattr(
+        "api.exchange_apis.kucoin.futures.position_market.ApexFlowClose",
+        FakeApexFlowClose,
+    )
+    klines = _make_invalidation_klines()
+    entry_index = 17
+    entry_price = klines[entry_index][4]
+    market = make_position_market(
+        opening_timestamp=int(klines[entry_index][0]),
+        opening_price=entry_price,
+        position=Position.long,
+        klines=klines[: entry_index + 4],
+        name=PositionMarket.MEAN_REVERSION_FADE_ALGO,
+    )
+
+    assert market._mean_reversion_fade_invalidated(entry_price + 1.0, 1) is False
+
+
+def test_rsi_series_closed_is_100_not_nan_when_window_has_no_losses():
+    """Regression: a window with zero losses (e.g. a monotonic rally against
+    a short) must resolve RSI to 100, not NaN. Dividing by avg_loss directly
+    (replacing 0 with NaN) previously poisoned the whole RSI series in
+    exactly the runaway-move scenario the invalidation check exists to
+    catch, silently disabling the early exit."""
+    klines = [
+        [(i + 1) * 1_000, 100.0 + i, 100.0 + i + 1.0, 100.0 + i - 1.0, 100.0 + i]
+        for i in range(20)
+    ]
+    market = make_position_market(klines=klines)
+
+    rsi_series = market._rsi_series_closed(14)
+
+    assert rsi_series is not None
+    tail = rsi_series.iloc[14:]
+    assert tail.notna().all()
+    assert (tail == 100.0).all()
 
 
 def test_non_bb_extreme_bot_still_uses_bb_path(monkeypatch):
