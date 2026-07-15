@@ -1,6 +1,7 @@
 from enum import Enum
 from time import time
 
+from api.account.controller import ConsolidatedAccounts
 from api.databases.crud.grid_ladder_crud import GridLadderCrud
 from api.databases.tables.grid_ladder_table import (
     GridLadderTable,
@@ -102,6 +103,8 @@ class GridLadderLifecycle:
             ladder = refreshed_ladder
             if self._status_value(ladder.status) != GridLadderStatus.active.value:
                 return
+
+            self._retry_pending_rearms(ladder)
 
             # All entry orders cancelled/expired on the exchange and no open position —
             # the ladder is an orphan with no way to fill. Close it immediately.
@@ -686,10 +689,18 @@ class GridLadderLifecycle:
         level immediately (same-side levels never conflict with each other),
         and only re-arm the paused opposite side once this side has no
         remaining live exposure at all — otherwise resting opposite-side
-        orders would recreate the exact netting hazard this fix prevents."""
+        orders would recreate the exact netting hazard this fix prevents.
+
+        Available balance can shrink between ladder creation and a later
+        round trip (other ladders/positions consuming margin), so each arm
+        attempt is gated on a fresh balance check rather than assuming the
+        margin reserved at creation is still free. A level that fails the
+        check is left for `_retry_pending_rearms` to pick up on a later tick
+        instead of raising and freezing the whole ladder into `error`."""
         symbol_row = self._symbol_row(ladder.symbol)
         price_precision = self._price_precision(symbol_row)
-        self._arm_level_entry(ladder, symbol_row, price_precision, level)
+        if not self._try_arm_level_entry(ladder, symbol_row, price_precision, level):
+            return
 
         if self._has_side_exposure(ladder, level.side):
             return
@@ -700,7 +711,66 @@ class GridLadderLifecycle:
                 other_level.side == opposite_side
                 and other_level.status == GridLevelStatus.pending.value
             ):
-                self._arm_level_entry(ladder, symbol_row, price_precision, other_level)
+                self._try_arm_level_entry(
+                    ladder, symbol_row, price_precision, other_level
+                )
+
+    def _has_sufficient_balance(self, level: GridLevelTable) -> bool:
+        balance = ConsolidatedAccounts(session=self.session).get_balance()
+        return balance.fiat_available >= level.margin_required
+
+    def _try_arm_level_entry(
+        self,
+        ladder: GridLadderTable,
+        symbol_row: SymbolTable,
+        price_precision: int | None,
+        level: GridLevelTable,
+    ) -> bool:
+        """Arm a level's entry order if there's enough available balance to
+        cover its margin, otherwise log and leave it for a later retry."""
+        if not self._has_sufficient_balance(level):
+            self.crud.update_logs(
+                ladder.id,
+                (
+                    f"Insufficient balance to rearm level {level.level_index} "
+                    f"({level.side} {level.contracts} contracts, needs "
+                    f"{level.margin_required} margin) — will retry once funds "
+                    "are available"
+                ),
+            )
+            return False
+
+        self._arm_level_entry(ladder, symbol_row, price_precision, level)
+        return True
+
+    def _retry_pending_rearms(self, ladder: GridLadderTable) -> None:
+        """Pick up levels that finished a round trip but couldn't be
+        re-armed last tick for lack of available balance (see
+        `_rearm_after_flat`). A round-tripped level sits in `completed`
+        status with no live order until this successfully arms it, so it's
+        safe to treat every `completed` level found here as awaiting retry."""
+        symbol_row = None
+        price_precision = None
+        for level in ladder.levels:
+            if level.side == "neutral" or level.contracts <= 0:
+                continue
+            if level.status != GridLevelStatus.completed.value:
+                continue
+
+            if symbol_row is None:
+                symbol_row = self._symbol_row(ladder.symbol)
+                price_precision = self._price_precision(symbol_row)
+
+            try:
+                self._try_arm_level_entry(ladder, symbol_row, price_precision, level)
+            except Exception as error:
+                self.crud.update_level_order(
+                    level.id, status=GridLevelStatus.error.value
+                )
+                self.crud.update_status_with_context(ladder.id, GridLadderStatus.error)
+                self.crud.recalculate_used_margin(ladder.id)
+                self.crud.update_error_logs(ladder.id, error)
+                return
 
     def _handle_conflicting_exposure(
         self,
