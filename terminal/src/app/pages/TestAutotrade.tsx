@@ -45,6 +45,7 @@ export const TestAutotradePage: FC<{}> = () => {
       trailing: settings.trailing,
       trailing_deviation: settings.trailing_deviation,
       trailing_profit: settings.trailing_profit,
+      telegram_signals: settings.telegram_signals,
       autoswitch: settings.autoswitch,
     },
   });
@@ -70,7 +71,7 @@ export const TestAutotradePage: FC<{}> = () => {
   };
 
   const saveSettings = async (formData) => {
-    await updateSettings(formData).unwrap();
+    await updateSettings({ ...settings, ...formData }).unwrap();
   };
 
   useEffect(() => {
@@ -104,6 +105,7 @@ export const TestAutotradePage: FC<{}> = () => {
         trailing: settings.trailing,
         trailing_deviation: settings.trailing_deviation,
         trailing_profit: settings.trailing_profit,
+        telegram_signals: settings.telegram_signals,
         autoswitch: settings.autoswitch,
       });
     }

@@ -85,6 +85,7 @@ def _patch_balance(monkeypatch, fiat_available: float) -> None:
             return balance
 
     monkeypatch.setattr("api.grid_ladders.routes.ConsolidatedAccounts", Accounts)
+    monkeypatch.setattr("api.grid_ladders.lifecycle.ConsolidatedAccounts", Accounts)
 
 
 def _patch_balance_error(monkeypatch, error: Exception) -> None:
@@ -96,6 +97,7 @@ def _patch_balance_error(monkeypatch, error: Exception) -> None:
             raise error
 
     monkeypatch.setattr("api.grid_ladders.routes.ConsolidatedAccounts", Accounts)
+    monkeypatch.setattr("api.grid_ladders.lifecycle.ConsolidatedAccounts", Accounts)
 
 
 @pytest.fixture(autouse=True)
@@ -719,6 +721,86 @@ def test_grid_lifecycle_rearms_level_after_take_profit_fill(
     assert rearmed_level["realized_pnl"] > 0
     assert detail["used_margin"] == 0
     assert detail["realized_pnl"] == rearmed_level["realized_pnl"]
+
+
+def test_grid_lifecycle_retries_rearm_after_insufficient_balance(
+    client, monkeypatch, create_test_tables
+):
+    """Available balance can shrink between ladder creation and a later round
+    trip (other ladders/positions consuming margin). Instead of freezing the
+    whole ladder into `error` on KuCoin's insufficient-balance rejection, the
+    round-tripped level should wait in `completed` and be picked back up
+    automatically once funds are available again."""
+    _patch_contract_meta(monkeypatch)
+    balance_state = {"fiat_available": 10_000}
+
+    class Accounts:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def get_balance(self):
+            return type(
+                "Balance", (), {"fiat_available": balance_state["fiat_available"]}
+            )()
+
+    monkeypatch.setattr("api.grid_ladders.routes.ConsolidatedAccounts", Accounts)
+    monkeypatch.setattr("api.grid_ladders.lifecycle.ConsolidatedAccounts", Accounts)
+
+    created = client.post("/grid-ladders", json=_payload())
+    fake_api = FakeFuturesApi()
+
+    with Session(create_test_tables) as session:
+        lifecycle = GridLadderLifecycle(_grid_base(fake_api), session)
+        lifecycle.process_symbol("ADAUSDC")
+        ladder = GridLadderCrud(session).get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        entry_order = next(order for order in ladder.orders if order.side == "buy")
+        entry_level_id = str(entry_order.level_id)
+        fake_api.order_details[entry_order.exchange_order_id] = _order_details(
+            status=GetOrderByOrderIdResp.StatusEnum.DONE,
+            filled_size=entry_order.contracts,
+            avg_deal_price=entry_order.price,
+            price=entry_order.price,
+        )
+        lifecycle.process_symbol("ADAUSDC")
+        ladder = GridLadderCrud(session).get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        tp_order = next(
+            order for order in ladder.orders if order.order_role == "take_profit"
+        )
+        fake_api.order_details[tp_order.exchange_order_id] = _order_details(
+            status=GetOrderByOrderIdResp.StatusEnum.DONE,
+            filled_size=tp_order.contracts,
+            avg_deal_price=tp_order.price,
+            price=tp_order.price,
+        )
+        balance_state["fiat_available"] = 0
+        lifecycle.process_symbol("ADAUSDC")
+
+        ladder = GridLadderCrud(session).get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        stuck_level = next(
+            level for level in ladder.levels if str(level.id) == entry_level_id
+        )
+        assert stuck_level.status == "completed"
+        assert ladder.status == "active"
+        assert not any(
+            order.status == "NEW" and order.level_id == stuck_level.id
+            for order in ladder.orders
+        )
+
+        balance_state["fiat_available"] = 10_000
+        lifecycle.process_symbol("ADAUSDC")
+
+    detail = client.get(f"/grid-ladders/{created.json()['detail']['id']}").json()[
+        "detail"
+    ]
+    assert detail["status"] == "active"
+    rearmed_level = next(
+        level for level in detail["levels"] if level["id"] == entry_level_id
+    )
+    assert rearmed_level["status"] == "open"
+    assert rearmed_level["entry_order_id"] != entry_order.exchange_order_id
 
 
 def test_grid_lifecycle_guard_cancels_opposite_side_entry_on_fill(

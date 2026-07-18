@@ -65,13 +65,14 @@ class AutotradeCrud:
             table_class = AutotradeTable
 
         settings_data = table_class.model_validate(data)
+        update_data = data.model_dump(include=data.model_fields_set)
         with get_db_session(self._external_session) as s:
             settings = s.get(table_class, settings_data.id)
 
             assert settings is not None, (
                 f"No autotrade settings found for id {self.document_id}"
             )
-            settings.sqlmodel_update(data.model_dump())
+            settings.sqlmodel_update(update_data)
             s.add(settings)
             s.commit()
             s.refresh(settings)

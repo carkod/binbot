@@ -6,9 +6,11 @@ from pybinbot import UserRoles
 from pytest import fixture
 from api.user.models.user import UserTokenData
 from api.user.services.auth import get_current_user
+from api.databases.crud.autotrade_crud import AutotradeCrud
 from api.databases.utils import get_session
 from api.databases.tables.autotrade_table import AutotradeTable
 from api.main import app
+from pybinbot import AutotradeSettingsSchema
 
 mocked_db_data = AutotradeTable(
     id="autotrade_settings",
@@ -90,3 +92,22 @@ def test_edit_autotrade_settings(client: TestClient) -> None:
     assert result == {
         "message": "Successfully updated settings",
     }
+
+
+def test_edit_autotrade_settings_preserves_unsent_database_values() -> None:
+    settings = AutotradeTable(
+        id="autotrade_settings",
+        base_order_size=15.0,
+        telegram_signals=False,
+        max_request=500,
+    )
+    session_mock = MagicMock()
+    session_mock.get.return_value = settings
+
+    AutotradeCrud(session=session_mock).edit_settings(
+        AutotradeSettingsSchema(base_order_size=25.0)
+    )
+
+    assert settings.base_order_size == 25.0
+    assert settings.telegram_signals is False
+    assert settings.max_request == 500

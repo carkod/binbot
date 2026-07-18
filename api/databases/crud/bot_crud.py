@@ -174,8 +174,8 @@ class BotTableCrud:
 
         stmt = (
             stmt.order_by(
-                desc(BotTable.created_at),
                 case((BotTable.status == Status.active, 1), else_=2),
+                desc(BotTable.created_at),
                 asc(BotTable.pair),
             )
             .limit(limit)

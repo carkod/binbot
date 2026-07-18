@@ -5,6 +5,7 @@ from typing import Type, Union
 from kucoin_universal_sdk.generate.futures.positions.model_get_position_details_resp import (
     GetPositionDetailsResp,
 )
+from pandas import Series
 from pybinbot import (
     BinanceApi,
     BotModel,
@@ -47,6 +48,17 @@ class PositionMarket(KucoinPositionDeal):
     BB_EXTREME_REVERSION_ALGO = "bb_extreme_reversion"
     BB_EXTREME_ATR_WINDOW = 14
     BB_EXTREME_ATR_SL_MULTIPLIER = 2.0
+
+    # Algo name match: see binquant/strategies/mean_reversion_fade.py
+    MEAN_REVERSION_FADE_ALGO = "mean_reversion_fade"
+    # Conservative by design: a tighter ceiling than the shared MAX_STOP_LOSS
+    # (4.0) used by other dynamic-trailing algos, and margin_short_reversal
+    # is disabled at signal time (binquant) rather than recovered here.
+    MRF_MIN_STOP_LOSS = 0.8
+    MRF_MAX_STOP_LOSS = 3.0
+    MRF_ATR_SL_MULTIPLIER = 2.0
+    MRF_RSI_WINDOW = 14
+    MRF_INVALIDATION_BARS = 3
 
     def __init__(
         self,
@@ -455,6 +467,221 @@ class PositionMarket(KucoinPositionDeal):
             self.active_bot = self.update_parameters()
             self.controller.save(data=self.active_bot)
 
+    def _rsi_series_closed(self, window: int) -> Series | None:
+        """
+        Wilder-smoothed RSI computed inline from closed ca
+        ndles in
+        `self.klines` only (drops the still-forming candle so repeated
+        ~15s polls within one candle are idempotent). Mirrors `_atr_pct`'s
+        convention of not mutating `self.df`.
+        """
+        now_ms = int(time() * 1000)
+        interval_ms = self.base_streaming.interval.get_ms()
+        closed = [
+            candle
+            for candle in self.klines
+            if len(candle) >= 5 and int(float(candle[0])) + interval_ms <= now_ms
+        ]
+        if len(closed) < window + 1:
+            return None
+
+        closes = Series([float(candle[4]) for candle in closed])
+        delta = closes.diff()
+        gain = delta.clip(lower=0)
+        loss = -delta.clip(upper=0)
+        avg_gain = gain.ewm(alpha=1 / window, min_periods=window, adjust=False).mean()
+        avg_loss = loss.ewm(alpha=1 / window, min_periods=window, adjust=False).mean()
+        # 100*avg_gain/(avg_gain+avg_loss) is algebraically the same RSI as
+        # 100-100/(1+avg_gain/avg_loss) when avg_loss>0, but — unlike dividing
+        # by avg_loss directly — it resolves cleanly to 100 when a window has
+        # no losses at all (e.g. a monotonic run against a short), instead of
+        # turning the whole window's RSI into NaN. Only the genuine flat case
+        # (no gains AND no losses) needs an explicit neutral override; NaN
+        # from insufficient warmup history is preserved either way.
+        denom = avg_gain + avg_loss
+        rsi = (100 * avg_gain / denom).where(denom != 0, 50.0)
+        return rsi
+
+    def _mean_reversion_fade_invalidated(
+        self, current_price: float, direction: int
+    ) -> bool:
+        """
+        Pessimistic early-exit check: within the first MRF_INVALIDATION_BARS
+        closed candles after entry, if price hasn't bounced yet AND RSI
+        makes a new local extreme AGAINST the position (a new low for a
+        long, a new high for a short) rather than recovering, the
+        mean-reversion thesis likely isn't playing out — cut early instead
+        of waiting for the full ATR stop. No entry-time snapshot is stored
+        (BotModel/DealBase have no free-form field for one); this is fully
+        reconstructed each tick from the closed-candle RSI series between
+        the entry candle and now.
+        """
+        entry_price = self.active_bot.deal.opening_price
+        entry_timestamp = self.active_bot.deal.opening_timestamp
+        if entry_price <= 0 or entry_timestamp <= 0:
+            return False
+
+        now_ms = int(time() * 1000)
+        interval_ms = self.base_streaming.interval.get_ms()
+        closed = [
+            candle
+            for candle in self.klines
+            if len(candle) >= 5 and int(float(candle[0])) + interval_ms <= now_ms
+        ]
+        if len(closed) < self.MRF_RSI_WINDOW + 1:
+            return False
+
+        entry_index = None
+        for index, candle in enumerate(closed):
+            if int(float(candle[0])) >= entry_timestamp:
+                entry_index = index
+                break
+        if entry_index is None:
+            return False
+
+        bars_since_entry = len(closed) - 1 - entry_index
+        if not (0 < bars_since_entry <= self.MRF_INVALIDATION_BARS):
+            return False
+
+        price_still_losing = (current_price - entry_price) * direction <= 0
+        if not price_still_losing:
+            return False
+
+        rsi_series = self._rsi_series_closed(self.MRF_RSI_WINDOW)
+        if rsi_series is None or entry_index >= len(rsi_series):
+            return False
+        rsi_since_entry = rsi_series.iloc[entry_index:]
+        if rsi_since_entry.isnull().any():
+            return False
+
+        rsi_now = float(rsi_since_entry.iloc[-1])
+        rsi_at_entry = float(rsi_since_entry.iloc[0])
+        if direction > 0:
+            return rsi_now <= rsi_since_entry.min() + 1e-9 and rsi_now < rsi_at_entry
+        return rsi_now >= rsi_since_entry.max() - 1e-9 and rsi_now > rsi_at_entry
+
+    def mean_reversion_fade_trailing_analytics(self, current_price: float) -> None:
+        """
+        Conservative exit for mean_reversion_fade bots. Works for both long
+        and short futures positions via the direction multiplier.
+
+        - stop_loss: ATR-based emergency stop (pinned once, like
+          bb_extreme), but tightened early — never widened — if
+          `_mean_reversion_fade_invalidated` fires: cut a "roughly
+          cancels out" trade into a cleanly smaller loss instead of riding
+          it to the full ATR stop or the max holding period.
+        - trailing_profit / trailing_deviation: BB-derived per tick, same
+          formulas as `build_bb_metrics` — this is what actually enforces
+          the validated take-profit target (reversion to the mid-band);
+          without it the strategy would have a stop-loss but no working
+          take-profit in production.
+        """
+        original_bot = deepcopy(self.active_bot)
+        market_type = getattr(
+            self.active_bot.market_type, "value", self.active_bot.market_type
+        )
+        position = getattr(self.active_bot.position, "value", self.active_bot.position)
+        position_value = str(position).lower()
+        if (
+            str(market_type).lower() != MarketType.FUTURES.value.lower()
+            or position_value
+            not in {Position.long.value.lower(), Position.short.value.lower()}
+            or self.active_bot.deal.opening_price <= 0
+        ):
+            return
+
+        direction = self._direction_multiplier()
+
+        # ─────────────────────────────
+        # ATR-based stop loss (emergency only; pinned once, then only
+        # tightened — matching the conservative posture: a tighter ceiling
+        # than the shared MAX_STOP_LOSS used by other dynamic-trailing algos.
+        # ─────────────────────────────
+        existing_stop_loss = self.active_bot.stop_loss
+        if existing_stop_loss > 0:
+            stop_loss = clamp(
+                existing_stop_loss, self.MRF_MIN_STOP_LOSS, self.MRF_MAX_STOP_LOSS
+            )
+        else:
+            atr_pct = self._atr_pct(current_price)
+            stop_loss = (
+                self.MRF_MAX_STOP_LOSS
+                if atr_pct is None
+                else clamp(
+                    self.MRF_ATR_SL_MULTIPLIER * atr_pct,
+                    self.MRF_MIN_STOP_LOSS,
+                    self.MRF_MAX_STOP_LOSS,
+                )
+            )
+
+        # ─────────────────────────────
+        # RSI thesis-invalidation: tighten early, never widen.
+        # ─────────────────────────────
+        if self._mean_reversion_fade_invalidated(current_price, direction):
+            entry_price = self.active_bot.deal.opening_price
+            adverse_move_pct = (
+                ((entry_price - current_price) / entry_price) * 100 * direction
+            )
+            early_stop_loss = clamp(
+                max(adverse_move_pct, self.MRF_MIN_STOP_LOSS),
+                self.MRF_MIN_STOP_LOSS,
+                stop_loss,
+            )
+            if early_stop_loss < stop_loss:
+                stop_loss = early_stop_loss
+                self.active_bot.add_log(
+                    "[mean_reversion_fade] thesis invalidation: RSI resumed "
+                    "moving against the position within the first "
+                    f"{self.MRF_INVALIDATION_BARS} bars; tightening stop_loss "
+                    f"to {stop_loss:.2f}% for an early, smaller exit."
+                )
+
+        # ─────────────────────────────
+        # BB-derived take-profit / trailing (re-derived each tick,
+        # direction-agnostic) — required so the mid-band reversion target
+        # is actually enforced, not just described.
+        # ─────────────────────────────
+        bb_metrics = self.build_bb_metrics()
+        if bb_metrics:
+            top_spread, bottom_spread = bb_metrics
+            trailing_profit = clamp(
+                top_spread, self.MIN_TRAILING_PROFIT, self.MAX_TRAILING_PROFIT
+            )
+            trailing_deviation = clamp(
+                bottom_spread,
+                self.MIN_TRAILING_DEVIATION,
+                self.MAX_TRAILING_DEVIATION,
+            )
+            max_deviation = min(
+                self.MAX_TRAILING_DEVIATION, trailing_profit - self.MIN_TRAIL_GAP
+            )
+            trailing_deviation = clamp(
+                trailing_deviation, self.MIN_TRAILING_DEVIATION, max_deviation
+            )
+        else:
+            trailing_profit = (
+                self.active_bot.trailing_profit
+                if self.active_bot.trailing_profit > 0
+                else 2.3
+            )
+            trailing_deviation = (
+                self.active_bot.trailing_deviation
+                if self.active_bot.trailing_deviation > 0
+                else 1.63
+            )
+
+        self.active_bot.stop_loss = round_numbers(stop_loss, 2)
+        self.active_bot.trailing_profit = round_numbers(trailing_profit, 2)
+        self.active_bot.trailing_deviation = round_numbers(trailing_deviation, 2)
+
+        if (
+            self.active_bot.stop_loss != original_bot.stop_loss
+            or self.active_bot.trailing_profit != original_bot.trailing_profit
+            or self.active_bot.trailing_deviation != original_bot.trailing_deviation
+        ):
+            self.active_bot = self.update_parameters()
+            self.controller.save(data=self.active_bot)
+
     def market_trailing_analytics(
         self,
         current_price: float,
@@ -482,6 +709,8 @@ class PositionMarket(KucoinPositionDeal):
         # SL instead of the BB-derived path below.
         if self.active_bot.name == self.BB_EXTREME_REVERSION_ALGO:
             return self.bb_extreme_reversion_trailing_analytics(current_price)
+        if self.active_bot.name == self.MEAN_REVERSION_FADE_ALGO:
+            return self.mean_reversion_fade_trailing_analytics(current_price)
 
         original_bot = deepcopy(self.active_bot)
         if (

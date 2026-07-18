@@ -53,6 +53,7 @@ export const AutotradePage: FC<{}> = () => {
       trailing: settings.trailing,
       trailing_deviation: settings.trailing_deviation,
       trailing_profit: settings.trailing_profit,
+      telegram_signals: settings.telegram_signals,
       autoswitch: settings.autoswitch,
       exchange_id: settings.exchange_id,
       grid_allocation_pct: settings.grid_allocation_pct,
@@ -76,7 +77,7 @@ export const AutotradePage: FC<{}> = () => {
   };
 
   const saveSettings = async (formData) => {
-    await updateSettings(formData).unwrap();
+    await updateSettings({ ...settings, ...formData }).unwrap();
   };
 
   useEffect(() => {
@@ -110,6 +111,7 @@ export const AutotradePage: FC<{}> = () => {
         trailing: settings.trailing,
         trailing_deviation: settings.trailing_deviation,
         trailing_profit: settings.trailing_profit,
+        telegram_signals: settings.telegram_signals,
         autoswitch: settings.autoswitch,
         exchange_id: settings.exchange_id,
         grid_allocation_pct: settings.grid_allocation_pct,
