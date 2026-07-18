@@ -1,7 +1,7 @@
 from unittest.mock import patch
 from fastapi.testclient import TestClient
 from pytest import fixture, raises
-from pybinbot import ExchangeId, GridLadderStatus, MarketType
+from pybinbot import ExchangeId, GridLadderStatus, MarketType, Status
 from sqlmodel import Session, select
 from sqlalchemy.exc import IntegrityError
 from tests.fixtures.mock_bot_table import (
@@ -13,6 +13,7 @@ from tests.fixtures.mock_bot_table import (
 )
 from api.databases.crud.grid_ladder_crud import GridLadderCrud
 from api.databases.tables.bot_table import BotTable
+from api.databases.tables.deal_table import DealTable
 from api.databases.tables.grid_ladder_table import GridLadderTable
 from api.databases.tables.recovery_bot_table import RecoveryBotTable
 from uuid import UUID, uuid4
@@ -103,6 +104,44 @@ def test_get_bots(client: TestClient):
     # Check first bot has expected fields
     assert "pair" in content["data"][0]
     assert "fiat" in content["data"][0]
+
+
+def test_get_bots_lists_active_bots_before_newer_inactive_bots(
+    client: TestClient, create_test_tables
+):
+    active_id = uuid4()
+    inactive_id = uuid4()
+    with Session(create_test_tables) as session:
+        session.add(
+            BotTable(
+                id=active_id,
+                pair="VISIBLEACTIVEUSDC",
+                fiat="USDC",
+                quote_asset="USDC",
+                status=Status.active,
+                created_at=1000,
+                deal=DealTable(),
+            )
+        )
+        session.add(
+            BotTable(
+                id=inactive_id,
+                pair="NEWERINACTIVEUSDC",
+                fiat="USDC",
+                quote_asset="USDC",
+                status=Status.inactive,
+                created_at=2000,
+                deal=DealTable(),
+            )
+        )
+        session.commit()
+
+    response = client.get("/bot", params={"limit": 2})
+
+    assert response.status_code == 200
+    pairs = [bot["pair"] for bot in response.json()["data"]]
+    assert "VISIBLEACTIVEUSDC" in pairs
+    assert "NEWERINACTIVEUSDC" not in pairs
 
 
 def test_get_bots_filter_by_name(client: TestClient):
