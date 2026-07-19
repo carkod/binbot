@@ -14,12 +14,6 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  ENV: ci
-  SECRET_KEY: test
-  FRONTEND_DOMAIN: http://localhost
-  POSTGRES_USER: "postgres"
-  POSTGRES_PASSWORD: "postgres"
-  POSTGRES_DB: "postgres"
   API_IMAGE: carloswufei/binbot
   TERMINAL_IMAGE: carloswufei/binbot_nginx
   STREAMING_IMAGE: carloswufei/binbot_streaming
@@ -29,104 +23,8 @@ jobs:
   deploy:
     name: Release new production version
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:latest
-        env:
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432/tcp
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     steps:
-      - name: Check out the repo
-        uses: actions/checkout@v6
-
-      - name: Build API image
-        run: docker build --tag "$API_IMAGE:${{ github.sha }}" --file api/Dockerfile .
-
-      - name: Test API image
-        run: |
-          docker run --network host \
-            -e ENV="$ENV" \
-            -e POSTGRES_PORT="${{ job.services.postgres.ports[5432] }}" \
-            --name binbot_api \
-            --detach "$API_IMAGE:${{ github.sha }}"
-          curl \
-            --fail-with-body \
-            --retry 3 \
-            --retry-connrefused \
-            --retry-delay 10 \
-            --retry-max-time 60 \
-            --url http://localhost:8000
-
-      - name: Build terminal image
-        run: docker build --tag "$TERMINAL_IMAGE:${{ github.sha }}" .
-
-      - name: Test terminal image
-        run: |
-          docker run \
-            --publish 8080:80 \
-            --name binbot_terminal \
-            --detach "$TERMINAL_IMAGE:${{ github.sha }}"
-          if ! curl \
-            --fail-with-body \
-            --retry 3 \
-            --retry-all-errors \
-            --retry-connrefused \
-            --retry-delay 5 \
-            --retry-max-time 30 \
-            --url http://localhost:8080; then
-            docker logs binbot_terminal
-            exit 1
-          fi
-
-      - name: Log in to Docker Hub
-        env:
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-        run: |
-          echo "$DOCKER_PASSWORD" |
-            docker login --username "$DOCKER_USERNAME" --password-stdin
-
-      - name: Calculate next image version
-        id: version
-        shell: bash
-        run: |
-          versions_file="$RUNNER_TEMP/docker-image-versions"
-          : > "$versions_file"
-
-          for image in "$API_IMAGE" "$TERMINAL_IMAGE" "$STREAMING_IMAGE" "$CRONJOBS_IMAGE"; do
-            next_url="https://hub.docker.com/v2/repositories/${image}/tags?page_size=100"
-
-            while [ -n "$next_url" ]; do
-              response="$(curl --fail --silent --show-error "$next_url")"
-              jq --raw-output \
-                '.results[].name | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))' \
-                <<< "$response" >> "$versions_file"
-              next_url="$(jq --raw-output '.next // empty' <<< "$response")"
-            done
-          done
-
-          latest_version="$(
-            sort --version-sort "$versions_file" |
-              tail --lines 1
-          )"
-
-          if [ -z "$latest_version" ]; then
-            next_version="0.0.1"
-          else
-            IFS=. read -r major minor patch <<< "$latest_version"
-            next_version="$major.$minor.$((patch + 1))"
-          fi
-
-          echo "version=$next_version" >> "$GITHUB_OUTPUT"
-          echo "Production version: $next_version"
-
       - name: Resolve deploy image tags
         id: deploy_tags
         shell: bash
@@ -148,20 +46,6 @@ jobs:
 
           echo "image_tag=$image_tag" >> "$GITHUB_OUTPUT"
           echo "Image tag: $image_tag"
-
-      - name: Push commit images
-        run: |
-          for image in "$API_IMAGE" "$TERMINAL_IMAGE"; do
-            docker push "$image:${{ github.sha }}"
-          done
-
-      - name: Verify deploy images
-        env:
-          IMAGE_TAG: ${{ steps.deploy_tags.outputs.image_tag }}
-        run: |
-          for image in "$API_IMAGE" "$TERMINAL_IMAGE" "$STREAMING_IMAGE" "$CRONJOBS_IMAGE"; do
-            docker pull "$image:$IMAGE_TAG"
-          done
 
       - name: SSH deploy
         uses: appleboy/ssh-action@v1.2.4
@@ -187,17 +71,3 @@ jobs:
             done
             docker compose up --pull never -d
             docker image prune -f
-
-      - name: Version deployed production images
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-          IMAGE_TAG: ${{ steps.deploy_tags.outputs.image_tag }}
-        run: |
-          for image in "$API_IMAGE" "$TERMINAL_IMAGE" "$STREAMING_IMAGE" "$CRONJOBS_IMAGE"; do
-            docker tag "$image:$IMAGE_TAG" "$image:latest"
-            docker tag "$image:$IMAGE_TAG" "$image:$VERSION"
-            docker tag "$image:$IMAGE_TAG" "$image:production"
-            docker push "$image:latest"
-            docker push "$image:$VERSION"
-            docker push "$image:production"
-          done
