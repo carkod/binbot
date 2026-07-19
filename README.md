@@ -40,10 +40,27 @@ This should create and set up the Postgres database.
 3. Attach vscode debugger if needed
 
 ### Front-end tooling
+
 - `npm run build` to test a production bundle locally
 - `npm run test` to run unit tests
 - `npm run format` to prettier format files, although this should be set up with the vscode prettier plugin
 
+## Production deployment
+
+Trigger manually the Github action `prod-deploy.yml`.
+Each repo has its own, so cronjob, streaming and api is deployed using this Github action, binquant and the other repos should have their own independent deployment pipeline.
+
+## API DB updates using Alembic
+
+Use the `Makefile` to generate alembic migration scripts
+
+### To remove a previously created migration
+
+```
+alembic stamp 113eb73ebba8
+```
+
+where 113eb73ebba8 is the supposed last "good" migration that you want to revert to.
 
 ## Manual Deployment
 
@@ -58,51 +75,11 @@ This should create and set up the Postgres database.
 
 ### Additional steps
 
-If docker-compose doesn't exist: 3. Copy `scp docker-compose.yml <USERNAME>@<SERVER_IP>:/var/www/binbot.carloswu.com`
-4. Modify details to match production needs
+If docker-compose doesn't exist: 3. Copy `scp docker-compose.yml <USERNAME>@<SERVER_IP>:/var/www/binbot.carloswu.com` 4. Modify details to match production needs
 
 or `docker build --tag binbot . && docker tag binbot carloswufei/binbot:latest && docker push carloswufei/binbot`
 
-In production: 
-5. `docker compose up --pull always -d` 
-6. If `.env.prod` is modified, scp to remote server and replace `.env` in production with new `.env.prod`
-
-## Test production
-
-1. Run `docker build --tag binbot .`
-2. Run `docker-compose up`
-
-If issues are encountered downloading prod DB to local
-
-1. Dump database from the source Postgres instance.
-2. Restore it into your local Postgres instance.
-
-
-## API DB updates using Alembic
-Everytime the application runs, it will `alembic upgrade head`. To rollback changes use `alembic downgrade -1`.
-
-If files have been modified in the models and no new revisions were created, the Alembic Github action check should fail. In which case, an upgrade and new revision is required.
-
-```
-alembic revision --autogenerate -m "alter commisions column to support Big integers"
-```
-
-> If you don't want to populate, remove the `--autogenerate`
-> so you can write it yourself or ask AI to write it for you
-
-Write the commands in the newly generated file and rerun FastAPI.
-
-You can now also use make migrate <message>.
-
-### To remove a previously created migration
-
-```
-alembic stamp 113eb73ebba8
-```
-
-where 113eb73ebba8 is the supposed last "good" migration that you want to revert to.
-
-## 
+In production: 5. `docker compose up --pull always -d` 6. If `.env.prod` is modified, scp to remote server and replace `.env` in production with new `.env.prod`
 
 ## Detailed documentation
 

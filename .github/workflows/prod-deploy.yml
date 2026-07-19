@@ -3,8 +3,23 @@ name: Deploy to Production
 on:
   workflow_dispatch:
     inputs:
-      rollback_tag:
-        description: Leave blank for a new release, or enter a tag such as 0.0.1 to roll back
+      api_image_tag:
+        description: API image tag to deploy. Leave blank for latest
+        required: false
+        default: ""
+        type: string
+      terminal_image_tag:
+        description: Terminal image tag to deploy. Leave blank for latest
+        required: false
+        default: ""
+        type: string
+      streaming_image_tag:
+        description: Streaming image tag to deploy. Leave blank for latest
+        required: false
+        default: ""
+        type: string
+      cronjobs_image_tag:
+        description: Cronjobs image tag to deploy. Leave blank for latest
         required: false
         default: ""
         type: string
@@ -22,11 +37,12 @@ env:
   POSTGRES_DB: "postgres"
   API_IMAGE: carloswufei/binbot
   TERMINAL_IMAGE: carloswufei/binbot_nginx
+  STREAMING_IMAGE: carloswufei/binbot_streaming
+  CRONJOBS_IMAGE: carloswufei/binbot_cronjobs
 
 jobs:
   deploy:
     name: Release new production version
-    if: ${{ inputs.rollback_tag == '' }}
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -95,7 +111,7 @@ jobs:
           versions_file="$RUNNER_TEMP/docker-image-versions"
           : > "$versions_file"
 
-          for image in "$API_IMAGE" "$TERMINAL_IMAGE"; do
+          for image in "$API_IMAGE" "$TERMINAL_IMAGE" "$STREAMING_IMAGE" "$CRONJOBS_IMAGE"; do
             next_url="https://hub.docker.com/v2/repositories/${image}/tags?page_size=100"
 
             while [ -n "$next_url" ]; do
@@ -122,96 +138,117 @@ jobs:
           echo "version=$next_version" >> "$GITHUB_OUTPUT"
           echo "Production version: $next_version"
 
+      - name: Resolve deploy image tags
+        id: deploy_tags
+        shell: bash
+        env:
+          API_IMAGE_TAG: ${{ inputs.api_image_tag }}
+          TERMINAL_IMAGE_TAG: ${{ inputs.terminal_image_tag }}
+          STREAMING_IMAGE_TAG: ${{ inputs.streaming_image_tag }}
+          CRONJOBS_IMAGE_TAG: ${{ inputs.cronjobs_image_tag }}
+        run: |
+          normalize_image_tag() {
+            local image_tag
+            image_tag="$(printf '%s' "$1" | xargs)"
+
+            if [ -z "$image_tag" ]; then
+              image_tag="latest"
+            fi
+
+            printf '%s\n' "$image_tag"
+          }
+
+          api_image_tag="$(normalize_image_tag "$API_IMAGE_TAG")"
+          terminal_image_tag="$(normalize_image_tag "$TERMINAL_IMAGE_TAG")"
+          streaming_image_tag="$(normalize_image_tag "$STREAMING_IMAGE_TAG")"
+          cronjobs_image_tag="$(normalize_image_tag "$CRONJOBS_IMAGE_TAG")"
+
+          echo "api_image_tag=$api_image_tag" >> "$GITHUB_OUTPUT"
+          echo "terminal_image_tag=$terminal_image_tag" >> "$GITHUB_OUTPUT"
+          echo "streaming_image_tag=$streaming_image_tag" >> "$GITHUB_OUTPUT"
+          echo "cronjobs_image_tag=$cronjobs_image_tag" >> "$GITHUB_OUTPUT"
+          echo "API image tag: $api_image_tag"
+          echo "Terminal image tag: $terminal_image_tag"
+          echo "Streaming image tag: $streaming_image_tag"
+          echo "Cronjobs image tag: $cronjobs_image_tag"
+
       - name: Push commit images
         run: |
           for image in "$API_IMAGE" "$TERMINAL_IMAGE"; do
             docker push "$image:${{ github.sha }}"
           done
 
+      - name: Verify deploy images
+        env:
+          API_IMAGE_TAG: ${{ steps.deploy_tags.outputs.api_image_tag }}
+          TERMINAL_IMAGE_TAG: ${{ steps.deploy_tags.outputs.terminal_image_tag }}
+          STREAMING_IMAGE_TAG: ${{ steps.deploy_tags.outputs.streaming_image_tag }}
+          CRONJOBS_IMAGE_TAG: ${{ steps.deploy_tags.outputs.cronjobs_image_tag }}
+        run: |
+          docker pull "$API_IMAGE:$API_IMAGE_TAG"
+          docker pull "$TERMINAL_IMAGE:$TERMINAL_IMAGE_TAG"
+          docker pull "$STREAMING_IMAGE:$STREAMING_IMAGE_TAG"
+          docker pull "$CRONJOBS_IMAGE:$CRONJOBS_IMAGE_TAG"
+
       - name: SSH deploy
         uses: appleboy/ssh-action@v1.2.4
+        env:
+          API_IMAGE_TAG: ${{ steps.deploy_tags.outputs.api_image_tag }}
+          TERMINAL_IMAGE_TAG: ${{ steps.deploy_tags.outputs.terminal_image_tag }}
+          STREAMING_IMAGE_TAG: ${{ steps.deploy_tags.outputs.streaming_image_tag }}
+          CRONJOBS_IMAGE_TAG: ${{ steps.deploy_tags.outputs.cronjobs_image_tag }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASSWORD }}
+          envs: API_IMAGE_TAG,TERMINAL_IMAGE_TAG,STREAMING_IMAGE_TAG,CRONJOBS_IMAGE_TAG
           script: |
             set -e
             cd /var/www/terminal.binbot.in
             echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-            docker pull carloswufei/binbot:${{ github.sha }}
-            docker pull carloswufei/binbot_nginx:${{ github.sha }}
-            docker tag carloswufei/binbot:${{ github.sha }} carloswufei/binbot:latest
-            docker tag carloswufei/binbot_nginx:${{ github.sha }} carloswufei/binbot_nginx:latest
+            docker pull carloswufei/binbot:$API_IMAGE_TAG
+            docker pull carloswufei/binbot_nginx:$TERMINAL_IMAGE_TAG
+            docker pull carloswufei/binbot_streaming:$STREAMING_IMAGE_TAG
+            docker pull carloswufei/binbot_cronjobs:$CRONJOBS_IMAGE_TAG
+            docker tag carloswufei/binbot:$API_IMAGE_TAG carloswufei/binbot:latest
+            docker tag carloswufei/binbot_nginx:$TERMINAL_IMAGE_TAG carloswufei/binbot_nginx:latest
+            docker tag carloswufei/binbot_streaming:$STREAMING_IMAGE_TAG carloswufei/binbot_streaming:latest
+            docker tag carloswufei/binbot_cronjobs:$CRONJOBS_IMAGE_TAG carloswufei/binbot_cronjobs:latest
             docker compose up --pull never -d
             docker image prune -f
 
       - name: Version deployed production images
         env:
           VERSION: ${{ steps.version.outputs.version }}
+          API_IMAGE_TAG: ${{ steps.deploy_tags.outputs.api_image_tag }}
+          TERMINAL_IMAGE_TAG: ${{ steps.deploy_tags.outputs.terminal_image_tag }}
+          STREAMING_IMAGE_TAG: ${{ steps.deploy_tags.outputs.streaming_image_tag }}
+          CRONJOBS_IMAGE_TAG: ${{ steps.deploy_tags.outputs.cronjobs_image_tag }}
         run: |
-          for image in "$API_IMAGE" "$TERMINAL_IMAGE"; do
-            docker tag "$image:${{ github.sha }}" "$image:latest"
-            docker tag "$image:${{ github.sha }}" "$image:$VERSION"
-            docker tag "$image:${{ github.sha }}" "$image:production"
-            docker push "$image:latest"
-            docker push "$image:$VERSION"
-            docker push "$image:production"
-          done
+          docker tag "$API_IMAGE:$API_IMAGE_TAG" "$API_IMAGE:latest"
+          docker tag "$API_IMAGE:$API_IMAGE_TAG" "$API_IMAGE:$VERSION"
+          docker tag "$API_IMAGE:$API_IMAGE_TAG" "$API_IMAGE:production"
+          docker push "$API_IMAGE:latest"
+          docker push "$API_IMAGE:$VERSION"
+          docker push "$API_IMAGE:production"
 
-  rollback:
-    name: Roll back production
-    if: ${{ inputs.rollback_tag != '' }}
-    runs-on: ubuntu-latest
-    env:
-      ROLLBACK_TAG: ${{ inputs.rollback_tag }}
+          docker tag "$TERMINAL_IMAGE:$TERMINAL_IMAGE_TAG" "$TERMINAL_IMAGE:latest"
+          docker tag "$TERMINAL_IMAGE:$TERMINAL_IMAGE_TAG" "$TERMINAL_IMAGE:$VERSION"
+          docker tag "$TERMINAL_IMAGE:$TERMINAL_IMAGE_TAG" "$TERMINAL_IMAGE:production"
+          docker push "$TERMINAL_IMAGE:latest"
+          docker push "$TERMINAL_IMAGE:$VERSION"
+          docker push "$TERMINAL_IMAGE:production"
 
-    steps:
-      - name: Validate rollback tag
-        shell: bash
-        run: |
-          if [[ ! "$ROLLBACK_TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Rollback tag must be a semantic version such as 0.0.1"
-            exit 1
-          fi
+          docker tag "$STREAMING_IMAGE:$STREAMING_IMAGE_TAG" "$STREAMING_IMAGE:latest"
+          docker tag "$STREAMING_IMAGE:$STREAMING_IMAGE_TAG" "$STREAMING_IMAGE:$VERSION"
+          docker tag "$STREAMING_IMAGE:$STREAMING_IMAGE_TAG" "$STREAMING_IMAGE:production"
+          docker push "$STREAMING_IMAGE:latest"
+          docker push "$STREAMING_IMAGE:$VERSION"
+          docker push "$STREAMING_IMAGE:production"
 
-      - name: Log in to Docker Hub
-        env:
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-        run: |
-          echo "$DOCKER_PASSWORD" |
-            docker login --username "$DOCKER_USERNAME" --password-stdin
-
-      - name: Verify rollback images
-        run: |
-          docker pull "$API_IMAGE:$ROLLBACK_TAG"
-          docker pull "$TERMINAL_IMAGE:$ROLLBACK_TAG"
-
-      - name: SSH rollback
-        uses: appleboy/ssh-action@v1.2.4
-        env:
-          ROLLBACK_TAG: ${{ inputs.rollback_tag }}
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          password: ${{ secrets.SSH_PASSWORD }}
-          envs: ROLLBACK_TAG
-          script: |
-            set -e
-            cd /var/www/terminal.binbot.in
-            echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-            docker pull carloswufei/binbot:$ROLLBACK_TAG
-            docker pull carloswufei/binbot_nginx:$ROLLBACK_TAG
-            docker tag carloswufei/binbot:$ROLLBACK_TAG carloswufei/binbot:latest
-            docker tag carloswufei/binbot_nginx:$ROLLBACK_TAG carloswufei/binbot_nginx:latest
-            docker compose up --pull never -d
-            docker image prune -f
-
-      - name: Update production image markers
-        run: |
-          for image in "$API_IMAGE" "$TERMINAL_IMAGE"; do
-            docker tag "$image:$ROLLBACK_TAG" "$image:latest"
-            docker tag "$image:$ROLLBACK_TAG" "$image:production"
-            docker push "$image:latest"
-            docker push "$image:production"
-          done
+          docker tag "$CRONJOBS_IMAGE:$CRONJOBS_IMAGE_TAG" "$CRONJOBS_IMAGE:latest"
+          docker tag "$CRONJOBS_IMAGE:$CRONJOBS_IMAGE_TAG" "$CRONJOBS_IMAGE:$VERSION"
+          docker tag "$CRONJOBS_IMAGE:$CRONJOBS_IMAGE_TAG" "$CRONJOBS_IMAGE:production"
+          docker push "$CRONJOBS_IMAGE:latest"
+          docker push "$CRONJOBS_IMAGE:$VERSION"
+          docker push "$CRONJOBS_IMAGE:production"
