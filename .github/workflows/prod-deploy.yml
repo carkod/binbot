@@ -3,23 +3,8 @@ name: Deploy to Production
 on:
   workflow_dispatch:
     inputs:
-      api_image_tag:
-        description: API image tag to deploy. Leave blank for latest
-        required: false
-        default: ""
-        type: string
-      terminal_image_tag:
-        description: Terminal image tag to deploy. Leave blank for latest
-        required: false
-        default: ""
-        type: string
-      streaming_image_tag:
-        description: Streaming image tag to deploy. Leave blank for latest
-        required: false
-        default: ""
-        type: string
-      cronjobs_image_tag:
-        description: Cronjobs image tag to deploy. Leave blank for latest
+      image_tag:
+        description: "Image tag to deploy, default: latest"
         required: false
         default: ""
         type: string
@@ -142,10 +127,7 @@ jobs:
         id: deploy_tags
         shell: bash
         env:
-          API_IMAGE_TAG: ${{ inputs.api_image_tag }}
-          TERMINAL_IMAGE_TAG: ${{ inputs.terminal_image_tag }}
-          STREAMING_IMAGE_TAG: ${{ inputs.streaming_image_tag }}
-          CRONJOBS_IMAGE_TAG: ${{ inputs.cronjobs_image_tag }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
         run: |
           normalize_image_tag() {
             local image_tag
@@ -158,19 +140,10 @@ jobs:
             printf '%s\n' "$image_tag"
           }
 
-          api_image_tag="$(normalize_image_tag "$API_IMAGE_TAG")"
-          terminal_image_tag="$(normalize_image_tag "$TERMINAL_IMAGE_TAG")"
-          streaming_image_tag="$(normalize_image_tag "$STREAMING_IMAGE_TAG")"
-          cronjobs_image_tag="$(normalize_image_tag "$CRONJOBS_IMAGE_TAG")"
+          image_tag="$(normalize_image_tag "$IMAGE_TAG")"
 
-          echo "api_image_tag=$api_image_tag" >> "$GITHUB_OUTPUT"
-          echo "terminal_image_tag=$terminal_image_tag" >> "$GITHUB_OUTPUT"
-          echo "streaming_image_tag=$streaming_image_tag" >> "$GITHUB_OUTPUT"
-          echo "cronjobs_image_tag=$cronjobs_image_tag" >> "$GITHUB_OUTPUT"
-          echo "API image tag: $api_image_tag"
-          echo "Terminal image tag: $terminal_image_tag"
-          echo "Streaming image tag: $streaming_image_tag"
-          echo "Cronjobs image tag: $cronjobs_image_tag"
+          echo "image_tag=$image_tag" >> "$GITHUB_OUTPUT"
+          echo "Image tag: $image_tag"
 
       - name: Push commit images
         run: |
@@ -180,75 +153,47 @@ jobs:
 
       - name: Verify deploy images
         env:
-          API_IMAGE_TAG: ${{ steps.deploy_tags.outputs.api_image_tag }}
-          TERMINAL_IMAGE_TAG: ${{ steps.deploy_tags.outputs.terminal_image_tag }}
-          STREAMING_IMAGE_TAG: ${{ steps.deploy_tags.outputs.streaming_image_tag }}
-          CRONJOBS_IMAGE_TAG: ${{ steps.deploy_tags.outputs.cronjobs_image_tag }}
+          IMAGE_TAG: ${{ steps.deploy_tags.outputs.image_tag }}
         run: |
-          docker pull "$API_IMAGE:$API_IMAGE_TAG"
-          docker pull "$TERMINAL_IMAGE:$TERMINAL_IMAGE_TAG"
-          docker pull "$STREAMING_IMAGE:$STREAMING_IMAGE_TAG"
-          docker pull "$CRONJOBS_IMAGE:$CRONJOBS_IMAGE_TAG"
+          for image in "$API_IMAGE" "$TERMINAL_IMAGE" "$STREAMING_IMAGE" "$CRONJOBS_IMAGE"; do
+            docker pull "$image:$IMAGE_TAG"
+          done
 
       - name: SSH deploy
         uses: appleboy/ssh-action@v1.2.4
         env:
-          API_IMAGE_TAG: ${{ steps.deploy_tags.outputs.api_image_tag }}
-          TERMINAL_IMAGE_TAG: ${{ steps.deploy_tags.outputs.terminal_image_tag }}
-          STREAMING_IMAGE_TAG: ${{ steps.deploy_tags.outputs.streaming_image_tag }}
-          CRONJOBS_IMAGE_TAG: ${{ steps.deploy_tags.outputs.cronjobs_image_tag }}
+          IMAGE_TAG: ${{ steps.deploy_tags.outputs.image_tag }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASSWORD }}
-          envs: API_IMAGE_TAG,TERMINAL_IMAGE_TAG,STREAMING_IMAGE_TAG,CRONJOBS_IMAGE_TAG
+          envs: IMAGE_TAG
           script: |
             set -e
             cd /var/www/terminal.binbot.in
             echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-            docker pull carloswufei/binbot:$API_IMAGE_TAG
-            docker pull carloswufei/binbot_nginx:$TERMINAL_IMAGE_TAG
-            docker pull carloswufei/binbot_streaming:$STREAMING_IMAGE_TAG
-            docker pull carloswufei/binbot_cronjobs:$CRONJOBS_IMAGE_TAG
-            docker tag carloswufei/binbot:$API_IMAGE_TAG carloswufei/binbot:latest
-            docker tag carloswufei/binbot_nginx:$TERMINAL_IMAGE_TAG carloswufei/binbot_nginx:latest
-            docker tag carloswufei/binbot_streaming:$STREAMING_IMAGE_TAG carloswufei/binbot_streaming:latest
-            docker tag carloswufei/binbot_cronjobs:$CRONJOBS_IMAGE_TAG carloswufei/binbot_cronjobs:latest
+            for image in \
+              carloswufei/binbot \
+              carloswufei/binbot_nginx \
+              carloswufei/binbot_streaming \
+              carloswufei/binbot_cronjobs
+            do
+              docker pull "$image:$IMAGE_TAG"
+              docker tag "$image:$IMAGE_TAG" "$image:latest"
+            done
             docker compose up --pull never -d
             docker image prune -f
 
       - name: Version deployed production images
         env:
           VERSION: ${{ steps.version.outputs.version }}
-          API_IMAGE_TAG: ${{ steps.deploy_tags.outputs.api_image_tag }}
-          TERMINAL_IMAGE_TAG: ${{ steps.deploy_tags.outputs.terminal_image_tag }}
-          STREAMING_IMAGE_TAG: ${{ steps.deploy_tags.outputs.streaming_image_tag }}
-          CRONJOBS_IMAGE_TAG: ${{ steps.deploy_tags.outputs.cronjobs_image_tag }}
+          IMAGE_TAG: ${{ steps.deploy_tags.outputs.image_tag }}
         run: |
-          docker tag "$API_IMAGE:$API_IMAGE_TAG" "$API_IMAGE:latest"
-          docker tag "$API_IMAGE:$API_IMAGE_TAG" "$API_IMAGE:$VERSION"
-          docker tag "$API_IMAGE:$API_IMAGE_TAG" "$API_IMAGE:production"
-          docker push "$API_IMAGE:latest"
-          docker push "$API_IMAGE:$VERSION"
-          docker push "$API_IMAGE:production"
-
-          docker tag "$TERMINAL_IMAGE:$TERMINAL_IMAGE_TAG" "$TERMINAL_IMAGE:latest"
-          docker tag "$TERMINAL_IMAGE:$TERMINAL_IMAGE_TAG" "$TERMINAL_IMAGE:$VERSION"
-          docker tag "$TERMINAL_IMAGE:$TERMINAL_IMAGE_TAG" "$TERMINAL_IMAGE:production"
-          docker push "$TERMINAL_IMAGE:latest"
-          docker push "$TERMINAL_IMAGE:$VERSION"
-          docker push "$TERMINAL_IMAGE:production"
-
-          docker tag "$STREAMING_IMAGE:$STREAMING_IMAGE_TAG" "$STREAMING_IMAGE:latest"
-          docker tag "$STREAMING_IMAGE:$STREAMING_IMAGE_TAG" "$STREAMING_IMAGE:$VERSION"
-          docker tag "$STREAMING_IMAGE:$STREAMING_IMAGE_TAG" "$STREAMING_IMAGE:production"
-          docker push "$STREAMING_IMAGE:latest"
-          docker push "$STREAMING_IMAGE:$VERSION"
-          docker push "$STREAMING_IMAGE:production"
-
-          docker tag "$CRONJOBS_IMAGE:$CRONJOBS_IMAGE_TAG" "$CRONJOBS_IMAGE:latest"
-          docker tag "$CRONJOBS_IMAGE:$CRONJOBS_IMAGE_TAG" "$CRONJOBS_IMAGE:$VERSION"
-          docker tag "$CRONJOBS_IMAGE:$CRONJOBS_IMAGE_TAG" "$CRONJOBS_IMAGE:production"
-          docker push "$CRONJOBS_IMAGE:latest"
-          docker push "$CRONJOBS_IMAGE:$VERSION"
-          docker push "$CRONJOBS_IMAGE:production"
+          for image in "$API_IMAGE" "$TERMINAL_IMAGE" "$STREAMING_IMAGE" "$CRONJOBS_IMAGE"; do
+            docker tag "$image:$IMAGE_TAG" "$image:latest"
+            docker tag "$image:$IMAGE_TAG" "$image:$VERSION"
+            docker tag "$image:$IMAGE_TAG" "$image:production"
+            docker push "$image:latest"
+            docker push "$image:$VERSION"
+            docker push "$image:production"
+          done
