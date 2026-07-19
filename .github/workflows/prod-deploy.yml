@@ -73,13 +73,17 @@ jobs:
             --publish 8080:80 \
             --name binbot_terminal \
             --detach "$TERMINAL_IMAGE:${{ github.sha }}"
-          curl \
+          if ! curl \
             --fail-with-body \
             --retry 3 \
+            --retry-all-errors \
             --retry-connrefused \
             --retry-delay 5 \
             --retry-max-time 30 \
-            --url http://localhost:8080
+            --url http://localhost:8080; then
+            docker logs binbot_terminal
+            exit 1
+          fi
 
       - name: Log in to Docker Hub
         env:
