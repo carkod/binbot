@@ -77,7 +77,7 @@ class GridLadderLifecycle:
     # Price must stay outside the breakout zone for this many monitoring ticks
     # before a filled ladder closes (prevents wicks from exiting prematurely).
     # Each tick corresponds to one process_symbol() call, typically every ~15 m.
-    BREACH_CANDLES_REQUIRED = 3
+    BREACH_CANDLES_REQUIRED = 1
     UNFILLED_BREACH_CANDLES_REQUIRED = 1
 
     def __init__(self, base_streaming: BaseStreaming, session: Session):
