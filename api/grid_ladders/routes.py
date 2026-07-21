@@ -153,7 +153,7 @@ def _build_margin_sizer(
     )
 
 
-def _calculate_grid(payload: GridLadderCreate, session: Session) -> GridCalculation:
+def _calculate_grid_plan(payload: GridLadderCreate, session: Session):
     try:
         sizer = _build_margin_sizer(
             session,
@@ -161,12 +161,26 @@ def _calculate_grid(payload: GridLadderCreate, session: Session) -> GridCalculat
             payload.exchange,
             payload.market_type,
         )
+        grid_options = payload.context.get("grid_ladder", {})
+        if not isinstance(grid_options, dict):
+            grid_options = {}
+        disable_upper_band_short_entries = bool(
+            payload.context.get("disable_upper_band_short_entries")
+            or grid_options.get("disable_upper_band_short_entries")
+        )
+        min_entry_contracts = int(
+            payload.context.get("min_entry_contracts")
+            or grid_options.get("min_entry_contracts")
+            or 1
+        )
         calculated = calculate_grid_levels(
             range_low=payload.range_low,
             range_high=payload.range_high,
             level_count=payload.level_count,
             total_margin=payload.total_margin,
             sizer=sizer,
+            allowed_entry_sides=({"buy"} if disable_upper_band_short_entries else None),
+            min_entry_contracts=min_entry_contracts,
         )
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
@@ -176,6 +190,10 @@ def _calculate_grid(payload: GridLadderCreate, session: Session) -> GridCalculat
             raise HTTPException(status_code=429, detail=rate_limit_detail) from error
         raise
 
+    return calculated
+
+
+def _grid_calculation_response(calculated) -> GridCalculation:
     return GridCalculation(
         grid_step=calculated.grid_step,
         levels=[
@@ -190,6 +208,10 @@ def _calculate_grid(payload: GridLadderCreate, session: Session) -> GridCalculat
             for level in calculated.levels
         ],
     )
+
+
+def _calculate_grid(payload: GridLadderCreate, session: Session) -> GridCalculation:
+    return _grid_calculation_response(_calculate_grid_plan(payload, session))
 
 
 @grid_ladder_blueprint.post("/calculate", response_model=GridCalculationResponse)
@@ -256,7 +278,7 @@ def post_grid_ladder(
             raise HTTPException(status_code=429, detail=rate_limit_detail) from error
         raise
 
-    calculated = _calculate_grid(payload, session)
+    calculated = _calculate_grid_plan(payload, session)
 
     reserved_margin = sum(level.margin_required for level in calculated.levels)
     ladder = grid_ladder_crud.create(
@@ -289,6 +311,8 @@ def post_grid_ladder(
             for level in calculated.levels
         ],
     )
+    if calculated.logs:
+        grid_ladder_crud.update_logs(ladder.id, calculated.logs)
     created_ladder = grid_ladder_crud.get(ladder.id)
     if created_ladder is None:
         raise HTTPException(status_code=500, detail="Grid ladder was not created")
