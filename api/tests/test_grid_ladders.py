@@ -1,4 +1,5 @@
 from time import time
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from uuid import UUID, uuid4
 
@@ -27,6 +28,7 @@ from api.databases.tables.grid_ladder_table import (
     GridLevelTable,
     GridOrderTable,
 )
+from api.databases.tables.signals_table import SignalsTable
 from api.grid_ladders.calculations import calculate_grid_levels
 from api.grid_ladders.capital import GridCapitalSettings
 from api.grid_ladders.lifecycle import GridLadderLifecycle
@@ -106,12 +108,14 @@ def clean_grid_ladders(create_test_tables):
         session.exec(delete(GridOrderTable))
         session.exec(delete(GridLevelTable))
         session.exec(delete(GridLadderTable))
+        session.exec(delete(SignalsTable))
         session.commit()
     yield
     with Session(create_test_tables) as session:
         session.exec(delete(GridOrderTable))
         session.exec(delete(GridLevelTable))
         session.exec(delete(GridLadderTable))
+        session.exec(delete(SignalsTable))
         session.commit()
 
 
@@ -127,7 +131,7 @@ def _payload(symbol: str = "ADAUSDC", total_margin: float = 1000) -> dict:
         "total_margin": total_margin,
         "breakout_low": 85,
         "breakout_high": 115,
-        "context": {"note": "test grid"},
+        "context": {"note": "test grid", "market_regime": "RANGE"},
     }
 
 
@@ -880,6 +884,70 @@ def test_grid_lifecycle_rearms_level_after_take_profit_fill(
     assert rearmed_level["realized_pnl"] > 0
     assert detail["used_margin"] == 0
     assert detail["realized_pnl"] == rearmed_level["realized_pnl"]
+
+
+def test_grid_lifecycle_skips_rearm_when_latest_market_regime_not_grid_allowed(
+    client, monkeypatch, create_test_tables
+):
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+    created = client.post("/grid-ladders", json=_payload())
+    fake_api = FakeFuturesApi()
+
+    with Session(create_test_tables) as session:
+        lifecycle = GridLadderLifecycle(_grid_base(fake_api), session)
+        lifecycle.process_symbol("ADAUSDC")
+        ladder = GridLadderCrud(session).get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        entry_order = next(order for order in ladder.orders if order.side == "buy")
+        entry_level_id = str(entry_order.level_id)
+        fake_api.order_details[entry_order.exchange_order_id] = _order_details(
+            status=GetOrderByOrderIdResp.StatusEnum.DONE,
+            filled_size=entry_order.contracts,
+            avg_deal_price=entry_order.price,
+            price=entry_order.price,
+        )
+        lifecycle.process_symbol("ADAUSDC")
+        ladder = GridLadderCrud(session).get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        tp_order = next(
+            order for order in ladder.orders if order.order_role == "take_profit"
+        )
+        session.add(
+            SignalsTable(
+                algorithm_name="coinrule",
+                symbol="XBTUSDTM",
+                generated_at=datetime.now(UTC),
+                direction="buy",
+                current_regime="TREND_UP",
+                context={"market_regime": "TREND_UP"},
+            )
+        )
+        session.commit()
+        fake_api.order_details[tp_order.exchange_order_id] = _order_details(
+            status=GetOrderByOrderIdResp.StatusEnum.DONE,
+            filled_size=tp_order.contracts,
+            avg_deal_price=tp_order.price,
+            price=tp_order.price,
+        )
+        lifecycle.process_symbol("ADAUSDC")
+
+    detail = client.get(f"/grid-ladders/{created.json()['detail']['id']}").json()[
+        "detail"
+    ]
+    completed_level = next(
+        level for level in detail["levels"] if level["id"] == entry_level_id
+    )
+    assert completed_level["status"] == "completed"
+    assert completed_level["entry_order_id"] == entry_order.exchange_order_id
+    assert completed_level["realized_pnl"] > 0
+    assert detail["used_margin"] == 0
+    assert detail["realized_pnl"] == completed_level["realized_pnl"]
+    assert any(
+        "Skipped rearm level 0: market_regime TREND_UP is not one of RANGE, TRANSITIONAL"
+        in log
+        for log in detail["logs"]
+    )
 
 
 def test_grid_lifecycle_retries_rearm_after_insufficient_balance(

@@ -8,6 +8,7 @@ from api.databases.tables.grid_ladder_table import (
     GridLevelTable,
     GridOrderTable,
 )
+from api.databases.tables.signals_table import SignalsTable
 from api.databases.tables.symbol_table import SymbolTable
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
 from kucoin_universal_sdk.model.common import RestError
@@ -25,7 +26,7 @@ from api.grid_ladders.sizing import round_price_to_precision
 from kucoin_universal_sdk.generate.futures.order.model_get_order_by_order_id_resp import (
     GetOrderByOrderIdResp,
 )
-from sqlmodel import Session
+from sqlmodel import Session, col, select
 from streaming.base import BaseStreaming
 
 
@@ -48,6 +49,7 @@ NON_TERMINAL_EXCHANGE_ORDER_STATUSES = {
 _STALE_LADDER_AGE_MS = int(1.5 * 24 * 60 * 60 * 1000)
 _STALE_LADDER_PNL_PCT_LOW = -1.0
 _STALE_LADDER_PNL_PCT_HIGH = 1.0
+GRID_REARM_MARKET_REGIMES = frozenset({"RANGE", "TRANSITIONAL"})
 
 
 def _coerce_breach_ts(value: object) -> int | None:
@@ -728,6 +730,19 @@ class GridLadderLifecycle:
     ) -> bool:
         """Arm a level's entry order if there's enough available balance to
         cover its margin, otherwise log and leave it for a later retry."""
+        market_regime = self._current_market_regime(ladder)
+        if market_regime not in GRID_REARM_MARKET_REGIMES:
+            regime_label = market_regime or "UNAVAILABLE"
+            allowed = ", ".join(sorted(GRID_REARM_MARKET_REGIMES))
+            self.crud.update_logs(
+                ladder.id,
+                (
+                    f"Skipped rearm level {level.level_index}: market_regime "
+                    f"{regime_label} is not one of {allowed}"
+                ),
+            )
+            return False
+
         if not self._has_sufficient_balance(level):
             self.crud.update_logs(
                 ladder.id,
@@ -742,6 +757,22 @@ class GridLadderLifecycle:
 
         self._arm_level_entry(ladder, symbol_row, price_precision, level)
         return True
+
+    def _current_market_regime(self, ladder: GridLadderTable) -> str | None:
+        latest_signal = self.session.exec(
+            select(SignalsTable)
+            .where(col(SignalsTable.current_regime).is_not(None))
+            .order_by(col(SignalsTable.generated_at).desc())
+            .limit(1)
+        ).first()
+        if latest_signal is not None and latest_signal.current_regime:
+            return str(latest_signal.current_regime).upper()
+
+        context = ladder.context if isinstance(ladder.context, dict) else {}
+        context_regime = context.get("market_regime")
+        if context_regime is None:
+            return None
+        return str(context_regime).upper()
 
     def _retry_pending_rearms(self, ladder: GridLadderTable) -> None:
         """Pick up levels that finished a round trip but couldn't be
