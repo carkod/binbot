@@ -1,4 +1,5 @@
 from time import time
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from uuid import UUID, uuid4
 
@@ -27,6 +28,7 @@ from api.databases.tables.grid_ladder_table import (
     GridLevelTable,
     GridOrderTable,
 )
+from api.databases.tables.signals_table import SignalsTable
 from api.grid_ladders.calculations import calculate_grid_levels
 from api.grid_ladders.capital import GridCapitalSettings
 from api.grid_ladders.lifecycle import GridLadderLifecycle
@@ -106,12 +108,14 @@ def clean_grid_ladders(create_test_tables):
         session.exec(delete(GridOrderTable))
         session.exec(delete(GridLevelTable))
         session.exec(delete(GridLadderTable))
+        session.exec(delete(SignalsTable))
         session.commit()
     yield
     with Session(create_test_tables) as session:
         session.exec(delete(GridOrderTable))
         session.exec(delete(GridLevelTable))
         session.exec(delete(GridLadderTable))
+        session.exec(delete(SignalsTable))
         session.commit()
 
 
@@ -127,7 +131,7 @@ def _payload(symbol: str = "ADAUSDC", total_margin: float = 1000) -> dict:
         "total_margin": total_margin,
         "breakout_low": 85,
         "breakout_high": 115,
-        "context": {"note": "test grid"},
+        "context": {"note": "test grid", "market_regime": "RANGE"},
     }
 
 
@@ -392,13 +396,69 @@ def test_grid_rejects_levels_that_collapse_after_symbol_data_rounding():
         calculate_grid_levels(1.001, 1.009, 5, 1000, sizer)
 
 
-def test_rejects_ladder_when_per_level_margin_is_too_small():
+def test_grid_can_disable_upper_band_short_entries():
     sizer = KucoinGridMarginRules(futures_leverage=1, multiplier=1, lot_size=1)
 
-    with pytest.raises(
-        ValueError, match="cannot afford the exchange minimum contract size"
-    ):
-        calculate_grid_levels(90, 110, 5, 10, sizer)
+    calculated = calculate_grid_levels(
+        90,
+        110,
+        5,
+        1000,
+        sizer,
+        allowed_entry_sides={"buy"},
+    )
+
+    assert [level.side for level in calculated.levels] == [
+        "buy",
+        "buy",
+        "neutral",
+        "neutral",
+        "neutral",
+    ]
+    assert [level.take_profit_price for level in calculated.levels] == [
+        95,
+        100,
+        None,
+        None,
+        None,
+    ]
+
+
+def test_grid_disables_single_contract_active_entry_levels():
+    sizer = KucoinGridMarginRules(futures_leverage=1, multiplier=1, lot_size=1)
+
+    calculated = calculate_grid_levels(
+        400,
+        600,
+        3,
+        799,
+        sizer,
+        allowed_entry_sides={"buy"},
+        min_entry_contracts=2,
+    )
+
+    assert [level.side for level in calculated.levels] == [
+        "neutral",
+        "neutral",
+        "neutral",
+    ]
+    assert calculated.logs == [
+        "Grid level 0 calculated 1 contract; requires at least 2 contracts; level disabled"
+    ]
+
+
+def test_grid_disables_levels_when_per_level_margin_is_too_small():
+    sizer = KucoinGridMarginRules(futures_leverage=1, multiplier=1, lot_size=1)
+
+    calculated = calculate_grid_levels(90, 110, 5, 10, sizer)
+
+    assert all(level.side == "neutral" for level in calculated.levels)
+    assert calculated.logs == [
+        "Grid level 0 cannot afford the exchange minimum contract size; level disabled",
+        "Grid level 1 cannot afford the exchange minimum contract size; level disabled",
+        "Grid level 3 cannot afford the exchange minimum contract size; level disabled",
+        "Grid level 4 cannot afford the exchange minimum contract size; level disabled",
+    ]
 
 
 def test_calculate_grid_ladder_returns_levels_without_persisting(
@@ -422,15 +482,82 @@ def test_calculate_grid_ladder_returns_levels_without_persisting(
         assert GridLadderCrud(session).get_active() == []
 
 
-def test_calculate_grid_ladder_returns_400_for_unaffordable_level(client, monkeypatch):
+def test_calculate_grid_ladder_honors_long_edge_only_context(
+    client, monkeypatch, create_test_tables
+):
+    _patch_contract_meta(monkeypatch)
+    payload = _payload()
+    payload["context"] = {
+        "grid_ladder": {
+            "disable_upper_band_short_entries": True,
+            "min_entry_contracts": 2,
+        }
+    }
+
+    response = client.post("/grid-ladders/calculate", json=payload)
+
+    assert response.status_code == 200
+    detail = response.json()["detail"]
+    assert [level["side"] for level in detail["levels"]] == [
+        "buy",
+        "buy",
+        "neutral",
+        "neutral",
+        "neutral",
+    ]
+    with Session(create_test_tables) as session:
+        assert GridLadderCrud(session).get_active() == []
+
+
+def test_calculate_grid_ladder_disables_single_contract_context(client, monkeypatch):
+    _patch_contract_meta(monkeypatch)
+    payload = _payload(total_margin=799)
+    payload.update(
+        {
+            "range_low": 400,
+            "range_high": 600,
+            "level_count": 3,
+            "breakout_low": 380,
+            "breakout_high": 620,
+            "context": {
+                "grid_ladder": {
+                    "disable_upper_band_short_entries": True,
+                    "min_entry_contracts": 2,
+                }
+            },
+        }
+    )
+
+    response = client.post("/grid-ladders/calculate", json=payload)
+
+    assert response.status_code == 200
+    detail = response.json()["detail"]
+    assert [level["side"] for level in detail["levels"]] == [
+        "neutral",
+        "neutral",
+        "neutral",
+    ]
+
+
+def test_calculate_grid_ladder_rejects_invalid_min_entry_contracts(client, monkeypatch):
+    _patch_contract_meta(monkeypatch)
+    payload = _payload()
+    payload["context"] = {"grid_ladder": {"min_entry_contracts": {}}}
+
+    response = client.post("/grid-ladders/calculate", json=payload)
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "min_entry_contracts must be a positive integer"
+
+
+def test_calculate_grid_ladder_disables_unaffordable_levels(client, monkeypatch):
     _patch_contract_meta(monkeypatch)
 
     response = client.post("/grid-ladders/calculate", json=_payload(total_margin=10))
 
-    assert response.status_code == 400
-    assert response.json()["detail"] == (
-        "Grid level 0 cannot afford the exchange minimum contract size"
-    )
+    assert response.status_code == 200
+    detail = response.json()["detail"]
+    assert all(level["side"] == "neutral" for level in detail["levels"])
 
 
 def test_post_grid_ladder_persists_ladder_and_levels(client, monkeypatch):
@@ -454,6 +581,42 @@ def test_post_grid_ladder_persists_ladder_and_levels(client, monkeypatch):
         "sell",
         "sell",
     ]
+
+
+def test_post_grid_ladder_logs_disabled_single_contract_levels(client, monkeypatch):
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+    payload = _payload(total_margin=799)
+    payload.update(
+        {
+            "range_low": 400,
+            "range_high": 600,
+            "level_count": 3,
+            "breakout_low": 380,
+            "breakout_high": 620,
+            "context": {
+                "grid_ladder": {
+                    "disable_upper_band_short_entries": True,
+                    "min_entry_contracts": 2,
+                }
+            },
+        }
+    )
+
+    response = client.post("/grid-ladders", json=payload)
+
+    assert response.status_code == 200
+    ladder = response.json()["detail"]
+    assert [level["side"] for level in ladder["levels"]] == [
+        "neutral",
+        "neutral",
+        "neutral",
+    ]
+    assert any(
+        "Grid level 0 calculated 1 contract; requires at least 2 contracts; level disabled"
+        in log
+        for log in ladder["logs"]
+    )
 
 
 def test_post_grid_ladder_returns_kucoin_rate_limit_error(client, monkeypatch):
@@ -721,6 +884,70 @@ def test_grid_lifecycle_rearms_level_after_take_profit_fill(
     assert rearmed_level["realized_pnl"] > 0
     assert detail["used_margin"] == 0
     assert detail["realized_pnl"] == rearmed_level["realized_pnl"]
+
+
+def test_grid_lifecycle_skips_rearm_when_latest_market_regime_not_grid_allowed(
+    client, monkeypatch, create_test_tables
+):
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+    created = client.post("/grid-ladders", json=_payload())
+    fake_api = FakeFuturesApi()
+
+    with Session(create_test_tables) as session:
+        lifecycle = GridLadderLifecycle(_grid_base(fake_api), session)
+        lifecycle.process_symbol("ADAUSDC")
+        ladder = GridLadderCrud(session).get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        entry_order = next(order for order in ladder.orders if order.side == "buy")
+        entry_level_id = str(entry_order.level_id)
+        fake_api.order_details[entry_order.exchange_order_id] = _order_details(
+            status=GetOrderByOrderIdResp.StatusEnum.DONE,
+            filled_size=entry_order.contracts,
+            avg_deal_price=entry_order.price,
+            price=entry_order.price,
+        )
+        lifecycle.process_symbol("ADAUSDC")
+        ladder = GridLadderCrud(session).get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        tp_order = next(
+            order for order in ladder.orders if order.order_role == "take_profit"
+        )
+        session.add(
+            SignalsTable(
+                algorithm_name="coinrule",
+                symbol="XBTUSDTM",
+                generated_at=datetime.now(UTC),
+                direction="buy",
+                current_regime="TREND_UP",
+                context={"market_regime": "TREND_UP"},
+            )
+        )
+        session.commit()
+        fake_api.order_details[tp_order.exchange_order_id] = _order_details(
+            status=GetOrderByOrderIdResp.StatusEnum.DONE,
+            filled_size=tp_order.contracts,
+            avg_deal_price=tp_order.price,
+            price=tp_order.price,
+        )
+        lifecycle.process_symbol("ADAUSDC")
+
+    detail = client.get(f"/grid-ladders/{created.json()['detail']['id']}").json()[
+        "detail"
+    ]
+    completed_level = next(
+        level for level in detail["levels"] if level["id"] == entry_level_id
+    )
+    assert completed_level["status"] == "completed"
+    assert completed_level["entry_order_id"] == entry_order.exchange_order_id
+    assert completed_level["realized_pnl"] > 0
+    assert detail["used_margin"] == 0
+    assert detail["realized_pnl"] == completed_level["realized_pnl"]
+    assert any(
+        "Skipped rearm level 0: market_regime TREND_UP is not one of RANGE, TRANSITIONAL"
+        in log
+        for log in detail["logs"]
+    )
 
 
 def test_grid_lifecycle_retries_rearm_after_insufficient_balance(
@@ -1498,7 +1725,7 @@ def test_grid_lifecycle_uses_matching_engine_price_for_range_break(
     assert _market_reduce_only_orders(fake_api) == []
 
 
-def test_grid_lifecycle_reconciles_between_tick_fill_before_range_break_close(
+def test_grid_lifecycle_reconciles_tick_fill_then_tight_range_break_closes(
     client, monkeypatch, create_test_tables
 ):
     _patch_balance(monkeypatch, 10_000)
@@ -1525,7 +1752,7 @@ def test_grid_lifecycle_reconciles_between_tick_fill_before_range_break_close(
         )
         past_ms = (
             int(time() * 1000)
-            - GridLadderLifecycle.UNFILLED_BREACH_CANDLES_REQUIRED * 15 * 60 * 1000
+            - GridLadderLifecycle.BREACH_CANDLES_REQUIRED * 15 * 60 * 1000
             - 1000
         )
         crud.update_status_with_context(
@@ -1541,10 +1768,12 @@ def test_grid_lifecycle_reconciles_between_tick_fill_before_range_break_close(
         for level in detail["levels"]
         if level["entry_order_id"] == entry_order.exchange_order_id
     )
-    assert detail["status"] == "active"
-    assert detail["context"]["first_breach_at"] == past_ms
-    assert filled_level["status"] == "take_profit_open"
-    assert _market_reduce_only_orders(fake_api) == []
+    assert detail["status"] == "closed"
+    assert detail["context"]["close_reason"] == "range_break_down"
+    assert detail["context"]["breakout_close_type"] == "filled_breakout_close"
+    assert filled_level["status"] == "cancelled"
+    assert _market_reduce_only_orders(fake_api)
+    assert detail["logs"][-2]["breakout_close_type"] == "filled_breakout_close"
 
 
 def test_grid_lifecycle_uses_exchange_position_for_stale_db_breakout_close(
@@ -1587,7 +1816,7 @@ def test_grid_lifecycle_uses_exchange_position_for_stale_db_breakout_close(
     assert detail["logs"][-2]["has_exchange_position"] is True
 
 
-def test_grid_lifecycle_keeps_filled_ladder_open_after_one_breach_candle(
+def test_grid_lifecycle_closes_filled_ladder_after_one_breach_candle(
     client, monkeypatch, create_test_tables
 ):
     _patch_balance(monkeypatch, 10_000)
@@ -1609,6 +1838,7 @@ def test_grid_lifecycle_keeps_filled_ladder_open_after_one_breach_candle(
             avg_deal_price=entry_order.price,
             price=entry_order.price,
         )
+        fake_api.position_qty = entry_order.contracts
         lifecycle.process_symbol("ADAUSDC")
         fake_api.position_mark_price = 84
         lifecycle.process_symbol("ADAUSDC")
@@ -1617,7 +1847,7 @@ def test_grid_lifecycle_keeps_filled_ladder_open_after_one_breach_candle(
         assert ladder is not None
         past_ms = (
             int(time() * 1000)
-            - GridLadderLifecycle.UNFILLED_BREACH_CANDLES_REQUIRED * 15 * 60 * 1000
+            - GridLadderLifecycle.BREACH_CANDLES_REQUIRED * 15 * 60 * 1000
             - 1000
         )
         crud.update_status_with_context(
@@ -1628,8 +1858,10 @@ def test_grid_lifecycle_keeps_filled_ladder_open_after_one_breach_candle(
         lifecycle.process_symbol("ADAUSDC")
 
     detail = client.get(f"/grid-ladders/{ladder_id}").json()["detail"]
-    assert detail["status"] == "active"
-    assert detail["context"]["first_breach_at"] == past_ms
+    assert detail["status"] == "closed"
+    assert detail["context"]["close_reason"] == "range_break_down"
+    assert detail["context"]["breakout_close_type"] == "filled_breakout_close"
+    assert _market_reduce_only_orders(fake_api)
 
 
 def test_grid_lifecycle_closes_ladder_when_price_breaks_above_range(
