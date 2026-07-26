@@ -1,7 +1,9 @@
-from typing import Optional, Sequence
+from collections.abc import Sequence
+
 from pybinbot import ExchangeId, StandardResponse, SymbolModel
+from pydantic import BaseModel, Field
+
 from api.databases.tables.symbol_table import SymbolTable
-from pydantic import Field, BaseModel
 
 
 class SymbolsResponse(StandardResponse):
@@ -28,6 +30,7 @@ class SymbolsResponse(StandardResponse):
                 symbol["price_precision"] = s.exchange_values[0].price_precision
                 symbol["qty_precision"] = s.exchange_values[0].qty_precision
                 symbol["min_notional"] = s.exchange_values[0].min_notional
+                symbol["multiplier"] = s.exchange_values[0].multiplier
 
             new_data.append(symbol)
 
@@ -38,8 +41,8 @@ class SymbolRequestPayload(BaseModel):
     symbol: str
     blacklist_reason: str = ""
     active: bool = True
-    cooldown: Optional[int] = 0
-    cooldown_start_ts: Optional[int] = Field(
+    cooldown: int | None = 0
+    cooldown_start_ts: int | None = Field(
         default=0,
         description="Timestamp to indicate when cooldown should start in milliseconds. Combined with cooldown this will put the symbol in inactive for that period of time.",
     )
@@ -56,9 +59,14 @@ class SymbolRequestPayload(BaseModel):
     is_margin_trading_allowed: bool = False
     price_precision: int = 0
     qty_precision: int = 0
+    multiplier: float = Field(
+        default=1.0,
+        description="Futures contract multiplier: quantity of the underlying "
+        "asset represented by one contract. Not meaningful for spot/margin.",
+    )
     quote_asset: str = Field(default="")
     base_asset: str = Field(default="")
 
 
 class GetOneSymbolResponse(StandardResponse):
-    data: Optional[SymbolModel] = Field(default=None)
+    data: SymbolModel | None = Field(default=None)
