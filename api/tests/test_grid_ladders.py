@@ -1725,7 +1725,7 @@ def test_grid_lifecycle_uses_matching_engine_price_for_range_break(
     assert _market_reduce_only_orders(fake_api) == []
 
 
-def test_grid_lifecycle_reconciles_tick_fill_then_tight_range_break_closes(
+def test_grid_lifecycle_reconciles_between_tick_fill_before_range_break_close(
     client, monkeypatch, create_test_tables
 ):
     _patch_balance(monkeypatch, 10_000)
@@ -1752,7 +1752,7 @@ def test_grid_lifecycle_reconciles_tick_fill_then_tight_range_break_closes(
         )
         past_ms = (
             int(time() * 1000)
-            - GridLadderLifecycle.BREACH_CANDLES_REQUIRED * 15 * 60 * 1000
+            - GridLadderLifecycle.UNFILLED_BREACH_CANDLES_REQUIRED * 15 * 60 * 1000
             - 1000
         )
         crud.update_status_with_context(
@@ -1768,12 +1768,10 @@ def test_grid_lifecycle_reconciles_tick_fill_then_tight_range_break_closes(
         for level in detail["levels"]
         if level["entry_order_id"] == entry_order.exchange_order_id
     )
-    assert detail["status"] == "closed"
-    assert detail["context"]["close_reason"] == "range_break_down"
-    assert detail["context"]["breakout_close_type"] == "filled_breakout_close"
-    assert filled_level["status"] == "cancelled"
-    assert _market_reduce_only_orders(fake_api)
-    assert detail["logs"][-2]["breakout_close_type"] == "filled_breakout_close"
+    assert detail["status"] == "active"
+    assert detail["context"]["first_breach_at"] == past_ms
+    assert filled_level["status"] == "take_profit_open"
+    assert _market_reduce_only_orders(fake_api) == []
 
 
 def test_grid_lifecycle_uses_exchange_position_for_stale_db_breakout_close(
