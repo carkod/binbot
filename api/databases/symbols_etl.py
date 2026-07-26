@@ -102,10 +102,9 @@ class SymbolDataEtl(SymbolsCrud):
             if item.quote_currency in list(QuoteAssets):
                 price_precision = self._convert_to_int(item.tick_size)
                 qty_precision = self._convert_to_int(item.lot_size)
+                multiplier = float(item.multiplier)
                 min_notional = self._convert_to_int(
-                    float(item.tick_size)
-                    * float(item.lot_size)
-                    * float(item.multiplier)
+                    float(item.tick_size) * float(item.lot_size) * multiplier
                 )
 
                 with get_db_session() as s:
@@ -123,6 +122,7 @@ class SymbolDataEtl(SymbolsCrud):
                             quote_asset=item.quote_currency,
                             base_asset=item.base_currency,
                             is_margin_trading_allowed=False,
+                            multiplier=multiplier,
                         )
                     else:
                         self.add_symbol(
@@ -134,6 +134,7 @@ class SymbolDataEtl(SymbolsCrud):
                             price_precision=price_precision,
                             qty_precision=qty_precision,
                             min_notional=min_notional,
+                            multiplier=multiplier,
                         )
                         # ensure exchange link added in same session
                         self._add_exchange_link_if_not_exists(
@@ -146,6 +147,7 @@ class SymbolDataEtl(SymbolsCrud):
                             quote_asset=item.quote_currency,
                             base_asset=item.base_currency,
                             is_margin_trading_allowed=False,
+                            multiplier=multiplier,
                         )
 
     def ingest_spot_data(self, all_raw_symbols: GetAllSymbolsResp):

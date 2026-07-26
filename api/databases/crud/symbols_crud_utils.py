@@ -59,6 +59,7 @@ class SymbolsCrudUtils:
         quote_asset: str,
         base_asset: str,
         is_margin_trading_allowed: bool,
+        multiplier: float = 1.0,
     ):
         existing_exchange_link = session.exec(
             select(SymbolExchangeTable).where(
@@ -76,6 +77,7 @@ class SymbolsCrudUtils:
                 quote_asset=quote_asset,
                 base_asset=base_asset,
                 is_margin_trading_allowed=is_margin_trading_allowed,
+                multiplier=multiplier,
             )
             session.add(exchange_link)
             # commit/refresh handled by get_db_session() caller

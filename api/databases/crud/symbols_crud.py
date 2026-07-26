@@ -1,24 +1,24 @@
 from time import time
-from typing import Optional
-from sqlmodel import select, Session
-from api.databases.crud.symbols_crud_utils import SymbolsCrudUtils
-from api.tools.config import Config
-from api.databases.crud.autotrade_crud import AutotradeCrud
-from api.databases.tables.symbol_exchange_table import SymbolExchangeTable
-from api.databases.tables.symbol_table import SymbolTable
-from api.databases.utils import engine
-from api.symbols.models import SymbolRequestPayload
+
 from pybinbot import (
-    ExchangeId,
     BinanceApi,
     BinbotErrors,
+    ExchangeId,
     KucoinApi,
-    MarketType,
     KucoinFutures,
+    MarketType,
     SymbolModel,
 )
 from sqlalchemy.sql import delete
-from api.databases.utils import get_db_session
+from sqlmodel import Session, select
+
+from api.databases.crud.autotrade_crud import AutotradeCrud
+from api.databases.crud.symbols_crud_utils import SymbolsCrudUtils
+from api.databases.tables.symbol_exchange_table import SymbolExchangeTable
+from api.databases.tables.symbol_table import SymbolTable
+from api.databases.utils import engine, get_db_session
+from api.symbols.models import SymbolRequestPayload
+from api.tools.config import Config
 
 
 class SymbolsCrud(SymbolsCrudUtils):
@@ -53,7 +53,7 @@ class SymbolsCrud(SymbolsCrudUtils):
         base_asset: str,
         exchange_id: ExchangeId,
         active: bool = True,
-        reason: Optional[str] = "",
+        reason: str | None = "",
         price_precision: int = 0,
         qty_precision: int = 0,
         min_notional: float = 0,
@@ -61,6 +61,7 @@ class SymbolsCrud(SymbolsCrudUtils):
         cooldown_start_ts: int = 0,
         futures_leverage: int = 1,
         is_margin_trading_allowed: bool = False,
+        multiplier: float = 1.0,
     ) -> SymbolModel:
         # use a fresh session to avoid blockers from long-live transactions
         with get_db_session() as session:
@@ -85,6 +86,7 @@ class SymbolsCrud(SymbolsCrudUtils):
                 price_precision=price_precision,
                 qty_precision=qty_precision,
                 is_margin_trading_allowed=is_margin_trading_allowed,
+                multiplier=multiplier,
             )
             session.add(exchange_link)
             session.flush()
@@ -104,12 +106,13 @@ class SymbolsCrud(SymbolsCrudUtils):
                 price_precision=exchange_link.price_precision,
                 qty_precision=exchange_link.qty_precision,
                 min_notional=exchange_link.min_notional,
+                multiplier=exchange_link.multiplier,
             )
         return result
 
     def get_all(
         self,
-        active: Optional[bool] = None,
+        active: bool | None = None,
         market_type: MarketType | None = None,
     ) -> list[SymbolModel]:
         statement = self._exchange_combined_statement(
@@ -146,6 +149,7 @@ class SymbolsCrud(SymbolsCrudUtils):
                     price_precision=ev.price_precision,
                     qty_precision=ev.qty_precision,
                     min_notional=ev.min_notional,
+                    multiplier=ev.multiplier,
                 )
                 list_results.append(data)
             return list_results
@@ -183,6 +187,7 @@ class SymbolsCrud(SymbolsCrudUtils):
                     price_precision=ev.price_precision,
                     qty_precision=ev.qty_precision,
                     min_notional=ev.min_notional,
+                    multiplier=ev.multiplier,
                 )
                 return data
             else:
@@ -235,6 +240,7 @@ class SymbolsCrud(SymbolsCrudUtils):
                 price_precision=data.price_precision,
                 qty_precision=data.qty_precision,
                 min_notional=data.min_notional,
+                multiplier=data.multiplier,
             )
             return result
 

@@ -1,6 +1,7 @@
-from sqlmodel import SQLModel, Field, Relationship
-from sqlalchemy import Column, Enum, Float, ForeignKey
 from pybinbot import ExchangeId
+from sqlalchemy import Column, Enum, Float, ForeignKey
+from sqlmodel import Field, Relationship, SQLModel
+
 from api.databases.tables.symbol_table import SymbolTable
 
 
@@ -25,4 +26,11 @@ class SymbolExchangeTable(SQLModel, table=True):
         description="Usually there are 2 price precisions, one for base and another for quote, here we usually indicate quote, since we always use the same base: USDC",
     )
     qty_precision: int = Field(default=0)
+    multiplier: float = Field(
+        default=1.0,
+        sa_column=Column(Float, nullable=False, server_default="1.0"),
+        description="Futures contract multiplier: quantity of the underlying "
+        "asset represented by one contract (e.g. KuCoin XBTUSDTM=0.001). "
+        "Not meaningful for spot/margin, where it stays 1.0.",
+    )
     symbol: "SymbolTable" = Relationship(back_populates="exchange_values")

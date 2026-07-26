@@ -110,6 +110,7 @@ def add_symbol(
             qty_precision=data.qty_precision,
             exchange_id=data.exchange_id,
             futures_leverage=data.futures_leverage,
+            multiplier=data.multiplier,
         )
         return {
             "message": "Symbol added",

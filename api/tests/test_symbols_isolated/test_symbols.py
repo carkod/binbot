@@ -1,5 +1,8 @@
 import pytest
 from fastapi.testclient import TestClient
+from sqlmodel import Session, select
+
+from api.databases.tables.symbol_exchange_table import SymbolExchangeTable
 
 
 @pytest.fixture(autouse=True)
@@ -91,6 +94,40 @@ def test_add_symbol(client: TestClient):
     assert content["message"] == "Symbol added"
     assert content["data"]["id"] == test_new_symbol
     assert content["data"]["futures_leverage"] == 1
+
+
+def test_add_symbol_persists_multiplier(client: TestClient, create_symbol_test_tables):
+    # Asserts against the persisted SymbolExchangeTable row directly rather
+    # than the API response: the currently-pinned pybinbot's SymbolModel
+    # doesn't have a `multiplier` field yet (pydantic silently drops unknown
+    # kwargs), so the API response won't surface it until pybinbot is bumped
+    # — but the DB write itself doesn't depend on that and should be correct
+    # now.
+    response = client.post(
+        "/symbol",
+        json={
+            "symbol": "MULTUSDTM",
+            "quote_asset": "USDT",
+            "base_asset": "MULT",
+            "min_notional": 1.0,
+            "price_precision": 6,
+            "qty_precision": 2,
+            "active": True,
+            "exchange_id": "kucoin",
+            "multiplier": 0.001,
+        },
+    )
+
+    assert response.status_code == 200
+
+    with Session(create_symbol_test_tables) as session:
+        exchange_link = session.exec(
+            select(SymbolExchangeTable).where(
+                SymbolExchangeTable.symbol_id == "MULTUSDTM"
+            )
+        ).first()
+        assert exchange_link is not None
+        assert exchange_link.multiplier == 0.001
 
 
 def test_delete_symbol(client: TestClient):
