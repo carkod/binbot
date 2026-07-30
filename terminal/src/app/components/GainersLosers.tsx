@@ -3,22 +3,27 @@ import Col from "react-bootstrap/Col";
 import Row from "react-bootstrap/Row";
 import { computeWinnerLoserProportions } from "../../utils/dashboard-computations";
 import { type DashboardTicker } from "../../utils/gainers-losers";
-import { roundDecimals } from "../../utils/math";
+import { roundDecimals, toPercentage } from "../../utils/math";
 import GainersLosersCard from "./GainersLosersCard";
+import { type MarketType } from "../../utils/enums";
 
 export interface GainersLosersProps {
   data: DashboardTicker[];
+  market_type?: MarketType;
 }
 
-export default function GainersLosers({ data }: GainersLosersProps) {
+export default function GainersLosers({
+  data,
+  market_type,
+}: GainersLosersProps) {
   const { gainerCount, gainerAccumulator, loserAccumulator, loserCount } =
     computeWinnerLoserProportions(data);
   // Top 10
   const gainersData = data.slice(0, 10);
-  const perGainers = roundDecimals(gainerCount / data.length) * 100 + "%";
+  const perGainers = `${toPercentage(gainerCount / data.length) ?? 0}%`;
   // Bottom 10
   const losersData = data.slice(-10).reverse();
-  const perLosers = roundDecimals(loserCount / data.length) * 100 + "%";
+  const perLosers = `${toPercentage(loserCount / data.length) ?? 0}%`;
   return (
     <div>
       <Card border="success">
@@ -43,10 +48,18 @@ export default function GainersLosers({ data }: GainersLosersProps) {
 
         <Row>
           <Col>
-            <GainersLosersCard data={gainersData} title="Today's gainers" />
+            <GainersLosersCard
+              data={gainersData}
+              market_type={market_type}
+              title="Today's gainers"
+            />
           </Col>
           <Col>
-            <GainersLosersCard data={losersData} title="Today's losers" />
+            <GainersLosersCard
+              data={losersData}
+              market_type={market_type}
+              title="Today's losers"
+            />
           </Col>
         </Row>
       </Card>

@@ -14,7 +14,7 @@ import type {
   BalanceData,
   BenchmarkCollection,
 } from "../../features/features.types";
-import { BotStatus } from "../../utils/enums";
+import { BotStatus, MarketType } from "../../utils/enums";
 import { roundDecimals } from "../../utils/math";
 import { formatTimestamp } from "../../utils/time";
 import { getNetProfit } from "../../features/bots/profits";
@@ -575,7 +575,10 @@ export const DashboardPage: FC<{}> = () => {
         </Col>
         <Col lg="6" md="12">
           {combinedFuturesRankings?.length > 0 && (
-            <GainersLosers data={combinedFuturesRankings} />
+            <GainersLosers
+              data={combinedFuturesRankings}
+              market_type={MarketType.FUTURES}
+            />
           )}
         </Col>
       </Row>
