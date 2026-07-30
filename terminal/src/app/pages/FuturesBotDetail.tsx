@@ -20,7 +20,7 @@ import { SymbolProvider } from "../providers/SymbolProvider";
 import { MarketType } from "../../utils/enums";
 
 export const FuturesBotDetail: FC<{}> = () => {
-  const { id } = useParams();
+  const { id, symbol } = useParams();
   const isNewBot = !id;
   const dispatch = useAppDispatch();
   const { bot } = useAppSelector(selectBot);
@@ -37,6 +37,7 @@ export const FuturesBotDetail: FC<{}> = () => {
       dispatch(
         resetBot({
           market_type: MarketType.FUTURES,
+          pair: symbol ?? "",
         }),
       );
     } else if (data?.bot) {
@@ -49,6 +50,7 @@ export const FuturesBotDetail: FC<{}> = () => {
       dispatch(
         resetBot({
           market_type: MarketType.FUTURES,
+          pair: symbol ?? "",
         }),
       );
     }
@@ -58,7 +60,15 @@ export const FuturesBotDetail: FC<{}> = () => {
     } else {
       setSpinner(true);
     }
-  }, [data, isNewBot, dispatch, loadingBot, loadingEstimates, setSpinner]);
+  }, [
+    data,
+    isNewBot,
+    dispatch,
+    loadingBot,
+    loadingEstimates,
+    setSpinner,
+    symbol,
+  ]);
 
   return (
     <SymbolProvider marketType={currentMarketType}>

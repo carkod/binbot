@@ -175,7 +175,9 @@ const BaseOrderTab: FC<{
     } else {
       dispatch(setField({ name: "pair", value: symbol }));
     }
-  }, [bot, botType, dispatch, id, reset, symbol]);
+
+    updateQuoteBaseState(symbol);
+  }, [bot, botType, dispatch, id, reset, symbol, updateQuoteBaseState]);
 
   useEffect(() => {
     if (

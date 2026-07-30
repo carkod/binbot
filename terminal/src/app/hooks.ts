@@ -6,7 +6,7 @@
 /* eslint-disable @typescript-eslint/no-restricted-imports */
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "./store";
-import { useState, useEffect, useCallback, useContext } from "react";
+import { useState, useEffect, useCallback, useContext, useRef } from "react";
 import {
   useLazyGetOneSymbolQuery,
   useGetSymbolsQuery,
@@ -76,19 +76,29 @@ export const useSymbolDataProvider = (marketType?: MarketType) => {
   const [baseAsset, setBaseAsset] = useState<string>("");
   const [futuresLeverage, setFuturesLeverage] = useState<number>(1);
   const [isLoading, setIsLoading] = useState(false);
+  const latestSymbolRequestRef = useRef<string | null>(null);
 
   const updateQuoteBaseState = useCallback(
     (pair: string) => {
+      latestSymbolRequestRef.current = pair;
       setIsLoading(true);
       triggerGetOneSymbol(pair)
         .unwrap()
         .then((data) => {
+          if (latestSymbolRequestRef.current !== pair) {
+            return;
+          }
+
           setQuoteAsset(data.quote_asset);
           setBaseAsset(data.base_asset);
           setFuturesLeverage(data.futures_leverage);
           setIsLoading(false);
         })
         .catch(() => {
+          if (latestSymbolRequestRef.current !== pair) {
+            return;
+          }
+
           setIsLoading(false);
         });
     },
