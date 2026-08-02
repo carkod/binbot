@@ -35,12 +35,12 @@ const getCurrentPairBalance = (balances, currentAsset) => {
   return qty;
 };
 
-const toPercentage = (value) => {
+const toPercentage = (value, decimals: number = 2) => {
   if (checkValue(value)) {
     return null;
   }
-  const decimal = parseFloat(value) * 100;
-  return decimal;
+
+  return roundDecimals(parseFloat(value) * 100, decimals);
 };
 
 const percentageToFloat = (value) => {

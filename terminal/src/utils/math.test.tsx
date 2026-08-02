@@ -1,4 +1,4 @@
-import { roundDecimals } from "./math";
+import { roundDecimals, toPercentage } from "./math";
 
 describe("roundDecimals", () => {
   it("should round to 2 decimals by default", () => {
@@ -25,5 +25,13 @@ describe("roundDecimals", () => {
     expect(roundDecimals(56.0000000000001, 2)).toBe(56);
     expect(roundDecimals(56.1000000000001, 2)).toBe(56.1);
     expect(roundDecimals(56.1200000000001, 2)).toBe(56.12);
+  });
+});
+
+describe("toPercentage", () => {
+  it("rounds after scaling and removes floating point tails", () => {
+    expect(toPercentage(0.56)).toBe(56);
+    expect(toPercentage(0.5600000000000001)).toBe(56);
+    expect(toPercentage(0.561, 1)).toBe(56.1);
   });
 });

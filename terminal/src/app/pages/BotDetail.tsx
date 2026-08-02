@@ -21,7 +21,7 @@ import { SymbolProvider } from "../providers/SymbolProvider";
 import { MarketType } from "../../utils/enums";
 
 export const BotDetail: FC<{}> = () => {
-  const { id } = useParams();
+  const { id, symbol } = useParams();
   const isNewBot = !id;
   const dispatch = useAppDispatch();
   const { bot } = useAppSelector(selectBot);
@@ -40,6 +40,7 @@ export const BotDetail: FC<{}> = () => {
       dispatch(
         resetBot({
           market_type: MarketType.SPOT,
+          pair: symbol ?? "",
         }),
       );
     }
@@ -49,7 +50,15 @@ export const BotDetail: FC<{}> = () => {
     } else {
       setSpinner(true);
     }
-  }, [data, isNewBot, dispatch, loadingBot, loadingEstimates, setSpinner]);
+  }, [
+    data,
+    isNewBot,
+    dispatch,
+    loadingBot,
+    loadingEstimates,
+    setSpinner,
+    symbol,
+  ]);
 
   return (
     <SymbolProvider marketType={currentMarketType}>

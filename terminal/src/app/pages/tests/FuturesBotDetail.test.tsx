@@ -202,6 +202,29 @@ describe("FuturesBotDetail page", () => {
     expect(state.market_type).toBe(MarketType.FUTURES);
   });
 
+  it("uses the route symbol when creating a new futures bot from a symbol URL", () => {
+    render(
+      <Provider store={store}>
+        <SpinnerContext.Provider
+          value={{ spinner: false, setSpinner: vi.fn() }}
+        >
+          <MemoryRouter initialEntries={["/bots/futures/new/KOMAUSDTM"]}>
+            <Routes>
+              <Route
+                path="/bots/futures/new/:symbol"
+                element={<FuturesBotDetail />}
+              />
+            </Routes>
+          </MemoryRouter>
+        </SpinnerContext.Provider>
+      </Provider>,
+    );
+
+    const state = store.getState().bot.bot;
+    expect(state.pair).toBe("KOMAUSDTM");
+    expect(state.market_type).toBe(MarketType.FUTURES);
+  });
+
   it("resets stale edit details after navigating from edit to new", async () => {
     const editResponse = {
       data: {

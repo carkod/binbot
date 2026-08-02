@@ -50,7 +50,7 @@ const PortfolioBenchmarkChart: FC<{ chartData: BenchmarkSeriesData }> = ({
       type: "scatter",
       mode: "lines+markers",
       name: "Portfolio value",
-      line: { color: listCssColors[0] },
+      line: { color: listCssColors[0], shape: "spline" },
     },
     {
       x: processData.datesSeries,
@@ -58,7 +58,7 @@ const PortfolioBenchmarkChart: FC<{ chartData: BenchmarkSeriesData }> = ({
       type: "scatter",
       mode: "lines+markers",
       name: "BTC prices",
-      line: { color: listCssColors[1] },
+      line: { color: listCssColors[1], shape: "spline" },
     },
   ];
 

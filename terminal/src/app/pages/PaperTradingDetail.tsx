@@ -1,7 +1,7 @@
 import { type FC } from "react";
 import { useEffect } from "react";
 import { Card, Col, Container, Row } from "react-bootstrap";
-import { useMatch, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import {
   selectTestBot,
   setTestBot,
@@ -20,8 +20,7 @@ import { SymbolProvider } from "../providers/SymbolProvider";
 import { MarketType } from "../../utils/enums";
 
 export const PaperTradingDetail: FC = () => {
-  const { id } = useParams();
-  const matchNewRoute = useMatch("/paper-trading/new");
+  const { id, symbol } = useParams();
   const dispatch = useAppDispatch();
   const { paperTrading } = useAppSelector(selectTestBot);
   const { data } = useGetSingleTestBotQuery(id, { skip: Boolean(!id) });
@@ -29,16 +28,16 @@ export const PaperTradingDetail: FC = () => {
   const currentMarketType = paperTrading?.market_type ?? MarketType.SPOT;
 
   useEffect(() => {
-    if (data && !matchNewRoute) {
+    if (data && id) {
       dispatch(setTestBot(data));
     } else {
       dispatch(
         setTestBot({
-          bot: singleBot,
+          bot: { ...singleBot, pair: symbol ?? "" },
         }),
       );
     }
-  }, [data, matchNewRoute, dispatch]);
+  }, [data, dispatch, id, symbol]);
 
   return (
     <SymbolProvider marketType={currentMarketType}>
