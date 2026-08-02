@@ -1571,6 +1571,74 @@ def test_grid_lifecycle_updates_unrealized_pnl_on_active_ladder(
     assert detail["unrealized_pnl"] == 12.3456789
 
 
+def test_grid_lifecycle_closes_before_first_cycle_after_configured_timeout(
+    client, monkeypatch, create_test_tables
+):
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+    payload = _payload()
+    payload["context"]["grid_ladder"] = {"first_cycle_timeout_hours": 12}
+    created = client.post("/grid-ladders", json=payload)
+    ladder_id = created.json()["detail"]["id"]
+    fake_api = FakeFuturesApi()
+
+    with Session(create_test_tables) as session:
+        lifecycle = GridLadderLifecycle(_grid_base(fake_api), session)
+        lifecycle.process_symbol("ADAUSDC")
+        ladder = GridLadderCrud(session).get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        created_at = ladder.created_at
+
+        monkeypatch.setattr(
+            "api.grid_ladders.lifecycle.time",
+            lambda: (created_at + 12 * 60 * 60 * 1000 - 1) / 1000,
+        )
+        lifecycle.process_symbol("ADAUSDC")
+        assert GridLadderCrud(session).get_active_for_symbol("ADAUSDC") is not None
+
+        monkeypatch.setattr(
+            "api.grid_ladders.lifecycle.time",
+            lambda: (created_at + 12 * 60 * 60 * 1000) / 1000,
+        )
+        lifecycle.process_symbol("ADAUSDC")
+
+    detail = client.get(f"/grid-ladders/{ladder_id}").json()["detail"]
+    assert detail["status"] == "closed"
+    assert detail["context"]["close_reason"] == "first_cycle_timeout"
+    timeout_log = detail["logs"][-2]
+    assert timeout_log["event"] == "first_cycle_timeout"
+    assert timeout_log["timeout_hours"] == 12.0
+    assert timeout_log["has_filled_exposure"] is False
+
+
+def test_grid_lifecycle_does_not_timeout_after_completed_cycle(create_test_tables):
+    now_ms = time() * 1000
+    with Session(create_test_tables) as session:
+        ladder = _active_ladder("ADAUSDC")
+        ladder.created_at = now_ms - 24 * 60 * 60 * 1000
+        ladder.context = {"grid_ladder": {"first_cycle_timeout_hours": 12}}
+        session.add(ladder)
+        session.flush()
+        session.add(
+            GridOrderTable(
+                ladder_id=ladder.id,
+                exchange_order_id="completed-take-profit",
+                order_role="take_profit",
+                side="sell",
+                price=100,
+                contracts=1,
+                status=OrderStatus.FILLED.value,
+            )
+        )
+        session.commit()
+        ladder = GridLadderCrud(session).get(ladder.id)
+        assert ladder is not None
+        lifecycle = GridLadderLifecycle(_grid_base(FakeFuturesApi()), session)
+
+        assert lifecycle._first_cycle_timeout_hours(ladder) == 12
+        assert lifecycle._is_first_cycle_timeout(ladder, 12) is False
+
+
 def test_grid_lifecycle_closes_ladder_when_price_breaks_below_range(
     client, monkeypatch, create_test_tables
 ):

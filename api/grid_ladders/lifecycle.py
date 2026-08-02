@@ -106,6 +106,21 @@ class GridLadderLifecycle:
             if self._status_value(ladder.status) != GridLadderStatus.active.value:
                 return
 
+            first_cycle_timeout_hours = self._first_cycle_timeout_hours(ladder)
+            if first_cycle_timeout_hours is not None and self._is_first_cycle_timeout(
+                ladder, first_cycle_timeout_hours
+            ):
+                self._close_ladder(
+                    ladder,
+                    context_updates={"close_reason": "first_cycle_timeout"},
+                    log_event={
+                        "event": "first_cycle_timeout",
+                        "timeout_hours": first_cycle_timeout_hours,
+                        "has_filled_exposure": self._has_open_exposure(ladder),
+                    },
+                )
+                return
+
             self._retry_pending_rearms(ladder)
 
             # All entry orders cancelled/expired on the exchange and no open position —
@@ -966,6 +981,30 @@ class GridLadderLifecycle:
         total_pnl = float(ladder.realized_pnl or 0) + float(ladder.unrealized_pnl or 0)
         pnl_pct = total_pnl / float(ladder.total_margin) * 100
         return _STALE_LADDER_PNL_PCT_LOW <= pnl_pct < _STALE_LADDER_PNL_PCT_HIGH
+
+    def _first_cycle_timeout_hours(self, ladder: GridLadderTable) -> float | None:
+        grid_context = (ladder.context or {}).get("grid_ladder")
+        if not isinstance(grid_context, dict):
+            return None
+        raw_timeout = grid_context.get("first_cycle_timeout_hours")
+        if not isinstance(raw_timeout, (int, float)) or raw_timeout <= 0:
+            return None
+        return float(raw_timeout)
+
+    def _is_first_cycle_timeout(
+        self, ladder: GridLadderTable, timeout_hours: float
+    ) -> bool:
+        if not ladder.created_at:
+            return False
+        has_completed_cycle = any(
+            order.order_role == GridOrderRole.take_profit.value
+            and order.status == GRID_ORDER_FILLED_STATUS
+            for order in ladder.orders
+        )
+        if has_completed_cycle:
+            return False
+        timeout_ms = timeout_hours * 60 * 60 * 1000
+        return int(time() * 1000) - ladder.created_at >= timeout_ms
 
     def _refresh_unrealized_pnl(self, ladder: GridLadderTable) -> None:
         symbol_row = self._symbol_row(ladder.symbol)
