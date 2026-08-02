@@ -65,6 +65,7 @@ class Lifecycle(KucoinPositionDeal):
     )
     RECOVERY_TIGHT_EMERGENCY_MIN_PCT = 0.35
     RECOVERY_TIGHT_EMERGENCY_MAX_PCT = 0.75
+    MEAN_REVERSION_FADE_MAX_HOLDING_BARS = 8
 
     def __init__(
         self,
@@ -113,6 +114,38 @@ class Lifecycle(KucoinPositionDeal):
 
         now_ms = int(time() * 1000)
         return now_ms - last_replace_ts_ms < self.TRAILING_STOP_REPLACE_COOLDOWN_MS
+
+    def _mean_reversion_fade_max_holding_reached(self, completed_candles: list) -> bool:
+        if self.active_bot.name == "mean_reversion_fade":
+            opening_timestamp = self.active_bot.deal.opening_timestamp
+            if opening_timestamp <= 0:
+                return False
+
+            interval_ms = self.base_streaming.interval.get_ms()
+            entry_candle_open = opening_timestamp - (opening_timestamp % interval_ms)
+            completed_after_entry = sum(
+                1
+                for candle in completed_candles
+                if len(candle) >= 1 and int(float(candle[0])) > entry_candle_open
+            )
+            return completed_after_entry >= self.MEAN_REVERSION_FADE_MAX_HOLDING_BARS
+        return False
+
+    def _should_floor_low_price_stop(
+        self,
+        *,
+        is_recovery_bot: bool,
+        entry_price: float,
+        stop_loss_pct: float,
+    ) -> bool:
+        if self.active_bot.name == "mean_reversion_fade":
+            return False
+        return (
+            not is_recovery_bot
+            and self.active_bot.market_type == MarketType.FUTURES
+            and 0 < entry_price < 0.05
+            and stop_loss_pct < 4.0
+        )
 
     def last_trailing_stop_replace_ts_ms(self) -> int | None:
         _, ts, _ = self._bot_known_trailing_stop_loss()
@@ -1031,12 +1064,12 @@ class Lifecycle(KucoinPositionDeal):
             entry_price = self.active_bot.deal.opening_price
             # ATR-equivalent floor for low-priced perpetuals: tick-noise on
             # sub-$0.05 contracts routinely exceeds the configured 2.5% SL,
-            # so we widen the band to 4% to avoid pure-noise stop-outs.
-            if (
-                not is_recovery_bot
-                and self.active_bot.market_type == MarketType.FUTURES
-                and 0 < entry_price < 0.05
-                and sl_pct < 4.0
+            # so we widen the band to 4% to avoid pure-noise stop-outs. The
+            # mean_reversion_fade strategy keeps its explicitly validated cap.
+            if self._should_floor_low_price_stop(
+                is_recovery_bot=is_recovery_bot,
+                entry_price=entry_price,
+                stop_loss_pct=sl_pct,
             ):
                 self.active_bot.add_log(
                     f"SL floored from {sl_pct:.2f}% to 4.00% for low-priced perpetual {self.active_bot.pair} (entry {entry_price})."
@@ -1230,7 +1263,18 @@ class Lifecycle(KucoinPositionDeal):
             if (
                 current_price - self.active_bot.deal.take_profit_price
             ) * direction >= 0:
-                self.take_profit_order()
+                take_profit_result = self.take_profit_order()
+                if self.active_bot.name == "mean_reversion_fade":
+                    return take_profit_result
+
+        if self._mean_reversion_fade_max_holding_reached(completed_candles):
+            self.controller.update_logs(
+                "[mean_reversion_fade] Maximum holding period reached after "
+                f"{self.MEAN_REVERSION_FADE_MAX_HOLDING_BARS} completed candles; "
+                "closing position.",
+                self.active_bot,
+            )
+            return self.close_all(algorithmic_close=True)
 
         return self.active_bot
 
