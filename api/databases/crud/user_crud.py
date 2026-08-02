@@ -4,7 +4,7 @@ from api.databases.tables.user_table import UserTable
 from api.databases.utils import independent_session
 from collections.abc import Sequence
 from pybinbot import BinbotErrors
-from api.user.models.user import UserDetails
+from api.user.models.user import EditUserDetails, UserDetails
 from api.user.services.auth import create_access_token, FormData
 from typing import Optional
 from api.tools.config import Config
@@ -108,6 +108,7 @@ class UserTableCrud:
             password=data.password,
             username=data.username,
             description=data.description,
+            is_active=data.is_active,
             role=data.role,
         )
 
@@ -118,9 +119,10 @@ class UserTableCrud:
 
         return user_details
 
-    def edit(self, data: UserDetails):
+    def edit(self, data: EditUserDetails):
         user = self.get_one(email=data.email)
-        user.sqlmodel_update(data)
+        update_data = data.model_dump(exclude_none=True, exclude_unset=True)
+        user.sqlmodel_update(update_data)
 
         self.session.add(user)
         self.session.commit()

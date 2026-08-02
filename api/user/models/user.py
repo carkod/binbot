@@ -1,10 +1,9 @@
 from typing import Optional
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 from sqlmodel import Field
 from pybinbot import UserRoles, timestamp
 from uuid import UUID, uuid4
 from typing import Sequence
-from api.databases.tables.user_table import UserTable
 from pybinbot import StandardResponse
 
 
@@ -48,6 +47,15 @@ class CreateUser(UserDetails):
     # )
 
 
+class EditUserDetails(UserDetails):
+    password: Optional[str] = Field(
+        default=None,
+        min_length=8,
+        max_length=40,
+        description="Only supplied when changing the user's password",
+    )
+
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
@@ -58,8 +66,22 @@ class LoggedInDetails(BaseModel):
     token: str
 
 
+class UserPublic(BaseModel):
+    id: Optional[UUID]
+    email: str
+    is_active: bool
+    role: UserRoles
+    full_name: str
+    username: Optional[str]
+    description: Optional[str]
+    created_at: str
+    updated_at: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class UserResponse(StandardResponse):
-    data: Sequence[UserTable]
+    data: Sequence[UserPublic]
 
 
 class TokenResponse(BaseModel):
@@ -73,7 +95,7 @@ class LoginResponse(StandardResponse):
 
 
 class GetOneUser(StandardResponse):
-    data: Optional[UserTable]
+    data: Optional[UserPublic]
 
 
 class UserTokenData(BaseModel):

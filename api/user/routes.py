@@ -1,6 +1,8 @@
+from urllib.parse import unquote
+
 from fastapi import APIRouter, Depends
 from fastapi.exceptions import ResponseValidationError
-from api.user.models.user import UserDetails, UserTokenData
+from api.user.models.user import EditUserDetails, UserDetails, UserTokenData
 from pybinbot import StandardResponse, BinbotErrors, UserRoles
 from api.user.models.user import UserResponse, GetOneUser, LoginResponse
 from api.user.services.auth import decode_access_token, FormData, get_current_user
@@ -37,6 +39,7 @@ async def get_one(email: str, session: Session = Depends(get_session)):
     Get user by email
     """
     try:
+        email = unquote(email)
         user = UserTableCrud(session).get_one(email=email)
         return GetOneUser(message="User found!", data=user)
     except ResponseValidationError as e:
@@ -83,7 +86,7 @@ def add(data: UserDetails, session: Session = Depends(get_session)):
     "/user", response_model=GetOneUser | StandardResponse, tags=["users"]
 )
 def edit(
-    user_details: UserDetails,
+    user_details: EditUserDetails,
     session: Session = Depends(get_session),
     user: UserTokenData = Depends(get_current_user),
 ):
@@ -110,6 +113,7 @@ def delete(
     """
     Delete a user by email
     """
+    email = unquote(email)
     if user.role != UserRoles.admin:
         raise BinbotErrors("Only admins can delete users.")
     try:
