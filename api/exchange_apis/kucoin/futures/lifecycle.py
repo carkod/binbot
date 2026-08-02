@@ -66,6 +66,7 @@ class Lifecycle(KucoinPositionDeal):
     RECOVERY_TIGHT_EMERGENCY_MIN_PCT = 0.35
     RECOVERY_TIGHT_EMERGENCY_MAX_PCT = 0.75
     MEAN_REVERSION_FADE_MAX_HOLDING_BARS = 8
+    LIQUIDATION_SWEEP_PUMP_MAX_HOLDING_BARS = 8
 
     def __init__(
         self,
@@ -115,21 +116,29 @@ class Lifecycle(KucoinPositionDeal):
         now_ms = int(time() * 1000)
         return now_ms - last_replace_ts_ms < self.TRAILING_STOP_REPLACE_COOLDOWN_MS
 
-    def _mean_reversion_fade_max_holding_reached(self, completed_candles: list) -> bool:
+    def _strategy_max_holding_reached(self, completed_candles: list) -> bool:
         if self.active_bot.name == "mean_reversion_fade":
-            opening_timestamp = self.active_bot.deal.opening_timestamp
-            if opening_timestamp <= 0:
-                return False
+            max_holding_bars = self.MEAN_REVERSION_FADE_MAX_HOLDING_BARS
+        elif (
+            self.active_bot.name == "liquidation_sweep_pump"
+            and self.active_bot.position == Position.long
+        ):
+            max_holding_bars = self.LIQUIDATION_SWEEP_PUMP_MAX_HOLDING_BARS
+        else:
+            return False
 
-            interval_ms = self.base_streaming.interval.get_ms()
-            entry_candle_open = opening_timestamp - (opening_timestamp % interval_ms)
-            completed_after_entry = sum(
-                1
-                for candle in completed_candles
-                if len(candle) >= 1 and int(float(candle[0])) > entry_candle_open
-            )
-            return completed_after_entry >= self.MEAN_REVERSION_FADE_MAX_HOLDING_BARS
-        return False
+        opening_timestamp = self.active_bot.deal.opening_timestamp
+        if opening_timestamp <= 0:
+            return False
+
+        interval_ms = self.base_streaming.interval.get_ms()
+        entry_candle_open = opening_timestamp - (opening_timestamp % interval_ms)
+        completed_after_entry = sum(
+            1
+            for candle in completed_candles
+            if len(candle) >= 1 and int(float(candle[0])) > entry_candle_open
+        )
+        return completed_after_entry >= max_holding_bars
 
     def _should_floor_low_price_stop(
         self,
@@ -1264,13 +1273,21 @@ class Lifecycle(KucoinPositionDeal):
                 current_price - self.active_bot.deal.take_profit_price
             ) * direction >= 0:
                 take_profit_result = self.take_profit_order()
-                if self.active_bot.name == "mean_reversion_fade":
+                if self.active_bot.name in {
+                    "mean_reversion_fade",
+                    "liquidation_sweep_pump",
+                }:
                     return take_profit_result
 
-        if self._mean_reversion_fade_max_holding_reached(completed_candles):
+        if self._strategy_max_holding_reached(completed_candles):
+            max_holding_bars = (
+                self.MEAN_REVERSION_FADE_MAX_HOLDING_BARS
+                if self.active_bot.name == "mean_reversion_fade"
+                else self.LIQUIDATION_SWEEP_PUMP_MAX_HOLDING_BARS
+            )
             self.controller.update_logs(
-                "[mean_reversion_fade] Maximum holding period reached after "
-                f"{self.MEAN_REVERSION_FADE_MAX_HOLDING_BARS} completed candles; "
+                f"[{self.active_bot.name}] Maximum holding period reached after "
+                f"{max_holding_bars} completed candles; "
                 "closing position.",
                 self.active_bot,
             )

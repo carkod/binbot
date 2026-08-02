@@ -105,8 +105,51 @@ def test_mean_reversion_fade_max_holding_counts_candles_after_entry() -> None:
         interval_ms=interval_ms,
     )
 
-    assert deal._mean_reversion_fade_max_holding_reached(seven_completed) is False
-    assert deal._mean_reversion_fade_max_holding_reached(eight_completed) is True
+    assert deal._strategy_max_holding_reached(seven_completed) is False
+    assert deal._strategy_max_holding_reached(eight_completed) is True
+
+
+def test_liquidation_sweep_pump_max_holding_counts_candles_after_entry() -> None:
+    interval_ms = 15 * 60 * 1000
+    entry_candle_open = 1_800_000_000_000
+    deal = _make_position_deal()
+    deal.active_bot.name = "liquidation_sweep_pump"
+    deal.active_bot.deal.opening_timestamp = entry_candle_open + 1_000
+    deal.base_streaming = types.SimpleNamespace(
+        interval=types.SimpleNamespace(get_ms=lambda: interval_ms)
+    )
+
+    seven_completed = _make_completed_candles(
+        entry_candle_open=entry_candle_open,
+        completed_after_entry=7,
+        interval_ms=interval_ms,
+    )
+    eight_completed = _make_completed_candles(
+        entry_candle_open=entry_candle_open,
+        completed_after_entry=8,
+        interval_ms=interval_ms,
+    )
+
+    assert deal._strategy_max_holding_reached(seven_completed) is False
+    assert deal._strategy_max_holding_reached(eight_completed) is True
+
+
+def test_liquidation_sweep_pump_max_holding_does_not_apply_to_short() -> None:
+    interval_ms = 15 * 60 * 1000
+    entry_candle_open = 1_800_000_000_000
+    deal = _make_position_deal(position=Position.short)
+    deal.active_bot.name = "liquidation_sweep_pump"
+    deal.active_bot.deal.opening_timestamp = entry_candle_open + 1_000
+    deal.base_streaming = types.SimpleNamespace(
+        interval=types.SimpleNamespace(get_ms=lambda: interval_ms)
+    )
+    completed = _make_completed_candles(
+        entry_candle_open=entry_candle_open,
+        completed_after_entry=8,
+        interval_ms=interval_ms,
+    )
+
+    assert deal._strategy_max_holding_reached(completed) is False
 
 
 def test_max_holding_does_not_apply_to_other_strategies() -> None:
@@ -124,7 +167,7 @@ def test_max_holding_does_not_apply_to_other_strategies() -> None:
         interval_ms=interval_ms,
     )
 
-    assert deal._mean_reversion_fade_max_holding_reached(completed) is False
+    assert deal._strategy_max_holding_reached(completed) is False
 
 
 def test_mean_reversion_fade_keeps_tight_stop_on_low_priced_contract() -> None:
@@ -157,14 +200,14 @@ def test_other_strategy_still_uses_low_price_stop_floor() -> None:
     )
 
 
-def _make_mean_reversion_fade_at_holding_limit(
-    *, position: Position = Position.long
+def _make_strategy_at_holding_limit(
+    *, name: str = "mean_reversion_fade", position: Position = Position.long
 ) -> Any:
     interval_ms = 15 * 60 * 1000
     current_open = (int(time() * 1000) // interval_ms) * interval_ms
     entry_candle_open = current_open - (9 * interval_ms)
     deal = _make_position_deal(position=position)
-    deal.active_bot.name = "mean_reversion_fade"
+    deal.active_bot.name = name
     deal.active_bot.deal.opening_timestamp = entry_candle_open + 1_000
     deal.klines = _make_completed_candles(
         entry_candle_open=entry_candle_open,
@@ -183,7 +226,23 @@ def _make_mean_reversion_fade_at_holding_limit(
 
 def test_mean_reversion_fade_closes_at_eight_completed_candles() -> None:
     close_calls: list[bool] = []
-    deal = _make_mean_reversion_fade_at_holding_limit()
+    deal = _make_strategy_at_holding_limit()
+
+    def close_all(algorithmic_close: bool = False) -> BotModel:
+        close_calls.append(algorithmic_close)
+        return deal.active_bot
+
+    deal.close_all = close_all
+
+    result = Lifecycle.exit(deal, close_price=100.0)
+
+    assert result is deal.active_bot
+    assert close_calls == [True]
+
+
+def test_liquidation_sweep_pump_closes_at_eight_completed_candles() -> None:
+    close_calls: list[bool] = []
+    deal = _make_strategy_at_holding_limit(name="liquidation_sweep_pump")
 
     def close_all(algorithmic_close: bool = False) -> BotModel:
         close_calls.append(algorithmic_close)
@@ -198,26 +257,30 @@ def test_mean_reversion_fade_closes_at_eight_completed_candles() -> None:
 
 
 def test_fixed_take_profit_precedes_max_holding_close() -> None:
-    exit_calls: list[str] = []
-    deal = _make_mean_reversion_fade_at_holding_limit(position=Position.short)
-    deal.active_bot.take_profit = 2.4
-    deal.active_bot.deal.stop_loss_price = 102.0
-    deal.active_bot.deal.take_profit_price = 97.6
+    for name in ("mean_reversion_fade", "liquidation_sweep_pump"):
+        exit_calls: list[str] = []
+        deal = _make_strategy_at_holding_limit(
+            name=name,
+            position=Position.short,
+        )
+        deal.active_bot.take_profit = 2.4
+        deal.active_bot.deal.stop_loss_price = 102.0
+        deal.active_bot.deal.take_profit_price = 97.6
 
-    def take_profit_order() -> BotModel:
-        exit_calls.append("take_profit")
-        return deal.active_bot
+        def take_profit_order() -> BotModel:
+            exit_calls.append("take_profit")
+            return deal.active_bot
 
-    def close_all(algorithmic_close: bool = False) -> BotModel:  # noqa: ARG001
-        exit_calls.append("max_holding")
-        return deal.active_bot
+        def close_all(algorithmic_close: bool = False) -> BotModel:  # noqa: ARG001
+            exit_calls.append("max_holding")
+            return deal.active_bot
 
-    deal.take_profit_order = take_profit_order
-    deal.close_all = close_all
+        deal.take_profit_order = take_profit_order
+        deal.close_all = close_all
 
-    Lifecycle.exit(deal, close_price=97.5)
+        Lifecycle.exit(deal, close_price=97.5)
 
-    assert exit_calls == ["take_profit"]
+        assert exit_calls == ["take_profit"]
 
 
 def test_place_stop_loss_for_margin_short_uses_price_above_entry():
