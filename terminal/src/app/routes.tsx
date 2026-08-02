@@ -11,6 +11,8 @@ import PaperTradingPage from "./pages/PaperTradingPage";
 import PaperTradingDetail from "./pages/PaperTradingDetail";
 import SymbolsPage from "./pages/Symbols";
 import TestAutotradePage from "./pages/TestAutotrade";
+import UserFormPage from "./pages/UserForm";
+import UsersPage from "./pages/Users";
 
 export type Routes = {
   path: string;
@@ -147,6 +149,33 @@ export const routes: Routes[] = [
     element: <SymbolsPage />,
     id: "symbols",
     nav: true,
+  },
+  {
+    path: "user",
+    link: "/user",
+    icon: "fas fa-user",
+    name: "User",
+    element: <UsersPage />,
+    id: "user",
+    nav: true,
+  },
+  {
+    path: "user/new",
+    link: "/user/new",
+    icon: undefined,
+    name: "New User",
+    element: <UserFormPage mode="new" />,
+    id: "new-user",
+    nav: false,
+  },
+  {
+    path: "user/edit",
+    link: "/user/edit",
+    icon: undefined,
+    name: "Edit User",
+    element: <UserFormPage mode="edit" />,
+    id: "edit-user",
+    nav: false,
   },
   {
     path: "*",
