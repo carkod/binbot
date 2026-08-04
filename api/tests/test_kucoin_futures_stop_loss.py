@@ -134,11 +134,54 @@ def test_liquidation_sweep_pump_max_holding_counts_candles_after_entry() -> None
     assert deal._strategy_max_holding_reached(eight_completed) is True
 
 
+def test_coinrule_price_tracker_max_holding_counts_candles_after_entry() -> None:
+    interval_ms = 15 * 60 * 1000
+    entry_candle_open = 1_800_000_000_000
+    deal = _make_position_deal()
+    deal.active_bot.name = "coinrule_price_tracker"
+    deal.active_bot.deal.opening_timestamp = entry_candle_open + 1_000
+    deal.base_streaming = types.SimpleNamespace(
+        interval=types.SimpleNamespace(get_ms=lambda: interval_ms)
+    )
+
+    seven_completed = _make_completed_candles(
+        entry_candle_open=entry_candle_open,
+        completed_after_entry=7,
+        interval_ms=interval_ms,
+    )
+    eight_completed = _make_completed_candles(
+        entry_candle_open=entry_candle_open,
+        completed_after_entry=8,
+        interval_ms=interval_ms,
+    )
+
+    assert deal._strategy_max_holding_reached(seven_completed) is False
+    assert deal._strategy_max_holding_reached(eight_completed) is True
+
+
 def test_liquidation_sweep_pump_max_holding_does_not_apply_to_short() -> None:
     interval_ms = 15 * 60 * 1000
     entry_candle_open = 1_800_000_000_000
     deal = _make_position_deal(position=Position.short)
     deal.active_bot.name = "liquidation_sweep_pump"
+    deal.active_bot.deal.opening_timestamp = entry_candle_open + 1_000
+    deal.base_streaming = types.SimpleNamespace(
+        interval=types.SimpleNamespace(get_ms=lambda: interval_ms)
+    )
+    completed = _make_completed_candles(
+        entry_candle_open=entry_candle_open,
+        completed_after_entry=8,
+        interval_ms=interval_ms,
+    )
+
+    assert deal._strategy_max_holding_reached(completed) is False
+
+
+def test_coinrule_price_tracker_max_holding_does_not_apply_to_short() -> None:
+    interval_ms = 15 * 60 * 1000
+    entry_candle_open = 1_800_000_000_000
+    deal = _make_position_deal(position=Position.short)
+    deal.active_bot.name = "coinrule_price_tracker"
     deal.active_bot.deal.opening_timestamp = entry_candle_open + 1_000
     deal.base_streaming = types.SimpleNamespace(
         interval=types.SimpleNamespace(get_ms=lambda: interval_ms)
@@ -256,8 +299,28 @@ def test_liquidation_sweep_pump_closes_at_eight_completed_candles() -> None:
     assert close_calls == [True]
 
 
+def test_coinrule_price_tracker_closes_at_eight_completed_candles() -> None:
+    close_calls: list[bool] = []
+    deal = _make_strategy_at_holding_limit(name="coinrule_price_tracker")
+
+    def close_all(algorithmic_close: bool = False) -> BotModel:
+        close_calls.append(algorithmic_close)
+        return deal.active_bot
+
+    deal.close_all = close_all
+
+    result = Lifecycle.exit(deal, close_price=100.0)
+
+    assert result is deal.active_bot
+    assert close_calls == [True]
+
+
 def test_fixed_take_profit_precedes_max_holding_close() -> None:
-    for name in ("mean_reversion_fade", "liquidation_sweep_pump"):
+    for name in (
+        "mean_reversion_fade",
+        "liquidation_sweep_pump",
+        "coinrule_price_tracker",
+    ):
         exit_calls: list[str] = []
         deal = _make_strategy_at_holding_limit(
             name=name,
