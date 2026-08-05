@@ -59,7 +59,7 @@ def test_get_benchmark_series(client: TestClient, create_test_tables) -> None:
 
     content = response.json()
     assert content["message"] == "Successfully retrieved benchmark series."
-    assert content["data"]["series"]["fiat"] == [100.0, 110.0, 105.0, 125.0]
+    assert content["data"]["series"]["fiat"] == [100.0, 110.0, 105.0, 130.0]
     assert content["data"]["series"]["btc"] == [95000.0, 96000.0, 97000.0, 98000.0]
     assert content["data"]["series"]["dates"][:3] == [
         balance_points[0][0],
@@ -67,8 +67,8 @@ def test_get_benchmark_series(client: TestClient, create_test_tables) -> None:
         balance_points[2][0],
     ]
     assert len(content["data"]["series"]["dates"]) == 4
-    assert content["data"]["stats"]["pnl"] == 0.16
-    assert content["data"]["stats"]["sharpe"] == 16.0555
+    assert content["data"]["stats"]["pnl"] == 0.1923
+    assert content["data"]["stats"]["sharpe"] == 16.0974
     assert content["data"]["stats"]["btc_sharpe"] == 2246.155
 
 

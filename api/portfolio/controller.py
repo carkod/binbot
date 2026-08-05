@@ -64,16 +64,16 @@ class PortfolioController:
         balances: list[float],
     ) -> None:
         current_balance = ConsolidatedAccounts(session=self.session).get_balance()
-        live_net_balance = round_numbers(
-            current_balance.estimated_total_fiat - current_balance.total_deposit, 4
+        live_estimated_total_fiat = round_numbers(
+            current_balance.estimated_total_fiat, 4
         )
         live_btc_price = float(self.api.get_ticker_price(self.benchmark_symbol))
         live_timestamp = int(datetime.now().timestamp() * 1000)
 
-        fiat_series.append(live_net_balance)
+        fiat_series.append(live_estimated_total_fiat)
         btc_series.append(live_btc_price)
         dates.append(live_timestamp)
-        balances.append(live_net_balance)
+        balances.append(live_estimated_total_fiat)
 
     def _consolidate_dates(self, klines: list[list], balance_date: int) -> int | None:
         balance_date_day = ts_to_day(balance_date)
