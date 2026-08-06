@@ -24,6 +24,7 @@ ACTIVE_GRID_LADDER_STATUSES = (
     GridLadderStatus.pending,
     GridLadderStatus.active,
     GridLadderStatus.closing,
+    GridLadderStatus.error,
 )
 ZERO_USED_MARGIN_STATUSES = (
     GridLadderStatus.closed.value,

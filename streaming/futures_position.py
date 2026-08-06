@@ -25,7 +25,6 @@ from streaming.base import BaseStreaming
 class FuturesPosition(PositionMarket):
     PENDING_ENTRY_TTL_MS = 5 * 60 * 1000
     RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO = "relative_strength_impulse_rider"
-    RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_TTL_MS = 45 * 60 * 1000
     TERMINAL_ORDER_STATUSES = {
         OrderStatus.FILLED,
         OrderStatus.CANCELED,
@@ -57,7 +56,8 @@ class FuturesPosition(PositionMarket):
 
     def is_pending_base_entry_expired(self, order: OrderModel, now_ms: int) -> bool:
         pending_entry_ttl_ms = (
-            self.RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_TTL_MS
+            self.base_streaming.interval.get_ms()
+            * self.RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES
             if self.active_bot.name == self.RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO
             else self.PENDING_ENTRY_TTL_MS
         )
@@ -180,7 +180,7 @@ class FuturesPosition(PositionMarket):
         self.active_bot.deal.opening_price = order.price
         self.active_bot.deal.opening_qty = order.qty
         self.active_bot.deal.opening_timestamp = (
-            int(datetime.now().timestamp() * 1000)
+            self.matching_exchange_fill_timestamp(order)
             if self.active_bot.name == self.RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO
             else order.timestamp
         )
@@ -221,11 +221,13 @@ class FuturesPosition(PositionMarket):
         order.qty = 0
         self.base_streaming.bot_controller.update_order(order)
         self.active_bot.status = Status.inactive
-        pending_entry_minutes = (
-            self.RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_TTL_MS // 60_000
-            if self.active_bot.name == self.RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO
-            else self.PENDING_ENTRY_TTL_MS // 60_000
-        )
+        pending_entry_minutes = self.PENDING_ENTRY_TTL_MS // 60_000
+        if self.active_bot.name == self.RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
+            pending_entry_minutes = (
+                self.base_streaming.interval.get_ms()
+                * self.RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES
+                // 60_000
+            )
         self.active_bot.add_log(
             f"Entry limit order {order.order_id} expired after {pending_entry_minutes} minutes without fill. "
             "Order cancelled and bot set to inactive."
@@ -378,26 +380,6 @@ class FuturesPosition(PositionMarket):
                     self.active_bot.add_log(
                         f"Order {order.order_id} updated from system"
                     )
-
-                    if (
-                        order.deal_type == DealType.base_order
-                        and self.active_bot.deal.opening_price == 0
-                        and (status == OrderStatus.FILLED or filled_size > 0)
-                    ):
-                        # Entry fill confirmed: stamp deal fields then activate
-                        # via open_deal() so SL/TP are armed on the same path
-                        # as an instant-fill base order.
-                        self.active_bot.deal.opening_price = (
-                            order.price
-                        )  # avg_deal_price
-                        self.active_bot.deal.opening_qty = order.qty  # filled_size
-                        self.active_bot.deal.opening_timestamp = (
-                            int(datetime.now().timestamp() * 1000)
-                            if self.active_bot.name
-                            == self.RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO
-                            else order.timestamp
-                        )
-                        self.active_bot = self.open_deal()
 
                     if (
                         (

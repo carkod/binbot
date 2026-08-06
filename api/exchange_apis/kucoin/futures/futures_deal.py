@@ -58,7 +58,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
     ENTRY_FALLBACK_ALLOWANCE_PCT = 0.75
     RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO = "relative_strength_impulse_rider"
     RELATIVE_STRENGTH_IMPULSE_RIDER_RETEST_DISCOUNT_PCT = 1.0
-    RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_MINUTES = 45
+    RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES = 3
 
     def __init__(
         self,
@@ -93,6 +93,46 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
     def _direction_multiplier(self) -> int:
         return -1 if self.active_bot.position == Position.short else 1
+
+    def matching_exchange_fill_timestamp(self, order: OrderModel) -> int:
+        """Return the first exchange fill time for an entry order, in milliseconds."""
+        try:
+            fills = self.base_streaming.kucoin_futures_api.get_fills(
+                order_id=str(order.order_id)
+            )
+        except Exception as exc:
+            self.active_bot.add_log(
+                f"Unable to load fill timestamp for order {order.order_id}: {exc}. "
+                "Using the exchange order timestamp."
+            )
+            return order.timestamp
+
+        matching_fills = [
+            fill
+            for fill in (fills.items or [])
+            if str(fill.order_id) == str(order.order_id)
+        ]
+        trade_timestamps = [
+            int(fill.trade_time) // 1_000_000
+            for fill in matching_fills
+            if fill.trade_time is not None
+        ]
+        if trade_timestamps:
+            return min(trade_timestamps)
+
+        created_timestamps = [
+            int(fill.created_at)
+            for fill in matching_fills
+            if fill.created_at is not None
+        ]
+        if created_timestamps:
+            return min(created_timestamps)
+
+        self.active_bot.add_log(
+            f"No matching exchange fill timestamp found for order {order.order_id}. "
+            "Using the exchange order timestamp."
+        )
+        return order.timestamp
 
     def _is_recovery_bot(self) -> bool:
         recovery_params = self.active_bot.recovery_params
@@ -934,6 +974,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
             order.price = avg_price
             self.active_bot.deal.opening_price = avg_price
             self.active_bot.deal.opening_qty = filled_size
+            if self.active_bot.name == self.RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
+                self.active_bot.deal.opening_timestamp = (
+                    self.matching_exchange_fill_timestamp(order)
+                )
             self.active_bot.status = Status.active
         else:
             self.active_bot.status = Status.pending
@@ -946,11 +990,13 @@ class KucoinPositionDeal(KucoinBaseBalance):
         if self.active_bot.deal.opening_price > 0:
             log_message = f"Futures {position_label} opened @ {self.active_bot.deal.opening_price} with {int(self.active_bot.deal.opening_qty)} contracts"
         else:
-            pending_entry_minutes = (
-                self.RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_MINUTES
-                if self.active_bot.name == self.RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO
-                else 5
-            )
+            pending_entry_minutes = 5
+            if self.active_bot.name == self.RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
+                pending_entry_minutes = (
+                    self.base_streaming.interval.get_ms()
+                    * self.RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES
+                    // 60_000
+                )
             log_message = (
                 f"Futures {position_label} entry limit order {order.order_id} submitted "
                 f"at {entry_limit_price} with {contracts} contracts. Bot is pending "

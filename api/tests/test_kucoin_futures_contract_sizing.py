@@ -18,6 +18,7 @@ from pybinbot import (
 
 from api.exchange_apis.kucoin.deals.base import KucoinBaseBalance
 from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
+from api.exchange_apis.kucoin.futures.lifecycle import Lifecycle
 from streaming.base import BaseStreaming
 from streaming.futures_position import FuturesPosition
 
@@ -568,7 +569,10 @@ def test_unfilled_capped_base_order_uses_pending_entry_ttl_not_legacy_age_expiry
     )
 
 
-def test_relative_strength_impulse_rider_pending_entry_waits_three_candles():
+@pytest.mark.parametrize("interval_minutes", [5, 15, 60])
+def test_relative_strength_impulse_rider_pending_entry_waits_three_candles(
+    interval_minutes,
+):
     position = cast(Any, FuturesPosition.__new__(FuturesPosition))
     order = OrderModel(
         order_id="impulse-retest-entry",
@@ -587,10 +591,17 @@ def test_relative_strength_impulse_rider_pending_entry_waits_three_candles():
         name="relative_strength_impulse_rider",
         status=Status.pending,
     )
+    interval_ms = interval_minutes * 60 * 1000
+    position.base_streaming = types.SimpleNamespace(
+        interval=types.SimpleNamespace(get_ms=lambda: interval_ms)
+    )
 
-    assert position.is_pending_base_entry_expired(order, now_ms=45 * 60 * 1000) is False
     assert (
-        position.is_pending_base_entry_expired(order, now_ms=45 * 60 * 1000 + 2) is True
+        position.is_pending_base_entry_expired(order, now_ms=3 * interval_ms) is False
+    )
+    assert (
+        position.is_pending_base_entry_expired(order, now_ms=3 * interval_ms + 2)
+        is True
     )
 
 
@@ -598,15 +609,35 @@ def test_relative_strength_impulse_rider_delayed_fill_starts_holding_clock_at_fi
     monkeypatch,
 ):
     fill_time = datetime(2026, 8, 6, 12, 0, tzinfo=timezone.utc)
+    observation_time = datetime(2026, 8, 6, 15, 0, tzinfo=timezone.utc)
+    fill_timestamp_ms = int(fill_time.timestamp() * 1000)
     monkeypatch.setattr(
         "streaming.futures_position.datetime",
-        types.SimpleNamespace(now=lambda: fill_time),
+        types.SimpleNamespace(now=lambda: observation_time),
     )
     position = cast(Any, FuturesPosition.__new__(FuturesPosition))
     position.active_bot = BotModel(
         pair="KATUSDTM",
         name="relative_strength_impulse_rider",
         status=Status.pending,
+    )
+    position.base_streaming = types.SimpleNamespace(
+        kucoin_futures_api=types.SimpleNamespace(
+            get_fills=lambda **kwargs: types.SimpleNamespace(
+                items=[
+                    types.SimpleNamespace(
+                        order_id="another-order",
+                        trade_time=int(observation_time.timestamp() * 1_000_000_000),
+                        created_at=int(observation_time.timestamp() * 1000),
+                    ),
+                    types.SimpleNamespace(
+                        order_id="filled-impulse-retest-entry",
+                        trade_time=fill_timestamp_ms * 1_000_000,
+                        created_at=fill_timestamp_ms,
+                    ),
+                ]
+            )
+        )
     )
     position.open_deal = lambda: position.active_bot
     order = OrderModel(
@@ -624,9 +655,22 @@ def test_relative_strength_impulse_rider_delayed_fill_starts_holding_clock_at_fi
 
     position._activate_filled_base_order(order)
 
-    assert position.active_bot.deal.opening_timestamp == int(
-        fill_time.timestamp() * 1000
+    assert position.active_bot.deal.opening_timestamp == fill_timestamp_ms
+
+    lifecycle = cast(Any, Lifecycle.__new__(Lifecycle))
+    lifecycle.active_bot = position.active_bot
+    interval_ms = 15 * 60 * 1000
+    lifecycle.base_streaming = types.SimpleNamespace(
+        interval=types.SimpleNamespace(get_ms=lambda: interval_ms)
     )
+    completed_candles = [
+        [fill_timestamp_ms + candle_number * interval_ms]
+        for candle_number in range(1, 13)
+        if fill_timestamp_ms + candle_number * interval_ms
+        < int(observation_time.timestamp() * 1000)
+    ]
+
+    assert lifecycle._strategy_max_holding_reached(completed_candles) is True
 
 
 @pytest.mark.parametrize(

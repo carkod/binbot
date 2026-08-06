@@ -11,7 +11,6 @@ from api.databases.tables.grid_ladder_table import (
 from api.databases.tables.signals_table import SignalsTable
 from api.databases.tables.symbol_table import SymbolTable
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
-from kucoin_universal_sdk.model.common import RestError
 from pybinbot import (
     ExchangeId,
     GridLadderStatus,
@@ -50,6 +49,11 @@ _STALE_LADDER_AGE_MS = int(1.5 * 24 * 60 * 60 * 1000)
 _STALE_LADDER_PNL_PCT_LOW = -1.0
 _STALE_LADDER_PNL_PCT_HIGH = 1.0
 GRID_REARM_MARKET_REGIMES = frozenset({"RANGE", "TRANSITIONAL"})
+GRID_REARM_BLOCKING_MICRO_REGIMES = frozenset({"BREAKOUT_UP", "BREAKDOWN"})
+DEFAULT_MAX_COMPLETED_CYCLES = 2
+DEFAULT_MAX_LIFETIME_HOURS = 12.0
+DEFAULT_MAX_BB_WIDTH_CHANGE_PCT = 20.0
+MAX_RECONCILIATION_FAILURES = 3
 
 
 def _coerce_breach_ts(value: object) -> int | None:
@@ -76,10 +80,8 @@ class GridLadderLifecycle:
     exchange orders and reconciles fills on the same loop as normal bots.
     """
 
-    # Price must stay outside the breakout zone for this many monitoring ticks
-    # before a filled ladder closes (prevents wicks from exiting prematurely).
-    # Each tick corresponds to one process_symbol() call, typically every ~15 m.
-    BREACH_CANDLES_REQUIRED = 3
+    # Unfilled ladders retain a one-candle confirmation. Filled exposure has
+    # an exchange-native protective stop and an immediate lifecycle fallback.
     UNFILLED_BREACH_CANDLES_REQUIRED = 1
 
     def __init__(self, base_streaming: BaseStreaming, session: Session):
@@ -93,6 +95,10 @@ class GridLadderLifecycle:
             return
 
         status = self._status_value(ladder.status)
+        if status == GridLadderStatus.error.value:
+            self._recover_error_ladder(ladder)
+            return
+
         if status == GridLadderStatus.pending.value:
             self._place_initial_entries(ladder)
             return
@@ -117,6 +123,35 @@ class GridLadderLifecycle:
                         "event": "first_cycle_timeout",
                         "timeout_hours": first_cycle_timeout_hours,
                         "has_filled_exposure": self._has_open_exposure(ladder),
+                    },
+                )
+                return
+
+            max_lifetime_hours = self._max_lifetime_hours(ladder)
+            if self._is_max_lifetime(ladder, max_lifetime_hours):
+                self._close_ladder(
+                    ladder,
+                    context_updates={"close_reason": "max_lifetime"},
+                    log_event={
+                        "event": "max_lifetime",
+                        "max_lifetime_hours": max_lifetime_hours,
+                        "completed_cycles": self._completed_cycle_count(ladder),
+                        "has_filled_exposure": self._has_open_exposure(ladder),
+                    },
+                )
+                return
+
+            completed_cycles = self._completed_cycle_count(ladder)
+            if completed_cycles >= self._max_completed_cycles(ladder):
+                self._close_ladder(
+                    ladder,
+                    context_updates={
+                        "close_reason": "max_completed_cycles",
+                        "completed_cycles": completed_cycles,
+                    },
+                    log_event={
+                        "event": "max_completed_cycles",
+                        "completed_cycles": completed_cycles,
                     },
                 )
                 return
@@ -250,11 +285,6 @@ class GridLadderLifecycle:
             for level in ladder.levels
         )
 
-    def _breach_candles_required(self, ladder: GridLadderTable) -> int:
-        if self._has_open_exposure(ladder):
-            return self.BREACH_CANDLES_REQUIRED
-        return self.UNFILLED_BREACH_CANDLES_REQUIRED
-
     def _breakout_close_type(self, ladder: GridLadderTable) -> str:
         if self._has_open_exposure(ladder):
             return "filled_breakout_close"
@@ -321,9 +351,12 @@ class GridLadderLifecycle:
             return None
 
         now_ms = int(time() * 1000)
-        breach_duration_ms = self._breach_candles_required(ladder) * 15 * 60 * 1000
+        has_open_exposure = self._has_open_exposure(ladder)
+        breach_duration_ms = self.UNFILLED_BREACH_CANDLES_REQUIRED * 15 * 60 * 1000
 
         if price < ladder.breakout_low:
+            if has_open_exposure:
+                return "down", price
             first_breach = _coerce_breach_ts(
                 (ladder.context or {}).get("first_breach_at")
             )
@@ -347,6 +380,8 @@ class GridLadderLifecycle:
             return None
 
         if price > ladder.breakout_high:
+            if has_open_exposure:
+                return "up", price
             first_breach_up = _coerce_breach_ts(
                 (ladder.context or {}).get("first_breach_up_at")
             )
@@ -530,17 +565,19 @@ class GridLadderLifecycle:
         for order in ladder.orders:
             if order.status in TERMINAL_GRID_ORDER_STATUSES:
                 continue
+            if order.order_role == GridOrderRole.stop_loss.value:
+                continue
 
             try:
                 details = self.base_streaming.kucoin_futures_api.retrieve_order(
                     order.exchange_order_id
                 )
-            except RestError as error:
-                self._mark_order_error(ladder, order, error)
-                continue
             except Exception as error:
-                self._mark_order_error(ladder, order, error)
+                if self._record_reconciliation_failure(ladder, order, error):
+                    return
                 continue
+
+            self._clear_reconciliation_failure(ladder, order.exchange_order_id)
 
             status = self._order_status(details.status)
             filled_qty = self._filled_size(details)
@@ -608,6 +645,78 @@ class GridLadderLifecycle:
                 self._handle_filled_order(ladder, order, filled_qty, filled_price)
             except Exception as error:
                 self._handle_post_fill_error(ladder, order, error)
+                return
+
+        refreshed_ladder = self.crud.get(ladder.id)
+        if (
+            refreshed_ladder is not None
+            and self._status_value(refreshed_ladder.status)
+            == GridLadderStatus.active.value
+        ):
+            self._reconcile_protective_stops(refreshed_ladder)
+
+    def _record_reconciliation_failure(
+        self,
+        ladder: GridLadderTable,
+        order: GridOrderTable,
+        error: Exception,
+    ) -> bool:
+        refreshed_ladder = self.crud.get(ladder.id)
+        context = dict(
+            refreshed_ladder.context
+            if refreshed_ladder is not None and refreshed_ladder.context
+            else {}
+        )
+        failures = context.get("reconciliation_failures")
+        if not isinstance(failures, dict):
+            failures = {}
+        failure_count = int(failures.get(order.exchange_order_id, 0)) + 1
+        failures[order.exchange_order_id] = failure_count
+        self.crud.update_status_with_context(
+            ladder.id,
+            GridLadderStatus.active,
+            context_updates={"reconciliation_failures": failures},
+        )
+        self.crud.update_logs(
+            ladder.id,
+            {
+                "event": "order_reconciliation_retry",
+                "order_id": order.exchange_order_id,
+                "attempt": failure_count,
+                "error_type": error.__class__.__name__,
+                "message": str(error),
+            },
+        )
+        if failure_count < MAX_RECONCILIATION_FAILURES:
+            return False
+
+        self.crud.update_status_with_context(ladder.id, GridLadderStatus.error)
+        self.crud.update_error_logs(ladder.id, error)
+        recoverable = self.crud.get(ladder.id)
+        if recoverable is not None:
+            self._recover_error_ladder(recoverable)
+        return True
+
+    def _clear_reconciliation_failure(
+        self,
+        ladder: GridLadderTable,
+        exchange_order_id: str,
+    ) -> None:
+        refreshed_ladder = self.crud.get(ladder.id)
+        failures = (
+            (refreshed_ladder.context or {}).get("reconciliation_failures")
+            if refreshed_ladder is not None
+            else None
+        )
+        if not isinstance(failures, dict) or exchange_order_id not in failures:
+            return
+        remaining = dict(failures)
+        remaining.pop(exchange_order_id, None)
+        self.crud.update_status_with_context(
+            ladder.id,
+            GridLadderStatus.active,
+            context_updates={"reconciliation_failures": remaining},
+        )
 
     def _record_partial_fill(
         self,
@@ -640,6 +749,7 @@ class GridLadderLifecycle:
                 status=GridLevelStatus.open.value,
             )
             self.crud.recalculate_used_margin(ladder.id)
+            self._ensure_protective_stop(ladder, order.level, filled_qty)
 
     def _guard_entry_side(
         self,
@@ -684,10 +794,12 @@ class GridLadderLifecycle:
                 status=GridLevelStatus.filled.value,
             )
             self.crud.recalculate_used_margin(ladder.id)
+            self._ensure_protective_stop(ladder, level, filled_qty)
             self._place_take_profit_order(ladder, level)
             return
 
         if order.order_role == GridOrderRole.take_profit.value:
+            self._cancel_level_protective_stops(ladder, level)
             self.crud.mark_level_take_profit_filled(
                 level.id,
                 realized_pnl=level.realized_pnl
@@ -695,6 +807,23 @@ class GridLadderLifecycle:
             )
             self.crud.recalculate_used_margin(ladder.id)
             self.crud.recalculate_realized_pnl(ladder.id)
+            refreshed_ladder = self.crud.get(ladder.id)
+            if refreshed_ladder is None:
+                return
+            completed_cycles = self._completed_cycle_count(refreshed_ladder)
+            if completed_cycles >= self._max_completed_cycles(refreshed_ladder):
+                self._close_ladder(
+                    refreshed_ladder,
+                    context_updates={
+                        "close_reason": "max_completed_cycles",
+                        "completed_cycles": completed_cycles,
+                    },
+                    log_event={
+                        "event": "max_completed_cycles",
+                        "completed_cycles": completed_cycles,
+                    },
+                )
+                return
             self._rearm_after_flat(ladder, level)
 
     def _rearm_after_flat(
@@ -758,6 +887,14 @@ class GridLadderLifecycle:
             )
             return False
 
+        symbol_block_reason = self._symbol_rearm_block_reason(ladder)
+        if symbol_block_reason is not None:
+            self.crud.update_logs(
+                ladder.id,
+                (f"Skipped rearm level {level.level_index}: {symbol_block_reason}"),
+            )
+            return False
+
         if not self._has_sufficient_balance(level):
             self.crud.update_logs(
                 ladder.id,
@@ -788,6 +925,60 @@ class GridLadderLifecycle:
         if context_regime is None:
             return None
         return str(context_regime).upper()
+
+    def _latest_symbol_features(self, ladder: GridLadderTable) -> dict:
+        latest_signal = self.session.exec(
+            select(SignalsTable)
+            .where(SignalsTable.symbol == ladder.symbol)
+            .order_by(col(SignalsTable.generated_at).desc())
+            .limit(1)
+        ).first()
+        if latest_signal is None:
+            return {}
+
+        context = (
+            latest_signal.context if isinstance(latest_signal.context, dict) else {}
+        )
+        symbol_features = context.get("symbol_features")
+        if isinstance(symbol_features, dict):
+            features = symbol_features.get(ladder.symbol)
+            if isinstance(features, dict):
+                return features
+        return context
+
+    def _initial_symbol_features(self, ladder: GridLadderTable) -> dict:
+        context = ladder.context if isinstance(ladder.context, dict) else {}
+        symbol_features = context.get("symbol_features")
+        if not isinstance(symbol_features, dict):
+            return {}
+        features = symbol_features.get(ladder.symbol)
+        return features if isinstance(features, dict) else {}
+
+    def _symbol_rearm_block_reason(self, ladder: GridLadderTable) -> str | None:
+        features = self._latest_symbol_features(ladder)
+        for field_name in ("micro_regime", "micro_regime_transition"):
+            raw_value = features.get(field_name)
+            if raw_value is None:
+                continue
+            value = str(raw_value).upper()
+            if value in GRID_REARM_BLOCKING_MICRO_REGIMES:
+                return f"symbol_{field_name}_{value.lower()}"
+
+        initial_width = self._initial_symbol_features(ladder).get("bb_width")
+        current_width = features.get("bb_width")
+        if not isinstance(initial_width, (int, float)) or initial_width <= 0:
+            return None
+        if not isinstance(current_width, (int, float)) or current_width <= 0:
+            return None
+        max_change_pct = self._grid_option_number(
+            ladder,
+            "max_bb_width_change_pct",
+            DEFAULT_MAX_BB_WIDTH_CHANGE_PCT,
+        )
+        expansion_pct = ((current_width - initial_width) / initial_width) * 100
+        if expansion_pct > max_change_pct:
+            return f"bb_width_expanded_{round(expansion_pct, 2)}pct"
+        return None
 
     def _retry_pending_rearms(self, ladder: GridLadderTable) -> None:
         """Pick up levels that finished a round trip but couldn't be
@@ -827,9 +1018,8 @@ class GridLadderLifecycle:
     ) -> None:
         """Both directional sides ended up filled and exposed at the same
         time (the guard's cancel lost a race to an in-flight fill). Mark
-        both sides' levels as error and halt automation for this ladder —
-        an error-status ladder is untouched by process_symbol — so a human
-        reconciles the real exchange position rather than the code guessing.
+        both sides' levels as error and enter the automatic cancel-and-flatten
+        recovery path.
 
         Records this level's real fill (rather than leaving filled_entry_qty
         at 0) so _has_side_exposure still recognizes it as live exposure if
@@ -861,6 +1051,188 @@ class GridLadderLifecycle:
                 "manual reconciliation required"
             ),
         )
+        recoverable = self.crud.get(ladder.id)
+        if recoverable is not None:
+            self._recover_error_ladder(recoverable)
+
+    def _protective_stop_price(
+        self,
+        ladder: GridLadderTable,
+        level: GridLevelTable,
+    ) -> float:
+        return ladder.breakout_low if level.side == "buy" else ladder.breakout_high
+
+    def _active_level_protective_stops(
+        self,
+        ladder: GridLadderTable,
+        level: GridLevelTable,
+    ) -> list[GridOrderTable]:
+        return [
+            order
+            for order in ladder.orders
+            if order.level_id == level.id
+            and order.order_role == GridOrderRole.stop_loss.value
+            and order.status not in TERMINAL_GRID_ORDER_STATUSES
+        ]
+
+    def _ensure_protective_stop(
+        self,
+        ladder: GridLadderTable,
+        level: GridLevelTable | None,
+        filled_qty: float,
+    ) -> None:
+        if level is None or filled_qty <= 0:
+            return
+
+        active_stops = self._active_level_protective_stops(ladder, level)
+        stop_contracts = int(filled_qty)
+        if len(active_stops) == 1 and active_stops[0].contracts == stop_contracts:
+            return
+        if active_stops:
+            self._cancel_protective_stop_orders(ladder, active_stops)
+
+        symbol_row = self._symbol_row(ladder.symbol)
+        stop_price = round_price_to_precision(
+            self._protective_stop_price(ladder, level),
+            self._price_precision(symbol_row),
+        )
+        stop_direction = (
+            AddOrderReq.StopEnum.DOWN
+            if level.side == "buy"
+            else AddOrderReq.StopEnum.UP
+        )
+        order = self.base_streaming.kucoin_futures_api.place_futures_order(
+            symbol=symbol_row.get_futures_symbol(),
+            side=self._opposite_side_enum(level.side),
+            size=stop_contracts,
+            leverage=symbol_row.futures_leverage,
+            order_type=OrderType.market,
+            stop=stop_direction,
+            stop_price=stop_price,
+            stop_price_type=AddOrderReq.StopPriceTypeEnum.MARK_PRICE,
+            reduce_only=True,
+        )
+        self.crud.create_order(
+            ladder_id=ladder.id,
+            level_id=level.id,
+            exchange_order_id=str(order.order_id),
+            order_role=GridOrderRole.stop_loss.value,
+            side=self._opposite_side(level.side),
+            price=stop_price,
+            contracts=stop_contracts,
+            status=GRID_ORDER_OPEN_STATUS,
+        )
+        self.crud.update_logs(
+            ladder.id,
+            (
+                f"Placed protective stop {order.order_id} for level "
+                f"{level.level_index}: {self._opposite_side(level.side)} "
+                f"{stop_contracts} contracts @ trigger {stop_price}"
+            ),
+        )
+
+    def _cancel_protective_stop_orders(
+        self,
+        ladder: GridLadderTable,
+        orders: list[GridOrderTable],
+    ) -> None:
+        order_ids = [order.exchange_order_id for order in orders]
+        if not order_ids:
+            return
+        symbol_row = self._symbol_row(ladder.symbol)
+        exchange_stops = (
+            self.base_streaming.kucoin_futures_api.get_all_stop_loss_orders(
+                symbol_row.get_futures_symbol()
+            )
+        )
+        exchange_stop_ids = {str(stop.id) for stop in exchange_stops}
+        cancellable_order_ids = [
+            order_id for order_id in order_ids if order_id in exchange_stop_ids
+        ]
+        if cancellable_order_ids:
+            self.base_streaming.kucoin_futures_api.batch_cancel_stop_loss_orders(
+                cancellable_order_ids
+            )
+        for order in orders:
+            self.crud.update_order(order.id, status=GRID_ORDER_CANCELLED_STATUS)
+        self.crud.update_logs(
+            ladder.id,
+            f"Cancelled protective stop orders: {', '.join(order_ids)}",
+        )
+
+    def _cancel_level_protective_stops(
+        self,
+        ladder: GridLadderTable,
+        level: GridLevelTable,
+    ) -> None:
+        self._cancel_protective_stop_orders(
+            ladder,
+            self._active_level_protective_stops(ladder, level),
+        )
+
+    def _reconcile_protective_stops(self, ladder: GridLadderTable) -> None:
+        local_stops = [
+            order
+            for order in ladder.orders
+            if order.order_role == GridOrderRole.stop_loss.value
+            and order.status == GRID_ORDER_OPEN_STATUS
+        ]
+        if not local_stops:
+            return
+
+        symbol_row = self._symbol_row(ladder.symbol)
+        try:
+            exchange_stops = (
+                self.base_streaming.kucoin_futures_api.get_all_stop_loss_orders(
+                    symbol_row.get_futures_symbol()
+                )
+            )
+        except Exception as error:
+            self._record_reconciliation_failure(ladder, local_stops[0], error)
+            return
+        self._clear_reconciliation_failure(
+            ladder,
+            local_stops[0].exchange_order_id,
+        )
+        open_stop_ids = {str(stop.id) for stop in exchange_stops}
+        for order in local_stops:
+            if order.exchange_order_id in open_stop_ids:
+                continue
+            if self._has_exchange_position(ladder.symbol):
+                error = RuntimeError(
+                    f"Protective stop {order.exchange_order_id} is missing while "
+                    f"{ladder.symbol} still has exchange exposure"
+                )
+                self.crud.update_status_with_context(ladder.id, GridLadderStatus.error)
+                self.crud.update_error_logs(ladder.id, error)
+                recoverable = self.crud.get(ladder.id)
+                if recoverable is not None:
+                    self._recover_error_ladder(recoverable)
+                return
+
+            self.crud.update_order(
+                order.id,
+                status=GRID_ORDER_FILLED_STATUS,
+                filled_qty=order.contracts,
+                filled_price=order.price,
+            )
+            refreshed_ladder = self.crud.get(ladder.id)
+            if refreshed_ladder is None:
+                return
+            self._close_ladder(
+                refreshed_ladder,
+                forced_close_price=order.price,
+                context_updates={
+                    "close_reason": "protective_stop_filled",
+                    "protective_stop_order_id": order.exchange_order_id,
+                },
+                log_event={
+                    "event": "protective_stop_filled",
+                    "order_id": order.exchange_order_id,
+                    "trigger_price": order.price,
+                },
+            )
+            return
 
     def _place_take_profit_order(
         self,
@@ -915,6 +1287,8 @@ class GridLadderLifecycle:
         ladder: GridLadderTable,
         level: GridLevelTable,
         exit_price: float,
+        *,
+        market_exit: bool = False,
     ) -> float:
         symbol_row = self._symbol_row(ladder.symbol)
         contract = self.base_streaming.kucoin_futures_api.get_symbol_info(
@@ -924,16 +1298,16 @@ class GridLadderLifecycle:
         entry_price = float(level.filled_entry_price or level.price)
         qty = float(level.filled_entry_qty or level.contracts)
         direction = 1 if level.side == "buy" else -1
-        return round_numbers((exit_price - entry_price) * qty * multiplier * direction)
-
-    def _mark_order_error(
-        self,
-        ladder: GridLadderTable,
-        order: GridOrderTable,
-        error: Exception | str,
-    ) -> None:
-        self.crud.update_order(order.id, status=GRID_ORDER_ERROR_STATUS)
-        self._handle_post_fill_error(ladder, order, error)
+        gross_pnl = (exit_price - entry_price) * qty * multiplier * direction
+        taker_fee_rate = float(getattr(contract, "taker_fee_rate", 0) or 0)
+        raw_maker_fee_rate = getattr(contract, "maker_fee_rate", None)
+        maker_fee_rate = (
+            taker_fee_rate if raw_maker_fee_rate is None else float(raw_maker_fee_rate)
+        )
+        entry_fee = entry_price * qty * multiplier * maker_fee_rate
+        exit_fee_rate = taker_fee_rate if market_exit else maker_fee_rate
+        exit_fee = exit_price * qty * multiplier * exit_fee_rate
+        return round_numbers(gross_pnl - entry_fee - exit_fee)
 
     def _handle_post_fill_error(
         self,
@@ -956,6 +1330,9 @@ class GridLadderLifecycle:
         )
         self.crud.recalculate_used_margin(ladder.id)
         self.crud.update_error_logs(ladder.id, error)
+        recoverable = self.crud.get(ladder.id)
+        if recoverable is not None:
+            self._recover_error_ladder(recoverable)
 
     def _is_orphaned(self, ladder: GridLadderTable) -> bool:
         """True when every non-neutral order is in a terminal non-fill state and
@@ -981,6 +1358,53 @@ class GridLadderLifecycle:
         total_pnl = float(ladder.realized_pnl or 0) + float(ladder.unrealized_pnl or 0)
         pnl_pct = total_pnl / float(ladder.total_margin) * 100
         return _STALE_LADDER_PNL_PCT_LOW <= pnl_pct < _STALE_LADDER_PNL_PCT_HIGH
+
+    def _grid_option_number(
+        self,
+        ladder: GridLadderTable,
+        option_name: str,
+        default: float,
+    ) -> float:
+        grid_context = (ladder.context or {}).get("grid_ladder")
+        if not isinstance(grid_context, dict):
+            return default
+        raw_value = grid_context.get(option_name)
+        if not isinstance(raw_value, (int, float)) or raw_value <= 0:
+            return default
+        return float(raw_value)
+
+    def _max_completed_cycles(self, ladder: GridLadderTable) -> int:
+        return int(
+            self._grid_option_number(
+                ladder,
+                "max_completed_cycles",
+                DEFAULT_MAX_COMPLETED_CYCLES,
+            )
+        )
+
+    def _completed_cycle_count(self, ladder: GridLadderTable) -> int:
+        return sum(
+            order.order_role == GridOrderRole.take_profit.value
+            and order.status == GRID_ORDER_FILLED_STATUS
+            for order in ladder.orders
+        )
+
+    def _max_lifetime_hours(self, ladder: GridLadderTable) -> float:
+        return self._grid_option_number(
+            ladder,
+            "max_lifetime_hours",
+            DEFAULT_MAX_LIFETIME_HOURS,
+        )
+
+    def _is_max_lifetime(
+        self,
+        ladder: GridLadderTable,
+        max_lifetime_hours: float,
+    ) -> bool:
+        if not ladder.created_at:
+            return False
+        max_lifetime_ms = max_lifetime_hours * 60 * 60 * 1000
+        return int(time() * 1000) - ladder.created_at >= max_lifetime_ms
 
     def _first_cycle_timeout_hours(self, ladder: GridLadderTable) -> float | None:
         grid_context = (ladder.context or {}).get("grid_ladder")
@@ -1039,13 +1463,19 @@ class GridLadderLifecycle:
                 continue
             if level.status == GridLevelStatus.completed.value:
                 continue
-            total += self._realized_pnl(ladder, level, close_price)
+            total += self._realized_pnl(
+                ladder,
+                level,
+                close_price,
+                market_exit=True,
+            )
         return total
 
     def _close_ladder(
         self,
         ladder: GridLadderTable,
         *,
+        forced_close_price: float | None = None,
         context_updates: dict | None = None,
         log_event: dict | None = None,
     ) -> None:
@@ -1075,7 +1505,12 @@ class GridLadderLifecycle:
         # so this is safe even when no position exists. Skipping the DB exposure
         # check avoids a race where a TP fill arrives after cancel_all_futures_orders
         # but before get_futures_position, leaving a residual position.
-        close_price = self._close_symbol_position(ladder.symbol)
+        exchange_close_price = self._close_symbol_position(ladder.symbol)
+        close_price = (
+            forced_close_price
+            if forced_close_price is not None
+            else exchange_close_price
+        )
         forced_pnl = self._forced_close_pnl(ladder, close_price, open_levels)
         total_pnl = sum(float(lv.realized_pnl or 0) for lv in open_levels) + forced_pnl
         self.crud.update_realized_pnl(ladder.id, round_numbers(total_pnl))
@@ -1097,6 +1532,32 @@ class GridLadderLifecycle:
         self.base_streaming.kucoin_futures_api.cancel_all_futures_orders(
             symbol_row.get_futures_symbol()
         )
+        ladder = self.crud.get_active_for_symbol(symbol)
+        if ladder is None:
+            return
+        protective_stops = [
+            order
+            for order in ladder.orders
+            if order.order_role == GridOrderRole.stop_loss.value
+            and order.status == GRID_ORDER_OPEN_STATUS
+        ]
+        if protective_stops:
+            self._cancel_protective_stop_orders(ladder, protective_stops)
+
+    def _recover_error_ladder(self, ladder: GridLadderTable) -> None:
+        try:
+            self._close_ladder(
+                ladder,
+                context_updates={"close_reason": "error_recovery"},
+                log_event={
+                    "event": "error_recovery",
+                    "has_filled_exposure": self._has_open_exposure(ladder),
+                    "has_exchange_position": self._has_exchange_position(ladder.symbol),
+                },
+            )
+        except Exception as error:
+            self.crud.update_status_with_context(ladder.id, GridLadderStatus.error)
+            self.crud.update_error_logs(ladder.id, error)
 
     def _close_symbol_position(self, symbol: str) -> float | None:
         symbol_row = self._symbol_row(symbol)
