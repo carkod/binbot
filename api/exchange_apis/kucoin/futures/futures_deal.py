@@ -56,6 +56,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
     ENTRY_MIN_ALLOWANCE_PCT = 0.5
     ENTRY_MAX_ALLOWANCE_PCT = 1.5
     ENTRY_FALLBACK_ALLOWANCE_PCT = 0.75
+    RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO = "relative_strength_impulse_rider"
+    RELATIVE_STRENGTH_IMPULSE_RIDER_RETEST_DISCOUNT_PCT = 1.0
+    RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_MINUTES = 45
 
     def __init__(
         self,
@@ -134,6 +137,49 @@ class KucoinPositionDeal(KucoinBaseBalance):
             return None
         return sum(true_ranges[-cls.ENTRY_ATR_WINDOW :]) / cls.ENTRY_ATR_WINDOW
 
+    @staticmethod
+    def normalize_entry_klines(klines: list) -> list:
+        """Normalize KuCoin UI candles to timestamp/open/high/low/close order."""
+        normalized_klines = []
+        for candle in klines:
+            if len(candle) < 5:
+                normalized_klines.append(candle)
+                continue
+
+            try:
+                open_price = float(candle[1])
+                standard_high = float(candle[2])
+                standard_low = float(candle[3])
+                standard_close = float(candle[4])
+                dashboard_close = float(candle[2])
+                dashboard_high = float(candle[3])
+                dashboard_low = float(candle[4])
+            except (TypeError, ValueError):
+                normalized_klines.append(candle)
+                continue
+
+            standard_ohlc_is_valid = standard_high >= max(
+                open_price, standard_close
+            ) and standard_low <= min(open_price, standard_close)
+            dashboard_ohlc_is_valid = dashboard_high >= max(
+                open_price, dashboard_close
+            ) and dashboard_low <= min(open_price, dashboard_close)
+            if not standard_ohlc_is_valid and dashboard_ohlc_is_valid:
+                normalized_klines.append(
+                    [
+                        candle[0],
+                        candle[1],
+                        candle[3],
+                        candle[4],
+                        candle[2],
+                        *candle[5:],
+                    ]
+                )
+            else:
+                normalized_klines.append(candle)
+
+        return normalized_klines
+
     def body_capped_entry_limit_price(self) -> float:
         interval = BinanceKlineIntervals(
             self.active_bot.candlestick_interval
@@ -152,6 +198,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 "Reliable current and completed candles are unavailable for futures entry."
             ) from exc
 
+        klines = self.normalize_entry_klines(klines)
         completed_candles, current_candle = Candles.partition_closed_candles(
             klines,
             now_ms=int(time() * 1000),
@@ -170,6 +217,20 @@ class KucoinPositionDeal(KucoinBaseBalance):
             raise BinbotErrors(
                 "Reliable candle open and previous close are unavailable for futures entry."
             )
+
+        if self.active_bot.name == self.RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
+            entry_limit_price = round_numbers(
+                previous_close
+                * (1 - self.RELATIVE_STRENGTH_IMPULSE_RIDER_RETEST_DISCOUNT_PCT / 100),
+                self.price_precision,
+            )
+            self.active_bot.add_log(
+                "Relative-strength impulse retest entry: "
+                f"confirmation_close={previous_close}, "
+                f"discount={self.RELATIVE_STRENGTH_IMPULSE_RIDER_RETEST_DISCOUNT_PCT:.2f}%, "
+                f"limit={entry_limit_price}."
+            )
+            return entry_limit_price
 
         if self.active_bot.position == Position.short:
             anchor_price = min(current_open, previous_close)
@@ -885,10 +946,15 @@ class KucoinPositionDeal(KucoinBaseBalance):
         if self.active_bot.deal.opening_price > 0:
             log_message = f"Futures {position_label} opened @ {self.active_bot.deal.opening_price} with {int(self.active_bot.deal.opening_qty)} contracts"
         else:
+            pending_entry_minutes = (
+                self.RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_MINUTES
+                if self.active_bot.name == self.RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO
+                else 5
+            )
             log_message = (
                 f"Futures {position_label} entry limit order {order.order_id} submitted "
                 f"at {entry_limit_price} with {contracts} contracts. Bot is pending "
-                "for up to 5 minutes awaiting fill."
+                f"for up to {pending_entry_minutes} minutes awaiting fill."
             )
         self.controller.update_logs(
             bot=self.active_bot,
