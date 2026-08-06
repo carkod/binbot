@@ -1,3 +1,4 @@
+import logging
 from copy import deepcopy
 from time import time
 from typing import Type, Union
@@ -27,6 +28,14 @@ from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from streaming.apex_flow_closing import ApexFlowClose
 from streaming.base import BaseStreaming
 from api.tools.utils import clamp
+
+# Diagnostic-only: tracks the last time each symbol's exit-analytics poll ran,
+# so we can surface (via logging.error, deliberately loud so it isn't lost in
+# routine info-level noise) cases where the expected ~15s poll cadence is
+# blown through by a wide margin. Investigating a suspected multi-hour gap
+# between exchange stop-loss reconciliation checks; remove once root-caused.
+_LAST_ANALYTICS_POLL_TS: dict[str, int] = {}
+_ANALYTICS_POLL_GAP_ALERT_MS = 60_000  # expected cadence is ~15s; alert past 60s
 
 
 class PositionMarket(KucoinPositionDeal):
@@ -476,6 +485,21 @@ class PositionMarket(KucoinPositionDeal):
         convention of not mutating `self.df`.
         """
         now_ms = int(time() * 1000)
+        poll_key = getattr(self, "symbol", None)
+        if poll_key is not None:
+            last_poll_ms = _LAST_ANALYTICS_POLL_TS.get(poll_key)
+            if last_poll_ms is not None:
+                gap_ms = now_ms - last_poll_ms
+                if gap_ms > _ANALYTICS_POLL_GAP_ALERT_MS:
+                    logging.error(
+                        "Exit-analytics poll gap for %s: %.1fs since last poll "
+                        "(expected ~15s cadence) — investigating suspected "
+                        "reconciliation stalls.",
+                        poll_key,
+                        gap_ms / 1000,
+                    )
+            _LAST_ANALYTICS_POLL_TS[poll_key] = now_ms
+
         interval_ms = self.base_streaming.interval.get_ms()
         closed = [
             candle

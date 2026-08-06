@@ -67,6 +67,7 @@ class Lifecycle(KucoinPositionDeal):
     RECOVERY_TIGHT_EMERGENCY_MAX_PCT = 0.75
     MEAN_REVERSION_FADE_MAX_HOLDING_BARS = 8
     LIQUIDATION_SWEEP_PUMP_MAX_HOLDING_BARS = 8
+    COINRULE_PRICE_TRACKER_MAX_HOLDING_BARS = 8
 
     def __init__(
         self,
@@ -116,15 +117,20 @@ class Lifecycle(KucoinPositionDeal):
         now_ms = int(time() * 1000)
         return now_ms - last_replace_ts_ms < self.TRAILING_STOP_REPLACE_COOLDOWN_MS
 
-    def _strategy_max_holding_reached(self, completed_candles: list) -> bool:
+    def _strategy_max_holding_bars(self) -> int | None:
         if self.active_bot.name == "mean_reversion_fade":
-            max_holding_bars = self.MEAN_REVERSION_FADE_MAX_HOLDING_BARS
-        elif (
-            self.active_bot.name == "liquidation_sweep_pump"
-            and self.active_bot.position == Position.long
-        ):
-            max_holding_bars = self.LIQUIDATION_SWEEP_PUMP_MAX_HOLDING_BARS
-        else:
+            return self.MEAN_REVERSION_FADE_MAX_HOLDING_BARS
+        if self.active_bot.position != Position.long:
+            return None
+        if self.active_bot.name == "liquidation_sweep_pump":
+            return self.LIQUIDATION_SWEEP_PUMP_MAX_HOLDING_BARS
+        if self.active_bot.name == "coinrule_price_tracker":
+            return self.COINRULE_PRICE_TRACKER_MAX_HOLDING_BARS
+        return None
+
+    def _strategy_max_holding_reached(self, completed_candles: list) -> bool:
+        max_holding_bars = self._strategy_max_holding_bars()
+        if max_holding_bars is None:
             return False
 
         opening_timestamp = self.active_bot.deal.opening_timestamp
@@ -1276,15 +1282,14 @@ class Lifecycle(KucoinPositionDeal):
                 if self.active_bot.name in {
                     "mean_reversion_fade",
                     "liquidation_sweep_pump",
+                    "coinrule_price_tracker",
                 }:
                     return take_profit_result
 
-        if self._strategy_max_holding_reached(completed_candles):
-            max_holding_bars = (
-                self.MEAN_REVERSION_FADE_MAX_HOLDING_BARS
-                if self.active_bot.name == "mean_reversion_fade"
-                else self.LIQUIDATION_SWEEP_PUMP_MAX_HOLDING_BARS
-            )
+        max_holding_bars = self._strategy_max_holding_bars()
+        if max_holding_bars is not None and self._strategy_max_holding_reached(
+            completed_candles
+        ):
             self.controller.update_logs(
                 f"[{self.active_bot.name}] Maximum holding period reached after "
                 f"{max_holding_bars} completed candles; "
