@@ -167,6 +167,7 @@ class FakeFuturesApi:
         self.market_price: float | None = None
         self.raise_on_order = False
         self.fail_on_call: int | None = None
+        self.fail_once_on_call: int | None = None
         self._counter = 0
         self.order_details: dict[str, GetOrderByOrderIdResp] = {}
         self.retrieve_errors: dict[str, Exception] = {}
@@ -178,6 +179,9 @@ class FakeFuturesApi:
 
     def place_futures_order(self, **kwargs):
         if self.raise_on_order or self.fail_on_call == self._counter + 1:
+            raise RuntimeError("exchange rejected order")
+        if self.fail_once_on_call == self._counter + 1:
+            self.fail_once_on_call = None
             raise RuntimeError("exchange rejected order")
         self._counter += 1
         order_id = f"grid-order-{self._counter}"
@@ -1521,6 +1525,52 @@ def test_grid_lifecycle_scales_used_margin_for_partial_entry_fill(
         order["reduce_only"] and order["order_type"] == OrderType.limit
         for order in fake_api.orders
     )
+
+
+def test_grid_lifecycle_recovers_partial_entry_when_protection_placement_errors(
+    client, monkeypatch, create_test_tables
+):
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+    created = client.post("/grid-ladders", json=_payload())
+    fake_api = FakeFuturesApi()
+
+    with Session(create_test_tables) as session:
+        lifecycle = GridLadderLifecycle(_grid_base(fake_api), session)
+        lifecycle.process_symbol("ADAUSDC")
+        ladder = GridLadderCrud(session).get_active_for_symbol("ADAUSDC")
+        assert ladder is not None
+        entry_order = next(order for order in ladder.orders if order.side == "buy")
+        partial_fill = max(entry_order.contracts // 2, 1)
+        fake_api.order_details[entry_order.exchange_order_id] = _order_details(
+            status=GetOrderByOrderIdResp.StatusEnum.OPEN,
+            filled_size=partial_fill,
+            avg_deal_price=entry_order.price,
+            price=entry_order.price,
+        )
+        fake_api.position_qty = partial_fill
+        fake_api.fail_once_on_call = len(fake_api.orders) + 1
+
+        lifecycle.process_symbol("ADAUSDC")
+
+    detail = client.get(f"/grid-ladders/{created.json()['detail']['id']}").json()[
+        "detail"
+    ]
+    errored_level = next(
+        level
+        for level in detail["levels"]
+        if level["entry_order_id"] == entry_order.exchange_order_id
+    )
+    partial_order = next(
+        order
+        for order in detail["orders"]
+        if order["exchange_order_id"] == entry_order.exchange_order_id
+    )
+    assert detail["status"] == "closed"
+    assert detail["context"]["close_reason"] == "error_recovery"
+    assert errored_level["status"] == "error"
+    assert partial_order["filled_qty"] == partial_fill
+    assert len(_market_reduce_only_orders(fake_api)) == 1
 
 
 def test_partial_entry_fill_cancels_resting_opposite_side_entries(

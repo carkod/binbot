@@ -588,18 +588,21 @@ class GridLadderLifecycle:
                 # partial progress so far, but don't finalize the order or act
                 # on it (e.g. sizing a take-profit) until it's actually done.
                 if filled_qty > 0:
-                    self._record_partial_fill(ladder, order, filled_qty, filled_price)
-                    level = order.level
-                    if (
-                        order.order_role == GridOrderRole.entry.value
-                        and level is not None
-                    ):
-                        try:
+                    try:
+                        self._record_partial_fill(
+                            ladder, order, filled_qty, filled_price
+                        )
+                        level = order.level
+                        if (
+                            order.order_role == GridOrderRole.entry.value
+                            and level is not None
+                        ):
                             self._guard_entry_side(
                                 ladder, level, filled_qty, filled_price
                             )
-                        except Exception as error:
-                            self._handle_post_fill_error(ladder, order, error)
+                    except Exception as error:
+                        self._handle_post_fill_error(ladder, order, error)
+                        return
                 continue
 
             if filled_qty <= 0:

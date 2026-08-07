@@ -31,7 +31,7 @@ def test_create_signal_persists_columns_and_jsonb():
     session = _make_session()
     crud = SignalsCrud(session)
     row = crud.create(
-        algorithm_name="spike_hunter_v3",
+        algorithm_name="liquidation_sweep_pump",
         symbol="BTCUSDC",
         generated_at=datetime(2026, 4, 30, 12, 0, tzinfo=timezone.utc),
         direction="LONG",
@@ -47,7 +47,7 @@ def test_create_signal_persists_columns_and_jsonb():
     persisted = session.exec(
         select(SignalsTable).where(SignalsTable.id == row.id)
     ).one()
-    assert persisted.algorithm_name == "spike_hunter_v3"
+    assert persisted.algorithm_name == "liquidation_sweep_pump"
     assert persisted.symbol == "BTCUSDC"
     assert persisted.direction == "LONG"
     assert persisted.autotrade is True
@@ -64,14 +64,14 @@ def test_query_filters_by_algorithm_symbol_and_regime():
     crud = SignalsCrud(session)
     base = datetime(2026, 4, 30, 12, 0, tzinfo=timezone.utc)
     crud.create(
-        algorithm_name="spike_hunter_v3",
+        algorithm_name="liquidation_sweep_pump",
         symbol="BTCUSDC",
         generated_at=base,
         direction="LONG",
         current_regime="TRENDING_UP",
     )
     crud.create(
-        algorithm_name="spike_hunter_v3",
+        algorithm_name="liquidation_sweep_pump",
         symbol="ETHUSDC",
         generated_at=base + timedelta(minutes=5),
         direction="LONG",
@@ -85,11 +85,14 @@ def test_query_filters_by_algorithm_symbol_and_regime():
         current_regime="TRENDING_UP",
     )
 
-    spike_only = crud.query(algorithm_name="spike_hunter_v3")
-    assert {r.symbol for r in spike_only} == {"BTCUSDC", "ETHUSDC"}
+    liquidation_only = crud.query(algorithm_name="liquidation_sweep_pump")
+    assert {r.symbol for r in liquidation_only} == {"BTCUSDC", "ETHUSDC"}
 
     btc_only = crud.query(symbol="BTCUSDC")
-    assert {r.algorithm_name for r in btc_only} == {"spike_hunter_v3", "apex_flow"}
+    assert {r.algorithm_name for r in btc_only} == {
+        "liquidation_sweep_pump",
+        "apex_flow",
+    }
 
     choppy_only = crud.query(current_regime="CHOPPY")
     assert len(choppy_only) == 1
@@ -172,7 +175,7 @@ def test_post_signal_endpoint(client):
     response = client.post(
         "/signals",
         json={
-            "algorithm_name": "spike_hunter_v3",
+            "algorithm_name": "liquidation_sweep_pump",
             "symbol": "BTCUSDC",
             "generated_at": "2026-04-30T12:00:00+00:00",
             "direction": "LONG",
@@ -187,7 +190,7 @@ def test_post_signal_endpoint(client):
     )
     assert response.status_code == 200, response.text
     body = response.json()
-    assert body["data"]["algorithm_name"] == "spike_hunter_v3"
+    assert body["data"]["algorithm_name"] == "liquidation_sweep_pump"
     assert body["data"]["signal_kind"] == "grid_deploy"
     assert body["data"]["context"]["market_regime"] == "TRENDING_UP"
     assert body["data"]["grid_params"]["level_count"] == 3
@@ -198,7 +201,7 @@ def test_get_signals_endpoint_filters(client):
     crud = SignalsCrud(session)
     base = datetime(2026, 4, 30, 12, 0, tzinfo=timezone.utc)
     crud.create(
-        algorithm_name="spike_hunter_v3",
+        algorithm_name="liquidation_sweep_pump",
         symbol="BTCUSDC",
         generated_at=base,
         direction="LONG",
@@ -212,18 +215,18 @@ def test_get_signals_endpoint_filters(client):
         current_regime="CHOPPY",
     )
 
-    response = client.get("/signals?algorithm_name=spike_hunter_v3")
+    response = client.get("/signals?algorithm_name=liquidation_sweep_pump")
     assert response.status_code == 200
     payload = response.json()["data"]
     assert len(payload) == 1
-    assert payload[0]["algorithm_name"] == "spike_hunter_v3"
+    assert payload[0]["algorithm_name"] == "liquidation_sweep_pump"
 
 
 def test_get_signals_endpoint_can_skip_payload(client):
     session = _make_session()
     crud = SignalsCrud(session)
     crud.create(
-        algorithm_name="spike_hunter_v3",
+        algorithm_name="liquidation_sweep_pump",
         symbol="BTCUSDC",
         generated_at=datetime(2026, 4, 30, 12, 0, tzinfo=timezone.utc),
         direction="LONG",
@@ -238,7 +241,7 @@ def test_get_signals_endpoint_can_skip_payload(client):
 
     assert response.status_code == 200
     signal = response.json()["data"][0]
-    assert signal["algorithm_name"] == "spike_hunter_v3"
+    assert signal["algorithm_name"] == "liquidation_sweep_pump"
     assert signal["signal_kind"] == "grid_deploy"
     assert signal["context"] is None
     assert signal["bot_params"] is None

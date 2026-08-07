@@ -1115,13 +1115,13 @@ def test_exit_uses_recovery_stop_and_defers_without_candle_confirmation():
     assert any("Recovery reversal deferred" in log for log in deal.active_bot.logs)
 
 
-def test_spike_style_recovery_uses_tighter_emergency_breach_without_confirmation():
+def test_liquidation_sweep_recovery_uses_tighter_emergency_breach_without_confirmation():
     deal = _make_position_deal(
         stop_loss=1.0,
         stop_loss_price=0,
         margin_short_reversal=False,
     )
-    deal.active_bot.name = "spike_hunter_v3_kucoin"
+    deal.active_bot.name = "liquidation_sweep_pump"
     deal.klines = None
     recovery_id = uuid4()
     deal.active_bot.recovery_mode_id = recovery_id

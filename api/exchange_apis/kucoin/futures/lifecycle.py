@@ -60,9 +60,7 @@ class Lifecycle(KucoinPositionDeal):
     RECOVERY_EMERGENCY_ATR_MULTIPLIER = 1.0
     RECOVERY_EMERGENCY_MIN_PCT = 0.75
     RECOVERY_EMERGENCY_MAX_PCT = 1.5
-    RECOVERY_TIGHT_EMERGENCY_ALGORITHMS = frozenset(
-        {"spike_hunter_v3_kucoin", "liquidation_sweep_pump"}
-    )
+    RECOVERY_TIGHT_EMERGENCY_ALGORITHMS = frozenset({"liquidation_sweep_pump"})
     RECOVERY_TIGHT_EMERGENCY_MIN_PCT = 0.35
     RECOVERY_TIGHT_EMERGENCY_MAX_PCT = 0.75
     MEAN_REVERSION_FADE_MAX_HOLDING_BARS = 8
