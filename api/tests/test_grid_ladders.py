@@ -87,7 +87,9 @@ def _patch_balance(monkeypatch, fiat_available: float) -> None:
             return balance
 
     monkeypatch.setattr("api.grid_ladders.routes.ConsolidatedAccounts", Accounts)
-    monkeypatch.setattr("api.grid_ladders.lifecycle.ConsolidatedAccounts", Accounts)
+    monkeypatch.setattr(
+        "api.grid_ladders.base_lifecycle.ConsolidatedAccounts", Accounts
+    )
 
 
 def _patch_balance_error(monkeypatch, error: Exception) -> None:
@@ -99,7 +101,9 @@ def _patch_balance_error(monkeypatch, error: Exception) -> None:
             raise error
 
     monkeypatch.setattr("api.grid_ladders.routes.ConsolidatedAccounts", Accounts)
-    monkeypatch.setattr("api.grid_ladders.lifecycle.ConsolidatedAccounts", Accounts)
+    monkeypatch.setattr(
+        "api.grid_ladders.base_lifecycle.ConsolidatedAccounts", Accounts
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -971,7 +975,9 @@ def test_grid_lifecycle_retries_rearm_after_insufficient_balance(
             )()
 
     monkeypatch.setattr("api.grid_ladders.routes.ConsolidatedAccounts", Accounts)
-    monkeypatch.setattr("api.grid_ladders.lifecycle.ConsolidatedAccounts", Accounts)
+    monkeypatch.setattr(
+        "api.grid_ladders.base_lifecycle.ConsolidatedAccounts", Accounts
+    )
 
     created = client.post("/grid-ladders", json=_payload())
     fake_api = FakeFuturesApi()
@@ -1590,14 +1596,14 @@ def test_grid_lifecycle_closes_before_first_cycle_after_configured_timeout(
         created_at = ladder.created_at
 
         monkeypatch.setattr(
-            "api.grid_ladders.lifecycle.time",
+            "api.grid_ladders.base_lifecycle.time",
             lambda: (created_at + 12 * 60 * 60 * 1000 - 1) / 1000,
         )
         lifecycle.process_symbol("ADAUSDC")
         assert GridLadderCrud(session).get_active_for_symbol("ADAUSDC") is not None
 
         monkeypatch.setattr(
-            "api.grid_ladders.lifecycle.time",
+            "api.grid_ladders.base_lifecycle.time",
             lambda: (created_at + 12 * 60 * 60 * 1000) / 1000,
         )
         lifecycle.process_symbol("ADAUSDC")

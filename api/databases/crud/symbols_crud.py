@@ -46,6 +46,20 @@ class SymbolsCrud(SymbolsCrudUtils):
         self.autotrade_settings = self.autotrade_crud.get_settings()
         self.exchange_id = self.autotrade_settings.exchange_id
 
+    @staticmethod
+    def get_price_precision(
+        symbol_row: SymbolTable,
+        exchange_id: ExchangeId,
+    ) -> int | None:
+        """Return the requested exchange precision, falling back to the first."""
+        exchange_values = symbol_row.exchange_values or []
+        for exchange_value in exchange_values:
+            if exchange_value.exchange_id == exchange_id:
+                return exchange_value.price_precision
+        if exchange_values:
+            return exchange_values[0].price_precision
+        return None
+
     def add_symbol(
         self,
         symbol: str,

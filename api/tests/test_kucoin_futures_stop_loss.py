@@ -159,6 +159,31 @@ def test_coinrule_price_tracker_max_holding_counts_candles_after_entry() -> None
     assert deal._strategy_max_holding_reached(eight_completed) is True
 
 
+def test_relative_strength_impulse_rider_counts_eight_candles_after_entry() -> None:
+    interval_ms = 15 * 60 * 1000
+    entry_candle_open = 1_800_000_000_000
+    deal = _make_position_deal()
+    deal.active_bot.name = "relative_strength_impulse_rider"
+    deal.active_bot.deal.opening_timestamp = entry_candle_open + 1_000
+    deal.base_streaming = types.SimpleNamespace(
+        interval=types.SimpleNamespace(get_ms=lambda: interval_ms)
+    )
+
+    seven_completed = _make_completed_candles(
+        entry_candle_open=entry_candle_open,
+        completed_after_entry=7,
+        interval_ms=interval_ms,
+    )
+    eight_completed = _make_completed_candles(
+        entry_candle_open=entry_candle_open,
+        completed_after_entry=8,
+        interval_ms=interval_ms,
+    )
+
+    assert deal._strategy_max_holding_reached(seven_completed) is False
+    assert deal._strategy_max_holding_reached(eight_completed) is True
+
+
 def test_liquidation_sweep_pump_max_holding_does_not_apply_to_short() -> None:
     interval_ms = 15 * 60 * 1000
     entry_candle_open = 1_800_000_000_000
@@ -223,6 +248,21 @@ def test_mean_reversion_fade_keeps_tight_stop_on_low_priced_contract() -> None:
             is_recovery_bot=False,
             entry_price=0.01,
             stop_loss_pct=1.5,
+        )
+        is False
+    )
+
+
+def test_relative_strength_impulse_rider_keeps_two_percent_low_price_stop() -> None:
+    deal = _make_position_deal()
+    deal.active_bot.name = "relative_strength_impulse_rider"
+    deal.active_bot.market_type = MarketType.FUTURES
+
+    assert (
+        deal._should_floor_low_price_stop(
+            is_recovery_bot=False,
+            entry_price=0.01,
+            stop_loss_pct=2.0,
         )
         is False
     )
@@ -315,11 +355,28 @@ def test_coinrule_price_tracker_closes_at_eight_completed_candles() -> None:
     assert close_calls == [True]
 
 
+def test_relative_strength_impulse_rider_closes_at_eight_completed_candles() -> None:
+    close_calls: list[bool] = []
+    deal = _make_strategy_at_holding_limit(name="relative_strength_impulse_rider")
+
+    def close_all(algorithmic_close: bool = False) -> BotModel:
+        close_calls.append(algorithmic_close)
+        return deal.active_bot
+
+    deal.close_all = close_all
+
+    result = Lifecycle.exit(deal, close_price=100.0)
+
+    assert result is deal.active_bot
+    assert close_calls == [True]
+
+
 def test_fixed_take_profit_precedes_max_holding_close() -> None:
     for name in (
         "mean_reversion_fade",
         "liquidation_sweep_pump",
         "coinrule_price_tracker",
+        "relative_strength_impulse_rider",
     ):
         exit_calls: list[str] = []
         deal = _make_strategy_at_holding_limit(
@@ -1058,13 +1115,13 @@ def test_exit_uses_recovery_stop_and_defers_without_candle_confirmation():
     assert any("Recovery reversal deferred" in log for log in deal.active_bot.logs)
 
 
-def test_spike_style_recovery_uses_tighter_emergency_breach_without_confirmation():
+def test_liquidation_sweep_recovery_uses_tighter_emergency_breach_without_confirmation():
     deal = _make_position_deal(
         stop_loss=1.0,
         stop_loss_price=0,
         margin_short_reversal=False,
     )
-    deal.active_bot.name = "spike_hunter_v3_kucoin"
+    deal.active_bot.name = "liquidation_sweep_pump"
     deal.klines = None
     recovery_id = uuid4()
     deal.active_bot.recovery_mode_id = recovery_id
