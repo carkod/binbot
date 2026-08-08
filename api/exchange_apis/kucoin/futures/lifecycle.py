@@ -60,14 +60,13 @@ class Lifecycle(KucoinPositionDeal):
     RECOVERY_EMERGENCY_ATR_MULTIPLIER = 1.0
     RECOVERY_EMERGENCY_MIN_PCT = 0.75
     RECOVERY_EMERGENCY_MAX_PCT = 1.5
-    RECOVERY_TIGHT_EMERGENCY_ALGORITHMS = frozenset(
-        {"spike_hunter_v3_kucoin", "liquidation_sweep_pump"}
-    )
+    RECOVERY_TIGHT_EMERGENCY_ALGORITHMS = frozenset({"liquidation_sweep_pump"})
     RECOVERY_TIGHT_EMERGENCY_MIN_PCT = 0.35
     RECOVERY_TIGHT_EMERGENCY_MAX_PCT = 0.75
     MEAN_REVERSION_FADE_MAX_HOLDING_BARS = 8
     LIQUIDATION_SWEEP_PUMP_MAX_HOLDING_BARS = 8
     COINRULE_PRICE_TRACKER_MAX_HOLDING_BARS = 8
+    RELATIVE_STRENGTH_IMPULSE_RIDER_MAX_HOLDING_BARS = 8
 
     def __init__(
         self,
@@ -126,6 +125,8 @@ class Lifecycle(KucoinPositionDeal):
             return self.LIQUIDATION_SWEEP_PUMP_MAX_HOLDING_BARS
         if self.active_bot.name == "coinrule_price_tracker":
             return self.COINRULE_PRICE_TRACKER_MAX_HOLDING_BARS
+        if self.active_bot.name == "relative_strength_impulse_rider":
+            return self.RELATIVE_STRENGTH_IMPULSE_RIDER_MAX_HOLDING_BARS
         return None
 
     def _strategy_max_holding_reached(self, completed_candles: list) -> bool:
@@ -153,7 +154,10 @@ class Lifecycle(KucoinPositionDeal):
         entry_price: float,
         stop_loss_pct: float,
     ) -> bool:
-        if self.active_bot.name == "mean_reversion_fade":
+        if self.active_bot.name in {
+            "mean_reversion_fade",
+            "relative_strength_impulse_rider",
+        }:
             return False
         return (
             not is_recovery_bot
@@ -1283,6 +1287,7 @@ class Lifecycle(KucoinPositionDeal):
                     "mean_reversion_fade",
                     "liquidation_sweep_pump",
                     "coinrule_price_tracker",
+                    "relative_strength_impulse_rider",
                 }:
                     return take_profit_result
 

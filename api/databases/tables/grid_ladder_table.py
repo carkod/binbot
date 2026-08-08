@@ -11,6 +11,7 @@ _ACTIVE_GRID_LADDER_WHERE = text(
             GridLadderStatus.pending.value,
             GridLadderStatus.active.value,
             GridLadderStatus.closing.value,
+            GridLadderStatus.error.value,
         )
     )
     + "')"
