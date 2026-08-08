@@ -60,8 +60,10 @@ MAX_RECONCILIATION_FAILURES = 3
 class BaseLifecycle(ABC):
     """Low-level exchange, persistence, and risk mechanics for grid ladders."""
 
-    # Unfilled ladders retain a one-candle confirmation. Filled exposure has
-    # an exchange-native protective stop and an immediate lifecycle fallback.
+    # Keep the legacy name available to callers and tests. Filled exposure has
+    # an exchange-native protective stop and closes on the first observed
+    # breach; unfilled ladders retain a one-candle confirmation.
+    BREACH_CANDLES_REQUIRED = 1
     UNFILLED_BREACH_CANDLES_REQUIRED = 1
 
     def __init__(self, base_streaming: BaseStreaming, session: Session):
