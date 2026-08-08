@@ -27,9 +27,7 @@ const GainersLosersCard = ({
           return (
             parseFloat(priceChangePercent) !== 0 && (
               <ListGroup.Item key={i}>
-                <Card.Link href={getNewBotPath(x.symbol)}>
-                  {x.symbol}
-                </Card.Link>
+                <Card.Link href={getNewBotPath(x.symbol)}>{x.symbol}</Card.Link>
                 <Badge
                   bg={parseFloat(priceChangePercent) > 0 ? "success" : "danger"}
                   className="u-float-right"
