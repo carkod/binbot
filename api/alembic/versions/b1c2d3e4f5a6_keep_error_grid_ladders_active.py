@@ -16,6 +16,37 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    op.execute(
+        """
+        WITH ranked_ladders AS (
+            SELECT
+                id,
+                status,
+                ROW_NUMBER() OVER (
+                    PARTITION BY symbol
+                    ORDER BY
+                        CASE
+                            WHEN status IN ('pending', 'active', 'closing') THEN 0
+                            ELSE 1
+                        END,
+                        created_at DESC,
+                        updated_at DESC,
+                        id DESC
+                ) AS active_rank
+            FROM grid_ladder
+            WHERE status IN ('pending', 'active', 'closing', 'error')
+        )
+        UPDATE grid_ladder
+        SET
+            status = 'closed',
+            closed_at = COALESCE(closed_at, updated_at, created_at)
+        WHERE id IN (
+            SELECT id
+            FROM ranked_ladders
+            WHERE status = 'error' AND active_rank > 1
+        )
+        """
+    )
     op.drop_index("ix_grid_ladder_active_symbol", table_name="grid_ladder")
     op.create_index(
         "ix_grid_ladder_active_symbol",
