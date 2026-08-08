@@ -129,7 +129,7 @@ class Lifecycle(KucoinPositionDeal):
             return self.LIQUIDATION_SWEEP_PUMP_MAX_HOLDING_BARS
         if self.active_bot.name == "coinrule_price_tracker":
             return self.COINRULE_PRICE_TRACKER_MAX_HOLDING_BARS
-        if self.active_bot.name == RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
+        if self.active_bot.name == "relative_strength_impulse_rider":
             return self.RELATIVE_STRENGTH_IMPULSE_RIDER_MAX_HOLDING_BARS
         return None
 
@@ -160,7 +160,7 @@ class Lifecycle(KucoinPositionDeal):
     ) -> bool:
         if self.active_bot.name in {
             "mean_reversion_fade",
-            RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO,
+            "relative_strength_impulse_rider",
         }:
             return False
         return (
@@ -1305,7 +1305,7 @@ class Lifecycle(KucoinPositionDeal):
                     "mean_reversion_fade",
                     "liquidation_sweep_pump",
                     "coinrule_price_tracker",
-                    RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO,
+                    "relative_strength_impulse_rider",
                 }:
                     return take_profit_result
 
