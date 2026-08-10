@@ -1,6 +1,46 @@
 [![Test Production](https://github.com/carkod/binbot/actions/workflows/pr.yml/badge.svg)](https://github.com/carkod/binbot/actions/workflows/pr.yml)
 
-<img width="2067" height="1885" alt="Binbot architecture-2025-10-26-144727" src="https://github.com/user-attachments/assets/cd3b76a4-0653-421c-b8e0-24685b7d6dd8" />
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph External["External (internet)"]
+        direction TB
+        Dashboard["Dashboard<br/>(React)"]
+        Exchanges["Exchange APIs<br/>and WebSockets"]
+        Telegram["Telegram"]
+    end
+
+    subgraph Platform["Binbot and Binquant"]
+        direction TB
+
+        subgraph Binbot["Binbot"]
+            direction LR
+            API["FastAPI app<br/>API and trading execution"]
+            Streaming["Streaming service<br/>position lifecycle"]
+            Cronjobs["Cronjobs<br/>scheduled maintenance"]
+        end
+
+        subgraph Binquant["Binquant"]
+            Analytics["Single service<br/>market ingest, strategies and signals"]
+        end
+    end
+
+    subgraph Databases["DBs"]
+        Postgres[("PostgreSQL<br/>application and trading data")]
+    end
+
+    Dashboard <-->|REST| API
+    Exchanges -->|market data| Analytics
+    Analytics -->|alerts| Telegram
+    Analytics -->|signals and autotrade via REST| API
+    API <-->|orders and account data| Exchanges
+    Streaming <-->|prices, positions and orders| Exchanges
+    Cronjobs -->|scheduled synchronization| Exchanges
+    API <-->|read and write| Postgres
+    Streaming <-->|read and write| Postgres
+    Cronjobs -->|maintenance| Postgres
+```
 
 # Development instructions
 
