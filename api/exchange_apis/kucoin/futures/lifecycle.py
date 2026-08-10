@@ -1189,7 +1189,7 @@ class Lifecycle(KucoinPositionDeal):
                     reference_price=exit_reference_price
                 )
             else:
-                if self.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO and any(
+                if self.active_bot.name == self.TOP_GAINER_EARLY_MOMENTUM_ALGO and any(
                     order.deal_type == DealType.stop_loss
                     and order.status not in self.TERMINAL_STOP_ORDER_STATUSES
                     for order in self.active_bot.orders
