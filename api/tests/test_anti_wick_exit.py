@@ -194,7 +194,8 @@ def test_execute_stop_loss_passes_reference_price_to_buy_for_short():
     assert captured.get("reference_price") == pytest.approx(0.02245, abs=1e-6)
 
 
-def test_top_gainer_unfilled_bounded_stop_escalates_after_breach():
+def test_top_gainer_unfilled_bounded_stop_escalates_after_breach(monkeypatch):
+    monkeypatch.setattr("streaming.lifecycle.time", lambda: 1780238000.0)
     deal = _make_fheusdtm_deal()
     deal.execution.active_bot.name = "top_gainer_early_momentum"
     deal.execution.active_bot.status = Status.active
@@ -227,10 +228,13 @@ def test_top_gainer_unfilled_bounded_stop_escalates_after_breach():
 def test_unfilled_bounded_stop_is_cancelled_before_anti_wick_close():
     deal = _make_fheusdtm_deal()
     calls: list[tuple[str, float | None]] = []
+
+    def execute_stop_loss(reference_price: float | None = None) -> BotModel:
+        calls.append(("close", reference_price))
+        return deal.execution.active_bot
+
     deal.execution.cancel_current_sl = lambda: calls.append(("cancel", None))
-    deal.execution.execute_stop_loss = lambda reference_price=None: (
-        calls.append(("close", reference_price)) or deal.execution.active_bot
-    )
+    deal.execution.execute_stop_loss = execute_stop_loss
 
     result = deal.execution.close_after_unfilled_bounded_stop(reference_price=0.02252)
 

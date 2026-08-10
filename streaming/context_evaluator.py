@@ -3,9 +3,6 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from streaming.strategies.aggressive_momentum import (
-    AggressiveMomentumLifecycleStrategy,
-)
 from streaming.strategies.base import (
     LifecycleContext,
     LifecyclePolicy,
@@ -15,7 +12,6 @@ from streaming.strategies.base import (
 from streaming.strategies.coinrule.bb_extreme_reversion import (
     BBExtremeReversionLifecycleStrategy,
 )
-from streaming.strategies.coinrule.buy_the_dip import BuyTheDipLifecycleStrategy
 from streaming.strategies.coinrule.price_tracker import PriceTrackerLifecycleStrategy
 from streaming.strategies.default import DefaultLifecycleStrategy
 from streaming.strategies.liquidation_sweep_pump import (
@@ -45,7 +41,6 @@ class LifecycleContextEvaluator:
         RelativeStrengthImpulseRiderLifecycleStrategy,
         TopGainerEarlyMomentumLifecycleStrategy,
         PriceTrackerLifecycleStrategy,
-        BuyTheDipLifecycleStrategy,
         BBExtremeReversionLifecycleStrategy,
     )
     STRATEGY_REGISTRY = {
@@ -59,8 +54,6 @@ class LifecycleContextEvaluator:
         strategy_type = cls.STRATEGY_REGISTRY.get(algorithm_name)
         if strategy_type is not None:
             return strategy_type()
-        if AggressiveMomentumLifecycleStrategy.matches(algorithm_name):
-            return AggressiveMomentumLifecycleStrategy()
         return DefaultLifecycleStrategy()
 
     def evaluate(self, context: LifecycleContext) -> LifecycleEvaluation:

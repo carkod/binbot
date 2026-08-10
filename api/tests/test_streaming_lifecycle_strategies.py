@@ -9,14 +9,10 @@ from pybinbot import BotModel, DealModel, MarketType, Position, RecoveryBotModel
 
 from streaming.context_evaluator import LifecycleContextEvaluator
 from streaming.position_market import PositionMarket
-from streaming.strategies.aggressive_momentum import (
-    AggressiveMomentumLifecycleStrategy,
-)
 from streaming.strategies.base import LifecycleContext, LifecycleExitKind
 from streaming.strategies.coinrule.bb_extreme_reversion import (
     BBExtremeReversionLifecycleStrategy,
 )
-from streaming.strategies.coinrule.buy_the_dip import BuyTheDipLifecycleStrategy
 from streaming.strategies.coinrule.price_tracker import PriceTrackerLifecycleStrategy
 from streaming.strategies.default import DefaultLifecycleStrategy
 from streaming.strategies.liquidation_sweep_pump import (
@@ -118,9 +114,9 @@ def _context(
         ),
         ("top_gainer_early_momentum", TopGainerEarlyMomentumLifecycleStrategy),
         ("coinrule_price_tracker", PriceTrackerLifecycleStrategy),
-        ("coinrule_buy_the_dip", BuyTheDipLifecycleStrategy),
+        ("coinrule_buy_the_dip", DefaultLifecycleStrategy),
         ("bb_extreme_reversion", BBExtremeReversionLifecycleStrategy),
-        ("legacy aggressive momo bot", AggressiveMomentumLifecycleStrategy),
+        ("legacy aggressive momo bot", DefaultLifecycleStrategy),
         ("unknown", DefaultLifecycleStrategy),
     ],
 )
@@ -151,7 +147,7 @@ def test_strategy_policies_replace_lifecycle_name_branches() -> None:
 
 @pytest.mark.parametrize(
     "algorithm_name",
-    ["coinrule_price_tracker", "coinrule_buy_the_dip", "bb_extreme_reversion"],
+    ["coinrule_price_tracker", "bb_extreme_reversion"],
 )
 def test_chop_prone_strategies_block_reversal_after_loss(
     algorithm_name: str,
@@ -231,30 +227,7 @@ def test_default_dynamic_signal_preserves_recovery_parameters(monkeypatch) -> No
     assert DefaultLifecycleStrategy().signal(context).parameter_update is None
 
 
-def test_aggressive_momentum_uses_expansion_stop(monkeypatch) -> None:
-    monkeypatch.setattr(
-        "streaming.strategies.default.ApexFlowClose",
-        FakeApexFlowClose,
-    )
-    context = _context(
-        name="legacy aggressive momo bot",
-        stop_loss=0.0,
-        dynamic_trailing=True,
-    )
-
-    update = AggressiveMomentumLifecycleStrategy().signal(context).parameter_update
-
-    assert update is not None
-    assert update.stop_loss == 2.0
-
-
-@pytest.mark.parametrize(
-    "strategy",
-    [DefaultLifecycleStrategy(), AggressiveMomentumLifecycleStrategy()],
-)
-def test_default_runtime_strategies_preserve_pullback_adjustment(
-    monkeypatch, strategy
-) -> None:
+def test_default_runtime_strategy_preserves_pullback_adjustment(monkeypatch) -> None:
     monkeypatch.setattr(
         "streaming.strategies.default.ApexFlowClose",
         FakeApexFlowClose,
@@ -268,7 +241,7 @@ def test_default_runtime_strategies_preserve_pullback_adjustment(
         klines=candles,
     )
 
-    update = strategy.signal(context).parameter_update
+    update = DefaultLifecycleStrategy().signal(context).parameter_update
 
     assert update is not None
     assert update.trailing_profit == 2.25

@@ -1,3 +1,10 @@
+## Position lifecycle
+
+Binquant owns trade entry decisions, while binbot's streaming service manages
+open positions through shared and strategy-specific lifecycle policies. See
+[Position lifecycle architecture](lifecycle.md) for the component flow,
+strategy-matching contract, and extension guidelines.
+
 ## Database
 
 The new PostgreSQL database introduced a new architecture to the whole API ecosystem. It is based on the [FastAPI full stack template](https://github.com/fastapi/full-stack-fastapi-template).
