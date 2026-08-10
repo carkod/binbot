@@ -1,6 +1,7 @@
 import types
 from datetime import datetime, timezone
 from typing import Any, cast
+from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
@@ -11,6 +12,7 @@ from pybinbot import (
     OrderBase,
     OrderModel,
     OrderStatus,
+    OrderType,
     Position,
     RecoveryBotModel,
     Status,
@@ -516,6 +518,60 @@ def test_relative_strength_impulse_rider_uses_one_percent_retest_limit(monkeypat
     )
 
 
+def test_top_gainer_early_momentum_waits_for_half_percent_retest(monkeypatch):
+    deal = prepare_recovery_entry_deal(
+        monkeypatch,
+        position=Position.long,
+        previous_close=100.0,
+        current_open=101.0,
+        candle_range=2.0,
+    )
+    deal.active_bot.name = "top_gainer_early_momentum"
+    deal.active_bot.recovery_params = None
+
+    limit_price = deal.body_capped_entry_limit_price()
+
+    assert limit_price == 99.5
+    assert any(
+        "Top-gainer momentum retest entry" in log for log in deal.active_bot.logs
+    )
+
+
+def test_top_gainer_stop_triggers_early_and_never_falls_back_to_market():
+    deal = make_sizing_deal(multiplier=1)
+    deal.active_bot.name = "top_gainer_early_momentum"
+    deal.active_bot.position = Position.long
+    deal.active_bot.deal.opening_price = 100.0
+    deal.active_bot.deal.opening_qty = 3
+    deal.active_bot.deal.stop_loss_price = 98.0
+    deal.kucoin_symbol = "SIRENUSDTM"
+    place_order = Mock(
+        return_value=OrderBase(
+            order_id="bounded-stop",
+            order_type="limit",
+            pair="SIRENUSDTM",
+            timestamp=1,
+            order_side="sell",
+            qty=3,
+            price=98.0,
+            status=OrderStatus.NEW,
+            time_in_force="GTC",
+            deal_type=DealType.stop_loss,
+        )
+    )
+    deal.kucoin_futures_api = types.SimpleNamespace(place_futures_order=place_order)
+    deal.controller = types.SimpleNamespace(update_logs=Mock())
+
+    deal.place_stop_loss()
+
+    kwargs = place_order.call_args.kwargs
+    assert kwargs["order_type"] == OrderType.limit
+    assert kwargs["price"] == 98.0
+    assert kwargs["stop_price"] == 98.49
+    assert kwargs["allow_market_fallback"] is False
+    assert deal.active_bot.deal.stop_loss_price == 98.0
+
+
 def test_entry_klines_normalizes_kucoin_dashboard_ohlc_order():
     dashboard_candle = [
         1_800_000_000_000,
@@ -603,6 +659,35 @@ def test_relative_strength_impulse_rider_pending_entry_waits_three_candles(
         position.is_pending_base_entry_expired(order, now_ms=3 * interval_ms + 2)
         is True
     )
+
+
+@pytest.mark.parametrize("interval_minutes", [5, 15, 60])
+def test_top_gainer_retest_entry_waits_one_configured_candle(interval_minutes):
+    position = cast(Any, FuturesPosition.__new__(FuturesPosition))
+    order = OrderModel(
+        order_id="top-gainer-retest-entry",
+        order_type="limit",
+        pair="KATUSDTM",
+        timestamp=1,
+        order_side="buy",
+        qty=150,
+        price=0.00625,
+        status=OrderStatus.NEW,
+        time_in_force="GTC",
+        deal_type=DealType.base_order,
+    )
+    position.active_bot = BotModel(
+        pair="KATUSDTM",
+        name="top_gainer_early_momentum",
+        status=Status.pending,
+    )
+    interval_ms = interval_minutes * 60 * 1000
+    position.base_streaming = types.SimpleNamespace(
+        interval=types.SimpleNamespace(get_ms=lambda: interval_ms)
+    )
+
+    assert position.is_pending_base_entry_expired(order, now_ms=interval_ms) is False
+    assert position.is_pending_base_entry_expired(order, now_ms=interval_ms + 2) is True
 
 
 def test_relative_strength_impulse_rider_delayed_fill_starts_holding_clock_at_fill(

@@ -24,6 +24,8 @@ from streaming.base import BaseStreaming
 
 class FuturesPosition(PositionMarket):
     PENDING_ENTRY_TTL_MS = 5 * 60 * 1000
+    TOP_GAINER_EARLY_MOMENTUM_ALGO = "top_gainer_early_momentum"
+    TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES = 1
     RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO = "relative_strength_impulse_rider"
     TERMINAL_ORDER_STATUSES = {
         OrderStatus.FILLED,
@@ -55,12 +57,17 @@ class FuturesPosition(PositionMarket):
         self.active_bot: BotModel = bot
 
     def is_pending_base_entry_expired(self, order: OrderModel, now_ms: int) -> bool:
-        pending_entry_ttl_ms = (
-            self.base_streaming.interval.get_ms()
-            * self.RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES
-            if self.active_bot.name == self.RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO
-            else self.PENDING_ENTRY_TTL_MS
-        )
+        pending_entry_ttl_ms = self.PENDING_ENTRY_TTL_MS
+        if self.active_bot.name == self.RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
+            pending_entry_ttl_ms = (
+                self.base_streaming.interval.get_ms()
+                * self.RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES
+            )
+        elif self.active_bot.name == self.TOP_GAINER_EARLY_MOMENTUM_ALGO:
+            pending_entry_ttl_ms = (
+                self.base_streaming.interval.get_ms()
+                * self.TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES
+            )
         return (
             self.active_bot.status == Status.pending
             and order.deal_type == DealType.base_order
@@ -226,6 +233,12 @@ class FuturesPosition(PositionMarket):
             pending_entry_minutes = (
                 self.base_streaming.interval.get_ms()
                 * self.RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES
+                // 60_000
+            )
+        elif self.active_bot.name == self.TOP_GAINER_EARLY_MOMENTUM_ALGO:
+            pending_entry_minutes = (
+                self.base_streaming.interval.get_ms()
+                * self.TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES
                 // 60_000
             )
         self.active_bot.add_log(

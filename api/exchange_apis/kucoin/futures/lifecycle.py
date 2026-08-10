@@ -1185,6 +1185,20 @@ class Lifecycle(KucoinPositionDeal):
                     reference_price=exit_reference_price
                 )
             else:
+                if self.active_bot.name == self.TOP_GAINER_EARLY_MOMENTUM_ALGO and any(
+                    order.deal_type == DealType.stop_loss
+                    and order.status not in self.TERMINAL_STOP_ORDER_STATUSES
+                    for order in self.active_bot.orders
+                ):
+                    if not any(
+                        "Bounded exchange stop owns this exit" in log
+                        for log in self.active_bot.logs
+                    ):
+                        self.active_bot.add_log(
+                            "Bounded exchange stop owns this exit; skipping an unbounded bot-side market close."
+                        )
+                        self.controller.save(self.active_bot)
+                    return self.active_bot
                 if self.active_bot.margin_short_reversal:
                     self.controller.update_logs(
                         f"Reversal circuit-breaker tripped: prior {self.active_bot.name} leg on {self.active_bot.pair} was a loss; closing instead of flipping.",

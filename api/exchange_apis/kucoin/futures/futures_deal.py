@@ -56,6 +56,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
     ENTRY_MIN_ALLOWANCE_PCT = 0.5
     ENTRY_MAX_ALLOWANCE_PCT = 1.5
     ENTRY_FALLBACK_ALLOWANCE_PCT = 0.75
+    TOP_GAINER_EARLY_MOMENTUM_ALGO = "top_gainer_early_momentum"
+    TOP_GAINER_EARLY_MOMENTUM_RETEST_DISCOUNT_PCT = 0.5
+    TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES = 1
+    TOP_GAINER_EARLY_MOMENTUM_STOP_TRIGGER_BUFFER_PCT = 0.5
     RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO = "relative_strength_impulse_rider"
     RELATIVE_STRENGTH_IMPULSE_RIDER_RETEST_DISCOUNT_PCT = 1.0
     RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES = 3
@@ -268,6 +272,20 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 "Relative-strength impulse retest entry: "
                 f"confirmation_close={previous_close}, "
                 f"discount={self.RELATIVE_STRENGTH_IMPULSE_RIDER_RETEST_DISCOUNT_PCT:.2f}%, "
+                f"limit={entry_limit_price}."
+            )
+            return entry_limit_price
+
+        if self.active_bot.name == self.TOP_GAINER_EARLY_MOMENTUM_ALGO:
+            entry_limit_price = round_numbers(
+                previous_close
+                * (1 - self.TOP_GAINER_EARLY_MOMENTUM_RETEST_DISCOUNT_PCT / 100),
+                self.price_precision,
+            )
+            self.active_bot.add_log(
+                "Top-gainer momentum retest entry: "
+                f"confirmation_close={previous_close}, "
+                f"discount={self.TOP_GAINER_EARLY_MOMENTUM_RETEST_DISCOUNT_PCT:.2f}%, "
                 f"limit={entry_limit_price}."
             )
             return entry_limit_price
@@ -835,6 +853,21 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self.place_stop_loss()
             return
 
+        if self.active_bot.name == self.TOP_GAINER_EARLY_MOMENTUM_ALGO:
+            expected_trigger_price = self.top_gainer_stop_trigger_price(
+                self.active_bot.deal.stop_loss_price
+            )
+            if abs(exchange_price - expected_trigger_price) > (
+                10**-self.price_precision
+            ):
+                self.active_bot.add_log(
+                    "Bounded top-gainer stop drift detected: "
+                    f"expected trigger={expected_trigger_price} exchange={exchange_price}; replacing."
+                )
+                self.cancel_current_sl()
+                self.place_stop_loss()
+            return
+
         # Case 2: exchange disagrees with our local record. Log the drift,
         # but keep the bot's freshly-ratcheted target (already computed into
         # deal.stop_loss_price by recompute_derived_prices) intact so Case 3
@@ -997,6 +1030,12 @@ class KucoinPositionDeal(KucoinBaseBalance):
                     * self.RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES
                     // 60_000
                 )
+            elif self.active_bot.name == self.TOP_GAINER_EARLY_MOMENTUM_ALGO:
+                pending_entry_minutes = (
+                    self.base_streaming.interval.get_ms()
+                    * self.TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES
+                    // 60_000
+                )
             log_message = (
                 f"Futures {position_label} entry limit order {order.order_id} submitted "
                 f"at {entry_limit_price} with {contracts} contracts. Bot is pending "
@@ -1009,6 +1048,19 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         self.controller.save(self.active_bot)
         return self.active_bot
+
+    def top_gainer_stop_trigger_price(self, stop_price: float) -> float:
+        direction = self._direction_multiplier()
+        return round_numbers(
+            stop_price
+            * (
+                1
+                + direction
+                * self.TOP_GAINER_EARLY_MOMENTUM_STOP_TRIGGER_BUFFER_PCT
+                / 100
+            ),
+            self.price_precision,
+        )
 
     def place_stop_loss(self) -> None:
         if self.active_bot.stop_loss <= 0:
@@ -1034,16 +1086,29 @@ class KucoinPositionDeal(KucoinBaseBalance):
             side = AddOrderReq.SideEnum.SELL
             stop = AddOrderReq.StopEnum.DOWN
 
+        bounded_top_gainer_stop = (
+            self.active_bot.name == self.TOP_GAINER_EARLY_MOMENTUM_ALGO
+        )
+        trigger_price = (
+            self.top_gainer_stop_trigger_price(stop_price)
+            if bounded_top_gainer_stop
+            else stop_price
+        )
+
         order_response = self.kucoin_futures_api.place_futures_order(
             symbol=self.kucoin_symbol,
             side=side,
-            order_type=OrderType.market,
+            order_type=(
+                OrderType.limit if bounded_top_gainer_stop else OrderType.market
+            ),
+            price=stop_price if bounded_top_gainer_stop else None,
             stop=stop,
-            stop_price=stop_price,
+            stop_price=trigger_price,
             stop_price_type=AddOrderReq.StopPriceTypeEnum.MARK_PRICE,
             reduce_only=True,
             size=self.active_bot.deal.opening_qty,
             leverage=self.symbol_info.futures_leverage,
+            allow_market_fallback=not bounded_top_gainer_stop,
         )
 
         if order_response.price and order_response.qty:
@@ -1059,7 +1124,11 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         self.controller.update_logs(
             bot=self.active_bot,
-            log_message=f"Stop loss set @ {stop_price}",
+            log_message=(
+                f"Bounded stop loss trigger set @ {trigger_price}, limit @ {stop_price}"
+                if bounded_top_gainer_stop
+                else f"Stop loss set @ {stop_price}"
+            ),
         )
 
     def recompute_derived_prices(self) -> BotModel:
