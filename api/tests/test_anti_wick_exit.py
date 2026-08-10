@@ -194,7 +194,7 @@ def test_execute_stop_loss_passes_reference_price_to_buy_for_short():
     assert captured.get("reference_price") == pytest.approx(0.02245, abs=1e-6)
 
 
-def test_top_gainer_live_bounded_stop_is_not_bypassed_by_market_close():
+def test_top_gainer_unfilled_bounded_stop_escalates_after_breach():
     deal = _make_fheusdtm_deal()
     deal.execution.active_bot.name = "top_gainer_early_momentum"
     deal.execution.active_bot.status = Status.active
@@ -212,13 +212,30 @@ def test_top_gainer_live_bounded_stop_is_not_bypassed_by_market_close():
             deal_type=DealType.stop_loss,
         )
     )
-    deal.execution.execute_stop_loss = Mock()
+    deal.execution.close_after_unfilled_bounded_stop = Mock(
+        return_value=deal.execution.active_bot
+    )
 
     result = Lifecycle.exit(deal, close_price=0.0224)
 
     assert result.status == Status.active
-    deal.execution.execute_stop_loss.assert_not_called()
-    assert any("Bounded exchange stop owns this exit" in log for log in result.logs)
+    deal.execution.close_after_unfilled_bounded_stop.assert_called_once_with(
+        reference_price=0.02252
+    )
+
+
+def test_unfilled_bounded_stop_is_cancelled_before_anti_wick_close():
+    deal = _make_fheusdtm_deal()
+    calls: list[tuple[str, float | None]] = []
+    deal.execution.cancel_current_sl = lambda: calls.append(("cancel", None))
+    deal.execution.execute_stop_loss = lambda reference_price=None: (
+        calls.append(("close", reference_price)) or deal.execution.active_bot
+    )
+
+    result = deal.execution.close_after_unfilled_bounded_stop(reference_price=0.02252)
+
+    assert result is deal.execution.active_bot
+    assert calls == [("cancel", None), ("close", 0.02252)]
 
 
 def test_paper_trading_execute_stop_loss_uses_reference_price_as_fill():

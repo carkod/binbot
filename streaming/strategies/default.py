@@ -22,6 +22,52 @@ class DefaultLifecycleStrategy(BaseLifecycleStrategy):
     MIN_TRAILING_DEVIATION = 0.4
     MAX_TRAILING_DEVIATION = 2.5
     MIN_TRAIL_GAP = 0.35
+    PULLBACK_ARM_PROFIT = 1.0
+    SHALLOW_PULLBACK = 0.75
+    DEEP_PULLBACK = 1.5
+
+    @staticmethod
+    def _pullback_metrics(
+        context: LifecycleContext,
+    ) -> dict[str, float] | None:
+        entry_price = context.bot.deal.opening_price
+        entry_timestamp = context.bot.deal.opening_timestamp
+        if entry_price <= 0 or entry_timestamp <= 0:
+            return None
+
+        entry_index = next(
+            (
+                index
+                for index, candle in enumerate(context.klines)
+                if len(candle) >= 3 and int(float(candle[0])) >= entry_timestamp
+            ),
+            None,
+        )
+        if entry_index is None:
+            return None
+
+        peak_price_since_entry = max(
+            [
+                float(candle[2])
+                for candle in context.klines[entry_index:]
+                if len(candle) >= 3
+            ]
+            + [context.current_price]
+        )
+        if peak_price_since_entry <= 0:
+            return None
+
+        return {
+            "peak_profit_pct": (
+                (peak_price_since_entry - entry_price) / entry_price * 100
+            ),
+            "pullback_pct": max(
+                0.0,
+                (peak_price_since_entry - context.current_price)
+                / peak_price_since_entry
+                * 100,
+            ),
+        }
 
     def _initial_stop_loss(
         self,
@@ -98,6 +144,19 @@ class DefaultLifecycleStrategy(BaseLifecycleStrategy):
             self.MIN_TRAILING_DEVIATION,
             self.MAX_TRAILING_DEVIATION,
         )
+
+        pullback_metrics = self._pullback_metrics(context)
+        if (
+            pullback_metrics
+            and pullback_metrics["peak_profit_pct"] >= self.PULLBACK_ARM_PROFIT
+        ):
+            pullback_pct = pullback_metrics["pullback_pct"]
+            if pullback_pct < self.SHALLOW_PULLBACK:
+                trailing_profit += 0.25
+                trailing_deviation += 0.05
+            elif pullback_pct >= self.DEEP_PULLBACK:
+                trailing_profit -= 0.30
+                trailing_deviation -= 0.10
 
         existing_stop_loss = bot.stop_loss
         if existing_stop_loss > 0:

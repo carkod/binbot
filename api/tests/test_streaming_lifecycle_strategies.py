@@ -248,7 +248,13 @@ def test_aggressive_momentum_uses_expansion_stop(monkeypatch) -> None:
     assert update.stop_loss == 2.0
 
 
-def test_aggressive_momentum_owns_pullback_adjustment(monkeypatch) -> None:
+@pytest.mark.parametrize(
+    "strategy",
+    [DefaultLifecycleStrategy(), AggressiveMomentumLifecycleStrategy()],
+)
+def test_default_runtime_strategies_preserve_pullback_adjustment(
+    monkeypatch, strategy
+) -> None:
     monkeypatch.setattr(
         "streaming.strategies.default.ApexFlowClose",
         FakeApexFlowClose,
@@ -262,7 +268,7 @@ def test_aggressive_momentum_owns_pullback_adjustment(monkeypatch) -> None:
         klines=candles,
     )
 
-    update = AggressiveMomentumLifecycleStrategy().signal(context).parameter_update
+    update = strategy.signal(context).parameter_update
 
     assert update is not None
     assert update.trailing_profit == 2.25

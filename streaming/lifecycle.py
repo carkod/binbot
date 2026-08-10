@@ -701,14 +701,11 @@ class Lifecycle:
                         self.execution.active_bot
                     )
                 ):
-                    if not any(
-                        "Bounded exchange stop owns this exit" in log
-                        for log in self.execution.active_bot.logs
-                    ):
-                        self.execution.active_bot.add_log(
-                            "Bounded exchange stop owns this exit; skipping an unbounded bot-side market close."
+                    self.execution.active_bot = (
+                        self.execution.close_after_unfilled_bounded_stop(
+                            reference_price=exit_reference_price
                         )
-                        self.execution.controller.save(self.execution.active_bot)
+                    )
                     return self.execution.active_bot
                 if self.execution.active_bot.margin_short_reversal:
                     self.execution.controller.update_logs(

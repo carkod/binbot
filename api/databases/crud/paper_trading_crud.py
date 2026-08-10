@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from typing import Any, List, cast
 from uuid import UUID
 
-from pybinbot import BinbotErrors, BotBase, BotModel, SaveBotError, Status
+from pybinbot import BinbotErrors, BotBase, BotModel, OrderModel, SaveBotError, Status
 from sqlalchemy.orm import QueryableAttribute, selectinload
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session, asc, case, desc, select
@@ -235,6 +235,25 @@ class PaperTradingTableCrud:
             s.delete(order)
             s.commit()
             return str(order_id)
+
+    def update_order(self, order: OrderModel) -> FakeOrderTable:
+        with get_db_session(self._external_session) as s:
+            existing = s.exec(
+                select(FakeOrderTable).where(
+                    FakeOrderTable.order_id == str(order.order_id)
+                )
+            ).first()
+            if not existing:
+                raise BinbotErrors("Order not found")
+
+            existing.sqlmodel_update(
+                order.model_dump(exclude={"id", "paper_trading_id"})
+            )
+            s.add(existing)
+            s.commit()
+            s.refresh(existing)
+            s.expunge(existing)
+            return existing
 
     def update_status(self, paper_trading: BotModel, status: Status) -> BotModel:
         """

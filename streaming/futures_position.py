@@ -211,7 +211,7 @@ class FuturesPosition(PositionMarket):
                 refreshed_price_used,
             )
             if refreshed_filled_size > 0 and refreshed_price_used > 0:
-                self.base_streaming.bot_controller.update_order(order)
+                self.execution.controller.update_order(order)
                 self._activate_filled_base_order(
                     order,
                     "Entry order filled while expiry cancellation was being processed. "
@@ -222,7 +222,7 @@ class FuturesPosition(PositionMarket):
 
         order.status = OrderStatus.EXPIRED
         order.qty = 0
-        self.base_streaming.bot_controller.update_order(order)
+        self.execution.controller.update_order(order)
         self.execution.active_bot.status = Status.inactive
         pending_entry_minutes = self.PENDING_ENTRY_TTL_MS // 60_000
         if self.execution.active_bot.name == RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
@@ -348,7 +348,7 @@ class FuturesPosition(PositionMarket):
                         if status != OrderStatus.FILLED:
                             self._cancel_pending_entry_order(order, kucoin_symbol)
                             order.status = OrderStatus.CANCELED
-                        self.base_streaming.bot_controller.update_order(order)
+                        self.execution.controller.update_order(order)
                         self.execution.active_bot.add_log(
                             f"Order {order.order_id} updated from system"
                         )
@@ -366,7 +366,7 @@ class FuturesPosition(PositionMarket):
                             OrderStatus.REJECTED,
                         }
                     ):
-                        self.base_streaming.bot_controller.update_order(order)
+                        self.execution.controller.update_order(order)
                         self.execution.active_bot.status = Status.inactive
                         self.execution.active_bot.add_log(
                             f"Entry limit order {order.order_id} ended with status {status.value} before fill. "
@@ -388,7 +388,7 @@ class FuturesPosition(PositionMarket):
                     if previous_status == status and previous_qty == filled_size:
                         continue
 
-                    self.base_streaming.bot_controller.update_order(order)
+                    self.execution.controller.update_order(order)
                     self.execution.active_bot.add_log(
                         f"Order {order.order_id} updated from system"
                     )

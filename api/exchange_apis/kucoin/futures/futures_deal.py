@@ -1456,6 +1456,17 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         return self.active_bot
 
+    def close_after_unfilled_bounded_stop(
+        self, reference_price: float | None = None
+    ) -> BotModel:
+        """Terminate a breached stop-limit that has not closed the position."""
+        self.active_bot.add_log(
+            "Bounded exchange stop was breached without a confirmed fill; "
+            "cancelling it and escalating to the anti-wick close path."
+        )
+        self.cancel_current_sl()
+        return self.execute_stop_loss(reference_price=reference_price)
+
     def place_trailing_stop_loss(
         self, repurchase_multiplier: float = 1
     ) -> BotModel | None:
