@@ -17,5 +17,17 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def coerce_millisecond_timestamp(value: object) -> int | None:
+    """Return a numeric timestamp as integer milliseconds when possible."""
+    if isinstance(value, int):
+        return value
+    if isinstance(value, (float, str)):
+        try:
+            return int(value)
+        except ValueError:
+            return None
+    return None
+
+
 # JSONB on Postgres, plain JSON on SQLite/other dialects (so tests still work).
 JsonVariant = JSON().with_variant(JSONB(), "postgresql")

@@ -20,6 +20,7 @@ The phase-2 gate was removed; SL fires on mark-price breach as before.
 
 import types
 from typing import Any, cast
+from unittest.mock import Mock
 
 import pytest
 from pybinbot import (
@@ -28,8 +29,10 @@ from pybinbot import (
     DealType,
     MarketType,
     OrderBase,
+    OrderModel,
     OrderStatus,
     Position,
+    Status,
 )
 
 from api.exchange_apis.kucoin.futures.lifecycle import Lifecycle
@@ -179,6 +182,33 @@ def test_execute_stop_loss_passes_reference_price_to_buy_for_short():
     Lifecycle.execute_stop_loss(deal, reference_price=0.02245)
 
     assert captured.get("reference_price") == pytest.approx(0.02245, abs=1e-6)
+
+
+def test_top_gainer_live_bounded_stop_is_not_bypassed_by_market_close():
+    deal = _make_fheusdtm_deal()
+    deal.active_bot.name = "top_gainer_early_momentum"
+    deal.active_bot.status = Status.active
+    deal.active_bot.orders.append(
+        OrderModel(
+            order_id="bounded-stop",
+            order_type="limit",
+            pair="FHEUSDTM",
+            timestamp=1,
+            order_side="sell",
+            qty=8,
+            price=0.02249,
+            status=OrderStatus.NEW,
+            time_in_force="GTC",
+            deal_type=DealType.stop_loss,
+        )
+    )
+    deal.execute_stop_loss = Mock()
+
+    result = Lifecycle.exit(deal, close_price=0.0224)
+
+    assert result.status == Status.active
+    deal.execute_stop_loss.assert_not_called()
+    assert any("Bounded exchange stop owns this exit" in log for log in result.logs)
 
 
 def test_paper_trading_execute_stop_loss_uses_reference_price_as_fill():

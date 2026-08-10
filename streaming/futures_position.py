@@ -19,12 +19,17 @@ from pybinbot import (
 
 from api.databases.tables.bot_table import BotTable, PaperTradingTable
 from api.exchange_apis.kucoin.futures.position_market import PositionMarket
+from api.tools.constants import (
+    RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO,
+    RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES,
+    TOP_GAINER_EARLY_MOMENTUM_ALGO,
+    TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES,
+)
 from streaming.base import BaseStreaming
 
 
 class FuturesPosition(PositionMarket):
     PENDING_ENTRY_TTL_MS = 5 * 60 * 1000
-    RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO = "relative_strength_impulse_rider"
     TERMINAL_ORDER_STATUSES = {
         OrderStatus.FILLED,
         OrderStatus.CANCELED,
@@ -55,12 +60,17 @@ class FuturesPosition(PositionMarket):
         self.active_bot: BotModel = bot
 
     def is_pending_base_entry_expired(self, order: OrderModel, now_ms: int) -> bool:
-        pending_entry_ttl_ms = (
-            self.base_streaming.interval.get_ms()
-            * self.RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES
-            if self.active_bot.name == self.RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO
-            else self.PENDING_ENTRY_TTL_MS
-        )
+        pending_entry_ttl_ms = self.PENDING_ENTRY_TTL_MS
+        if self.active_bot.name == RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
+            pending_entry_ttl_ms = (
+                self.base_streaming.interval.get_ms()
+                * RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES
+            )
+        elif self.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO:
+            pending_entry_ttl_ms = (
+                self.base_streaming.interval.get_ms()
+                * TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES
+            )
         return (
             self.active_bot.status == Status.pending
             and order.deal_type == DealType.base_order
@@ -181,7 +191,7 @@ class FuturesPosition(PositionMarket):
         self.active_bot.deal.opening_qty = order.qty
         self.active_bot.deal.opening_timestamp = (
             self.matching_exchange_fill_timestamp(order)
-            if self.active_bot.name == self.RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO
+            if self.active_bot.name == RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO
             else order.timestamp
         )
         if log_message:
@@ -222,10 +232,16 @@ class FuturesPosition(PositionMarket):
         self.base_streaming.bot_controller.update_order(order)
         self.active_bot.status = Status.inactive
         pending_entry_minutes = self.PENDING_ENTRY_TTL_MS // 60_000
-        if self.active_bot.name == self.RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
+        if self.active_bot.name == RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
             pending_entry_minutes = (
                 self.base_streaming.interval.get_ms()
-                * self.RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES
+                * RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES
+                // 60_000
+            )
+        elif self.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO:
+            pending_entry_minutes = (
+                self.base_streaming.interval.get_ms()
+                * TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES
                 // 60_000
             )
         self.active_bot.add_log(

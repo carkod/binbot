@@ -30,6 +30,10 @@ from api.databases.crud.bot_crud import BotTableCrud
 from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
 from api.databases.tables.bot_table import BotTable, PaperTradingTable
 from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
+from api.tools.constants import (
+    RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO,
+    TOP_GAINER_EARLY_MOMENTUM_ALGO,
+)
 from streaming.futures_position import FuturesPosition
 from streaming.spot_position import SpotPosition
 
@@ -125,7 +129,7 @@ class Lifecycle(KucoinPositionDeal):
             return self.LIQUIDATION_SWEEP_PUMP_MAX_HOLDING_BARS
         if self.active_bot.name == "coinrule_price_tracker":
             return self.COINRULE_PRICE_TRACKER_MAX_HOLDING_BARS
-        if self.active_bot.name == "relative_strength_impulse_rider":
+        if self.active_bot.name == RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
             return self.RELATIVE_STRENGTH_IMPULSE_RIDER_MAX_HOLDING_BARS
         return None
 
@@ -156,7 +160,7 @@ class Lifecycle(KucoinPositionDeal):
     ) -> bool:
         if self.active_bot.name in {
             "mean_reversion_fade",
-            "relative_strength_impulse_rider",
+            RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO,
         }:
             return False
         return (
@@ -1185,6 +1189,20 @@ class Lifecycle(KucoinPositionDeal):
                     reference_price=exit_reference_price
                 )
             else:
+                if self.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO and any(
+                    order.deal_type == DealType.stop_loss
+                    and order.status not in self.TERMINAL_STOP_ORDER_STATUSES
+                    for order in self.active_bot.orders
+                ):
+                    if not any(
+                        "Bounded exchange stop owns this exit" in log
+                        for log in self.active_bot.logs
+                    ):
+                        self.active_bot.add_log(
+                            "Bounded exchange stop owns this exit; skipping an unbounded bot-side market close."
+                        )
+                        self.controller.save(self.active_bot)
+                    return self.active_bot
                 if self.active_bot.margin_short_reversal:
                     self.controller.update_logs(
                         f"Reversal circuit-breaker tripped: prior {self.active_bot.name} leg on {self.active_bot.pair} was a loss; closing instead of flipping.",
@@ -1287,7 +1305,7 @@ class Lifecycle(KucoinPositionDeal):
                     "mean_reversion_fade",
                     "liquidation_sweep_pump",
                     "coinrule_price_tracker",
-                    "relative_strength_impulse_rider",
+                    RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO,
                 }:
                     return take_profit_result
 
