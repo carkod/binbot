@@ -26,6 +26,12 @@ from api.databases.crud.symbols_crud import SymbolsCrud
 from api.databases.tables.bot_table import BotTable, PaperTradingTable
 from api.exchange_apis.kucoin.deals.base import KucoinBaseBalance
 from api.exchange_apis.kucoin.futures.balance import KucoinFuturesBalance
+from api.tools.constants import (
+    RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO,
+    RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES,
+    TOP_GAINER_EARLY_MOMENTUM_ALGO,
+    TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES,
+)
 from streaming.base import BaseStreaming
 
 
@@ -56,13 +62,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
     ENTRY_MIN_ALLOWANCE_PCT = 0.5
     ENTRY_MAX_ALLOWANCE_PCT = 1.5
     ENTRY_FALLBACK_ALLOWANCE_PCT = 0.75
-    TOP_GAINER_EARLY_MOMENTUM_ALGO = "top_gainer_early_momentum"
     TOP_GAINER_EARLY_MOMENTUM_RETEST_DISCOUNT_PCT = 0.5
-    TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES = 1
     TOP_GAINER_EARLY_MOMENTUM_STOP_TRIGGER_BUFFER_PCT = 0.5
-    RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO = "relative_strength_impulse_rider"
     RELATIVE_STRENGTH_IMPULSE_RIDER_RETEST_DISCOUNT_PCT = 1.0
-    RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES = 3
 
     def __init__(
         self,
@@ -262,7 +264,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 "Reliable candle open and previous close are unavailable for futures entry."
             )
 
-        if self.active_bot.name == self.RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
+        if self.active_bot.name == RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
             entry_limit_price = round_numbers(
                 previous_close
                 * (1 - self.RELATIVE_STRENGTH_IMPULSE_RIDER_RETEST_DISCOUNT_PCT / 100),
@@ -276,7 +278,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             )
             return entry_limit_price
 
-        if self.active_bot.name == self.TOP_GAINER_EARLY_MOMENTUM_ALGO:
+        if self.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO:
             entry_limit_price = round_numbers(
                 previous_close
                 * (1 - self.TOP_GAINER_EARLY_MOMENTUM_RETEST_DISCOUNT_PCT / 100),
@@ -853,7 +855,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self.place_stop_loss()
             return
 
-        if self.active_bot.name == self.TOP_GAINER_EARLY_MOMENTUM_ALGO:
+        if self.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO:
             expected_trigger_price = self.top_gainer_stop_trigger_price(
                 self.active_bot.deal.stop_loss_price
             )
@@ -1007,7 +1009,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             order.price = avg_price
             self.active_bot.deal.opening_price = avg_price
             self.active_bot.deal.opening_qty = filled_size
-            if self.active_bot.name == self.RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
+            if self.active_bot.name == RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
                 self.active_bot.deal.opening_timestamp = (
                     self.matching_exchange_fill_timestamp(order)
                 )
@@ -1024,16 +1026,16 @@ class KucoinPositionDeal(KucoinBaseBalance):
             log_message = f"Futures {position_label} opened @ {self.active_bot.deal.opening_price} with {int(self.active_bot.deal.opening_qty)} contracts"
         else:
             pending_entry_minutes = 5
-            if self.active_bot.name == self.RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
+            if self.active_bot.name == RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
                 pending_entry_minutes = (
                     self.base_streaming.interval.get_ms()
-                    * self.RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES
+                    * RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES
                     // 60_000
                 )
-            elif self.active_bot.name == self.TOP_GAINER_EARLY_MOMENTUM_ALGO:
+            elif self.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO:
                 pending_entry_minutes = (
                     self.base_streaming.interval.get_ms()
-                    * self.TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES
+                    * TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES
                     // 60_000
                 )
             log_message = (
@@ -1086,9 +1088,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             side = AddOrderReq.SideEnum.SELL
             stop = AddOrderReq.StopEnum.DOWN
 
-        bounded_top_gainer_stop = (
-            self.active_bot.name == self.TOP_GAINER_EARLY_MOMENTUM_ALGO
-        )
+        bounded_top_gainer_stop = self.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO
         trigger_price = (
             self.top_gainer_stop_trigger_price(stop_price)
             if bounded_top_gainer_stop
