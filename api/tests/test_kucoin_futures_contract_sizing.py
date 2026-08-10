@@ -20,8 +20,6 @@ from pybinbot import (
 
 from api.exchange_apis.kucoin.deals.base import KucoinBaseBalance
 from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
-from api.exchange_apis.kucoin.futures.lifecycle import Lifecycle
-from streaming.base import BaseStreaming
 from streaming.futures_position import FuturesPosition
 
 
@@ -80,8 +78,7 @@ def test_calculate_contracts_scales_with_per_symbol_leverage():
     assert deal.calculate_contracts(balance=15, price=0.93269) == 4
 
 
-def test_constructor_reuses_injected_base_streaming(monkeypatch):
-    """Streaming deal construction must not create another BaseStreaming."""
+def test_constructor_reuses_injected_exchange_dependencies(monkeypatch):
 
     def base_balance_init(self):
         self.config = types.SimpleNamespace(
@@ -112,10 +109,6 @@ def test_constructor_reuses_injected_base_streaming(monkeypatch):
     class DummyBotCrud:
         pass
 
-    class ExplodingBaseStreaming:
-        def __init__(self):
-            raise AssertionError("unexpected BaseStreaming construction")
-
     monkeypatch.setattr(KucoinBaseBalance, "__init__", base_balance_init)
     monkeypatch.setattr(
         "api.exchange_apis.kucoin.futures.futures_deal.KucoinFutures",
@@ -129,17 +122,23 @@ def test_constructor_reuses_injected_base_streaming(monkeypatch):
         "api.exchange_apis.kucoin.futures.futures_deal.BotTableCrud",
         DummyBotCrud,
     )
-    monkeypatch.setattr(
-        "api.exchange_apis.kucoin.futures.futures_deal.BaseStreaming",
-        ExplodingBaseStreaming,
+    bot = BotModel(pair="SIRENUSDTM", position=Position.short)
+    futures_api = DummyFuturesApi()
+    symbols_crud = DummySymbolsCrud()
+    controller = DummyBotCrud()
+
+    deal = KucoinPositionDeal(
+        bot=bot,
+        kucoin_futures_api=cast(Any, futures_api),
+        symbols_crud=cast(Any, symbols_crud),
+        controller=cast(Any, controller),
+        interval_ms=900_000,
     )
 
-    base_streaming = cast(BaseStreaming, types.SimpleNamespace())
-    bot = BotModel(pair="SIRENUSDTM", position=Position.short)
-
-    deal = KucoinPositionDeal(bot=bot, base_streaming=base_streaming)
-
-    assert deal.base_streaming is base_streaming
+    assert deal.kucoin_futures_api is futures_api
+    assert deal.symbols_crud is symbols_crud
+    assert deal.controller is controller
+    assert deal.interval_ms == 900_000
 
 
 def test_contracts_to_fiat_order_size_inverts_margin_sizing():
@@ -617,7 +616,7 @@ def test_unfilled_capped_base_order_uses_pending_entry_ttl_not_legacy_age_expiry
         status=Status.pending,
         deal=types.SimpleNamespace(opening_price=0),
     )
-    position.active_bot = bot
+    position.execution = types.SimpleNamespace(active_bot=bot)
 
     assert position.should_expire_order_by_age(order) is False
     assert (
@@ -642,10 +641,12 @@ def test_relative_strength_impulse_rider_pending_entry_waits_three_candles(
         time_in_force="GTC",
         deal_type=DealType.base_order,
     )
-    position.active_bot = BotModel(
-        pair="KATUSDTM",
-        name="relative_strength_impulse_rider",
-        status=Status.pending,
+    position.execution = types.SimpleNamespace(
+        active_bot=BotModel(
+            pair="KATUSDTM",
+            name="relative_strength_impulse_rider",
+            status=Status.pending,
+        )
     )
     interval_ms = interval_minutes * 60 * 1000
     position.base_streaming = types.SimpleNamespace(
@@ -676,10 +677,12 @@ def test_top_gainer_retest_entry_waits_one_configured_candle(interval_minutes):
         time_in_force="GTC",
         deal_type=DealType.base_order,
     )
-    position.active_bot = BotModel(
-        pair="KATUSDTM",
-        name="top_gainer_early_momentum",
-        status=Status.pending,
+    position.execution = types.SimpleNamespace(
+        active_bot=BotModel(
+            pair="KATUSDTM",
+            name="top_gainer_early_momentum",
+            status=Status.pending,
+        )
     )
     interval_ms = interval_minutes * 60 * 1000
     position.base_streaming = types.SimpleNamespace(
@@ -701,30 +704,30 @@ def test_relative_strength_impulse_rider_delayed_fill_starts_holding_clock_at_fi
         types.SimpleNamespace(now=lambda: observation_time),
     )
     position = cast(Any, FuturesPosition.__new__(FuturesPosition))
-    position.active_bot = BotModel(
+    execution = cast(Any, KucoinPositionDeal.__new__(KucoinPositionDeal))
+    execution.active_bot = BotModel(
         pair="KATUSDTM",
         name="relative_strength_impulse_rider",
         status=Status.pending,
     )
-    position.base_streaming = types.SimpleNamespace(
-        kucoin_futures_api=types.SimpleNamespace(
-            get_fills=lambda **kwargs: types.SimpleNamespace(
-                items=[
-                    types.SimpleNamespace(
-                        order_id="another-order",
-                        trade_time=int(observation_time.timestamp() * 1_000_000_000),
-                        created_at=int(observation_time.timestamp() * 1000),
-                    ),
-                    types.SimpleNamespace(
-                        order_id="filled-impulse-retest-entry",
-                        trade_time=fill_timestamp_ms * 1_000_000,
-                        created_at=fill_timestamp_ms,
-                    ),
-                ]
-            )
+    position.execution = execution
+    execution.kucoin_futures_api = types.SimpleNamespace(
+        get_fills=lambda **kwargs: types.SimpleNamespace(
+            items=[
+                types.SimpleNamespace(
+                    order_id="another-order",
+                    trade_time=int(observation_time.timestamp() * 1_000_000_000),
+                    created_at=int(observation_time.timestamp() * 1000),
+                ),
+                types.SimpleNamespace(
+                    order_id="filled-impulse-retest-entry",
+                    trade_time=fill_timestamp_ms * 1_000_000,
+                    created_at=fill_timestamp_ms,
+                ),
+            ]
         )
     )
-    position.open_deal = lambda: position.active_bot
+    execution.open_deal = lambda: execution.active_bot
     order = OrderModel(
         order_id="filled-impulse-retest-entry",
         order_type="limit",
@@ -740,22 +743,7 @@ def test_relative_strength_impulse_rider_delayed_fill_starts_holding_clock_at_fi
 
     position._activate_filled_base_order(order)
 
-    assert position.active_bot.deal.opening_timestamp == fill_timestamp_ms
-
-    lifecycle = cast(Any, Lifecycle.__new__(Lifecycle))
-    lifecycle.active_bot = position.active_bot
-    interval_ms = 15 * 60 * 1000
-    lifecycle.base_streaming = types.SimpleNamespace(
-        interval=types.SimpleNamespace(get_ms=lambda: interval_ms)
-    )
-    completed_candles = [
-        [fill_timestamp_ms + candle_number * interval_ms]
-        for candle_number in range(1, 13)
-        if fill_timestamp_ms + candle_number * interval_ms
-        < int(observation_time.timestamp() * 1000)
-    ]
-
-    assert lifecycle._strategy_max_holding_reached(completed_candles) is True
+    assert execution.active_bot.deal.opening_timestamp == fill_timestamp_ms
 
 
 @pytest.mark.parametrize(

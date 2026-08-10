@@ -35,7 +35,8 @@ from pybinbot import (
     Status,
 )
 
-from api.exchange_apis.kucoin.futures.lifecycle import Lifecycle
+from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
+from streaming.lifecycle import Lifecycle
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -89,11 +90,14 @@ def _make_fheusdtm_deal(
     position: Position = Position.long,
 ) -> Any:
     """Minimal Lifecycle stub shaped after the FHEUSDTM production case."""
-    deal = cast(Any, Lifecycle.__new__(Lifecycle))
-    deal.price_precision = 5
-    deal.kucoin_symbol = "FHEUSDTM"
-    deal.symbol_info = types.SimpleNamespace(futures_leverage=2)
-    deal.active_bot = BotModel(
+    execution = cast(Any, KucoinPositionDeal.__new__(KucoinPositionDeal))
+    execution.price_precision = 5
+    execution.kucoin_symbol = "FHEUSDTM"
+    execution.symbol_info = types.SimpleNamespace(
+        futures_leverage=2,
+        qty_precision=0,
+    )
+    execution.active_bot = BotModel(
         pair="FHEUSDTM",
         market_type=MarketType.FUTURES,
         position=position,
@@ -110,10 +114,16 @@ def _make_fheusdtm_deal(
     )
     # Pydantic may serialise the enum to its value string; re-assign the
     # enum object so exit() can call .value on it without AttributeError.
-    deal.active_bot.position = position
-    deal.controller = types.SimpleNamespace(
+    execution.active_bot.position = position
+    execution.controller = types.SimpleNamespace(
         save=lambda bot: None,
         update_logs=lambda *args, **kwargs: None,
+    )
+    deal = Lifecycle(
+        execution=execution,
+        base_streaming=types.SimpleNamespace(
+            interval=types.SimpleNamespace(get_ms=lambda: 15 * 60 * 1000)
+        ),
     )
     deal.klines = klines if klines is not None else KLINES_WICK
     return deal
@@ -147,9 +157,9 @@ def test_execute_stop_loss_passes_reference_price_to_sell():
         )
 
     deal = _make_fheusdtm_deal()
-    deal.kucoin_futures_api = types.SimpleNamespace(sell=fake_sell)
+    deal.execution.kucoin_futures_api = types.SimpleNamespace(sell=fake_sell)
 
-    Lifecycle.execute_stop_loss(deal, reference_price=0.02252)
+    deal.execution.execute_stop_loss(reference_price=0.02252)
 
     assert captured.get("reference_price") == pytest.approx(0.02252, abs=1e-6)
 
@@ -177,18 +187,18 @@ def test_execute_stop_loss_passes_reference_price_to_buy_for_short():
         )
 
     deal = _make_fheusdtm_deal(position=Position.short, stop_loss_price=0.02334)
-    deal.kucoin_futures_api = types.SimpleNamespace(buy=fake_buy)
+    deal.execution.kucoin_futures_api = types.SimpleNamespace(buy=fake_buy)
 
-    Lifecycle.execute_stop_loss(deal, reference_price=0.02245)
+    deal.execution.execute_stop_loss(reference_price=0.02245)
 
     assert captured.get("reference_price") == pytest.approx(0.02245, abs=1e-6)
 
 
 def test_top_gainer_live_bounded_stop_is_not_bypassed_by_market_close():
     deal = _make_fheusdtm_deal()
-    deal.active_bot.name = "top_gainer_early_momentum"
-    deal.active_bot.status = Status.active
-    deal.active_bot.orders.append(
+    deal.execution.active_bot.name = "top_gainer_early_momentum"
+    deal.execution.active_bot.status = Status.active
+    deal.execution.active_bot.orders.append(
         OrderModel(
             order_id="bounded-stop",
             order_type="limit",
@@ -202,12 +212,12 @@ def test_top_gainer_live_bounded_stop_is_not_bypassed_by_market_close():
             deal_type=DealType.stop_loss,
         )
     )
-    deal.execute_stop_loss = Mock()
+    deal.execution.execute_stop_loss = Mock()
 
     result = Lifecycle.exit(deal, close_price=0.0224)
 
     assert result.status == Status.active
-    deal.execute_stop_loss.assert_not_called()
+    deal.execution.execute_stop_loss.assert_not_called()
     assert any("Bounded exchange stop owns this exit" in log for log in result.logs)
 
 
@@ -235,10 +245,10 @@ def test_paper_trading_execute_stop_loss_uses_reference_price_as_fill():
             return cast(PaperTradingTable, None)
 
     deal = _make_fheusdtm_deal()
-    deal.controller = PaperCtrlStub()
-    deal.active_bot.deal.current_price = 0.0224  # the wick low
+    deal.execution.controller = PaperCtrlStub()
+    deal.execution.active_bot.deal.current_price = 0.0224  # the wick low
 
-    Lifecycle.execute_stop_loss(deal, reference_price=0.02252)
+    deal.execution.execute_stop_loss(reference_price=0.02252)
 
     assert len(saved) > 0
     closing_price = saved[-1].deal.closing_price
@@ -270,17 +280,17 @@ def test_reverse_position_passes_reference_price_to_close_leg():
 
     deal = _make_fheusdtm_deal()
     # Stub the exchange position query
-    deal.kucoin_futures_api = types.SimpleNamespace(
+    deal.execution.kucoin_futures_api = types.SimpleNamespace(
         sell=fake_sell,
         get_futures_position=lambda symbol: types.SimpleNamespace(current_qty=8.0),
     )
     # Stub the DB create so the new pending bot is created without a real DB
-    deal.controller = types.SimpleNamespace(
+    deal.execution.controller = types.SimpleNamespace(
         save=lambda bot: None,
         update_logs=lambda *a, **kw: None,
         create=lambda bot: BotModel(**bot.model_dump()),
     )
 
-    Lifecycle.reverse_position(deal, reference_price=0.02252)
+    deal.reverse_position(reference_price=0.02252)
 
     assert captured.get("reference_price") == pytest.approx(0.02252, abs=1e-6)

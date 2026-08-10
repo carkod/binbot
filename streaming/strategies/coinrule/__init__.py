@@ -1,0 +1,1 @@
+"""Coinrule lifecycle strategies."""

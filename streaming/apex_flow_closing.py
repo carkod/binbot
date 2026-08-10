@@ -3,8 +3,6 @@ from pandas import Series
 from pandera.typing import DataFrame as TypedDataFrame
 from pybinbot import BotModel, Indicators, KlineSchema
 
-from api.databases.crud.autotrade_crud import AutotradeCrud
-
 
 class ApexFlowClose:
     """
@@ -16,7 +14,6 @@ class ApexFlowClose:
     def __init__(
         self, df: TypedDataFrame[KlineSchema], btc_df: TypedDataFrame[KlineSchema]
     ) -> None:
-        self.exchange = AutotradeCrud().get_settings().exchange_id
         self.df = df
         self.btc_df = btc_df
 

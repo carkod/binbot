@@ -612,24 +612,35 @@ class TestPositionManager:
             types.SimpleNamespace(current_qty=2)
         )
 
-        class FakeDealGateway:
-            def __init__(self, bot, db_table, base_streaming=None):
-                self.bot = bot
-                self.db_table = db_table
+        class FakeExecution:
+            def __init__(self, bot, controller, **kwargs):
+                self.active_bot = bot
+                self.controller = controller
+                self.bot_crud = types.SimpleNamespace(
+                    delete_order=lambda **kwargs: None
+                )
+                self.price_precision = 4
+                self.symbol_info = types.SimpleNamespace(qty_precision=4)
+                self.cancel_current_sl = lambda: None
+                self.backfill_position_from_fills = lambda: self.active_bot
+
+        class FakeLifecycle:
+            def __init__(self, execution, base_streaming):
+                self.execution = execution
                 self.base_streaming = base_streaming
 
-            def deal_exit_orchestration(self, close_price, open_price):
+            def process_tick(self):
                 fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
                 fp.base_streaming = base
-                fp.bot = self.bot
-                fp.active_bot = self.bot
+                fp.execution = self.execution
                 fp.price_precision = 4
                 fp.qty_precision = 4
-                fp.cancel_current_sl = lambda: None
-                fp.backfill_position_from_fills = lambda: self.bot
                 return FuturesPosition.order_updates(fp)
 
-        monkeypatch.setattr("streaming.position_manager.DealGateway", FakeDealGateway)
+        monkeypatch.setattr(
+            "streaming.position_manager.KucoinPositionDeal", FakeExecution
+        )
+        monkeypatch.setattr("streaming.position_manager.Lifecycle", FakeLifecycle)
 
         sc.process_deal()
 
@@ -700,33 +711,44 @@ class TestPositionManager:
 
         backfill_called = {"value": False}
 
-        class FakeDealGateway:
-            def __init__(self, bot, db_table, base_streaming=None):
-                self.bot = bot
-                self.db_table = db_table
-                self.base_streaming = base_streaming
-
-            def deal_exit_orchestration(self, close_price, open_price):
-                fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
-                fp.base_streaming = base
-                fp.bot = self.bot
-                fp.active_bot = self.bot
-                fp.price_precision = 4
-                fp.qty_precision = 4
-                fp.cancel_current_sl = lambda: None
+        class FakeExecution:
+            def __init__(self, bot, controller, **kwargs):
+                self.active_bot = bot
+                self.controller = controller
+                self.bot_crud = types.SimpleNamespace(
+                    delete_order=lambda **kwargs: None
+                )
+                self.price_precision = 4
+                self.symbol_info = types.SimpleNamespace(qty_precision=4)
+                self.cancel_current_sl = lambda: None
 
                 def backfill():
                     backfill_called["value"] = True
-                    self.bot.deal.closing_price = 1.267
-                    self.bot.deal.closing_qty = 70
-                    self.bot.deal.closing_timestamp = int(time.time() * 1000)
-                    self.bot.status = Status.completed
-                    return self.bot
+                    self.active_bot.deal.closing_price = 1.267
+                    self.active_bot.deal.closing_qty = 70
+                    self.active_bot.deal.closing_timestamp = int(time.time() * 1000)
+                    self.active_bot.status = Status.completed
+                    return self.active_bot
 
-                fp.backfill_position_from_fills = backfill
+                self.backfill_position_from_fills = backfill
+
+        class FakeLifecycle:
+            def __init__(self, execution, base_streaming):
+                self.execution = execution
+                self.base_streaming = base_streaming
+
+            def process_tick(self):
+                fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
+                fp.base_streaming = base
+                fp.execution = self.execution
+                fp.price_precision = 4
+                fp.qty_precision = 4
                 return FuturesPosition.order_updates(fp)
 
-        monkeypatch.setattr("streaming.position_manager.DealGateway", FakeDealGateway)
+        monkeypatch.setattr(
+            "streaming.position_manager.KucoinPositionDeal", FakeExecution
+        )
+        monkeypatch.setattr("streaming.position_manager.Lifecycle", FakeLifecycle)
 
         sc.process_deal()
 
@@ -788,13 +810,17 @@ class TestPositionManager:
 
         fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
         fp.base_streaming = base
-        fp.active_bot = bot
         fp.price_precision = 4
         fp.qty_precision = 4
-        fp.bot_crud = types.SimpleNamespace(
-            delete_order=lambda order_id, bot_id: deleted.append(order_id)
+        fp.execution = types.SimpleNamespace(
+            active_bot=bot,
+            controller=base.bot_controller,
+            bot_crud=types.SimpleNamespace(
+                delete_order=lambda order_id, bot_id: deleted.append(order_id)
+            ),
+            cancel_current_sl=lambda: deleted.append("cancel_current_sl"),
+            _reversal_eligible=lambda: False,
         )
-        fp.cancel_current_sl = lambda: deleted.append("cancel_current_sl")
 
         FuturesPosition.order_updates(fp)
 
@@ -872,13 +898,17 @@ class TestPositionManager:
 
         fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
         fp.base_streaming = base
-        fp.active_bot = bot
         fp.price_precision = 6
         fp.qty_precision = 0
-        fp.bot_crud = types.SimpleNamespace(
-            delete_order=lambda order_id, bot_id: deleted.append(order_id)
+        fp.execution = types.SimpleNamespace(
+            active_bot=bot,
+            controller=base.bot_controller,
+            bot_crud=types.SimpleNamespace(
+                delete_order=lambda order_id, bot_id: deleted.append(order_id)
+            ),
+            cancel_current_sl=lambda: deleted.append("cancel_current_sl"),
+            _reversal_eligible=lambda: False,
         )
-        fp.cancel_current_sl = lambda: deleted.append("cancel_current_sl")
 
         FuturesPosition.order_updates(fp)
 
@@ -931,7 +961,7 @@ class TestPositionManager:
 
         fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
         fp.base_streaming = base
-        fp.active_bot = bot
+        fp.execution = types.SimpleNamespace(active_bot=bot)
 
         fp._cancel_pending_entry_order(order, "MEMEUSDTM")
 
@@ -985,13 +1015,17 @@ class TestPositionManager:
 
         fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
         fp.base_streaming = base
-        fp.active_bot = bot
         fp.price_precision = 4
         fp.qty_precision = 4
-        fp.bot_crud = types.SimpleNamespace(
-            delete_order=lambda order_id, bot_id: deleted.append(order_id)
+        fp.execution = types.SimpleNamespace(
+            active_bot=bot,
+            controller=base.bot_controller,
+            bot_crud=types.SimpleNamespace(
+                delete_order=lambda order_id, bot_id: deleted.append(order_id)
+            ),
+            cancel_current_sl=lambda: deleted.append("cancel_current_sl"),
+            _reversal_eligible=lambda: False,
         )
-        fp.cancel_current_sl = lambda: deleted.append("cancel_current_sl")
 
         FuturesPosition.order_updates(fp)
 
@@ -1028,12 +1062,21 @@ class TestPositionManager:
 
         fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
         fp.base_streaming = base
-        fp.active_bot = bot
         fp.price_precision = 4
         fp.qty_precision = 4
 
         placed: list[float] = []
-        fp.place_stop_loss = lambda: placed.append(bot.deal.stop_loss_price)
+        fp.execution = types.SimpleNamespace(
+            active_bot=bot,
+            controller=base.bot_controller,
+            _reversal_eligible=lambda: False,
+            recompute_derived_prices=lambda: setattr(
+                bot.deal,
+                "stop_loss_price",
+                bot.deal.opening_price * (1 - bot.stop_loss / 100),
+            ),
+            place_stop_loss=lambda: placed.append(bot.deal.stop_loss_price),
+        )
 
         FuturesPosition.order_updates(fp)
 
@@ -1069,12 +1112,17 @@ class TestPositionManager:
 
         fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
         fp.base_streaming = base
-        fp.active_bot = bot
         fp.price_precision = 4
         fp.qty_precision = 4
 
         placed: list[float] = []
-        fp.place_stop_loss = lambda: placed.append(bot.deal.stop_loss_price)
+        fp.execution = types.SimpleNamespace(
+            active_bot=bot,
+            controller=base.bot_controller,
+            _reversal_eligible=lambda: True,
+            recompute_derived_prices=lambda: None,
+            place_stop_loss=lambda: placed.append(bot.deal.stop_loss_price),
+        )
 
         FuturesPosition.order_updates(fp)
 

@@ -6,14 +6,17 @@ from pybinbot import (
     BotModel,
     ExchangeId,
     KucoinApi,
+    KucoinFutures,
+    MarketType,
 )
 
 from api.databases.crud.autotrade_crud import AutotradeCrud
 from api.databases.tables.bot_table import BotTable, PaperTradingTable
 from api.deals.gateway import DealGateway
-from api.exchange_apis.kucoin.futures.futures_deal import KucoinFutures
+from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from streaming.apex_flow_closing import ApexFlowClose
 from streaming.base import BaseStreaming
+from streaming.lifecycle import Lifecycle
 
 
 class PositionManager:
@@ -87,13 +90,31 @@ class PositionManager:
         if bot is None:
             return
 
-        deal = DealGateway(
-            bot=bot,
-            db_table=db_table,
-            base_streaming=self.base_streaming,
-        )
-
         if self.base_streaming.exchange != ExchangeId.KUCOIN:
             raise NotImplementedError("Order updates only implemented for Kucoin")
 
-        deal.deal_exit_orchestration(0, 0)
+        if bot.market_type == MarketType.FUTURES:
+            controller = (
+                self.base_streaming.paper_trading_controller
+                if db_table == PaperTradingTable
+                else self.base_streaming.bot_controller
+            )
+            execution = KucoinPositionDeal(
+                bot=bot,
+                db_table=db_table,
+                kucoin_futures_api=self.base_streaming.kucoin_futures_api,
+                controller=controller,
+                symbols_crud=self.base_streaming.symbols_crud,
+                interval_ms=self.base_streaming.interval.get_ms(),
+            )
+            Lifecycle(
+                execution=execution,
+                base_streaming=self.base_streaming,
+            ).process_tick()
+            return
+
+        DealGateway(
+            bot=bot,
+            db_table=db_table,
+            base_streaming=self.base_streaming,
+        ).deal_exit_orchestration(0, 0)

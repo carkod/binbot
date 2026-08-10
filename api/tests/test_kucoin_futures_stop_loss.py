@@ -19,7 +19,7 @@ from pybinbot import (
 )
 
 from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
-from api.exchange_apis.kucoin.futures.lifecycle import Lifecycle
+from streaming.lifecycle import Lifecycle
 
 
 def _make_deal(
@@ -51,7 +51,10 @@ def _make_deal(
     if orders is not None:
         deal.active_bot.orders = orders
 
-    deal.controller = types.SimpleNamespace(update_logs=lambda *args, **kwargs: None)
+    deal.controller = types.SimpleNamespace(
+        save=lambda *args, **kwargs: None,
+        update_logs=lambda *args, **kwargs: None,
+    )
     deal.kucoin_futures_api = types.SimpleNamespace(
         get_all_stop_loss_orders=lambda symbol: [],
         batch_cancel_stop_loss_orders=lambda ids: None,
@@ -61,10 +64,15 @@ def _make_deal(
 
 
 def _make_position_deal(**kwargs) -> Any:
-    base_deal = _make_deal(**kwargs)
-    deal = cast(Any, Lifecycle.__new__(Lifecycle))
-    deal.__dict__.update(base_deal.__dict__)
-    return deal
+    return _make_deal(**kwargs)
+
+
+def _make_lifecycle(*, interval_ms: int = 15 * 60 * 1000, **kwargs) -> Lifecycle:
+    execution = _make_deal(**kwargs)
+    base_streaming = types.SimpleNamespace(
+        interval=types.SimpleNamespace(get_ms=lambda: interval_ms),
+    )
+    return Lifecycle(execution=execution, base_streaming=base_streaming)
 
 
 def _make_completed_candles(
@@ -84,227 +92,25 @@ def _make_completed_candles(
     ]
 
 
-def test_mean_reversion_fade_max_holding_counts_candles_after_entry() -> None:
-    interval_ms = 15 * 60 * 1000
-    entry_candle_open = 1_800_000_000_000
-    deal = _make_position_deal()
-    deal.active_bot.name = "mean_reversion_fade"
-    deal.active_bot.deal.opening_timestamp = entry_candle_open + 1_000
-    deal.base_streaming = types.SimpleNamespace(
-        interval=types.SimpleNamespace(get_ms=lambda: interval_ms)
-    )
-
-    seven_completed = _make_completed_candles(
-        entry_candle_open=entry_candle_open,
-        completed_after_entry=7,
-        interval_ms=interval_ms,
-    )
-    eight_completed = _make_completed_candles(
-        entry_candle_open=entry_candle_open,
-        completed_after_entry=8,
-        interval_ms=interval_ms,
-    )
-
-    assert deal._strategy_max_holding_reached(seven_completed) is False
-    assert deal._strategy_max_holding_reached(eight_completed) is True
-
-
-def test_liquidation_sweep_pump_max_holding_counts_candles_after_entry() -> None:
-    interval_ms = 15 * 60 * 1000
-    entry_candle_open = 1_800_000_000_000
-    deal = _make_position_deal()
-    deal.active_bot.name = "liquidation_sweep_pump"
-    deal.active_bot.deal.opening_timestamp = entry_candle_open + 1_000
-    deal.base_streaming = types.SimpleNamespace(
-        interval=types.SimpleNamespace(get_ms=lambda: interval_ms)
-    )
-
-    seven_completed = _make_completed_candles(
-        entry_candle_open=entry_candle_open,
-        completed_after_entry=7,
-        interval_ms=interval_ms,
-    )
-    eight_completed = _make_completed_candles(
-        entry_candle_open=entry_candle_open,
-        completed_after_entry=8,
-        interval_ms=interval_ms,
-    )
-
-    assert deal._strategy_max_holding_reached(seven_completed) is False
-    assert deal._strategy_max_holding_reached(eight_completed) is True
-
-
-def test_coinrule_price_tracker_max_holding_counts_candles_after_entry() -> None:
-    interval_ms = 15 * 60 * 1000
-    entry_candle_open = 1_800_000_000_000
-    deal = _make_position_deal()
-    deal.active_bot.name = "coinrule_price_tracker"
-    deal.active_bot.deal.opening_timestamp = entry_candle_open + 1_000
-    deal.base_streaming = types.SimpleNamespace(
-        interval=types.SimpleNamespace(get_ms=lambda: interval_ms)
-    )
-
-    seven_completed = _make_completed_candles(
-        entry_candle_open=entry_candle_open,
-        completed_after_entry=7,
-        interval_ms=interval_ms,
-    )
-    eight_completed = _make_completed_candles(
-        entry_candle_open=entry_candle_open,
-        completed_after_entry=8,
-        interval_ms=interval_ms,
-    )
-
-    assert deal._strategy_max_holding_reached(seven_completed) is False
-    assert deal._strategy_max_holding_reached(eight_completed) is True
-
-
-def test_relative_strength_impulse_rider_counts_eight_candles_after_entry() -> None:
-    interval_ms = 15 * 60 * 1000
-    entry_candle_open = 1_800_000_000_000
-    deal = _make_position_deal()
-    deal.active_bot.name = "relative_strength_impulse_rider"
-    deal.active_bot.deal.opening_timestamp = entry_candle_open + 1_000
-    deal.base_streaming = types.SimpleNamespace(
-        interval=types.SimpleNamespace(get_ms=lambda: interval_ms)
-    )
-
-    seven_completed = _make_completed_candles(
-        entry_candle_open=entry_candle_open,
-        completed_after_entry=7,
-        interval_ms=interval_ms,
-    )
-    eight_completed = _make_completed_candles(
-        entry_candle_open=entry_candle_open,
-        completed_after_entry=8,
-        interval_ms=interval_ms,
-    )
-
-    assert deal._strategy_max_holding_reached(seven_completed) is False
-    assert deal._strategy_max_holding_reached(eight_completed) is True
-
-
-def test_liquidation_sweep_pump_max_holding_does_not_apply_to_short() -> None:
-    interval_ms = 15 * 60 * 1000
-    entry_candle_open = 1_800_000_000_000
-    deal = _make_position_deal(position=Position.short)
-    deal.active_bot.name = "liquidation_sweep_pump"
-    deal.active_bot.deal.opening_timestamp = entry_candle_open + 1_000
-    deal.base_streaming = types.SimpleNamespace(
-        interval=types.SimpleNamespace(get_ms=lambda: interval_ms)
-    )
-    completed = _make_completed_candles(
-        entry_candle_open=entry_candle_open,
-        completed_after_entry=8,
-        interval_ms=interval_ms,
-    )
-
-    assert deal._strategy_max_holding_reached(completed) is False
-
-
-def test_coinrule_price_tracker_max_holding_does_not_apply_to_short() -> None:
-    interval_ms = 15 * 60 * 1000
-    entry_candle_open = 1_800_000_000_000
-    deal = _make_position_deal(position=Position.short)
-    deal.active_bot.name = "coinrule_price_tracker"
-    deal.active_bot.deal.opening_timestamp = entry_candle_open + 1_000
-    deal.base_streaming = types.SimpleNamespace(
-        interval=types.SimpleNamespace(get_ms=lambda: interval_ms)
-    )
-    completed = _make_completed_candles(
-        entry_candle_open=entry_candle_open,
-        completed_after_entry=8,
-        interval_ms=interval_ms,
-    )
-
-    assert deal._strategy_max_holding_reached(completed) is False
-
-
-def test_max_holding_does_not_apply_to_other_strategies() -> None:
-    interval_ms = 15 * 60 * 1000
-    entry_candle_open = 1_800_000_000_000
-    deal = _make_position_deal()
-    deal.active_bot.name = "another_strategy"
-    deal.active_bot.deal.opening_timestamp = entry_candle_open + 1_000
-    deal.base_streaming = types.SimpleNamespace(
-        interval=types.SimpleNamespace(get_ms=lambda: interval_ms)
-    )
-    completed = _make_completed_candles(
-        entry_candle_open=entry_candle_open,
-        completed_after_entry=8,
-        interval_ms=interval_ms,
-    )
-
-    assert deal._strategy_max_holding_reached(completed) is False
-
-
-def test_mean_reversion_fade_keeps_tight_stop_on_low_priced_contract() -> None:
-    deal = _make_position_deal()
-    deal.active_bot.name = "mean_reversion_fade"
-    deal.active_bot.market_type = MarketType.FUTURES
-
-    assert (
-        deal._should_floor_low_price_stop(
-            is_recovery_bot=False,
-            entry_price=0.01,
-            stop_loss_pct=1.5,
-        )
-        is False
-    )
-
-
-def test_relative_strength_impulse_rider_keeps_two_percent_low_price_stop() -> None:
-    deal = _make_position_deal()
-    deal.active_bot.name = "relative_strength_impulse_rider"
-    deal.active_bot.market_type = MarketType.FUTURES
-
-    assert (
-        deal._should_floor_low_price_stop(
-            is_recovery_bot=False,
-            entry_price=0.01,
-            stop_loss_pct=2.0,
-        )
-        is False
-    )
-
-
-def test_other_strategy_still_uses_low_price_stop_floor() -> None:
-    deal = _make_position_deal()
-    deal.active_bot.name = "another_strategy"
-    deal.active_bot.market_type = MarketType.FUTURES
-
-    assert (
-        deal._should_floor_low_price_stop(
-            is_recovery_bot=False,
-            entry_price=0.01,
-            stop_loss_pct=1.5,
-        )
-        is True
-    )
-
-
 def _make_strategy_at_holding_limit(
     *, name: str = "mean_reversion_fade", position: Position = Position.long
 ) -> Any:
     interval_ms = 15 * 60 * 1000
     current_open = (int(time() * 1000) // interval_ms) * interval_ms
     entry_candle_open = current_open - (9 * interval_ms)
-    deal = _make_position_deal(position=position)
-    deal.active_bot.name = name
-    deal.active_bot.deal.opening_timestamp = entry_candle_open + 1_000
-    deal.klines = _make_completed_candles(
+    lifecycle = _make_lifecycle(position=position, interval_ms=interval_ms)
+    lifecycle.execution.active_bot.name = name
+    lifecycle.execution.active_bot.deal.opening_timestamp = entry_candle_open + 1_000
+    lifecycle.klines = _make_completed_candles(
         entry_candle_open=entry_candle_open,
         completed_after_entry=8,
         interval_ms=interval_ms,
     )
-    deal.base_streaming = types.SimpleNamespace(
-        interval=types.SimpleNamespace(get_ms=lambda: interval_ms)
-    )
-    deal.controller = types.SimpleNamespace(
+    cast(Any, lifecycle.execution).controller = types.SimpleNamespace(
         save=lambda bot: None,
         update_logs=lambda message, bot: None,
     )
-    return deal
+    return lifecycle
 
 
 def test_mean_reversion_fade_closes_at_eight_completed_candles() -> None:
@@ -313,13 +119,13 @@ def test_mean_reversion_fade_closes_at_eight_completed_candles() -> None:
 
     def close_all(algorithmic_close: bool = False) -> BotModel:
         close_calls.append(algorithmic_close)
-        return deal.active_bot
+        return deal.execution.active_bot
 
-    deal.close_all = close_all
+    deal.execution.close_all = close_all
 
     result = Lifecycle.exit(deal, close_price=100.0)
 
-    assert result is deal.active_bot
+    assert result is deal.execution.active_bot
     assert close_calls == [True]
 
 
@@ -329,13 +135,13 @@ def test_liquidation_sweep_pump_closes_at_eight_completed_candles() -> None:
 
     def close_all(algorithmic_close: bool = False) -> BotModel:
         close_calls.append(algorithmic_close)
-        return deal.active_bot
+        return deal.execution.active_bot
 
-    deal.close_all = close_all
+    deal.execution.close_all = close_all
 
     result = Lifecycle.exit(deal, close_price=100.0)
 
-    assert result is deal.active_bot
+    assert result is deal.execution.active_bot
     assert close_calls == [True]
 
 
@@ -345,13 +151,13 @@ def test_coinrule_price_tracker_closes_at_eight_completed_candles() -> None:
 
     def close_all(algorithmic_close: bool = False) -> BotModel:
         close_calls.append(algorithmic_close)
-        return deal.active_bot
+        return deal.execution.active_bot
 
-    deal.close_all = close_all
+    deal.execution.close_all = close_all
 
     result = Lifecycle.exit(deal, close_price=100.0)
 
-    assert result is deal.active_bot
+    assert result is deal.execution.active_bot
     assert close_calls == [True]
 
 
@@ -361,13 +167,13 @@ def test_relative_strength_impulse_rider_closes_at_eight_completed_candles() -> 
 
     def close_all(algorithmic_close: bool = False) -> BotModel:
         close_calls.append(algorithmic_close)
-        return deal.active_bot
+        return deal.execution.active_bot
 
-    deal.close_all = close_all
+    deal.execution.close_all = close_all
 
     result = Lifecycle.exit(deal, close_price=100.0)
 
-    assert result is deal.active_bot
+    assert result is deal.execution.active_bot
     assert close_calls == [True]
 
 
@@ -383,20 +189,20 @@ def test_fixed_take_profit_precedes_max_holding_close() -> None:
             name=name,
             position=Position.short,
         )
-        deal.active_bot.take_profit = 2.4
-        deal.active_bot.deal.stop_loss_price = 102.0
-        deal.active_bot.deal.take_profit_price = 97.6
+        deal.execution.active_bot.take_profit = 2.4
+        deal.execution.active_bot.deal.stop_loss_price = 102.0
+        deal.execution.active_bot.deal.take_profit_price = 97.6
 
         def take_profit_order() -> BotModel:
             exit_calls.append("take_profit")
-            return deal.active_bot
+            return deal.execution.active_bot
 
         def close_all(algorithmic_close: bool = False) -> BotModel:  # noqa: ARG001
             exit_calls.append("max_holding")
-            return deal.active_bot
+            return deal.execution.active_bot
 
-        deal.take_profit_order = take_profit_order
-        deal.close_all = close_all
+        deal.execution.take_profit_order = take_profit_order
+        deal.execution.close_all = close_all
 
         Lifecycle.exit(deal, close_price=97.5)
 
@@ -510,15 +316,16 @@ def test_should_replace_stop_loss_order_blocks_worse_move():
     )
 
 
-def test_reconcile_exchange_sl_skips_armed_trailing_in_base_deal():
+def test_reconcile_exchange_sl_delegates_armed_trailing_to_exchange_service():
     calls: list[str] = []
     deal = _make_deal(trailing_stop_loss_price=99.0)
     deal.cancel_current_sl = lambda: calls.append("cancel")
     deal.place_stop_loss = lambda: calls.append("place")
+    deal.reconcile_trailing_stop_loss = lambda: calls.append("trailing")
 
     KucoinPositionDeal.reconcile_exchange_sl(deal)
 
-    assert calls == []
+    assert calls == ["trailing"]
 
 
 def test_reconcile_exchange_sl_keeps_existing_armed_trailing_stop():
@@ -550,7 +357,7 @@ def test_reconcile_trailing_stop_loss_replaces_worse_exchange_stop():
     )
     deal.place_trailing_stop_loss = lambda: calls.append("trailing")
 
-    Lifecycle.reconcile_trailing_stop_loss(deal)
+    KucoinPositionDeal.reconcile_trailing_stop_loss(deal)
 
     assert calls == ["trailing"]
 
@@ -566,7 +373,7 @@ def test_reconcile_trailing_stop_loss_keeps_better_exchange_stop():
     )
     deal.place_trailing_stop_loss = lambda: calls.append("trailing")
 
-    Lifecycle.reconcile_trailing_stop_loss(deal)
+    KucoinPositionDeal.reconcile_trailing_stop_loss(deal)
 
     assert calls == []
 
@@ -594,7 +401,8 @@ def test_reconcile_trailing_stop_loss_uses_tracked_trailing_order():
         qty=1,
         price=99.0,
         status=OrderStatus.NEW,
-        timestamp=now_ms - (Lifecycle.TRAILING_STOP_REPLACE_COOLDOWN_MS + 1_000),
+        timestamp=now_ms
+        - (KucoinPositionDeal.TRAILING_STOP_REPLACE_COOLDOWN_MS + 1_000),
         time_in_force="GTC",
         deal_type=DealType.trailing_profit,
     )
@@ -611,7 +419,7 @@ def test_reconcile_trailing_stop_loss_uses_tracked_trailing_order():
     )
     deal.place_trailing_stop_loss = lambda: calls.append("trailing")
 
-    Lifecycle.reconcile_trailing_stop_loss(deal)
+    KucoinPositionDeal.reconcile_trailing_stop_loss(deal)
 
     assert calls == []
 
@@ -632,7 +440,7 @@ def test_place_trailing_stop_loss_keeps_existing_exchange_stop_without_cancel():
         place_futures_order=lambda **kwargs: calls.append("place"),
     )
 
-    Lifecycle.place_trailing_stop_loss(deal)
+    KucoinPositionDeal.place_trailing_stop_loss(deal)
 
     assert calls == []
     assert deal.active_bot.orders == []
@@ -661,7 +469,8 @@ def test_place_trailing_stop_loss_cancels_only_tracked_trailing_order():
         qty=1,
         price=98.0,
         status=OrderStatus.NEW,
-        timestamp=now_ms - (Lifecycle.TRAILING_STOP_REPLACE_COOLDOWN_MS + 1_000),
+        timestamp=now_ms
+        - (KucoinPositionDeal.TRAILING_STOP_REPLACE_COOLDOWN_MS + 1_000),
         time_in_force="GTC",
         deal_type=DealType.trailing_profit,
     )
@@ -698,7 +507,7 @@ def test_place_trailing_stop_loss_cancels_only_tracked_trailing_order():
         place_futures_order=fake_place_futures_order,
     )
 
-    Lifecycle.place_trailing_stop_loss(deal)
+    KucoinPositionDeal.place_trailing_stop_loss(deal)
 
     assert cancelled_ids == ["trail-1"]
     assert [order.order_id for order in deal.active_bot.orders] == [
@@ -739,7 +548,7 @@ def test_place_trailing_stop_loss_blocks_recent_trailing_replace():
         place_futures_order=lambda **kwargs: calls.append("place"),
     )
 
-    Lifecycle.place_trailing_stop_loss(deal)
+    KucoinPositionDeal.place_trailing_stop_loss(deal)
 
     assert calls == []
     assert deal.active_bot.orders == [recent_trailing_order]
@@ -787,7 +596,7 @@ def test_last_trailing_stop_replace_ignores_emergency_and_terminal_trailing_orde
         orders=[emergency_order, closed_trailing_order, active_trailing_order],
     )
 
-    assert Lifecycle.last_trailing_stop_replace_ts_ms(deal) == now_ms - 2_000
+    assert KucoinPositionDeal.last_trailing_stop_replace_ts_ms(deal) == now_ms - 2_000
 
 
 def test_place_trailing_stop_loss_logs_new_status_as_armed_stop():
@@ -820,7 +629,7 @@ def test_place_trailing_stop_loss_logs_new_status_as_armed_stop():
         place_futures_order=fake_place_futures_order,
     )
 
-    Lifecycle.place_trailing_stop_loss(deal)
+    KucoinPositionDeal.place_trailing_stop_loss(deal)
 
     assert calls == ["place"]
     assert any(
@@ -834,7 +643,7 @@ def test_should_refresh_trailing_stop_loss_allows_first_stop():
     deal = _make_position_deal()
 
     assert (
-        Lifecycle.should_refresh_trailing_stop_loss(
+        KucoinPositionDeal.should_refresh_trailing_stop_loss(
             deal,
             current_stop_price=0.0,
             new_stop_price=99.0,
@@ -848,7 +657,7 @@ def test_should_refresh_trailing_stop_loss_blocks_small_long_improvement():
     deal = _make_position_deal()
 
     assert (
-        Lifecycle.should_refresh_trailing_stop_loss(
+        KucoinPositionDeal.should_refresh_trailing_stop_loss(
             deal,
             current_stop_price=100.0,
             new_stop_price=100.1,
@@ -862,7 +671,7 @@ def test_should_refresh_trailing_stop_loss_allows_material_long_improvement():
     deal = _make_position_deal()
 
     assert (
-        Lifecycle.should_refresh_trailing_stop_loss(
+        KucoinPositionDeal.should_refresh_trailing_stop_loss(
             deal,
             current_stop_price=100.0,
             new_stop_price=100.2,
@@ -877,7 +686,7 @@ def test_should_refresh_trailing_stop_loss_blocks_recent_replace():
     now_ms = int(time() * 1000)
 
     assert (
-        Lifecycle.should_refresh_trailing_stop_loss(
+        KucoinPositionDeal.should_refresh_trailing_stop_loss(
             deal,
             current_stop_price=100.0,
             new_stop_price=101.0,
@@ -893,7 +702,7 @@ def test_should_refresh_trailing_stop_loss_blocks_recent_replace_without_local_s
     now_ms = int(time() * 1000)
 
     assert (
-        Lifecycle.should_refresh_trailing_stop_loss(
+        KucoinPositionDeal.should_refresh_trailing_stop_loss(
             deal,
             current_stop_price=0.0,
             new_stop_price=101.0,
@@ -908,7 +717,7 @@ def test_should_refresh_trailing_stop_loss_blocks_small_short_improvement():
     deal = _make_position_deal()
 
     assert (
-        Lifecycle.should_refresh_trailing_stop_loss(
+        KucoinPositionDeal.should_refresh_trailing_stop_loss(
             deal,
             current_stop_price=100.0,
             new_stop_price=99.9,
@@ -922,7 +731,7 @@ def test_should_refresh_trailing_stop_loss_allows_material_short_improvement():
     deal = _make_position_deal()
 
     assert (
-        Lifecycle.should_refresh_trailing_stop_loss(
+        KucoinPositionDeal.should_refresh_trailing_stop_loss(
             deal,
             current_stop_price=100.0,
             new_stop_price=99.8,
@@ -997,10 +806,9 @@ def test_reconcile_exchange_sl_places_when_exchange_missing():
 
 
 def test_exit_panic_closes_stale_mild_loser_after_three_days(monkeypatch):
-    deal = cast(Any, Lifecycle.__new__(Lifecycle))
-    deal.price_precision = 2
+    deal = _make_lifecycle(stop_loss=0)
     deal.klines = None
-    deal.active_bot = BotModel(
+    deal.execution.active_bot = BotModel(
         pair="BEATUSDTM",
         market_type=MarketType.FUTURES,
         position=Position.long,
@@ -1012,16 +820,16 @@ def test_exit_panic_closes_stale_mild_loser_after_three_days(monkeypatch):
             opening_timestamp=1_000,
         ),
     )
-    deal.active_bot.position = Position.long
-    deal.controller = types.SimpleNamespace(
+    deal.execution.active_bot.position = Position.long
+    cast(Any, deal.execution).controller = types.SimpleNamespace(
         save=lambda bot: None,
         update_logs=lambda *args, **kwargs: None,
     )
     closed: list[bool] = []
-    deal.close_all = lambda: closed.append(True)
+    cast(Any, deal.execution).close_all = lambda: closed.append(True)
 
     monkeypatch.setattr(
-        "api.exchange_apis.kucoin.futures.lifecycle.time",
+        "streaming.lifecycle.time",
         lambda: (1_000 + (4 * 24 * 60 * 60 * 1000)) / 1000,
     )
 
@@ -1031,10 +839,9 @@ def test_exit_panic_closes_stale_mild_loser_after_three_days(monkeypatch):
 
 
 def test_exit_keeps_stale_loser_below_panic_close_band(monkeypatch):
-    deal = cast(Any, Lifecycle.__new__(Lifecycle))
-    deal.price_precision = 2
+    deal = _make_lifecycle(stop_loss=0)
     deal.klines = None
-    deal.active_bot = BotModel(
+    deal.execution.active_bot = BotModel(
         pair="BEATUSDTM",
         market_type=MarketType.FUTURES,
         position=Position.long,
@@ -1046,16 +853,16 @@ def test_exit_keeps_stale_loser_below_panic_close_band(monkeypatch):
             opening_timestamp=1_000,
         ),
     )
-    deal.active_bot.position = Position.long
-    deal.controller = types.SimpleNamespace(
+    deal.execution.active_bot.position = Position.long
+    cast(Any, deal.execution).controller = types.SimpleNamespace(
         save=lambda bot: None,
         update_logs=lambda *args, **kwargs: None,
     )
     closed: list[bool] = []
-    deal.close_all = lambda: closed.append(True)
+    cast(Any, deal.execution).close_all = lambda: closed.append(True)
 
     monkeypatch.setattr(
-        "api.exchange_apis.kucoin.futures.lifecycle.time",
+        "streaming.lifecycle.time",
         lambda: (1_000 + (4 * 24 * 60 * 60 * 1000)) / 1000,
     )
 
@@ -1068,15 +875,15 @@ def test_exit_uses_recovery_stop_and_defers_without_candle_confirmation():
     """Recovery bot: recovery_params.stop_loss_pct overrides the bot's stop_loss.
     When the live price barely breaches the stop but no completed candle confirms it,
     the exit defers (no close, no flip) until the next tick."""
-    deal = _make_position_deal(
+    deal = _make_lifecycle(
         stop_loss=1.0,
         stop_loss_price=0,
         margin_short_reversal=False,
     )
     deal.klines = None
     recovery_id = uuid4()
-    deal.active_bot.recovery_mode_id = recovery_id
-    deal.active_bot.recovery_params = RecoveryBotModel(
+    deal.execution.active_bot.recovery_mode_id = recovery_id
+    deal.execution.active_bot.recovery_params = RecoveryBotModel(
         id=recovery_id,
         reversal_path="recovery",
         source_contracts=10,
@@ -1085,7 +892,7 @@ def test_exit_uses_recovery_stop_and_defers_without_candle_confirmation():
         created_at=1,
         updated_at=1,
     )
-    deal.controller = types.SimpleNamespace(
+    cast(Any, deal.execution).controller = types.SimpleNamespace(
         save=lambda bot: None,
         update_logs=lambda *args, **kwargs: None,
     )
@@ -1094,38 +901,40 @@ def test_exit_uses_recovery_stop_and_defers_without_candle_confirmation():
 
     def reverse_position(reference_price: float | None = None) -> BotModel:
         reverse_calls.append(reference_price)
-        return deal.active_bot
+        return deal.execution.active_bot
 
     def execute_stop_loss(reference_price: float | None = None) -> BotModel:
         stop_calls.append(reference_price)
-        return deal.active_bot
+        return deal.execution.active_bot
 
-    deal.reverse_position = reverse_position
-    deal.execute_stop_loss = execute_stop_loss
+    cast(Any, deal).reverse_position = reverse_position
+    cast(Any, deal.execution).execute_stop_loss = execute_stop_loss
 
     Lifecycle.exit(deal, 94.9)
 
     # Recovery SL pct applied from recovery_params
-    assert deal.active_bot.stop_loss == 5
-    assert deal.active_bot.deal.stop_loss_price == 95
+    assert deal.execution.active_bot.stop_loss == 5
+    assert deal.execution.active_bot.deal.stop_loss_price == 95
     # Price at 94.9 is only 0.11% below stop — within the emergency buffer (0.75%).
     # No completed candle to confirm, so exit defers; no close or flip this tick.
     assert reverse_calls == []
     assert stop_calls == []
-    assert any("Recovery reversal deferred" in log for log in deal.active_bot.logs)
+    assert any(
+        "Recovery reversal deferred" in log for log in deal.execution.active_bot.logs
+    )
 
 
 def test_liquidation_sweep_recovery_uses_tighter_emergency_breach_without_confirmation():
-    deal = _make_position_deal(
+    deal = _make_lifecycle(
         stop_loss=1.0,
         stop_loss_price=0,
         margin_short_reversal=False,
     )
-    deal.active_bot.name = "liquidation_sweep_pump"
+    deal.execution.active_bot.name = "liquidation_sweep_pump"
     deal.klines = None
     recovery_id = uuid4()
-    deal.active_bot.recovery_mode_id = recovery_id
-    deal.active_bot.recovery_params = RecoveryBotModel(
+    deal.execution.active_bot.recovery_mode_id = recovery_id
+    deal.execution.active_bot.recovery_params = RecoveryBotModel(
         id=recovery_id,
         reversal_path="recovery",
         source_contracts=10,
@@ -1134,7 +943,7 @@ def test_liquidation_sweep_recovery_uses_tighter_emergency_breach_without_confir
         created_at=1,
         updated_at=1,
     )
-    deal.controller = types.SimpleNamespace(
+    cast(Any, deal.execution).controller = types.SimpleNamespace(
         save=lambda bot: None,
         update_logs=lambda *args, **kwargs: None,
     )
@@ -1143,24 +952,24 @@ def test_liquidation_sweep_recovery_uses_tighter_emergency_breach_without_confir
 
     def reverse_position(reference_price: float | None = None) -> BotModel:
         reverse_calls.append(reference_price)
-        return deal.active_bot
+        return deal.execution.active_bot
 
     def execute_stop_loss(reference_price: float | None = None) -> BotModel:
         stop_calls.append(reference_price)
-        return deal.active_bot
+        return deal.execution.active_bot
 
-    deal.reverse_position = reverse_position
-    deal.execute_stop_loss = execute_stop_loss
+    cast(Any, deal).reverse_position = reverse_position
+    cast(Any, deal.execution).execute_stop_loss = execute_stop_loss
 
     Lifecycle.exit(deal, 94.6)
 
-    assert deal.active_bot.stop_loss == 5
-    assert deal.active_bot.deal.stop_loss_price == 95
+    assert deal.execution.active_bot.stop_loss == 5
+    assert deal.execution.active_bot.deal.stop_loss_price == 95
     assert reverse_calls == []
     assert stop_calls == [None]
     assert any(
         "Recovery emergency threshold breached" in log and "0.35% beyond stop" in log
-        for log in deal.active_bot.logs
+        for log in deal.execution.active_bot.logs
     )
 
 

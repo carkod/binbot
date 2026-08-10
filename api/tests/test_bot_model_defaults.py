@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+import types
 from typing import Any, cast
 from uuid import UUID
 
@@ -19,7 +20,7 @@ from api.databases.crud.bot_crud import BotTableCrud
 from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
 from api.databases.tables.bot_table import BotTable, PaperTradingTable
 from api.databases.tables.deal_table import DealTable
-from api.exchange_apis.kucoin.futures.lifecycle import Lifecycle
+from streaming.lifecycle import Lifecycle
 
 
 def test_bot_model_orders_are_isolated():
@@ -201,16 +202,21 @@ def test_exit_pending_calls_open_deal_and_returns_early():
         def save(self, b):
             return b
 
-    def stub_open_deal(self):
+    def stub_open_deal(execution):
         open_deal_calls.append(True)
-        self.active_bot.status = Status.active
-        return self.active_bot
+        execution.active_bot.status = Status.active
+        return execution.active_bot
 
-    position_deal = cast(Any, Lifecycle.__new__(Lifecycle))
-    position_deal.active_bot = bot
-    position_deal.controller = StubController()
-    position_deal.price_precision = 2
-    position_deal.open_deal = lambda: stub_open_deal(position_deal)
+    execution = types.SimpleNamespace(
+        active_bot=bot,
+        controller=StubController(),
+        price_precision=2,
+    )
+    execution.open_deal = lambda: stub_open_deal(execution)
+    position_deal = Lifecycle(
+        execution=cast(Any, execution),
+        base_streaming=types.SimpleNamespace(),
+    )
 
     result = Lifecycle.exit(position_deal, close_price=100.0)
 

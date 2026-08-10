@@ -18,7 +18,7 @@ from api.databases.crud.grid_ladder_crud import GridLadderCrud
 from api.databases.utils import get_session
 from api.deals.gateway import DealGateway
 from api.databases.tables.bot_table import BotTable, PaperTradingTable
-from api.exchange_apis.kucoin.futures.lifecycle import Lifecycle
+from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from kucoin_universal_sdk.model.common import RestError
 from api.user.services.auth import get_current_user
 from uuid import UUID
@@ -237,7 +237,10 @@ def activate_bot(
     bot_row = crud.get_one(bot_id=bot_id)
     bot_model = BotModel.dump_from_table(bot_row)
     deal_gateway = DealGateway(bot_model, db_table=BotTable)
-    if isinstance(deal_gateway.deal, Lifecycle) and bot_model.margin_short_reversal:
+    if (
+        isinstance(deal_gateway.deal, KucoinPositionDeal)
+        and bot_model.margin_short_reversal
+    ):
         can_reverse = deal_gateway.deal.estimate_reversal_possible_for_new_bot()
         if not can_reverse:
             bot_model.margin_short_reversal = False
