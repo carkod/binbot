@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import types
 from typing import Any, cast
 from uuid import uuid4
 
@@ -18,7 +19,8 @@ from pybinbot import (
 from api.databases.tables.bot_table import BotTable
 from api.databases.tables.deal_table import DealTable
 from api.databases.tables.recovery_bot_table import RecoveryBotTable
-from api.exchange_apis.kucoin.futures.lifecycle import Lifecycle
+from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
+from streaming.lifecycle import Lifecycle
 from tests.fixtures.mock_bot_table import make_mock_bot_active_model
 
 
@@ -112,24 +114,30 @@ class DummyResponse:
 
 def make_position_deal(bot, futures_api):
     controller = DummyController()
-    position_deal = cast(Any, Lifecycle.__new__(Lifecycle))
-    position_deal.active_bot = bot
-    position_deal.controller = controller
-    position_deal.kucoin_futures_api = futures_api
-    position_deal.kucoin_symbol = "BTCUSDTM"
-    position_deal.symbol_info = type(
+    execution = cast(Any, KucoinPositionDeal.__new__(KucoinPositionDeal))
+    execution.active_bot = bot
+    execution.controller = controller
+    execution.kucoin_futures_api = futures_api
+    execution.kucoin_symbol = "BTCUSDTM"
+    execution.symbol_info = type(
         "SymbolInfo",
         (),
-        {"futures_leverage": 1, "cooldown": 0},
+        {"futures_leverage": 1, "cooldown": 0, "qty_precision": 0},
     )()
-    position_deal.kucoin_symbol_data = type(
+    execution.kucoin_symbol_data = type(
         "KucoinSymbolInfo",
         (),
         {"multiplier": 0.001},
     )()
-    position_deal.symbols_crud = DummySymbolsCrud()
-    position_deal.price_precision = 4
-    position_deal.qty_precision = 0
+    execution.symbols_crud = DummySymbolsCrud()
+    execution.price_precision = 4
+    execution.interval_ms = 15 * 60 * 1000
+    position_deal = Lifecycle(
+        execution=execution,
+        base_streaming=types.SimpleNamespace(
+            interval=types.SimpleNamespace(get_ms=lambda: execution.interval_ms)
+        ),
+    )
     position_deal.klines = None
     return position_deal, controller
 
@@ -302,7 +310,7 @@ def prepare_kat_source_bot() -> BotModel:
 def set_lifecycle_time(monkeypatch, when: datetime) -> None:
     timestamp_seconds = when.timestamp()
     monkeypatch.setattr(
-        "api.exchange_apis.kucoin.futures.lifecycle.time",
+        "streaming.lifecycle.time",
         lambda: timestamp_seconds,
     )
     monkeypatch.setattr(
@@ -497,7 +505,7 @@ def test_source_reversal_skips_recovery_and_starts_cooldown_when_structure_too_w
 
     assert result.status == Status.completed
     assert controller.created == []
-    assert position_deal.symbols_crud.cooldowns == [
+    assert position_deal.execution.symbols_crud.cooldowns == [
         {
             "symbol": "BTCUSDT",
             "cooldown_seconds": 360 * 60,
@@ -532,7 +540,7 @@ def test_recovery_reversal_with_valid_structure_creates_new_recovery_bot():
     assert reversed_bot.stop_loss <= Lifecycle.RECOVERY_STOP_CAP_PCT
     assert len(futures_api.sell_calls) == 1
     assert futures_api.sell_calls[0]["reduce_only"] is True
-    assert position_deal.symbols_crud.cooldowns == []
+    assert position_deal.execution.symbols_crud.cooldowns == []
 
 
 def test_recovery_reversal_skips_new_bot_when_structure_too_wide():
@@ -553,7 +561,7 @@ def test_recovery_reversal_skips_new_bot_when_structure_too_wide():
     assert result.status == Status.completed
     assert controller.created == []
     assert len(futures_api.sell_calls) == 1
-    assert position_deal.symbols_crud.cooldowns == [
+    assert position_deal.execution.symbols_crud.cooldowns == [
         {
             "symbol": "BTCUSDT",
             "cooldown_seconds": 360 * 60,
@@ -568,7 +576,7 @@ def test_kat_intrabar_stop_breach_keeps_source_long_until_candle_confirmation(
     set_lifecycle_time(monkeypatch, event_time)
     bot = prepare_kat_source_bot()
     position_deal, controller = make_position_deal(bot, DummyFuturesApi(150))
-    position_deal.price_precision = 5
+    position_deal.execution.price_precision = 5
     position_deal.klines = kat_klines()
     reverse_calls: list[float | None] = []
     stop_calls: list[float | None] = []
@@ -582,7 +590,7 @@ def test_kat_intrabar_stop_breach_keeps_source_long_until_candle_confirmation(
         return bot
 
     position_deal.reverse_position = reverse_position
-    position_deal.execute_stop_loss = execute_stop_loss
+    position_deal.execution.execute_stop_loss = execute_stop_loss
 
     result = position_deal.exit(0.00613)
 
@@ -590,7 +598,7 @@ def test_kat_intrabar_stop_breach_keeps_source_long_until_candle_confirmation(
     assert result.status == Status.active
     assert reverse_calls == []
     assert stop_calls == []
-    assert position_deal.symbols_crud.cooldowns == []
+    assert position_deal.execution.symbols_crud.cooldowns == []
     assert any("Recovery reversal deferred" in log for log in result.logs)
     assert controller.created == []
 
@@ -600,7 +608,7 @@ def test_completed_bearish_body_breakout_allows_short_recovery(monkeypatch):
     set_lifecycle_time(monkeypatch, event_time)
     bot = prepare_kat_source_bot()
     position_deal, _ = make_position_deal(bot, DummyFuturesApi(150))
-    position_deal.price_precision = 5
+    position_deal.execution.price_precision = 5
     position_deal.klines = kat_klines(include_2345_close=True)
     reverse_calls: list[float | None] = []
 
@@ -643,7 +651,7 @@ def test_confirmed_stop_without_body_breakout_closes_without_reversing(monkeypat
     set_lifecycle_time(monkeypatch, event_time)
     bot = prepare_kat_source_bot()
     position_deal, controller = make_position_deal(bot, DummyFuturesApi(150))
-    position_deal.price_precision = 5
+    position_deal.execution.price_precision = 5
     candles = kat_klines()
     candles[-1][4] = 0.00615
     candles.append(
@@ -664,7 +672,7 @@ def test_confirmed_stop_without_body_breakout_closes_without_reversing(monkeypat
         bot.status = Status.completed
         return bot
 
-    position_deal.execute_stop_loss = execute_stop_loss
+    position_deal.execution.execute_stop_loss = execute_stop_loss
 
     def reverse_position(reference_price: float | None = None) -> BotModel:
         reverse_calls.append(reference_price)
@@ -679,7 +687,7 @@ def test_confirmed_stop_without_body_breakout_closes_without_reversing(monkeypat
     assert reverse_calls == []
     assert controller.created == []
     assert any("Recovery body breakout rejected" in log for log in result.logs)
-    assert len(position_deal.symbols_crud.cooldowns) == 1
+    assert len(position_deal.execution.symbols_crud.cooldowns) == 1
 
 
 def test_emergency_breach_closes_source_without_recovery(monkeypatch):
@@ -687,7 +695,7 @@ def test_emergency_breach_closes_source_without_recovery(monkeypatch):
     set_lifecycle_time(monkeypatch, event_time)
     bot = prepare_kat_source_bot()
     position_deal, controller = make_position_deal(bot, DummyFuturesApi(150))
-    position_deal.price_precision = 5
+    position_deal.execution.price_precision = 5
     position_deal.klines = kat_klines()
     stop_calls: list[float | None] = []
     reverse_calls: list[float | None] = []
@@ -697,7 +705,7 @@ def test_emergency_breach_closes_source_without_recovery(monkeypatch):
         bot.status = Status.completed
         return bot
 
-    position_deal.execute_stop_loss = execute_stop_loss
+    position_deal.execution.execute_stop_loss = execute_stop_loss
 
     def reverse_position(reference_price: float | None = None) -> BotModel:
         reverse_calls.append(reference_price)
@@ -712,7 +720,7 @@ def test_emergency_breach_closes_source_without_recovery(monkeypatch):
     assert reverse_calls == []
     assert controller.created == []
     assert any("Recovery emergency threshold breached" in log for log in result.logs)
-    assert len(position_deal.symbols_crud.cooldowns) == 1
+    assert len(position_deal.execution.symbols_crud.cooldowns) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -740,7 +748,7 @@ def test_recovery_bot_exit_all_gates_passed_calls_reverse_position(monkeypatch):
     set_lifecycle_time(monkeypatch, event_time)
     bot = prepare_kat_recovery_bot()
     position_deal, _ = make_position_deal(bot, DummyFuturesApi(150))
-    position_deal.price_precision = 5
+    position_deal.execution.price_precision = 5
     position_deal.klines = kat_klines(include_2345_close=True)
     reverse_calls: list[float | None] = []
 
@@ -765,7 +773,7 @@ def test_recovery_bot_exit_body_breakout_rejected_closes_terminally(monkeypatch)
     set_lifecycle_time(monkeypatch, event_time)
     bot = prepare_kat_recovery_bot()
     position_deal, controller = make_position_deal(bot, DummyFuturesApi(150))
-    position_deal.price_precision = 5
+    position_deal.execution.price_precision = 5
     candles = kat_klines()
     candles[-1][4] = 0.00615
     candles.append(
@@ -786,7 +794,7 @@ def test_recovery_bot_exit_body_breakout_rejected_closes_terminally(monkeypatch)
         bot.status = Status.completed
         return bot
 
-    position_deal.execute_stop_loss = execute_stop_loss
+    position_deal.execution.execute_stop_loss = execute_stop_loss
 
     def reverse_position(reference_price: float | None = None) -> BotModel:
         reverse_calls.append(reference_price)
@@ -801,4 +809,4 @@ def test_recovery_bot_exit_body_breakout_rejected_closes_terminally(monkeypatch)
     assert reverse_calls == []
     assert controller.created == []
     assert any("Recovery body breakout rejected" in log for log in result.logs)
-    assert len(position_deal.symbols_crud.cooldowns) == 1
+    assert len(position_deal.execution.symbols_crud.cooldowns) == 1

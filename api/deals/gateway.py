@@ -8,7 +8,7 @@ from api.exchange_apis.binance.deals.long import BinanceLongDeal
 from api.exchange_apis.binance.deals.short import BinanceShortDeal
 from api.exchange_apis.kucoin.deals.long_deal import KucoinLongDeal
 from api.exchange_apis.kucoin.deals.short_deal import KucoinShortDeal
-from api.exchange_apis.kucoin.futures.lifecycle import Lifecycle
+from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 
 if TYPE_CHECKING:
     from streaming.base import BaseStreaming
@@ -36,25 +36,18 @@ class DealGateway:
             BinanceShortDeal,
             KucoinLongDeal,
             KucoinShortDeal,
-            Lifecycle,
+            KucoinPositionDeal,
         ]
         if self.autotrade_settings.exchange_id == ExchangeId.KUCOIN:
             if bot.market_type == MarketType.FUTURES:
-                self.deal = Lifecycle(
-                    bot, db_table=db_table, base_streaming=base_streaming
-                )
+                self.deal = KucoinPositionDeal(bot, db_table=db_table)
             else:
                 if bot.position == Position.short:
                     self.deal = KucoinShortDeal(bot, db_table=db_table)
                 else:
-                    if bot.market_type == MarketType.FUTURES:
-                        self.deal = Lifecycle(
-                            bot, db_table=db_table, base_streaming=base_streaming
-                        )
-                    else:
-                        raise NotImplementedError(
-                            "Spot trading is not supported for Kucoin exchange"
-                        )
+                    raise NotImplementedError(
+                        "Spot trading is not supported for Kucoin exchange"
+                    )
         else:
             if bot.position == Position.short:
                 self.deal = BinanceShortDeal(bot, db_table=db_table)
@@ -87,6 +80,10 @@ class DealGateway:
         """
         Abstract method for streaming deals during bot runtime
         """
+        if isinstance(self.deal, KucoinPositionDeal):
+            raise NotImplementedError(
+                "KuCoin futures lifecycle orchestration belongs to streaming."
+            )
         return self.deal.deal_exit_orchestration(
             close_price=close_price, open_price=open_price
         )
