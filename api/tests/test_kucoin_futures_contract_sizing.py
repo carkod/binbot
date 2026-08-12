@@ -517,6 +517,23 @@ def test_relative_strength_impulse_rider_uses_one_percent_retest_limit(monkeypat
     )
 
 
+def test_gradual_gainer_waits_for_half_percent_retest(monkeypatch):
+    deal = prepare_recovery_entry_deal(
+        monkeypatch,
+        position=Position.long,
+        previous_close=100.0,
+        current_open=101.0,
+        candle_range=2.0,
+    )
+    deal.active_bot.name = "gradual_gainer_retest"
+    deal.active_bot.recovery_params = None
+
+    limit_price = deal.body_capped_entry_limit_price()
+
+    assert limit_price == 99.5
+    assert any("Gradual-gainer retest entry" in log for log in deal.active_bot.logs)
+
+
 def test_top_gainer_early_momentum_waits_for_half_percent_retest(monkeypatch):
     deal = prepare_recovery_entry_deal(
         monkeypatch,
@@ -660,6 +677,37 @@ def test_relative_strength_impulse_rider_pending_entry_waits_three_candles(
         position.is_pending_base_entry_expired(order, now_ms=3 * interval_ms + 2)
         is True
     )
+
+
+@pytest.mark.parametrize("interval_minutes", [5, 15, 60])
+def test_gradual_gainer_retest_entry_waits_one_configured_candle(interval_minutes):
+    position = cast(Any, FuturesPosition.__new__(FuturesPosition))
+    order = OrderModel(
+        order_id="gradual-gainer-retest-entry",
+        order_type="limit",
+        pair="KATUSDTM",
+        timestamp=1,
+        order_side="buy",
+        qty=150,
+        price=0.00625,
+        status=OrderStatus.NEW,
+        time_in_force="GTC",
+        deal_type=DealType.base_order,
+    )
+    position.execution = types.SimpleNamespace(
+        active_bot=BotModel(
+            pair="KATUSDTM",
+            name="gradual_gainer_retest",
+            status=Status.pending,
+        )
+    )
+    interval_ms = interval_minutes * 60 * 1000
+    position.base_streaming = types.SimpleNamespace(
+        interval=types.SimpleNamespace(get_ms=lambda: interval_ms)
+    )
+
+    assert position.is_pending_base_entry_expired(order, now_ms=interval_ms) is False
+    assert position.is_pending_base_entry_expired(order, now_ms=interval_ms + 2) is True
 
 
 @pytest.mark.parametrize("interval_minutes", [5, 15, 60])

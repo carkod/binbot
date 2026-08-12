@@ -19,6 +19,7 @@ from pybinbot import (
 
 from api.databases.crud.autotrade_crud import AutotradeCrud
 from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
+from api.tools.constants import GRADUAL_GAINER_RETEST_ALGO
 from streaming.context_evaluator import (
     LifecycleContextEvaluator,
     LifecycleEvaluation,
@@ -55,6 +56,7 @@ class Lifecycle:
     RECOVERY_TRAILING_MIN_GAP_PCT = 0.35
     RECOVERY_COOLDOWN_MINUTES = 240
     RECOVERY_EMERGENCY_ATR_MULTIPLIER = 1.0
+    GRADUAL_GAINER_COOLDOWN_LOG_MARKER = "Gradual-gainer post-close cooldown started"
 
     def __init__(
         self,
@@ -122,6 +124,31 @@ class Lifecycle:
         bot.trailing_deviation = update.trailing_deviation
         self.execution.active_bot = self.execution.update_parameters()
         self.execution.controller.save(self.execution.active_bot)
+
+    def _start_completed_strategy_cooldown(self) -> None:
+        bot = self.execution.active_bot
+        if (
+            bot.name != GRADUAL_GAINER_RETEST_ALGO
+            or bot.status != Status.completed
+            or bot.cooldown <= 0
+            or any(
+                self.GRADUAL_GAINER_COOLDOWN_LOG_MARKER in str(log) for log in bot.logs
+            )
+        ):
+            return
+
+        cooldown_seconds = bot.cooldown * 60
+        try:
+            self.execution.symbols_crud.start_cooldown(
+                symbol=bot.pair,
+                cooldown_seconds=cooldown_seconds,
+            )
+            bot.add_log(
+                f"{self.GRADUAL_GAINER_COOLDOWN_LOG_MARKER} for {bot.cooldown} minutes."
+            )
+        except Exception as exc:
+            bot.add_log(f"Failed to start gradual-gainer post-close cooldown: {exc}")
+        self.execution.controller.save(bot)
 
     def _recovery_atr_pct(self, reference_price: float) -> float | None:
         if reference_price <= 0 or self.klines is None:
@@ -890,7 +917,9 @@ class Lifecycle:
         self.execution.controller.save(self.execution.active_bot)
 
         try:
-            return self.exit(close_price)
+            self.execution.active_bot = self.exit(close_price)
+            self._start_completed_strategy_cooldown()
+            return self.execution.active_bot
         except RestError as kucoin_error:
             msg = kucoin_error.response.message
             self.execution.controller.update_logs(

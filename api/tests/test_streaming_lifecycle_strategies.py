@@ -1,13 +1,22 @@
 import types
 from time import time
 from typing import Any, cast
+from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
 from pandas import DataFrame
-from pybinbot import BotModel, DealModel, MarketType, Position, RecoveryBotModel
+from pybinbot import (
+    BotModel,
+    DealModel,
+    MarketType,
+    Position,
+    RecoveryBotModel,
+    Status,
+)
 
 from streaming.context_evaluator import LifecycleContextEvaluator
+from streaming.lifecycle import Lifecycle
 from streaming.position_market import PositionMarket
 from streaming.strategies.base import LifecycleContext, LifecycleExitKind
 from streaming.strategies.coinrule.bb_extreme_reversion import (
@@ -125,6 +134,55 @@ def test_context_evaluator_resolves_lifecycle_strategy(
     strategy_type: type,
 ) -> None:
     assert isinstance(LifecycleContextEvaluator.resolve(algorithm_name), strategy_type)
+
+
+def test_completed_gradual_gainer_starts_four_hour_pair_cooldown_once() -> None:
+    bot = BotModel(
+        pair="MAVUSDTM",
+        name="gradual_gainer_retest",
+        market_type=MarketType.FUTURES,
+        status=Status.completed,
+        cooldown=240,
+    )
+    symbols_crud = Mock()
+    controller = Mock()
+    lifecycle = cast(Any, Lifecycle.__new__(Lifecycle))
+    lifecycle.execution = types.SimpleNamespace(
+        active_bot=bot,
+        symbols_crud=symbols_crud,
+        controller=controller,
+    )
+
+    lifecycle._start_completed_strategy_cooldown()
+    lifecycle._start_completed_strategy_cooldown()
+
+    symbols_crud.start_cooldown.assert_called_once_with(
+        symbol="MAVUSDTM",
+        cooldown_seconds=240 * 60,
+    )
+    controller.save.assert_called_once_with(bot)
+    assert any(
+        Lifecycle.GRADUAL_GAINER_COOLDOWN_LOG_MARKER in str(log) for log in bot.logs
+    )
+
+
+def test_completed_other_strategy_does_not_start_gradual_gainer_cooldown() -> None:
+    symbols_crud = Mock()
+    lifecycle = cast(Any, Lifecycle.__new__(Lifecycle))
+    lifecycle.execution = types.SimpleNamespace(
+        active_bot=BotModel(
+            pair="MAVUSDTM",
+            name="another_strategy",
+            status=Status.completed,
+            cooldown=240,
+        ),
+        symbols_crud=symbols_crud,
+        controller=Mock(),
+    )
+
+    lifecycle._start_completed_strategy_cooldown()
+
+    symbols_crud.start_cooldown.assert_not_called()
 
 
 def test_strategy_policies_replace_lifecycle_name_branches() -> None:
