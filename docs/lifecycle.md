@@ -124,7 +124,7 @@ A lifecycle strategy returns a `LifecycleSignal` and exposes a
   holding-period exit.
 - `LifecycleSignal.log_messages` explains decisions that should be persisted.
 - `LifecyclePolicy` controls shared lifecycle branches such as low-price stop
-  floors, emergency stop bounds, reversal blocking, and exchange-owned stops.
+  floors, emergency stop bounds, and reversal blocking.
 
 `Lifecycle` remains responsible for applying those declarations in the correct
 order. The strategy module must not call exchange APIs, mutate persistence, or

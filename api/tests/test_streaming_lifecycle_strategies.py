@@ -33,9 +33,6 @@ from streaming.strategies.mean_reversion_fade import (
 from streaming.strategies.relative_strength_impulse_rider import (
     RelativeStrengthImpulseRiderLifecycleStrategy,
 )
-from streaming.strategies.top_gainer_early_momentum import (
-    TopGainerEarlyMomentumLifecycleStrategy,
-)
 
 
 INTERVAL_MS = 15 * 60 * 1000
@@ -108,7 +105,6 @@ def _context(
         btc_df=DataFrame(),
         bb_metrics=bb_metrics,
         bot_profit=bot_profit,
-        has_live_stop_loss=False,
     )
 
 
@@ -121,7 +117,7 @@ def _context(
             "relative_strength_impulse_rider",
             RelativeStrengthImpulseRiderLifecycleStrategy,
         ),
-        ("top_gainer_early_momentum", TopGainerEarlyMomentumLifecycleStrategy),
+        ("top_gainer_early_momentum", DefaultLifecycleStrategy),
         ("coinrule_price_tracker", PriceTrackerLifecycleStrategy),
         ("coinrule_buy_the_dip", DefaultLifecycleStrategy),
         ("bb_extreme_reversion", BBExtremeReversionLifecycleStrategy),
@@ -193,13 +189,11 @@ def test_strategy_policies_replace_lifecycle_name_branches() -> None:
         _context(name="relative_strength_impulse_rider")
     )
     liquidation_sweep = evaluator.evaluate(_context(name="liquidation_sweep_pump"))
-    top_gainer = evaluator.evaluate(_context(name="top_gainer_early_momentum"))
 
     assert mean_reversion.policy.low_price_stop_floor_pct is None
     assert relative_strength.policy.low_price_stop_floor_pct is None
     assert liquidation_sweep.policy.emergency_stop_bounds.minimum_pct == 0.35
     assert liquidation_sweep.policy.emergency_stop_bounds.maximum_pct == 0.75
-    assert top_gainer.policy.exchange_stop_owns_breach is True
     assert evaluator.evaluate(_context()).policy.low_price_stop_floor_pct == 4.0
 
 

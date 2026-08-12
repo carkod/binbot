@@ -27,7 +27,6 @@ from streaming.context_evaluator import (
 from streaming.futures_position import FuturesPosition
 from streaming.spot_position import SpotPosition
 from streaming.strategies.base import (
-    BaseLifecycleStrategy,
     EmergencyStopBounds,
     LifecycleContext,
     LifecycleExitKind,
@@ -92,9 +91,6 @@ class Lifecycle:
             btc_df=self.btc_df,
             bb_metrics=self.bb_metrics,
             bot_profit=bot_profit,
-            has_live_stop_loss=BaseLifecycleStrategy.has_live_stop_loss(
-                self.execution.active_bot
-            ),
         )
         return self.context_evaluator.evaluate(context)
 
@@ -722,18 +718,6 @@ class Lifecycle:
                     reference_price=exit_reference_price
                 )
             else:
-                if (
-                    evaluation.policy.exchange_stop_owns_breach
-                    and BaseLifecycleStrategy.has_live_stop_loss(
-                        self.execution.active_bot
-                    )
-                ):
-                    self.execution.active_bot = (
-                        self.execution.close_after_unfilled_bounded_stop(
-                            reference_price=exit_reference_price
-                        )
-                    )
-                    return self.execution.active_bot
                 if self.execution.active_bot.margin_short_reversal:
                     self.execution.controller.update_logs(
                         f"Reversal circuit-breaker tripped: prior {self.execution.active_bot.name} leg on {self.execution.active_bot.pair} was a loss; closing instead of flipping.",

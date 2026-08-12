@@ -71,7 +71,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
     TOP_GAINER_EARLY_MOMENTUM_RETEST_DISCOUNT_PCT = 0.5
     TOP_GAINER_EARLY_MOMENTUM_STOP_TRIGGER_BUFFER_PCT = 0.5
     GRADUAL_GAINER_RETEST_DISCOUNT_PCT = 0.5
-    RELATIVE_STRENGTH_IMPULSE_RIDER_RETEST_DISCOUNT_PCT = 1.0
 
     def __init__(
         self,
@@ -283,20 +282,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 "Gradual-gainer retest entry: "
                 f"confirmation_close={previous_close}, "
                 f"discount={self.GRADUAL_GAINER_RETEST_DISCOUNT_PCT:.2f}%, "
-                f"limit={entry_limit_price}."
-            )
-            return entry_limit_price
-
-        if self.active_bot.name == RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
-            entry_limit_price = round_numbers(
-                previous_close
-                * (1 - self.RELATIVE_STRENGTH_IMPULSE_RIDER_RETEST_DISCOUNT_PCT / 100),
-                self.price_precision,
-            )
-            self.active_bot.add_log(
-                "Relative-strength impulse retest entry: "
-                f"confirmation_close={previous_close}, "
-                f"discount={self.RELATIVE_STRENGTH_IMPULSE_RIDER_RETEST_DISCOUNT_PCT:.2f}%, "
                 f"limit={entry_limit_price}."
             )
             return entry_limit_price
@@ -1477,17 +1462,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
         self.controller.save(self.active_bot)
 
         return self.active_bot
-
-    def close_after_unfilled_bounded_stop(
-        self, reference_price: float | None = None
-    ) -> BotModel:
-        """Terminate a breached stop-limit that has not closed the position."""
-        self.active_bot.add_log(
-            "Bounded exchange stop was breached without a confirmed fill; "
-            "cancelling it and escalating to the anti-wick close path."
-        )
-        self.cancel_current_sl()
-        return self.execute_stop_loss(reference_price=reference_price)
 
     def place_trailing_stop_loss(
         self, repurchase_multiplier: float = 1

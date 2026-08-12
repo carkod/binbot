@@ -498,7 +498,9 @@ def test_non_recovery_entry_uses_body_capped_limit_price(monkeypatch):
     assert any("Body-capped entry" in log for log in deal.active_bot.logs)
 
 
-def test_relative_strength_impulse_rider_uses_one_percent_retest_limit(monkeypatch):
+def test_relative_strength_impulse_rider_uses_prompt_body_capped_entry_after_reclaim(
+    monkeypatch,
+):
     deal = prepare_recovery_entry_deal(
         monkeypatch,
         position=Position.long,
@@ -511,10 +513,8 @@ def test_relative_strength_impulse_rider_uses_one_percent_retest_limit(monkeypat
 
     limit_price = deal.body_capped_entry_limit_price()
 
-    assert limit_price == 99.0
-    assert any(
-        "Relative-strength impulse retest entry" in log for log in deal.active_bot.logs
-    )
+    assert limit_price == 102.0
+    assert any("Body-capped entry" in log for log in deal.active_bot.logs)
 
 
 def test_gradual_gainer_waits_for_half_percent_retest(monkeypatch):
@@ -642,7 +642,7 @@ def test_unfilled_capped_base_order_uses_pending_entry_ttl_not_legacy_age_expiry
 
 
 @pytest.mark.parametrize("interval_minutes", [5, 15, 60])
-def test_relative_strength_impulse_rider_pending_entry_waits_three_candles(
+def test_relative_strength_impulse_rider_pending_entry_waits_one_candle(
     interval_minutes,
 ):
     position = cast(Any, FuturesPosition.__new__(FuturesPosition))
@@ -670,13 +670,8 @@ def test_relative_strength_impulse_rider_pending_entry_waits_three_candles(
         interval=types.SimpleNamespace(get_ms=lambda: interval_ms)
     )
 
-    assert (
-        position.is_pending_base_entry_expired(order, now_ms=3 * interval_ms) is False
-    )
-    assert (
-        position.is_pending_base_entry_expired(order, now_ms=3 * interval_ms + 2)
-        is True
-    )
+    assert position.is_pending_base_entry_expired(order, now_ms=interval_ms) is False
+    assert position.is_pending_base_entry_expired(order, now_ms=interval_ms + 2) is True
 
 
 @pytest.mark.parametrize("interval_minutes", [5, 15, 60])

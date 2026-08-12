@@ -1,6 +1,3 @@
-from __future__ import annotations
-
-
 from pandas import Series
 from pybinbot import MarketType, Position, round_numbers
 

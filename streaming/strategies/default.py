@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import Any, cast
 
 from pybinbot import MarketType, Position, round_numbers

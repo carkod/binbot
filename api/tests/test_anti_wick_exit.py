@@ -20,7 +20,6 @@ The phase-2 gate was removed; SL fires on mark-price breach as before.
 
 import types
 from typing import Any, cast
-from unittest.mock import Mock
 
 import pytest
 from pybinbot import (
@@ -29,10 +28,8 @@ from pybinbot import (
     DealType,
     MarketType,
     OrderBase,
-    OrderModel,
     OrderStatus,
     Position,
-    Status,
 )
 
 from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
@@ -192,54 +189,6 @@ def test_execute_stop_loss_passes_reference_price_to_buy_for_short():
     deal.execution.execute_stop_loss(reference_price=0.02245)
 
     assert captured.get("reference_price") == pytest.approx(0.02245, abs=1e-6)
-
-
-def test_top_gainer_unfilled_bounded_stop_escalates_after_breach(monkeypatch):
-    monkeypatch.setattr("streaming.lifecycle.time", lambda: 1780238000.0)
-    deal = _make_fheusdtm_deal()
-    deal.execution.active_bot.name = "top_gainer_early_momentum"
-    deal.execution.active_bot.status = Status.active
-    deal.execution.active_bot.orders.append(
-        OrderModel(
-            order_id="bounded-stop",
-            order_type="limit",
-            pair="FHEUSDTM",
-            timestamp=1,
-            order_side="sell",
-            qty=8,
-            price=0.02249,
-            status=OrderStatus.NEW,
-            time_in_force="GTC",
-            deal_type=DealType.stop_loss,
-        )
-    )
-    deal.execution.close_after_unfilled_bounded_stop = Mock(
-        return_value=deal.execution.active_bot
-    )
-
-    result = Lifecycle.exit(deal, close_price=0.0224)
-
-    assert result.status == Status.active
-    deal.execution.close_after_unfilled_bounded_stop.assert_called_once_with(
-        reference_price=0.02252
-    )
-
-
-def test_unfilled_bounded_stop_is_cancelled_before_anti_wick_close():
-    deal = _make_fheusdtm_deal()
-    calls: list[tuple[str, float | None]] = []
-
-    def execute_stop_loss(reference_price: float | None = None) -> BotModel:
-        calls.append(("close", reference_price))
-        return deal.execution.active_bot
-
-    deal.execution.cancel_current_sl = lambda: calls.append(("cancel", None))
-    deal.execution.execute_stop_loss = execute_stop_loss
-
-    result = deal.execution.close_after_unfilled_bounded_stop(reference_price=0.02252)
-
-    assert result is deal.execution.active_bot
-    assert calls == [("cancel", None), ("close", 0.02252)]
 
 
 def test_paper_trading_execute_stop_loss_uses_reference_price_as_fill():
