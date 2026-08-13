@@ -4,11 +4,10 @@ import pytest
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
 
 from api.exchange_apis.kucoin.futures.liquidity import (
-    FuturesOrderBook,
-    OrderBookLevel,
     calculate_liquidity_snapshot,
     load_futures_order_book,
 )
+from api.exchange_apis.kucoin.futures.models import FuturesOrderBook, OrderBookLevel
 
 
 def representative_order_book() -> FuturesOrderBook:

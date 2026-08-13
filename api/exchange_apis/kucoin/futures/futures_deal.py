@@ -30,10 +30,10 @@ from api.databases.tables.bot_table import BotTable, PaperTradingTable
 from api.exchange_apis.kucoin.deals.base import KucoinBaseBalance
 from api.exchange_apis.kucoin.futures.balance import KucoinFuturesBalance
 from api.exchange_apis.kucoin.futures.liquidity import (
-    LiquiditySnapshot,
     calculate_liquidity_snapshot,
     load_futures_order_book,
 )
+from api.exchange_apis.kucoin.futures.models import LiquiditySnapshot
 from api.tools.constants import (
     RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO,
     RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES,
