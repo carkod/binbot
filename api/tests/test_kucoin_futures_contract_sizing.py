@@ -1,5 +1,6 @@
 import types
 from datetime import datetime, timezone
+from time import time_ns
 from typing import Any, cast
 from unittest.mock import Mock
 from uuid import uuid4
@@ -54,6 +55,7 @@ def make_sizing_deal(
         DEFAULT_MULTIPLIER=1,
         DEFAULT_LEVERAGE=1,
     )
+    deal.controller = types.SimpleNamespace(save=lambda bot: bot)
     return deal
 
 
@@ -185,6 +187,96 @@ def test_reversal_margin_check_does_not_double_count_lot_size():
     assert deal._is_reversal_possible(mark_price=10, current_contracts=10) == 15
 
 
+def attach_order_book(
+    deal,
+    *,
+    bids: list[list[float]],
+    asks: list[list[float]],
+    age_ms: int = 0,
+) -> None:
+    class FuturesMarketApi:
+        def get_full_order_book(self, request):
+            return types.SimpleNamespace(
+                bids=bids,
+                asks=asks,
+                ts=time_ns() - age_ms * 1_000_000,
+            )
+
+    deal.kucoin_futures_api = types.SimpleNamespace(
+        futures_market_api=FuturesMarketApi()
+    )
+    deal.kucoin_symbol = "TESTUSDTM"
+
+
+def test_entry_liquidity_gate_downsizes_to_contracts_fillable_inside_price_band():
+    deal = make_sizing_deal(multiplier=1)
+    deal.active_bot.position = Position.long
+    attach_order_book(
+        deal,
+        bids=[[99.99, 100]],
+        asks=[[100.01, 3], [100.6, 100]],
+    )
+
+    contracts = deal.liquidity_gated_contracts(10)
+
+    assert contracts == 3
+    assert any(
+        "Futures order downsized from 10 to 3 contracts" in log
+        for log in deal.active_bot.logs
+    )
+    assert any("depth50(bid/ask)" in log for log in deal.active_bot.logs)
+
+
+def test_entry_liquidity_gate_rejects_excessive_spread_and_records_reason():
+    deal = make_sizing_deal(multiplier=1)
+    deal.active_bot.position = Position.long
+    saved: list[BotModel] = []
+    deal.controller = types.SimpleNamespace(save=lambda bot: saved.append(bot))
+    attach_order_book(
+        deal,
+        bids=[[99.8, 100]],
+        asks=[[100.2, 100]],
+    )
+
+    with pytest.raises(BinbotErrors, match="spread exceeds 20bps"):
+        deal.liquidity_gated_contracts(10)
+
+    assert deal.active_bot.status == Status.error
+    assert saved == [deal.active_bot]
+    assert "spread exceeds 20bps" in deal.active_bot.logs[-1]
+
+
+def test_entry_liquidity_gate_rejects_excessive_expected_slippage():
+    deal = make_sizing_deal(multiplier=1)
+    deal.active_bot.position = Position.long
+    attach_order_book(
+        deal,
+        bids=[[99.99, 100]],
+        asks=[[100.01, 1], [100.49, 9]],
+    )
+
+    with pytest.raises(BinbotErrors, match="expected KuCoin futures slippage"):
+        deal.liquidity_gated_contracts(10)
+
+    assert "expected_slippage=44.20bps" in deal.active_bot.logs[-1]
+
+
+def test_entry_liquidity_gate_rejects_stale_book_data():
+    deal = make_sizing_deal(multiplier=1)
+    deal.active_bot.position = Position.long
+    attach_order_book(
+        deal,
+        bids=[[99.99, 100]],
+        asks=[[100.01, 100]],
+        age_ms=3_000,
+    )
+
+    with pytest.raises(BinbotErrors, match="order book is stale"):
+        deal.liquidity_gated_contracts(10)
+
+    assert "maximum age is 2000ms" in deal.active_bot.logs[-1]
+
+
 def test_base_order_downsizes_when_margin_size_exceeds_available_balance():
     class DummyFuturesApi:
         DEFAULT_MULTIPLIER = 1
@@ -251,6 +343,7 @@ def test_base_order_downsizes_when_margin_size_exceeds_available_balance():
     )
     deal.compute_available_balance = lambda: 1000
     deal.body_capped_entry_limit_price = lambda: 10
+    deal.liquidity_gated_contracts = lambda contracts: contracts
 
     opened_bot = KucoinPositionDeal.base_order(deal)
 
@@ -259,6 +352,65 @@ def test_base_order_downsizes_when_margin_size_exceeds_available_balance():
     assert opened_bot.deal.opening_qty == 9
     assert any("Futures order downsized from 15 to 9" in log for log in opened_bot.logs)
     assert any("underpowered_recovery" in log for log in opened_bot.logs)
+
+
+def test_liquidity_downsized_entry_is_revalidated_with_required_margin():
+    order = OrderBase(
+        order_id="liquidity-sized-entry",
+        order_type="limit",
+        pair="TESTUSDTM",
+        timestamp=1775008219262,
+        order_side="buy",
+        qty=4,
+        price=10,
+        status=OrderStatus.FILLED,
+        time_in_force="GTC",
+        deal_type=DealType.base_order,
+    )
+    futures_api = types.SimpleNamespace(
+        DEFAULT_MULTIPLIER=1,
+        DEFAULT_LEVERAGE=1,
+        buy=Mock(return_value=order),
+        get_mark_price=Mock(return_value=10),
+        retrieve_order=Mock(
+            return_value=types.SimpleNamespace(
+                filled_size="4",
+                avg_deal_price="10",
+            )
+        ),
+    )
+    deal = make_sizing_deal(fiat_order_size=100, multiplier=1)
+    deal.active_bot.position = Position.long
+    deal.active_bot.fiat = "USDT"
+    deal.fiat = "USDT"
+    deal.kucoin_symbol = "TESTUSDTM"
+    deal.kucoin_futures_api = futures_api
+    deal.controller = types.SimpleNamespace(
+        update_logs=lambda **kwargs: None,
+        save=lambda bot: bot,
+    )
+    deal.compute_available_balance = lambda: 1_000
+    deal.body_capped_entry_limit_price = lambda: 10
+    deal.max_contracts_for_margin = lambda available_balance, price: 10
+    deal.liquidity_gated_contracts = lambda contracts: 4
+    margin_checks: list[tuple[float, float]] = []
+    required_margin_for_contracts = deal.required_margin_for_contracts
+
+    def record_required_margin(contracts: float, price: float) -> float:
+        margin_checks.append((contracts, price))
+        return required_margin_for_contracts(contracts, price)
+
+    deal.required_margin_for_contracts = record_required_margin
+
+    opened_bot = KucoinPositionDeal.base_order(deal)
+
+    assert margin_checks == [(4, 10)]
+    futures_api.buy.assert_called_once_with(
+        symbol="TESTUSDTM",
+        qty=4,
+        entry_limit_price=10,
+    )
+    assert opened_bot.deal.base_order_size == 4
 
 
 def test_unfilled_base_order_logs_pending_wait_queue():
@@ -309,6 +461,7 @@ def test_unfilled_base_order_logs_pending_wait_queue():
     )
     deal.compute_available_balance = lambda: 100
     deal.body_capped_entry_limit_price = lambda: 10
+    deal.liquidity_gated_contracts = lambda contracts: contracts
 
     opened_bot = KucoinPositionDeal.base_order(deal)
 

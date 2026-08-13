@@ -1,5 +1,5 @@
 from time import time
-from typing import Any, Type
+from typing import Any, NoReturn, Type
 
 from kucoin_universal_sdk.generate.futures.order import GetTradeHistoryReq
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
@@ -29,6 +29,11 @@ from api.databases.crud.symbols_crud import SymbolsCrud
 from api.databases.tables.bot_table import BotTable, PaperTradingTable
 from api.exchange_apis.kucoin.deals.base import KucoinBaseBalance
 from api.exchange_apis.kucoin.futures.balance import KucoinFuturesBalance
+from api.exchange_apis.kucoin.futures.liquidity import (
+    LiquiditySnapshot,
+    calculate_liquidity_snapshot,
+    load_futures_order_book,
+)
 from api.tools.constants import (
     GRADUAL_GAINER_RETEST_ALGO,
     GRADUAL_GAINER_RETEST_PENDING_ENTRY_CANDLES,
@@ -37,6 +42,10 @@ from api.tools.constants import (
     TOP_GAINER_EARLY_MOMENTUM_ALGO,
     TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES,
 )
+
+
+class EntryLiquidityError(BinbotErrors):
+    """A persisted, terminal rejection from the pre-entry liquidity gate."""
 
 
 class KucoinPositionDeal(KucoinBaseBalance):
@@ -71,6 +80,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
     TOP_GAINER_EARLY_MOMENTUM_RETEST_DISCOUNT_PCT = 0.5
     TOP_GAINER_EARLY_MOMENTUM_STOP_TRIGGER_BUFFER_PCT = 0.5
     GRADUAL_GAINER_RETEST_DISCOUNT_PCT = 0.5
+    ENTRY_LIQUIDITY_PRICE_BAND_BPS = 50.0
+    ENTRY_LIQUIDITY_MAX_SPREAD_BPS = 20.0
+    ENTRY_LIQUIDITY_MAX_SLIPPAGE_BPS = 25.0
+    ENTRY_LIQUIDITY_MAX_DATA_AGE_MS = 2_000
 
     def __init__(
         self,
@@ -526,6 +539,137 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         return int(contracts)
 
+    @staticmethod
+    def liquidity_snapshot_summary(
+        snapshot: LiquiditySnapshot,
+        approved_contracts: int,
+    ) -> str:
+        expected_average = (
+            f"{snapshot.expected_average_fill_price:.8g}"
+            if snapshot.expected_average_fill_price is not None
+            else "unavailable"
+        )
+        expected_slippage = (
+            f"{snapshot.expected_slippage_bps:.2f}"
+            if snapshot.expected_slippage_bps is not None
+            else "unavailable"
+        )
+        imbalance = (
+            f"{snapshot.book_imbalance:.3f}"
+            if snapshot.book_imbalance is not None
+            else "unavailable"
+        )
+        return (
+            f"spread={snapshot.spread_bps:.2f}bps, "
+            f"depth10(bid/ask)={snapshot.bid_depth_10_bps:g}/{snapshot.ask_depth_10_bps:g}, "
+            f"depth25(bid/ask)={snapshot.bid_depth_25_bps:g}/{snapshot.ask_depth_25_bps:g}, "
+            f"depth50(bid/ask)={snapshot.bid_depth_50_bps:g}/{snapshot.ask_depth_50_bps:g}, "
+            f"fillable={snapshot.contracts_fillable:g} contracts within "
+            f"{snapshot.permitted_price_band_bps:g}bps, "
+            f"requested={snapshot.requested_contracts:g}, approved={approved_contracts}, "
+            f"expected_average_fill={expected_average}, "
+            f"expected_slippage={expected_slippage}bps, "
+            f"imbalance={imbalance}, data_age={snapshot.data_age_ms}ms"
+        )
+
+    def liquidity_gated_contracts(self, requested_contracts: int) -> int:
+        side = (
+            AddOrderReq.SideEnum.SELL
+            if self.active_bot.position == Position.short
+            else AddOrderReq.SideEnum.BUY
+        )
+        try:
+            order_book = load_futures_order_book(
+                self.kucoin_futures_api,
+                self.kucoin_symbol,
+            )
+            requested_snapshot = calculate_liquidity_snapshot(
+                order_book,
+                side,
+                requested_contracts,
+                self.ENTRY_LIQUIDITY_PRICE_BAND_BPS,
+            )
+        except Exception as error:
+            message = (
+                "Entry rejected: unable to load a reliable KuCoin futures "
+                f"order-book liquidity snapshot ({error})."
+            )
+            self.reject_entry_for_liquidity(message, cause=error)
+
+        lot_size = float(self.kucoin_symbol_data.lot_size or 1)
+        fillable_lots = int(requested_snapshot.contracts_fillable // lot_size)
+        fillable_contracts = int(fillable_lots * lot_size)
+        approved_contracts = min(requested_contracts, fillable_contracts)
+        summary = self.liquidity_snapshot_summary(
+            requested_snapshot,
+            approved_contracts,
+        )
+
+        if requested_snapshot.data_age_ms > self.ENTRY_LIQUIDITY_MAX_DATA_AGE_MS:
+            message = (
+                "Entry rejected: KuCoin futures order book is stale; "
+                f"maximum age is {self.ENTRY_LIQUIDITY_MAX_DATA_AGE_MS}ms. {summary}."
+            )
+            self.reject_entry_for_liquidity(message)
+
+        if requested_snapshot.spread_bps > self.ENTRY_LIQUIDITY_MAX_SPREAD_BPS:
+            message = (
+                "Entry rejected: KuCoin futures spread exceeds "
+                f"{self.ENTRY_LIQUIDITY_MAX_SPREAD_BPS:g}bps. {summary}."
+            )
+            self.reject_entry_for_liquidity(message)
+
+        if approved_contracts <= 0:
+            message = (
+                "Entry rejected: no complete contract lot is executable within "
+                f"the permitted {self.ENTRY_LIQUIDITY_PRICE_BAND_BPS:g}bps band. "
+                f"{summary}."
+            )
+            self.reject_entry_for_liquidity(message)
+
+        approved_snapshot = calculate_liquidity_snapshot(
+            order_book,
+            side,
+            approved_contracts,
+            self.ENTRY_LIQUIDITY_PRICE_BAND_BPS,
+        )
+        summary = self.liquidity_snapshot_summary(
+            approved_snapshot,
+            approved_contracts,
+        )
+        if (
+            approved_snapshot.expected_slippage_bps is None
+            or approved_snapshot.expected_slippage_bps
+            > self.ENTRY_LIQUIDITY_MAX_SLIPPAGE_BPS
+        ):
+            message = (
+                "Entry rejected: expected KuCoin futures slippage exceeds "
+                f"{self.ENTRY_LIQUIDITY_MAX_SLIPPAGE_BPS:g}bps. {summary}."
+            )
+            self.reject_entry_for_liquidity(message)
+
+        self.active_bot.add_log(f"Futures entry liquidity snapshot: {summary}.")
+        if approved_contracts < requested_contracts:
+            self.active_bot.add_log(
+                f"Futures order downsized from {requested_contracts} to "
+                f"{approved_contracts} contracts because only that amount was "
+                "executable within the liquidity price band."
+            )
+        return approved_contracts
+
+    def reject_entry_for_liquidity(
+        self,
+        message: str,
+        *,
+        cause: Exception | None = None,
+    ) -> NoReturn:
+        self.active_bot.status = Status.error
+        self.active_bot.add_log(message)
+        self.controller.save(self.active_bot)
+        if cause is not None:
+            raise EntryLiquidityError(message) from cause
+        raise EntryLiquidityError(message)
+
     def backfill_position_from_fills(self) -> BotModel:
         self.active_bot.add_log(
             "Position not found in exchange, cannot update size. ADL might have happened, or position might have been closed without bot's knowledge."
@@ -928,9 +1072,12 @@ class KucoinPositionDeal(KucoinBaseBalance):
             )
 
         affordable_contracts = self.max_contracts_for_margin(available_balance, price)
-        contracts = min(margin_sized_contracts, affordable_contracts)
+        affordability_capped_contracts = min(
+            margin_sized_contracts,
+            affordable_contracts,
+        )
 
-        if contracts <= 0:
+        if affordability_capped_contracts <= 0:
             min_contract_margin = self.required_margin_for_contracts(
                 self.kucoin_symbol_data.lot_size or 1, price
             )
@@ -939,6 +1086,14 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 f"exceeds available balance {available_balance} {self.fiat}."
             )
 
+        if affordability_capped_contracts < margin_sized_contracts:
+            self.active_bot.add_log(
+                f"Futures order downsized from {margin_sized_contracts} to "
+                f"{affordability_capped_contracts} contracts because required "
+                "margin exceeded available balance."
+            )
+
+        contracts = self.liquidity_gated_contracts(affordability_capped_contracts)
         required_margin = self.required_margin_for_contracts(contracts, price)
         if required_margin > available_balance:
             raise BinbotErrors(
@@ -948,12 +1103,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         actual_margin = self.contracts_to_fiat_order_size(contracts, price)
         notional = round_numbers(self.notional_for_contracts(contracts, price), 8)
-
-        if contracts < margin_sized_contracts:
-            self.active_bot.add_log(
-                f"Futures order downsized from {margin_sized_contracts} to {contracts} contracts "
-                f"because required margin exceeded available balance."
-            )
 
         recovery_params = self.active_bot.recovery_params
         if (

@@ -18,7 +18,10 @@ from api.databases.crud.grid_ladder_crud import GridLadderCrud
 from api.databases.utils import get_session
 from api.deals.gateway import DealGateway
 from api.databases.tables.bot_table import BotTable, PaperTradingTable
-from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
+from api.exchange_apis.kucoin.futures.futures_deal import (
+    EntryLiquidityError,
+    KucoinPositionDeal,
+)
 from kucoin_universal_sdk.model.common import RestError
 from api.user.services.auth import get_current_user
 from uuid import UUID
@@ -252,6 +255,9 @@ def activate_bot(
         if bot_row.status == Status.active:
             message = "Successfully updated bot."
         return BotResponse(message=message, data=bot_model)
+    except EntryLiquidityError as e:
+        bot_model = BotModel.dump_from_table(crud.get_one(bot_id=bot_id))
+        return BotResponse(message=str(e), data=bot_model, error=1)
     except (BinbotErrors, BinanceErrors, RestError) as e:
         deal_gateway.update_logs(str(e))
         bot_model = BotModel.dump_from_table(bot_row)

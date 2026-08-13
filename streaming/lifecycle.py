@@ -18,7 +18,10 @@ from pybinbot import (
 )
 
 from api.databases.crud.autotrade_crud import AutotradeCrud
-from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
+from api.exchange_apis.kucoin.futures.futures_deal import (
+    EntryLiquidityError,
+    KucoinPositionDeal,
+)
 from api.tools.constants import GRADUAL_GAINER_RETEST_ALGO
 from streaming.context_evaluator import (
     LifecycleContextEvaluator,
@@ -539,7 +542,10 @@ class Lifecycle:
             self.execution.active_bot.add_log(
                 "Pending bot detected on exit tick; calling open_deal to place base_order and activate."
             )
-            self.execution.active_bot = self.execution.open_deal()
+            try:
+                self.execution.active_bot = self.execution.open_deal()
+            except EntryLiquidityError:
+                return self.execution.active_bot
             return self.execution.active_bot
 
         direction = self.execution._direction_multiplier()

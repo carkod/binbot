@@ -180,6 +180,16 @@ class FakeFuturesApi:
         self.cancelled_stop_order_ids: list[str] = []
         self.maker_fee_rate = 0.0
         self.taker_fee_rate = 0.0
+        self.futures_market_api = self
+        self.book_bids: list[list[float]] = [[99.99, 10_000]]
+        self.book_asks: list[list[float]] = [[100.01, 10_000]]
+
+    def get_full_order_book(self, request):
+        return SimpleNamespace(
+            bids=self.book_bids,
+            asks=self.book_asks,
+            ts=int(time() * 1_000_000_000),
+        )
 
     def place_futures_order(self, **kwargs):
         if self.raise_on_order or self.fail_on_call == self._counter + 1:
@@ -804,8 +814,35 @@ def test_grid_lifecycle_places_initial_entry_orders(
     assert "raw" + "_response" not in detail["orders"][0]
     assert all(level["status"] == "open" for level in entry_levels)
     assert all(level["entry_order_id"] for level in entry_levels)
-    assert len(detail["logs"]) == 4
-    assert "Placed entry order grid-order-1" in detail["logs"][0]
+    assert len(detail["logs"]) == 5
+    assert detail["logs"][0]["event"] == "liquidity_snapshot"
+    assert "Placed entry order grid-order-1" in detail["logs"][1]
+
+
+def test_grid_lifecycle_rejects_hollow_book_before_placing_any_entry(
+    client, monkeypatch, create_test_tables
+):
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+    response = client.post("/grid-ladders", json=_payload())
+    assert response.status_code == 200
+
+    fake_api = FakeFuturesApi()
+    fake_api.book_bids = [[99.99, 0.1]]
+    fake_api.book_asks = [[100.01, 0.1]]
+    with Session(create_test_tables) as session:
+        GridLadderLifecycle(_grid_base(fake_api), session).process_symbol("ADAUSDC")
+
+    assert fake_api.orders == []
+    refreshed = client.get(f"/grid-ladders/{response.json()['detail']['id']}")
+    detail = refreshed.json()["detail"]
+    assert detail["status"] == "error"
+    assert detail["logs"][0]["event"] == "liquidity_snapshot"
+    assert any(
+        "Grid liquidity rejected: hollow buy book" in log.get("message", "")
+        for log in detail["logs"]
+        if isinstance(log, dict)
+    )
 
 
 def test_grid_lifecycle_rounds_pending_ladder_prices_before_placing_orders(
