@@ -30,8 +30,6 @@ from api.databases.tables.bot_table import BotTable, PaperTradingTable
 from api.exchange_apis.kucoin.deals.base import KucoinBaseBalance
 from api.exchange_apis.kucoin.futures.balance import KucoinFuturesBalance
 from api.tools.constants import (
-    GRADUAL_GAINER_RETEST_ALGO,
-    GRADUAL_GAINER_RETEST_PENDING_ENTRY_CANDLES,
     RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO,
     RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES,
     TOP_GAINER_EARLY_MOMENTUM_ALGO,
@@ -70,7 +68,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
     ENTRY_FALLBACK_ALLOWANCE_PCT = 0.75
     TOP_GAINER_EARLY_MOMENTUM_RETEST_DISCOUNT_PCT = 0.5
     TOP_GAINER_EARLY_MOMENTUM_STOP_TRIGGER_BUFFER_PCT = 0.5
-    GRADUAL_GAINER_RETEST_DISCOUNT_PCT = 0.5
 
     def __init__(
         self,
@@ -272,19 +269,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
             raise BinbotErrors(
                 "Reliable candle open and previous close are unavailable for futures entry."
             )
-
-        if self.active_bot.name == GRADUAL_GAINER_RETEST_ALGO:
-            entry_limit_price = round_numbers(
-                previous_close * (1 - self.GRADUAL_GAINER_RETEST_DISCOUNT_PCT / 100),
-                self.price_precision,
-            )
-            self.active_bot.add_log(
-                "Gradual-gainer retest entry: "
-                f"confirmation_close={previous_close}, "
-                f"discount={self.GRADUAL_GAINER_RETEST_DISCOUNT_PCT:.2f}%, "
-                f"limit={entry_limit_price}."
-            )
-            return entry_limit_price
 
         if self.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO:
             entry_limit_price = round_numbers(
@@ -1034,13 +1018,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             log_message = f"Futures {position_label} opened @ {self.active_bot.deal.opening_price} with {int(self.active_bot.deal.opening_qty)} contracts"
         else:
             pending_entry_minutes = 5
-            if self.active_bot.name == GRADUAL_GAINER_RETEST_ALGO:
-                pending_entry_minutes = (
-                    self.interval_ms
-                    * GRADUAL_GAINER_RETEST_PENDING_ENTRY_CANDLES
-                    // 60_000
-                )
-            elif self.active_bot.name == RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
+            if self.active_bot.name == RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
                 pending_entry_minutes = (
                     self.interval_ms
                     * RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES

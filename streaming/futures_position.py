@@ -17,8 +17,6 @@ from pybinbot import (
 
 from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from api.tools.constants import (
-    GRADUAL_GAINER_RETEST_ALGO,
-    GRADUAL_GAINER_RETEST_PENDING_ENTRY_CANDLES,
     RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO,
     RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES,
     TOP_GAINER_EARLY_MOMENTUM_ALGO,
@@ -56,12 +54,7 @@ class FuturesPosition(PositionMarket):
 
     def is_pending_base_entry_expired(self, order: OrderModel, now_ms: int) -> bool:
         pending_entry_ttl_ms = self.PENDING_ENTRY_TTL_MS
-        if self.execution.active_bot.name == GRADUAL_GAINER_RETEST_ALGO:
-            pending_entry_ttl_ms = (
-                self.base_streaming.interval.get_ms()
-                * GRADUAL_GAINER_RETEST_PENDING_ENTRY_CANDLES
-            )
-        elif self.execution.active_bot.name == RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
+        if self.execution.active_bot.name == RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
             pending_entry_ttl_ms = (
                 self.base_streaming.interval.get_ms()
                 * RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES
@@ -232,13 +225,7 @@ class FuturesPosition(PositionMarket):
         self.execution.controller.update_order(order)
         self.execution.active_bot.status = Status.inactive
         pending_entry_minutes = self.PENDING_ENTRY_TTL_MS // 60_000
-        if self.execution.active_bot.name == GRADUAL_GAINER_RETEST_ALGO:
-            pending_entry_minutes = (
-                self.base_streaming.interval.get_ms()
-                * GRADUAL_GAINER_RETEST_PENDING_ENTRY_CANDLES
-                // 60_000
-            )
-        elif self.execution.active_bot.name == RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
+        if self.execution.active_bot.name == RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
             pending_entry_minutes = (
                 self.base_streaming.interval.get_ms()
                 * RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES
