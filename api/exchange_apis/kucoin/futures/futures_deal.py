@@ -117,6 +117,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self.kucoin_symbol
         )
         self.price_precision = self.symbol_info.price_precision
+        # Set by body_capped_entry_limit_price(); reused by
+        # liquidity_gated_contracts() to scale spread/slippage thresholds
+        # with the same ATR read, without a second klines fetch.
+        self._entry_allowance_pct: float | None = None
 
     def _direction_multiplier(self) -> int:
         return -1 if self.active_bot.position == Position.short else 1
@@ -289,6 +293,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 * (1 - self.TOP_GAINER_EARLY_MOMENTUM_RETEST_DISCOUNT_PCT / 100),
                 self.price_precision,
             )
+            self._entry_allowance_pct = (
+                self.TOP_GAINER_EARLY_MOMENTUM_RETEST_DISCOUNT_PCT
+            )
             self.active_bot.add_log(
                 "Top-gainer momentum retest entry: "
                 f"confirmation_close={previous_close}, "
@@ -314,6 +321,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             )
             allowance_source = "ATR"
 
+        self._entry_allowance_pct = allowance_pct
         direction = self._direction_multiplier()
         entry_limit_price = round_numbers(
             anchor_price * (1 + direction * allowance_pct / 100),
@@ -556,11 +564,43 @@ class KucoinPositionDeal(KucoinBaseBalance):
             f"imbalance={imbalance}, data_age={snapshot.data_age_ms}ms"
         )
 
-    def liquidity_gated_contracts(self, requested_contracts: int) -> int:
+    def _atr_scaled_liquidity_thresholds(self) -> tuple[float, float]:
+        """Spread/slippage ceilings, scaled by the ATR allowance already
+        computed for the body-capped entry price (falls back to the same
+        fallback allowance body_capped_entry_limit_price() uses)."""
+        cached_allowance_pct = getattr(self, "_entry_allowance_pct", None)
+        allowance_pct = (
+            cached_allowance_pct
+            if cached_allowance_pct is not None
+            else self.ENTRY_FALLBACK_ALLOWANCE_PCT
+        )
+        atr_bps = allowance_pct * 100
+        spread_threshold_bps = max(
+            self.ENTRY_LIQUIDITY_MIN_SPREAD_BPS,
+            min(
+                atr_bps * self.ENTRY_LIQUIDITY_SPREAD_ATR_MULTIPLIER,
+                self.ENTRY_LIQUIDITY_MAX_SPREAD_BPS,
+            ),
+        )
+        slippage_threshold_bps = max(
+            self.ENTRY_LIQUIDITY_MIN_SLIPPAGE_BPS,
+            min(
+                atr_bps * self.ENTRY_LIQUIDITY_SLIPPAGE_ATR_MULTIPLIER,
+                self.ENTRY_LIQUIDITY_MAX_SLIPPAGE_BPS,
+            ),
+        )
+        return spread_threshold_bps, slippage_threshold_bps
+
+    def liquidity_gated_contracts(
+        self, requested_contracts: int, candidate_limit_price: float
+    ) -> tuple[int, float]:
         side = (
             AddOrderReq.SideEnum.SELL
             if self.active_bot.position == Position.short
             else AddOrderReq.SideEnum.BUY
+        )
+        spread_threshold_bps, slippage_threshold_bps = (
+            self._atr_scaled_liquidity_thresholds()
         )
         try:
             order_book = load_futures_order_book(
@@ -596,10 +636,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
             )
             self.reject_entry_for_liquidity(message)
 
-        if requested_snapshot.spread_bps > self.ENTRY_LIQUIDITY_MAX_SPREAD_BPS:
+        if requested_snapshot.spread_bps > spread_threshold_bps:
             message = (
                 "Entry rejected: KuCoin futures spread exceeds "
-                f"{self.ENTRY_LIQUIDITY_MAX_SPREAD_BPS:g}bps. {summary}."
+                f"{spread_threshold_bps:.2f}bps (ATR-scaled). {summary}."
             )
             self.reject_entry_for_liquidity(message)
 
@@ -623,23 +663,44 @@ class KucoinPositionDeal(KucoinBaseBalance):
         )
         if (
             approved_snapshot.expected_slippage_bps is None
-            or approved_snapshot.expected_slippage_bps
-            > self.ENTRY_LIQUIDITY_MAX_SLIPPAGE_BPS
+            or approved_snapshot.expected_slippage_bps > slippage_threshold_bps
         ):
             message = (
                 "Entry rejected: expected KuCoin futures slippage exceeds "
-                f"{self.ENTRY_LIQUIDITY_MAX_SLIPPAGE_BPS:g}bps. {summary}."
+                f"{slippage_threshold_bps:.2f}bps (ATR-scaled). {summary}."
             )
             self.reject_entry_for_liquidity(message)
 
-        self.active_bot.add_log(f"Futures entry liquidity snapshot: {summary}.")
+        entry_limit_price = candidate_limit_price
+        if approved_snapshot.worst_fill_price is not None:
+            if side == AddOrderReq.SideEnum.BUY:
+                entry_limit_price = min(
+                    candidate_limit_price, approved_snapshot.worst_fill_price
+                )
+            else:
+                entry_limit_price = max(
+                    candidate_limit_price, approved_snapshot.worst_fill_price
+                )
+            entry_limit_price = round_numbers(entry_limit_price, self.price_precision)
+
+        self.active_bot.add_log(
+            f"Futures entry liquidity snapshot: {summary}. "
+            f"thresholds(ATR-scaled): spread<={spread_threshold_bps:.2f}bps, "
+            f"slippage<={slippage_threshold_bps:.2f}bps."
+        )
         if approved_contracts < requested_contracts:
             self.active_bot.add_log(
                 f"Futures order downsized from {requested_contracts} to "
                 f"{approved_contracts} contracts because only that amount was "
                 "executable within the liquidity price band."
             )
-        return approved_contracts
+        if entry_limit_price != candidate_limit_price:
+            self.active_bot.add_log(
+                f"Entry limit price tightened from {candidate_limit_price} to "
+                f"{entry_limit_price} based on order-book depth "
+                f"(worst_fill_price={approved_snapshot.worst_fill_price})."
+            )
+        return approved_contracts, entry_limit_price
 
     def reject_entry_for_liquidity(
         self,
@@ -1043,8 +1104,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
             raise BinbotErrors("Fiat order size must be set.")
 
         available_balance = self.compute_available_balance()
-        entry_limit_price = self.body_capped_entry_limit_price()
-        price = entry_limit_price
+        candidate_limit_price = self.body_capped_entry_limit_price()
+        price = candidate_limit_price
 
         margin_sized_contracts = self.calculate_contracts(
             self.active_bot.fiat_order_size, price
@@ -1077,7 +1138,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 "margin exceeded available balance."
             )
 
-        contracts = self.liquidity_gated_contracts(affordability_capped_contracts)
+        contracts, entry_limit_price = self.liquidity_gated_contracts(
+            affordability_capped_contracts, candidate_limit_price
+        )
         required_margin = self.required_margin_for_contracts(contracts, price)
         if required_margin > available_balance:
             raise BinbotErrors(

@@ -217,7 +217,7 @@ def test_entry_liquidity_gate_downsizes_to_contracts_fillable_inside_price_band(
         asks=[[100.01, 3], [100.6, 100]],
     )
 
-    contracts = deal.liquidity_gated_contracts(10)
+    contracts, _ = deal.liquidity_gated_contracts(10, 100.5)
 
     assert contracts == 3
     assert any(
@@ -238,12 +238,12 @@ def test_entry_liquidity_gate_rejects_excessive_spread_and_records_reason():
         asks=[[100.2, 100]],
     )
 
-    with pytest.raises(BinbotErrors, match="spread exceeds 20bps"):
-        deal.liquidity_gated_contracts(10)
+    with pytest.raises(BinbotErrors, match=r"spread exceeds 30\.00bps"):
+        deal.liquidity_gated_contracts(10, 100.0)
 
     assert deal.active_bot.status == Status.error
     assert saved == [deal.active_bot]
-    assert "spread exceeds 20bps" in deal.active_bot.logs[-1]
+    assert "spread exceeds 30.00bps" in deal.active_bot.logs[-1]
 
 
 def test_entry_liquidity_gate_rejects_excessive_expected_slippage():
@@ -256,7 +256,7 @@ def test_entry_liquidity_gate_rejects_excessive_expected_slippage():
     )
 
     with pytest.raises(BinbotErrors, match="expected KuCoin futures slippage"):
-        deal.liquidity_gated_contracts(10)
+        deal.liquidity_gated_contracts(10, 100.0)
 
     assert "expected_slippage=44.20bps" in deal.active_bot.logs[-1]
 
@@ -272,7 +272,7 @@ def test_entry_liquidity_gate_rejects_stale_book_data():
     )
 
     with pytest.raises(BinbotErrors, match="order book is stale"):
-        deal.liquidity_gated_contracts(10)
+        deal.liquidity_gated_contracts(10, 100.0)
 
     assert "maximum age is 2000ms" in deal.active_bot.logs[-1]
 
@@ -343,7 +343,7 @@ def test_base_order_downsizes_when_margin_size_exceeds_available_balance():
     )
     deal.compute_available_balance = lambda: 1000
     deal.body_capped_entry_limit_price = lambda: 10
-    deal.liquidity_gated_contracts = lambda contracts: contracts
+    deal.liquidity_gated_contracts = lambda contracts, price: (contracts, price)
 
     opened_bot = KucoinPositionDeal.base_order(deal)
 
@@ -392,7 +392,7 @@ def test_liquidity_downsized_entry_is_revalidated_with_required_margin():
     deal.compute_available_balance = lambda: 1_000
     deal.body_capped_entry_limit_price = lambda: 10
     deal.max_contracts_for_margin = lambda available_balance, price: 10
-    deal.liquidity_gated_contracts = lambda contracts: 4
+    deal.liquidity_gated_contracts = lambda contracts, price: (4, price)
     margin_checks: list[tuple[float, float]] = []
     required_margin_for_contracts = deal.required_margin_for_contracts
 
@@ -461,7 +461,7 @@ def test_unfilled_base_order_logs_pending_wait_queue():
     )
     deal.compute_available_balance = lambda: 100
     deal.body_capped_entry_limit_price = lambda: 10
-    deal.liquidity_gated_contracts = lambda contracts: contracts
+    deal.liquidity_gated_contracts = lambda contracts, price: (contracts, price)
 
     opened_bot = KucoinPositionDeal.base_order(deal)
 
