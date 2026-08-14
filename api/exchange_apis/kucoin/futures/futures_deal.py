@@ -87,7 +87,11 @@ class KucoinPositionDeal(KucoinBaseBalance):
     ENTRY_LIQUIDITY_MIN_SLIPPAGE_BPS = 18.0
     ENTRY_LIQUIDITY_MAX_SLIPPAGE_BPS = 50.0
     ENTRY_LIQUIDITY_SLIPPAGE_ATR_MULTIPLIER = 0.5
-    ENTRY_LIQUIDITY_MAX_DATA_AGE_MS = 2_000
+    # Thin books can go many seconds between quote updates without being
+    # genuinely stale (KuCoin's ts reflects the last book change, not "now"),
+    # confirmed against live low-cap futures books (~15s observed on a quiet
+    # book). 20s comfortably clears that while still catching a hung fetch.
+    ENTRY_LIQUIDITY_MAX_DATA_AGE_MS = 20_000
     # How long to wait after the first (limit) close leg before checking its
     # fill status — mirrors pybinbot's _EXIT_ESCALATION_SLEEP_S for the same
     # reason: KuCoin's order/position endpoints can lag fill processing.
@@ -1187,15 +1191,26 @@ class KucoinPositionDeal(KucoinBaseBalance):
         contracts, entry_limit_price = self.liquidity_gated_contracts(
             affordability_capped_contracts, candidate_limit_price
         )
-        required_margin = self.required_margin_for_contracts(contracts, price)
+        # liquidity_gated_contracts() can move entry_limit_price away from
+        # the pre-gate `price` (e.g. tightening a short's floor up to the
+        # book's worst_fill_price raises the price actually sent to
+        # KuCoin) — margin/notional must be checked against the price that
+        # will actually be submitted, not the stale candidate, or an
+        # account near its balance limit could pass this check and then
+        # submit contracts it can't actually afford at entry_limit_price.
+        required_margin = self.required_margin_for_contracts(
+            contracts, entry_limit_price
+        )
         if required_margin > available_balance:
             raise BinbotErrors(
                 f"Required futures margin {required_margin} {self.fiat} for {contracts} contracts "
                 f"exceeds available balance {available_balance} {self.fiat}."
             )
 
-        actual_margin = self.contracts_to_fiat_order_size(contracts, price)
-        notional = round_numbers(self.notional_for_contracts(contracts, price), 8)
+        actual_margin = self.contracts_to_fiat_order_size(contracts, entry_limit_price)
+        notional = round_numbers(
+            self.notional_for_contracts(contracts, entry_limit_price), 8
+        )
 
         recovery_params = self.active_bot.recovery_params
         if (
@@ -1949,18 +1964,43 @@ class KucoinPositionDeal(KucoinBaseBalance):
             current_contracts,
         )
 
+    def _actual_fill(self, order: OrderBase | None) -> tuple[float, float]:
+        """Best-effort real (filled_qty, avg_price) for a just-placed order.
+
+        place_futures_order()'s own response doesn't reliably carry fill
+        details (same reasoning as base_order()'s post-place retrieve_order
+        check) — query the order to get the real numbers. Returns (0, 0) on
+        any failure; callers decide how to handle an unconfirmed fill.
+        """
+        if not order or not order.order_id:
+            return 0.0, 0.0
+        try:
+            details = self.kucoin_futures_api.retrieve_order(str(order.order_id))
+            filled_qty = float(details.filled_size or 0)
+            avg_price = float(details.avg_deal_price or 0)
+            if filled_qty > 0 and avg_price > 0:
+                return filled_qty, avg_price
+        except Exception:
+            pass
+        return 0.0, float(order.price or 0)
+
     def _close_with_market_fallback(
         self, side: AddOrderReq.SideEnum, qty: int
-    ) -> OrderBase:
+    ) -> list[tuple[OrderBase, float, float]]:
         """Cross the spread with an IOC limit at the 1-tick matching-engine
         price first (better fill than a market order when the book has the
         depth); whatever doesn't fill immediately is guaranteed closed with
         a market order for the residual qty, so this always fully closes.
+
+        Returns every leg that actually filled as (order, filled_qty,
+        avg_price) — both legs when the IOC only partially fills — so the
+        caller can record every fill and compute a true weighted-average
+        close price instead of only the last order placed.
         """
         limit_price = self.kucoin_futures_api.matching_engine(
             self.kucoin_symbol, size=qty, side=side
         )
-        order_response = self.kucoin_futures_api.place_futures_order(
+        limit_order = self.kucoin_futures_api.place_futures_order(
             symbol=self.kucoin_symbol,
             side=side,
             size=qty,
@@ -1970,23 +2010,18 @@ class KucoinPositionDeal(KucoinBaseBalance):
             reduce_only=True,
             time_in_force=AddOrderReq.TimeInForceEnum.IMMEDIATE_OR_CANCEL,
         )
+        sleep(self.CLOSE_ALL_FILL_CHECK_SLEEP_S)
+        limit_filled_qty, limit_avg_price = self._actual_fill(limit_order)
 
-        filled_qty = 0.0
-        if order_response and order_response.order_id:
-            sleep(self.CLOSE_ALL_FILL_CHECK_SLEEP_S)
-            try:
-                details = self.kucoin_futures_api.retrieve_order(
-                    str(order_response.order_id)
-                )
-                filled_qty = float(details.filled_size or 0)
-            except Exception:
-                filled_qty = 0.0
+        fills: list[tuple[OrderBase, float, float]] = []
+        if limit_filled_qty > 0:
+            fills.append((limit_order, limit_filled_qty, limit_avg_price))
 
-        remaining_qty = qty - filled_qty
+        remaining_qty = qty - limit_filled_qty
         if remaining_qty <= 0:
-            return order_response
+            return fills
 
-        return self.kucoin_futures_api.place_futures_order(
+        market_order = self.kucoin_futures_api.place_futures_order(
             symbol=self.kucoin_symbol,
             side=side,
             size=int(round(remaining_qty)),
@@ -1994,6 +2029,16 @@ class KucoinPositionDeal(KucoinBaseBalance):
             order_type=OrderType.market,
             reduce_only=True,
         )
+        sleep(self.CLOSE_ALL_FILL_CHECK_SLEEP_S)
+        market_filled_qty, market_avg_price = self._actual_fill(market_order)
+        if market_filled_qty <= 0:
+            # Couldn't confirm via retrieve_order (API lag) -- the order
+            # type guarantees a fill, so record the requested residual
+            # rather than silently losing it from qty/price accounting.
+            market_filled_qty = remaining_qty
+            market_avg_price = market_avg_price or float(market_order.price or 0)
+        fills.append((market_order, market_filled_qty, market_avg_price))
+        return fills
 
     def close_all(self, algorithmic_close: bool = False) -> BotModel:
         """
@@ -2017,13 +2062,30 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 if self.active_bot.position == Position.short
                 else AddOrderReq.SideEnum.SELL
             )
-            order_response = self._close_with_market_fallback(close_side, qty)
+            fills = self._close_with_market_fallback(close_side, qty)
 
-            order_model = OrderModel(**order_response.model_dump())
-            order_model.deal_type = deal_type
-            self.active_bot.orders.append(order_model)
-            self.active_bot.deal.closing_price = order_response.price
-            self.active_bot.deal.closing_qty = qty
+            total_filled_qty = 0.0
+            weighted_notional = 0.0
+            for order, filled_qty, avg_price in fills:
+                order_dict = order.model_dump()
+                order_dict["qty"] = filled_qty
+                order_dict["price"] = avg_price
+                order_model = OrderModel(**order_dict)
+                order_model.deal_type = deal_type
+                self.active_bot.orders.append(order_model)
+                total_filled_qty += filled_qty
+                weighted_notional += filled_qty * avg_price
+
+            # Both legs recorded and blended into a single weighted-average
+            # close — a partial IOC fill plus market-fallback residual must
+            # not be reported (and downstream-PnL'd) as if the entire
+            # position closed at only the last order's price.
+            self.active_bot.deal.closing_qty = (
+                total_filled_qty if total_filled_qty > 0 else qty
+            )
+            self.active_bot.deal.closing_price = (
+                weighted_notional / total_filled_qty if total_filled_qty > 0 else 0.0
+            )
             self.active_bot.status = Status.completed
             self.controller.update_logs(
                 bot=self.active_bot,

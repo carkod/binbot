@@ -268,13 +268,13 @@ def test_entry_liquidity_gate_rejects_stale_book_data():
         deal,
         bids=[[99.99, 100]],
         asks=[[100.01, 100]],
-        age_ms=3_000,
+        age_ms=21_000,
     )
 
     with pytest.raises(BinbotErrors, match="order book is stale"):
         deal.liquidity_gated_contracts(10, 100.0)
 
-    assert "maximum age is 2000ms" in deal.active_bot.logs[-1]
+    assert "maximum age is 20000ms" in deal.active_bot.logs[-1]
 
 
 def test_base_order_downsizes_when_margin_size_exceeds_available_balance():
@@ -411,6 +411,118 @@ def test_liquidity_downsized_entry_is_revalidated_with_required_margin():
         entry_limit_price=10,
     )
     assert opened_bot.deal.base_order_size == 4
+
+
+def test_base_order_affordability_check_uses_post_gate_price():
+    """
+    liquidity_gated_contracts() can move entry_limit_price away from the
+    pre-gate candidate (e.g. tightening a short's floor up to the book's
+    higher worst_fill_price). required_margin_for_contracts() must be
+    checked against that final price, not the stale candidate, or an
+    account near its balance limit could pass the check and submit
+    contracts it can't actually afford at entry_limit_price.
+    """
+    order = OrderBase(
+        order_id="tightened-price-entry",
+        order_type="limit",
+        pair="TESTUSDTM",
+        timestamp=1775008219262,
+        order_side="sell",
+        qty=1,
+        price=20,
+        status=OrderStatus.NEW,
+        time_in_force="GTC",
+        deal_type=DealType.base_order,
+    )
+    futures_api = types.SimpleNamespace(
+        DEFAULT_MULTIPLIER=1,
+        DEFAULT_LEVERAGE=1,
+        sell=Mock(return_value=order),
+    )
+    deal = make_sizing_deal(fiat_order_size=100, multiplier=1)
+    deal.active_bot.position = Position.short
+    deal.active_bot.fiat = "USDT"
+    deal.fiat = "USDT"
+    deal.kucoin_symbol = "TESTUSDTM"
+    deal.kucoin_futures_api = futures_api
+    deal.controller = types.SimpleNamespace(
+        update_logs=lambda **kwargs: None,
+        save=lambda bot: bot,
+    )
+    deal.compute_available_balance = lambda: 15
+    deal.body_capped_entry_limit_price = lambda: 10
+    deal.max_contracts_for_margin = lambda available_balance, price: 10
+    # Simulates the gate tightening a short's price up from the affordable
+    # candidate (10) to the book's worst_fill_price (20).
+    deal.liquidity_gated_contracts = lambda contracts, price: (1, 20)
+
+    with pytest.raises(BinbotErrors, match="Required futures margin"):
+        KucoinPositionDeal.base_order(deal)
+
+    futures_api.sell.assert_not_called()
+
+
+def test_close_all_blends_partial_ioc_fill_with_market_fallback():
+    """
+    A partial IOC fill plus a market-fallback residual must be recorded as
+    two fills and blended into a weighted-average close price/qty -- not
+    reported (and PnL'd) as if the entire position closed at only the last
+    order's price.
+    """
+
+    class DummyFuturesApi:
+        DEFAULT_MULTIPLIER = 1
+        DEFAULT_LEVERAGE = 1
+
+        def __init__(self):
+            self.place_calls: list[dict] = []
+
+        def get_futures_position(self, symbol):
+            return types.SimpleNamespace(current_qty=10)
+
+        def matching_engine(self, symbol, size, side):
+            return 100.0
+
+        def place_futures_order(self, **kwargs):
+            self.place_calls.append(kwargs)
+            order_id = f"order-{len(self.place_calls)}"
+            return OrderBase(
+                order_id=order_id,
+                order_type=(
+                    "limit" if kwargs["order_type"] == OrderType.limit else "market"
+                ),
+                pair=kwargs["symbol"],
+                timestamp=1775008219262,
+                order_side="sell",
+                qty=kwargs["size"],
+                price=kwargs.get("price") or 0,
+                status=OrderStatus.NEW,
+                time_in_force="GTC",
+                deal_type=DealType.panic_close,
+            )
+
+        def retrieve_order(self, order_id):
+            if order_id == "order-1":
+                return types.SimpleNamespace(filled_size="6", avg_deal_price="100.0")
+            return types.SimpleNamespace(filled_size="4", avg_deal_price="99.0")
+
+    deal = make_sizing_deal(multiplier=1)
+    deal.active_bot.position = Position.long
+    deal.kucoin_symbol = "TESTUSDTM"
+    deal.kucoin_futures_api = DummyFuturesApi()
+    deal.CLOSE_ALL_FILL_CHECK_SLEEP_S = 0
+    deal.controller = types.SimpleNamespace(
+        update_logs=lambda **kwargs: None,
+        save=lambda bot: bot,
+    )
+
+    result = KucoinPositionDeal.close_all(deal)
+
+    assert len(deal.kucoin_futures_api.place_calls) == 2
+    assert [o.order_id for o in result.orders] == ["order-1", "order-2"]
+    assert [o.qty for o in result.orders] == [6, 4]
+    assert result.deal.closing_price == pytest.approx(99.6)
+    assert result.deal.closing_qty == 10
 
 
 def test_unfilled_base_order_logs_pending_wait_queue():

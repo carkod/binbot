@@ -43,7 +43,9 @@ GRID_LIQUIDITY_SLIPPAGE_BB_WIDTH_MULTIPLIER = 0.0625
 # created ladder) — a mid-range volatility assumption, not the tightest or
 # loosest end of the clamp.
 GRID_LIQUIDITY_FALLBACK_BB_WIDTH = 0.03
-GRID_LIQUIDITY_MAX_DATA_AGE_MS = 2_000
+# See ENTRY_LIQUIDITY_MAX_DATA_AGE_MS in KucoinPositionDeal — thin books can
+# go many seconds between quote updates without being genuinely stale.
+GRID_LIQUIDITY_MAX_DATA_AGE_MS = 20_000
 
 
 class GridLadderLifecycle(BaseLifecycle):
