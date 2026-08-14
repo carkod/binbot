@@ -29,8 +29,20 @@ from api.exchange_apis.kucoin.futures.liquidity import (
 
 
 GRID_LIQUIDITY_PRICE_BAND_BPS = 50.0
-GRID_LIQUIDITY_MAX_SPREAD_BPS = 20.0
-GRID_LIQUIDITY_MAX_SLIPPAGE_BPS = 25.0
+# Spread/slippage ceilings scale with the ladder's own initial BB-width
+# volatility read (mirrors the ATR-scaled thresholds used for standalone
+# futures entries in KucoinPositionDeal), clamped to [MIN, MAX] so a quiet
+# symbol is held to a tighter bar than a volatile one.
+GRID_LIQUIDITY_MIN_SPREAD_BPS = 15.0
+GRID_LIQUIDITY_MAX_SPREAD_BPS = 40.0
+GRID_LIQUIDITY_SPREAD_BB_WIDTH_MULTIPLIER = 0.05
+GRID_LIQUIDITY_MIN_SLIPPAGE_BPS = 18.0
+GRID_LIQUIDITY_MAX_SLIPPAGE_BPS = 50.0
+GRID_LIQUIDITY_SLIPPAGE_BB_WIDTH_MULTIPLIER = 0.0625
+# Used when the ladder has no recorded bb_width feature (e.g. a manually
+# created ladder) — a mid-range volatility assumption, not the tightest or
+# loosest end of the clamp.
+GRID_LIQUIDITY_FALLBACK_BB_WIDTH = 0.03
 GRID_LIQUIDITY_MAX_DATA_AGE_MS = 2_000
 
 
@@ -177,10 +189,39 @@ class GridLadderLifecycle(BaseLifecycle):
         if status == GridLadderStatus.closing.value:
             self._close_ladder(ladder)
 
+    def _grid_liquidity_thresholds(
+        self, ladder: GridLadderTable
+    ) -> tuple[float, float]:
+        """Spread/slippage ceilings scaled by the ladder's initial bb_width
+        feature (fraction of price), falling back to a mid-range volatility
+        assumption when that feature wasn't recorded."""
+        bb_width = self._initial_symbol_features(ladder).get("bb_width")
+        if not isinstance(bb_width, (int, float)) or bb_width <= 0:
+            bb_width = GRID_LIQUIDITY_FALLBACK_BB_WIDTH
+        bb_width_bps = bb_width * 10_000
+        spread_threshold_bps = max(
+            GRID_LIQUIDITY_MIN_SPREAD_BPS,
+            min(
+                bb_width_bps * GRID_LIQUIDITY_SPREAD_BB_WIDTH_MULTIPLIER,
+                GRID_LIQUIDITY_MAX_SPREAD_BPS,
+            ),
+        )
+        slippage_threshold_bps = max(
+            GRID_LIQUIDITY_MIN_SLIPPAGE_BPS,
+            min(
+                bb_width_bps * GRID_LIQUIDITY_SLIPPAGE_BB_WIDTH_MULTIPLIER,
+                GRID_LIQUIDITY_MAX_SLIPPAGE_BPS,
+            ),
+        )
+        return spread_threshold_bps, slippage_threshold_bps
+
     def _place_initial_entries(self, ladder: GridLadderTable) -> None:
         symbol_row = self._symbol_row(ladder.symbol)
         price_precision = SymbolsCrud.get_price_precision(symbol_row, ExchangeId.KUCOIN)
         placed_order_ids: list[str] = []
+        spread_threshold_bps, slippage_threshold_bps = self._grid_liquidity_thresholds(
+            ladder
+        )
 
         try:
             largest_level_by_side = {
@@ -244,6 +285,10 @@ class GridLadderLifecycle(BaseLifecycle):
                     },
                     "book_imbalance": first_snapshot.book_imbalance,
                     "data_age_ms": first_snapshot.data_age_ms,
+                    "thresholds_bb_width_scaled": {
+                        "spread_bps": round(spread_threshold_bps, 4),
+                        "slippage_bps": round(slippage_threshold_bps, 4),
+                    },
                 },
             )
 
@@ -253,11 +298,11 @@ class GridLadderLifecycle(BaseLifecycle):
                     f"({first_snapshot.data_age_ms}ms > "
                     f"{GRID_LIQUIDITY_MAX_DATA_AGE_MS}ms)"
                 )
-            if first_snapshot.spread_bps > GRID_LIQUIDITY_MAX_SPREAD_BPS:
+            if first_snapshot.spread_bps > spread_threshold_bps:
                 raise RuntimeError(
                     "Grid liquidity rejected: KuCoin futures spread is excessive "
                     f"({first_snapshot.spread_bps:.2f}bps > "
-                    f"{GRID_LIQUIDITY_MAX_SPREAD_BPS:g}bps)"
+                    f"{spread_threshold_bps:.2f}bps, bb_width-scaled)"
                 )
 
             for side, snapshot in liquidity_snapshots.items():
@@ -270,7 +315,7 @@ class GridLadderLifecycle(BaseLifecycle):
                     )
                 if (
                     snapshot.expected_slippage_bps is None
-                    or snapshot.expected_slippage_bps > GRID_LIQUIDITY_MAX_SLIPPAGE_BPS
+                    or snapshot.expected_slippage_bps > slippage_threshold_bps
                 ):
                     slippage = (
                         f"{snapshot.expected_slippage_bps:.2f}bps"
@@ -280,7 +325,7 @@ class GridLadderLifecycle(BaseLifecycle):
                     raise RuntimeError(
                         f"Grid liquidity rejected: expected {side} slippage is "
                         f"{slippage}; maximum is "
-                        f"{GRID_LIQUIDITY_MAX_SLIPPAGE_BPS:g}bps"
+                        f"{slippage_threshold_bps:.2f}bps (bb_width-scaled)"
                     )
 
             for level in ladder.levels:

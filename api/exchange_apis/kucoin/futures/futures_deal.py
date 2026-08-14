@@ -1,4 +1,4 @@
-from time import time
+from time import sleep, time
 from typing import Any, NoReturn, Type
 
 from kucoin_universal_sdk.generate.futures.order import GetTradeHistoryReq
@@ -78,9 +78,20 @@ class KucoinPositionDeal(KucoinBaseBalance):
     TOP_GAINER_EARLY_MOMENTUM_RETEST_DISCOUNT_PCT = 0.5
     TOP_GAINER_EARLY_MOMENTUM_STOP_TRIGGER_BUFFER_PCT = 0.5
     ENTRY_LIQUIDITY_PRICE_BAND_BPS = 50.0
-    ENTRY_LIQUIDITY_MAX_SPREAD_BPS = 20.0
-    ENTRY_LIQUIDITY_MAX_SLIPPAGE_BPS = 25.0
+    # Spread/slippage ceilings scale with the same ATR-derived allowance used
+    # for the body-capped entry price, clamped to [MIN, MAX] so a quiet
+    # symbol is held to a tighter bar than a volatile one.
+    ENTRY_LIQUIDITY_MIN_SPREAD_BPS = 15.0
+    ENTRY_LIQUIDITY_MAX_SPREAD_BPS = 40.0
+    ENTRY_LIQUIDITY_SPREAD_ATR_MULTIPLIER = 0.4
+    ENTRY_LIQUIDITY_MIN_SLIPPAGE_BPS = 18.0
+    ENTRY_LIQUIDITY_MAX_SLIPPAGE_BPS = 50.0
+    ENTRY_LIQUIDITY_SLIPPAGE_ATR_MULTIPLIER = 0.5
     ENTRY_LIQUIDITY_MAX_DATA_AGE_MS = 2_000
+    # How long to wait after the first (limit) close leg before checking its
+    # fill status — mirrors pybinbot's _EXIT_ESCALATION_SLEEP_S for the same
+    # reason: KuCoin's order/position endpoints can lag fill processing.
+    CLOSE_ALL_FILL_CHECK_SLEEP_S = 2.0
 
     def __init__(
         self,
@@ -205,6 +216,41 @@ class KucoinPositionDeal(KucoinBaseBalance):
         if len(true_ranges) < cls.ENTRY_ATR_WINDOW:
             return None
         return sum(true_ranges[-cls.ENTRY_ATR_WINDOW :]) / cls.ENTRY_ATR_WINDOW
+
+    def current_atr_allowance_pct(self) -> float:
+        """Same ATR-scaled allowance methodology as body_capped_entry_limit_price()
+        (window, multiplier, [MIN, MAX] clamp), computed fresh rather than
+        reused from entry time — a position may be open long enough that the
+        entry-time ATR read is stale. Falls back to the same default on any
+        failure instead of raising: unlike an entry, a volatility-read miss
+        here must not block re-arming exit protection."""
+        try:
+            interval = BinanceKlineIntervals(
+                self.active_bot.candlestick_interval
+            ).to_kucoin_interval()
+            klines = self.kucoin_futures_api.get_ui_klines(
+                symbol=self.kucoin_symbol,
+                interval=interval,
+                limit=self.ENTRY_ATR_WINDOW + 3,
+            )
+            klines = self.normalize_entry_klines(klines)
+            completed_candles, _ = Candles.partition_closed_candles(
+                klines, now_ms=int(time() * 1000)
+            )
+            atr = self.closed_candle_atr(completed_candles)
+            anchor_price = float(completed_candles[-1][4]) if completed_candles else 0.0
+        except Exception:
+            atr = None
+            anchor_price = 0.0
+
+        if atr is None or anchor_price <= 0:
+            return self.ENTRY_FALLBACK_ALLOWANCE_PCT
+
+        atr_allowance_pct = self.ENTRY_ATR_MULTIPLIER * atr / anchor_price * 100
+        return max(
+            self.ENTRY_MIN_ALLOWANCE_PCT,
+            min(atr_allowance_pct, self.ENTRY_MAX_ALLOWANCE_PCT),
+        )
 
     @staticmethod
     def normalize_entry_klines(klines: list) -> list:
@@ -1728,13 +1774,37 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
             self.cancel_current_trailing_sl()
 
+            # Native KuCoin conditional order — trigger and fill are both
+            # exchange-side, so this can't route through the escalation path
+            # used by execute_stop_loss(). Instead, cap the same way the exit
+            # anti-wick band does (BUY caps up, SELL caps down from the
+            # reference), using the same ATR-scaled allowance as entries so
+            # the cap isn't a flat percentage. A gap through the cap leaves
+            # the order resting unfilled until the next replace cycle
+            # (TRAILING_STOP_REPLACE_COOLDOWN_MS) re-evaluates it.
+            allowance_pct = self.current_atr_allowance_pct()
+            stop_price = self.active_bot.deal.trailing_stop_loss_price
+            if self.active_bot.position == Position.short:
+                trailing_limit_price = round_numbers(
+                    stop_price * (1 + allowance_pct / 100), self.price_precision
+                )
+            else:
+                trailing_limit_price = round_numbers(
+                    stop_price * (1 - allowance_pct / 100), self.price_precision
+                )
+            self.active_bot.add_log(
+                f"Trailing stop-limit cap: stop_price={stop_price}, "
+                f"allowance={allowance_pct:.2f}%, limit={trailing_limit_price}."
+            )
+
             if self.active_bot.position == Position.short:
                 order_base: OrderBase = self.kucoin_futures_api.place_futures_order(
                     side=AddOrderReq.SideEnum.BUY,
                     symbol=self.kucoin_symbol,
                     size=qty,
+                    price=trailing_limit_price,
                     reduce_only=True,
-                    order_type=OrderType.market,
+                    order_type=OrderType.limit,
                     stop_price_type=AddOrderReq.StopPriceTypeEnum.MARK_PRICE,
                     stop=AddOrderReq.StopEnum.UP,
                     stop_price=self.active_bot.deal.trailing_stop_loss_price,
@@ -1745,8 +1815,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
                     side=AddOrderReq.SideEnum.SELL,
                     symbol=self.kucoin_symbol,
                     size=qty,
+                    price=trailing_limit_price,
                     reduce_only=True,
-                    order_type=OrderType.market,
+                    order_type=OrderType.limit,
                     stop_price_type=AddOrderReq.StopPriceTypeEnum.MARK_PRICE,
                     stop=AddOrderReq.StopEnum.DOWN,
                     stop_price=self.active_bot.deal.trailing_stop_loss_price,
@@ -1878,10 +1949,61 @@ class KucoinPositionDeal(KucoinBaseBalance):
             current_contracts,
         )
 
+    def _close_with_market_fallback(
+        self, side: AddOrderReq.SideEnum, qty: int
+    ) -> OrderBase:
+        """Cross the spread with an IOC limit at the 1-tick matching-engine
+        price first (better fill than a market order when the book has the
+        depth); whatever doesn't fill immediately is guaranteed closed with
+        a market order for the residual qty, so this always fully closes.
+        """
+        limit_price = self.kucoin_futures_api.matching_engine(
+            self.kucoin_symbol, size=qty, side=side
+        )
+        order_response = self.kucoin_futures_api.place_futures_order(
+            symbol=self.kucoin_symbol,
+            side=side,
+            size=qty,
+            price=limit_price,
+            leverage=self.symbol_info.futures_leverage,
+            order_type=OrderType.limit,
+            reduce_only=True,
+            time_in_force=AddOrderReq.TimeInForceEnum.IMMEDIATE_OR_CANCEL,
+        )
+
+        filled_qty = 0.0
+        if order_response and order_response.order_id:
+            sleep(self.CLOSE_ALL_FILL_CHECK_SLEEP_S)
+            try:
+                details = self.kucoin_futures_api.retrieve_order(
+                    str(order_response.order_id)
+                )
+                filled_qty = float(details.filled_size or 0)
+            except Exception:
+                filled_qty = 0.0
+
+        remaining_qty = qty - filled_qty
+        if remaining_qty <= 0:
+            return order_response
+
+        return self.kucoin_futures_api.place_futures_order(
+            symbol=self.kucoin_symbol,
+            side=side,
+            size=int(round(remaining_qty)),
+            leverage=self.symbol_info.futures_leverage,
+            order_type=OrderType.market,
+            reduce_only=True,
+        )
+
     def close_all(self, algorithmic_close: bool = False) -> BotModel:
         """
         Closes all open positions and cancels all orders.
         To be used also for panic selling from terminal.
+
+        Tries a spread-crossing limit order first for a better fill; any
+        amount that doesn't fill immediately is guaranteed closed with a
+        market order for whatever qty is left (see
+        _close_with_market_fallback).
         """
         deal_type = (
             DealType.algorithmic_close if algorithmic_close else DealType.panic_close
@@ -1889,25 +2011,19 @@ class KucoinPositionDeal(KucoinBaseBalance):
         position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
 
         if position and float(position.current_qty) != 0:
-            if self.active_bot.position == Position.short:
-                order_response = self.kucoin_futures_api.buy(
-                    symbol=self.kucoin_symbol,
-                    qty=abs(int(position.current_qty)),
-                    reduce_only=True,
-                )
-            else:
-                order_response = self.kucoin_futures_api.sell(
-                    symbol=self.kucoin_symbol,
-                    qty=abs(int(position.current_qty)),
-                    reduce_only=True,
-                    leverage=self.symbol_info.futures_leverage,
-                )
+            qty = abs(int(position.current_qty))
+            close_side = (
+                AddOrderReq.SideEnum.BUY
+                if self.active_bot.position == Position.short
+                else AddOrderReq.SideEnum.SELL
+            )
+            order_response = self._close_with_market_fallback(close_side, qty)
 
             order_model = OrderModel(**order_response.model_dump())
             order_model.deal_type = deal_type
             self.active_bot.orders.append(order_model)
             self.active_bot.deal.closing_price = order_response.price
-            self.active_bot.deal.closing_qty = abs(int(position.current_qty))
+            self.active_bot.deal.closing_qty = qty
             self.active_bot.status = Status.completed
             self.controller.update_logs(
                 bot=self.active_bot,
