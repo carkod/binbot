@@ -20,6 +20,7 @@ from api.databases.crud.bot_crud import BotTableCrud
 from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
 from api.databases.tables.bot_table import BotTable, PaperTradingTable
 from api.databases.tables.deal_table import DealTable
+from api.exchange_apis.kucoin.futures.futures_deal import EntryLiquidityError
 from streaming.lifecycle import Lifecycle
 
 
@@ -222,3 +223,34 @@ def test_exit_pending_calls_open_deal_and_returns_early():
 
     assert open_deal_calls == [True]
     assert result.status == Status.active
+
+
+def test_exit_pending_returns_persisted_liquidity_rejection_without_crashing():
+    bot = BotModel(
+        pair="BTCUSDT",
+        market_type=MarketType.FUTURES,
+        status=Status.pending,
+    )
+
+    class StubController:
+        def save(self, b):
+            return b
+
+    def reject_entry():
+        bot.status = Status.error
+        raise EntryLiquidityError("Entry rejected: hollow book")
+
+    execution = types.SimpleNamespace(
+        active_bot=bot,
+        controller=StubController(),
+        price_precision=2,
+        open_deal=reject_entry,
+    )
+    position_deal = Lifecycle(
+        execution=cast(Any, execution),
+        base_streaming=types.SimpleNamespace(),
+    )
+
+    result = Lifecycle.exit(position_deal, close_price=100.0)
+
+    assert result.status == Status.error

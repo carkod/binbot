@@ -22,6 +22,16 @@ from api.grid_ladders.base_lifecycle import (
     TERMINAL_GRID_ORDER_STATUSES,
     BaseLifecycle,
 )
+from api.exchange_apis.kucoin.futures.liquidity import (
+    calculate_liquidity_snapshot,
+    load_futures_order_book,
+)
+
+
+GRID_LIQUIDITY_PRICE_BAND_BPS = 50.0
+GRID_LIQUIDITY_MAX_SPREAD_BPS = 20.0
+GRID_LIQUIDITY_MAX_SLIPPAGE_BPS = 25.0
+GRID_LIQUIDITY_MAX_DATA_AGE_MS = 2_000
 
 
 class GridLadderLifecycle(BaseLifecycle):
@@ -173,6 +183,106 @@ class GridLadderLifecycle(BaseLifecycle):
         placed_order_ids: list[str] = []
 
         try:
+            largest_level_by_side = {
+                side: max(
+                    (
+                        level.contracts
+                        for level in ladder.levels
+                        if level.side == side and level.contracts > 0
+                    ),
+                    default=0,
+                )
+                for side in ("buy", "sell")
+            }
+            order_book = load_futures_order_book(
+                self.base_streaming.kucoin_futures_api,
+                symbol_row.get_futures_symbol(),
+            )
+            liquidity_snapshots = {
+                side: calculate_liquidity_snapshot(
+                    order_book,
+                    self._side_enum(side),
+                    contracts,
+                    GRID_LIQUIDITY_PRICE_BAND_BPS,
+                )
+                for side, contracts in largest_level_by_side.items()
+                if contracts > 0
+            }
+            first_snapshot = next(iter(liquidity_snapshots.values()), None)
+            if first_snapshot is None:
+                raise RuntimeError(
+                    "Grid liquidity rejected: ladder has no executable entry levels"
+                )
+
+            self.crud.update_logs(
+                ladder.id,
+                {
+                    "event": "liquidity_snapshot",
+                    "spread_bps": round(first_snapshot.spread_bps, 4),
+                    "depth_contracts": {
+                        "10bps": {
+                            "bid": first_snapshot.bid_depth_10_bps,
+                            "ask": first_snapshot.ask_depth_10_bps,
+                        },
+                        "25bps": {
+                            "bid": first_snapshot.bid_depth_25_bps,
+                            "ask": first_snapshot.ask_depth_25_bps,
+                        },
+                        "50bps": {
+                            "bid": first_snapshot.bid_depth_50_bps,
+                            "ask": first_snapshot.ask_depth_50_bps,
+                        },
+                    },
+                    "execution": {
+                        side: {
+                            "requested_contracts": snapshot.requested_contracts,
+                            "contracts_fillable": snapshot.contracts_fillable,
+                            "expected_average_fill_price": snapshot.expected_average_fill_price,
+                            "expected_slippage_bps": snapshot.expected_slippage_bps,
+                        }
+                        for side, snapshot in liquidity_snapshots.items()
+                    },
+                    "book_imbalance": first_snapshot.book_imbalance,
+                    "data_age_ms": first_snapshot.data_age_ms,
+                },
+            )
+
+            if first_snapshot.data_age_ms > GRID_LIQUIDITY_MAX_DATA_AGE_MS:
+                raise RuntimeError(
+                    "Grid liquidity rejected: KuCoin futures order book is stale "
+                    f"({first_snapshot.data_age_ms}ms > "
+                    f"{GRID_LIQUIDITY_MAX_DATA_AGE_MS}ms)"
+                )
+            if first_snapshot.spread_bps > GRID_LIQUIDITY_MAX_SPREAD_BPS:
+                raise RuntimeError(
+                    "Grid liquidity rejected: KuCoin futures spread is excessive "
+                    f"({first_snapshot.spread_bps:.2f}bps > "
+                    f"{GRID_LIQUIDITY_MAX_SPREAD_BPS:g}bps)"
+                )
+
+            for side, snapshot in liquidity_snapshots.items():
+                if snapshot.contracts_fillable < snapshot.requested_contracts:
+                    raise RuntimeError(
+                        f"Grid liquidity rejected: hollow {side} book has only "
+                        f"{snapshot.contracts_fillable:g} contracts fillable "
+                        f"within {GRID_LIQUIDITY_PRICE_BAND_BPS:g}bps for a "
+                        f"{snapshot.requested_contracts:g}-contract level"
+                    )
+                if (
+                    snapshot.expected_slippage_bps is None
+                    or snapshot.expected_slippage_bps > GRID_LIQUIDITY_MAX_SLIPPAGE_BPS
+                ):
+                    slippage = (
+                        f"{snapshot.expected_slippage_bps:.2f}bps"
+                        if snapshot.expected_slippage_bps is not None
+                        else "unavailable"
+                    )
+                    raise RuntimeError(
+                        f"Grid liquidity rejected: expected {side} slippage is "
+                        f"{slippage}; maximum is "
+                        f"{GRID_LIQUIDITY_MAX_SLIPPAGE_BPS:g}bps"
+                    )
+
             for level in ladder.levels:
                 if level.side == "neutral" or level.contracts <= 0:
                     continue

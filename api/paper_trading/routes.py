@@ -20,6 +20,7 @@ from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
 from api.databases.tables.bot_table import PaperTradingTable
 from api.databases.utils import get_session
 from api.deals.gateway import DealGateway
+from api.exchange_apis.kucoin.futures.futures_deal import EntryLiquidityError
 
 paper_trading_blueprint = APIRouter()
 ta = TypeAdapter(list[BotModel])
@@ -145,6 +146,13 @@ def activate(id: str, session: Session = Depends(get_session)):
 
         deal_instance.open_deal()
         return BotResponse(message="Successfully activated bot!", data=bot_model)
+    except EntryLiquidityError as error:
+        bot = PaperTradingTableCrud(session=session).get_one(bot_id=id)
+        return BotResponse(
+            data=BotModel.dump_from_table(bot),
+            message=error.message,
+            error=1,
+        )
     except BinbotErrors as error:
         deal_instance.update_logs(message=error.message)
         return BotResponse(data=bot_model, message=error.message, error=1)
