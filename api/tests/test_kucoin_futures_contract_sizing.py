@@ -6,6 +6,9 @@ from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
+from kucoin_universal_sdk.generate.futures.order.model_add_order_req import (
+    AddOrderReq,
+)
 from pybinbot import (
     BinbotErrors,
     BotModel,
@@ -144,9 +147,7 @@ def test_constructor_reuses_injected_exchange_dependencies(monkeypatch):
 
 
 def test_contracts_to_fiat_order_size_inverts_margin_sizing():
-    """
-    Inverse of margin-spend: 1 contract × 0.93269 price × 10 mult / 1 leverage.
-    """
+    """One contract uses 9.3269 USDT of initial margin at this price."""
     deal = make_sizing_deal()
 
     assert deal.contracts_to_fiat_order_size(contracts=1, price=0.93269) == 9.3269
@@ -225,6 +226,22 @@ def test_entry_liquidity_gate_downsizes_to_contracts_fillable_inside_price_band(
         for log in deal.active_bot.logs
     )
     assert any("depth50(bid/ask)" in log for log in deal.active_bot.logs)
+
+
+def test_entry_liquidity_gate_preserves_exchange_book_price_when_tightening_buy():
+    deal = make_sizing_deal(multiplier=1)
+    deal.active_bot.position = Position.long
+    deal.price_precision = 2
+    attach_order_book(
+        deal,
+        bids=[[99.99, 100]],
+        asks=[[100.005, 100]],
+    )
+
+    contracts, entry_limit_price = deal.liquidity_gated_contracts(10, 100.50)
+
+    assert contracts == 10
+    assert entry_limit_price == 100.005
 
 
 def test_entry_liquidity_gate_rejects_excessive_spread_and_records_reason():
@@ -523,6 +540,58 @@ def test_close_all_blends_partial_ioc_fill_with_market_fallback():
     assert [o.qty for o in result.orders] == [6, 4]
     assert result.deal.closing_price == pytest.approx(99.6)
     assert result.deal.closing_qty == 10
+
+
+def test_close_all_falls_back_to_market_using_live_position_direction():
+    class DummyFuturesApi:
+        def __init__(self) -> None:
+            self.place_calls: list[dict[str, Any]] = []
+
+        def get_futures_position(self, symbol: str) -> types.SimpleNamespace:
+            # Positive exchange quantity is a long even though the deliberately
+            # stale bot record below says short.
+            return types.SimpleNamespace(current_qty=5)
+
+        def matching_engine(self, symbol: str, size: float, side: Any) -> float:
+            raise RuntimeError("book unavailable")
+
+        def place_futures_order(self, **kwargs: Any) -> OrderBase:
+            self.place_calls.append(kwargs)
+            return OrderBase(
+                order_id="market-close",
+                order_type="market",
+                pair=kwargs["symbol"],
+                timestamp=1775008219262,
+                order_side=kwargs["side"].value,
+                qty=kwargs["size"],
+                price=99.0,
+                status=OrderStatus.FILLED,
+                time_in_force="GTC",
+                deal_type=DealType.panic_close,
+            )
+
+        def retrieve_order(self, order_id: str) -> types.SimpleNamespace:
+            return types.SimpleNamespace(filled_size="5", avg_deal_price="99.0")
+
+    deal = make_sizing_deal(multiplier=1)
+    deal.active_bot.position = Position.short
+    deal.kucoin_symbol = "TESTUSDTM"
+    deal.kucoin_futures_api = DummyFuturesApi()
+    deal.CLOSE_ALL_FILL_CHECK_SLEEP_S = 0
+    deal.controller = types.SimpleNamespace(
+        update_logs=lambda **kwargs: None,
+        save=lambda bot: bot,
+    )
+
+    result = KucoinPositionDeal.close_all(deal)
+
+    assert len(deal.kucoin_futures_api.place_calls) == 1
+    placed = deal.kucoin_futures_api.place_calls[0]
+    assert placed["side"] == AddOrderReq.SideEnum.SELL
+    assert placed["order_type"] == OrderType.market
+    assert placed["size"] == 5
+    assert result.status == Status.completed
+    assert result.deal.closing_price == 99.0
 
 
 def test_unfilled_base_order_logs_pending_wait_queue():

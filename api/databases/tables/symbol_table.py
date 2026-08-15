@@ -22,10 +22,10 @@ class SymbolTable(SQLModel, table=True):
     blacklist_reason: str = Field(default="")
     description: str = Field(default="", description="Description of the symbol")
     quote_asset: str = Field(
-        default="", description="in DOGEUSDC, DOGE would be quote asset"
+        default="", description="in DOGEUSDC, USDC would be quote asset"
     )
     base_asset: str = Field(
-        default="", description="in DOGEUSDC, USDC would be base asset"
+        default="", description="in DOGEUSDC, DOGE would be base asset"
     )
     cooldown: int = Field(default=0, description="Time in seconds between trades")
     cooldown_start_ts: int = Field(

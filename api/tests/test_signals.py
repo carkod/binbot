@@ -1,12 +1,18 @@
 from datetime import datetime, timezone, timedelta
 
 import pytest
+from pybinbot import SignalCreate, SignalModel
 from sqlmodel import Session, delete, select
 from api.databases.crud.signals_crud import SignalsCrud
 from api.databases.tables.signals_table import SignalsTable
 from api.tools.utils import utc_now
 
 _engine = None
+
+
+def test_signal_model_matches_signals_table_columns() -> None:
+    assert set(SignalModel.model_fields) == set(SignalsTable.model_fields)
+    assert "id" not in SignalCreate.model_fields
 
 
 def _make_session() -> Session:

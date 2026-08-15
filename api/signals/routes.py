@@ -1,13 +1,9 @@
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pybinbot import SignalCreate, SignalListResponse, SignalResponse
 from sqlmodel import Session
 from api.databases.crud.signals_crud import SignalsCrud
 from api.databases.utils import get_session
-from api.signals.models import (
-    SignalCreate,
-    SignalListResponse,
-    SignalResponse,
-)
 from api.user.models.user import UserTokenData
 from api.user.services.auth import get_current_user
 from api.databases.tables.signals_table import SignalsTable

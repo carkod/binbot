@@ -16,7 +16,7 @@ dependencies = [
     "sqlalchemy>=2.0.30",
     "alembic>=1.18.4",
     "alembic-postgresql-enum",
-    "pybinbot>=1.11.11",
+    "pybinbot>=1.11.13",
 ]
 
 [project.urls]
