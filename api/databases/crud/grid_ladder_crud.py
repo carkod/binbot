@@ -55,6 +55,7 @@ class GridLadderCrud:
     def create(
         self,
         *,
+        signal_id: int | None = None,
         symbol: str,
         fiat: str,
         exchange: ExchangeId | str,
@@ -71,6 +72,7 @@ class GridLadderCrud:
         context: dict,
     ) -> GridLadderTable:
         ladder = GridLadderTable(
+            signal_id=signal_id,
             symbol=symbol,
             fiat=fiat,
             exchange=exchange,

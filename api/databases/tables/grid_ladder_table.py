@@ -31,6 +31,9 @@ class GridLadderTable(SQLModel, table=True):
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True, index=True, unique=True)
+    signal_id: int | None = Field(
+        default=None, foreign_key="signals.id", ondelete="SET NULL", index=True
+    )
     symbol: str = Field(index=True)
     fiat: str = Field(default="USDC", index=True)
     exchange: ExchangeId = Field(

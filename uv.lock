@@ -366,7 +366,7 @@ requires-dist = [
     { name = "psycopg2-binary", specifier = ">=2.9.12" },
     { name = "py3cw", specifier = ">=0.0.39" },
     { name = "py4j", specifier = ">=0.10.9" },
-    { name = "pybinbot", specifier = ">=1.11.13" },
+    { name = "pybinbot", specifier = ">=1.11.15" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0.2" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=1.2.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=1.3.0" },
@@ -2114,7 +2114,7 @@ wheels = [
 
 [[package]]
 name = "pybinbot"
-version = "1.11.13"
+version = "1.11.15"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -2128,9 +2128,9 @@ dependencies = [
     { name = "requests" },
     { name = "websocket-client" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/db/4c/13a48e7557a94edaad5df3e94c2d378321cf02cf2d03025a007f0ad69b05/pybinbot-1.11.13.tar.gz", hash = "sha256:bf451a1d8e5e06fd8b145b1a5b3633a61905aef936bc2535cc1f29cc9e8c0ac4", size = 84347, upload-time = "2026-08-15T18:08:24.529Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1f/49/377a33006d864a5f7e8e9c25a0f75297ca4f46ec70ac7f836471cb07110e/pybinbot-1.11.15.tar.gz", hash = "sha256:16574e78c9571022291abd05af597d63743f94195da9da7242df2030cac03a6d", size = 84420, upload-time = "2026-08-15T21:16:04.39Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5d/8a/98f92aff5a2059c7b2000f012f9248126e3e5ed07a207e2986e145754460/pybinbot-1.11.13-py3-none-any.whl", hash = "sha256:ac92109032bef911dc65524c0dbfbebdc8b3ad39c2d2c6104b671e5776b81154", size = 76979, upload-time = "2026-08-15T18:08:23.117Z" },
+    { url = "https://files.pythonhosted.org/packages/6b/96/42971645d9043629f22452aae85741d7e44e1c42bbe81022ec7f853afdf5/pybinbot-1.11.15-py3-none-any.whl", hash = "sha256:15e157d0fffc223fc29ae644505ae59b0a476f744d6dab7ab114af8ba7e27927", size = 77004, upload-time = "2026-08-15T21:16:03.2Z" },
 ]
 
 [[package]]

@@ -5,6 +5,7 @@ from pybinbot import ExchangeId, MarketType
 
 
 class GridLadderCreate(BaseModel):
+    signal_id: int | None = None
     symbol: str = Field(min_length=1)
     fiat: str = Field(default="USDC", min_length=1)
     exchange: ExchangeId = Field(default=ExchangeId.KUCOIN)
