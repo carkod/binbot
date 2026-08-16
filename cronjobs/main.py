@@ -35,6 +35,7 @@ def main():
         hour=4,
         minute=0,
         id="update_symbols",
+        kwargs={"update_asset_classes": False},
     )
     scheduler.add_job(
         func=consolidated_accounts.store_balance,
@@ -77,6 +78,16 @@ def main():
             hour=3,
             minute=27,
             id="clean_balance_assets",
+        )
+    elif exchange == ExchangeId.KUCOIN:
+        scheduler.add_job(
+            func=symbols_crud.update_asset_classes,
+            trigger="cron",
+            timezone=config.timezone,
+            day_of_week=6,
+            hour=4,
+            minute=0,
+            id="update_asset_classes",
         )
     scheduler.add_job(
         func=market_domination.ingest_market_breadth,
