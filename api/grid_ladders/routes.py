@@ -306,6 +306,7 @@ def post_grid_ladder(
 
     reserved_margin = sum(level.margin_required for level in calculated.levels)
     ladder = grid_ladder_crud.create(
+        signal_id=payload.signal_id,
         symbol=payload.symbol,
         fiat=payload.fiat,
         exchange=payload.exchange,

@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from unittest.mock import patch
 from fastapi.testclient import TestClient
 from pytest import fixture, raises
@@ -16,6 +17,7 @@ from api.databases.tables.bot_table import BotTable
 from api.databases.tables.deal_table import DealTable
 from api.databases.tables.grid_ladder_table import GridLadderTable
 from api.databases.tables.recovery_bot_table import RecoveryBotTable
+from api.databases.tables.signals_table import SignalsTable
 from uuid import UUID, uuid4
 
 
@@ -191,8 +193,23 @@ def test_get_algo_ranking_ordered_by_count(client: TestClient):
     assert profits == sorted(profits, reverse=True)
 
 
-def test_create_bot(client: TestClient):
-    response = client.post("/bot", json=mock_bot_data_superusdt)
+def test_create_bot_persists_signal_id(client: TestClient, create_test_tables):
+    signal_id = 9001
+    with Session(create_test_tables) as session:
+        session.add(
+            SignalsTable(
+                id=signal_id,
+                algorithm_name="test_bot",
+                symbol=mock_bot_data_superusdt["pair"],
+                generated_at=datetime.now(UTC),
+                direction="long",
+            )
+        )
+        session.commit()
+
+    response = client.post(
+        "/bot", json={**mock_bot_data_superusdt, "signal_id": signal_id}
+    )
 
     assert response.status_code == 200
     content = response.json()
@@ -202,6 +219,7 @@ def test_create_bot(client: TestClient):
     assert (
         content["data"]["fiat_order_size"] == mock_bot_data_superusdt["fiat_order_size"]
     )
+    assert content["data"]["signal_id"] == signal_id
 
 
 def test_create_bot_without_recovery_params_creates_no_recovery_row(

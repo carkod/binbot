@@ -625,15 +625,34 @@ def test_calculate_grid_ladder_disables_unaffordable_levels(client, monkeypatch)
     assert all(level["side"] == "neutral" for level in detail["levels"])
 
 
-def test_post_grid_ladder_persists_ladder_and_levels(client, monkeypatch):
+def test_post_grid_ladder_persists_ladder_signal_and_levels(
+    client, monkeypatch, create_test_tables
+):
     _patch_balance(monkeypatch, 10_000)
     _patch_contract_meta(monkeypatch)
+    signal_id = 9002
+    with Session(create_test_tables) as session:
+        session.add(
+            SignalsTable(
+                id=signal_id,
+                algorithm_name="fixed_grid",
+                symbol="ADAUSDC",
+                generated_at=datetime.now(UTC),
+                direction="grid",
+                signal_kind="grid_deploy",
+            )
+        )
+        session.commit()
 
-    response = client.post("/grid-ladders", json=_payload())
+    payload = _payload()
+    payload["signal_id"] = signal_id
+
+    response = client.post("/grid-ladders", json=payload)
 
     assert response.status_code == 200
     body = response.json()
     ladder = body["detail"]
+    assert ladder["signal_id"] == signal_id
     assert ladder["symbol"] == "ADAUSDC"
     assert ladder["status"] == "pending"
     assert ladder["grid_step"] == 5
