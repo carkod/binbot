@@ -160,6 +160,25 @@ def _active_ladder(symbol: str, reserved_margin: float = 100) -> GridLadderTable
     )
 
 
+@pytest.mark.parametrize(
+    "bb_width,expected",
+    [
+        (0.01, (15.0, 18.0)),
+        (0.03, (15.0, 18.75)),
+        (0.10, (40.0, 50.0)),
+    ],
+)
+def test_grid_liquidity_thresholds_scale_and_clamp_with_initial_bb_width(
+    bb_width: float,
+    expected: tuple[float, float],
+) -> None:
+    lifecycle = object.__new__(GridLadderLifecycle)
+    ladder = _active_ladder("ADAUSDC")
+    ladder.context = {"symbol_features": {"ADAUSDC": {"bb_width": bb_width}}}
+
+    assert lifecycle._grid_liquidity_thresholds(ladder) == expected
+
+
 class FakeFuturesApi:
     def __init__(self):
         self.orders: list[dict] = []

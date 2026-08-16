@@ -14,6 +14,7 @@ from pybinbot import (
     OrderBase,
     OrderModel,
     OrderStatus,
+    OrderType,
     Position,
     RecoveryBotModel,
 )
@@ -600,10 +601,10 @@ def test_last_trailing_stop_replace_ignores_emergency_and_terminal_trailing_orde
 
 
 def test_place_trailing_stop_loss_logs_new_status_as_armed_stop():
-    calls: list[str] = []
+    calls: list[dict] = []
 
     def fake_place_futures_order(**kwargs):
-        calls.append("place")
+        calls.append(kwargs)
         return OrderBase(
             order_id="trail-1",
             order_type="market",
@@ -625,13 +626,15 @@ def test_place_trailing_stop_loss_logs_new_status_as_armed_stop():
     deal.kucoin_futures_api = types.SimpleNamespace(
         get_futures_position=lambda symbol: types.SimpleNamespace(current_qty=1),
         get_all_stop_loss_orders=lambda symbol: [],
-        batch_cancel_stop_loss_orders=lambda ids: calls.append("cancel"),
+        batch_cancel_stop_loss_orders=lambda ids: None,
         place_futures_order=fake_place_futures_order,
     )
 
     KucoinPositionDeal.place_trailing_stop_loss(deal)
 
-    assert calls == ["place"]
+    assert len(calls) == 1
+    assert calls[0]["order_type"] == OrderType.market
+    assert "price" not in calls[0]
     assert any(
         "Trailing stop armed on exchange with status" in log
         for log in deal.active_bot.logs
