@@ -2,6 +2,9 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 from api.account.controller import ConsolidatedAccounts
 from api.exchange_apis.binance.assets import Assets
 from api.databases.crud.signals_crud import SignalsCrud
+from api.databases.crud.top_gainers_losers_series_crud import (
+    TopGainersLosersSeriesCrud,
+)
 from api.databases.symbols_etl import SymbolDataEtl
 from api.charts.controllers import MarketDominationController
 from api.databases.utils import independent_session
@@ -19,6 +22,9 @@ def main():
     market_domination = MarketDominationController()
     symbols_crud = SymbolDataEtl()
     signals_crud = SignalsCrud()
+    top_gainers_losers_series_crud = TopGainersLosersSeriesCrud(
+        session=independent_session()
+    )
     web3_candidates_ingester = IngestWeb3Candidates(session=independent_session())
 
     autotrade_settings = assets.autotrade_settings
@@ -84,6 +90,14 @@ def main():
         timezone=config.timezone,
         minutes=15,
         id="ingest_market_breadth",
+    )
+    scheduler.add_job(
+        func=top_gainers_losers_series_crud.ingest,
+        trigger="cron",
+        timezone="UTC",
+        hour=9,
+        minute=0,
+        id="ingest_top_gainers_losers",
     )
     scheduler.start()
 

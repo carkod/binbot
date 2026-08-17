@@ -92,6 +92,21 @@ class CandlestickResponse(StandardResponse):
     data: list[CandlestickData]
 
 
+class TopMoverEntry(BaseModel):
+    symbol: str
+    price_change_percent: float
+
+
+class GainersLosersSnapshot(BaseModel):
+    recorded_at: datetime.datetime
+    top_gainers: list[TopMoverEntry]
+    top_losers: list[TopMoverEntry]
+
+
+class GainersLosersSeriesResponse(StandardResponse):
+    data: list[GainersLosersSnapshot]
+
+
 class MarketBreadthSample(BaseModel):
     """
     Ingest payload for one market-breadth sample before it is mapped to the
