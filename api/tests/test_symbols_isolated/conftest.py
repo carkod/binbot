@@ -36,7 +36,12 @@ def create_symbol_test_tables():
     _test_engine_symbols = test_engine
     SQLModel.metadata.create_all(test_engine)
 
-    # Override get_session to use this isolated test database
+    # Override get_session to use this isolated test database, keeping the
+    # parent conftest's override so it can be restored afterwards instead of
+    # leaving app.dependency_overrides empty for every test file that runs
+    # after this one.
+    original_get_session_override = app.dependency_overrides.get(get_session)
+
     @contextmanager
     def get_test_session_manager():
         with Session(test_engine) as session:
@@ -94,5 +99,8 @@ def create_symbol_test_tables():
 
     # Clean up
     patcher1.stop()
-    app.dependency_overrides.clear()
+    if original_get_session_override is not None:
+        app.dependency_overrides[get_session] = original_get_session_override
+    else:
+        app.dependency_overrides.pop(get_session, None)
     SQLModel.metadata.drop_all(test_engine)

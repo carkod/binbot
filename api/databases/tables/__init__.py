@@ -11,4 +11,5 @@ from .symbol_exchange_table import *  # noqa
 from .market_breadth_table import *  # noqa
 from .signals_table import *  # noqa
 from .grid_ladder_table import *  # noqa
+from .top_gainers_losers_series_table import *  # noqa
 from api.databases.web3_candidates import *  # noqa
