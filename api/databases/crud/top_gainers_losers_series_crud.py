@@ -1,8 +1,8 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from pybinbot import BinanceApi
-from sqlmodel import Session, col, select
+from sqlmodel import Session, col, delete, select
 
 from api.databases.crud.autotrade_crud import AutotradeCrud
 from api.databases.tables.top_gainers_losers_series_table import (
@@ -14,7 +14,7 @@ from api.tools.config import Config
 
 class TopGainersLosersSeriesCrud:
     """
-    CRUD operations for `top_gainers_losers_series` — daily snapshots of the
+    CRUD operations for `top_gainers_losers_series` — hourly snapshots of the
     biggest 24h Binance spot movers, kept to spot patterns for new strategies.
     """
 
@@ -38,7 +38,7 @@ class TopGainersLosersSeriesCrud:
     def ingest(self, top: int = 10) -> list[TopGainersLosersSeriesTable]:
         """
         Pull the current 24h ticker ranking from Binance and persist the
-        top N gainers and top N losers as one row each. Called once a day
+        top N gainers and top N losers as one row each. Called once an hour
         by the cron. Exchange clients are built here rather than in
         __init__ so the read path (query_series, used by the public,
         unauthenticated GET endpoint) never needs Binance credentials.
@@ -88,9 +88,9 @@ class TopGainersLosersSeriesCrud:
                 session.commit()
         return created
 
-    def query_series(self, limit: int = 7) -> list[dict[str, Any]]:
+    def query_series(self, limit: int = 168) -> list[dict[str, Any]]:
         """
-        Return up to `limit` most recent daily snapshots, newest first, each
+        Return up to `limit` most recent hourly snapshots, newest first, each
         with its top gainers and top losers ordered by rank.
         """
         with get_db_session(self._external_session) as session:
@@ -137,3 +137,18 @@ class TopGainersLosersSeriesCrud:
                 snapshot["top_losers"].append(entry)
 
         return sorted(snapshots.values(), key=lambda s: s["recorded_at"], reverse=True)
+
+    def delete_entries_older_than_90_days(self) -> int:
+        """
+        Keep roughly 43,200 rows at the default top-10 hourly ingestion rate.
+        """
+
+        cutoff = datetime.now(timezone.utc) - timedelta(days=90)
+        stmt = delete(TopGainersLosersSeriesTable).where(
+            col(TopGainersLosersSeriesTable.recorded_at) < cutoff
+        )
+        with get_db_session(self._external_session) as session:
+            result = session.exec(stmt)
+            if self._external_session is not None:
+                session.commit()
+            return result.rowcount or 0

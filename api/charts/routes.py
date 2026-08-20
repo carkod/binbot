@@ -44,10 +44,12 @@ def get_market_breadth(size: int = 14, session: Session = Depends(get_session)):
 @charts_blueprint.get(
     "/gainers-losers-series",
     tags=["charts"],
-    summary="Daily top-10 gainers/losers snapshots (no auth, freely accessible)",
+    summary="Hourly top-10 gainers/losers snapshots (no auth, freely accessible)",
     response_model=GainersLosersSeriesResponse,
 )
-def get_gainers_losers_series(limit: int = 7, session: Session = Depends(get_session)):
+def get_gainers_losers_series(
+    limit: int = 168, session: Session = Depends(get_session)
+):
     try:
         data = TopGainersLosersSeriesCrud(session=session).query_series(limit=limit)
         if not data:
