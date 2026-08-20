@@ -17,10 +17,18 @@ def _make_session() -> Session:
     return Session(_engine, expire_on_commit=False)
 
 
-def _ticker(symbol: str, price_change_percent: float) -> dict:
+def _ticker(
+    symbol: str,
+    price_change_percent: float,
+    *,
+    bid_price: float = 1.0,
+    ask_price: float = 1.0,
+) -> dict:
     return {
         "symbol": symbol,
         "priceChangePercent": str(price_change_percent),
+        "bidPrice": str(bid_price),
+        "askPrice": str(ask_price),
     }
 
 
@@ -74,6 +82,30 @@ def test_ingest_ranks_gainers_and_losers_by_percent_change():
         (1, "BUSDC", -12.0),
         (2, "DUSDC", -3.0),
     ]
+
+
+def test_ingest_excludes_delisted_symbols_with_no_active_market():
+    """
+    Delisted/halted symbols keep serving Binance's last real 24h ticker
+    window forever (no new trade ever rolls it forward), frozen with a
+    zero bid/ask and often an extreme priceChangePercent that would
+    otherwise permanently occupy a top rank.
+    """
+    session = _make_session()
+    ticker_rows = [
+        _ticker("AUSDC", 25.0),
+        _ticker("DEADUSDC", 999.0, bid_price=0.0, ask_price=0.0),
+        _ticker("CUSDC", 5.0),
+        _ticker("GHOSTUSDC", -999.0, bid_price=0.0, ask_price=0.0),
+        _ticker("DUSDC", -3.0),
+    ]
+
+    rows = _ingest_with_fake_ticker(session, ticker_rows, top=2)
+
+    symbols = {r.symbol for r in rows}
+    assert "DEADUSDC" not in symbols
+    assert "GHOSTUSDC" not in symbols
+    assert symbols == {"AUSDC", "CUSDC", "DUSDC"}
 
 
 def test_ingest_persists_rows():

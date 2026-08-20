@@ -21,6 +21,20 @@ class TopGainersLosersSeriesCrud:
     def __init__(self, session: Session | None = None):
         self._external_session = session
 
+    @staticmethod
+    def _has_active_market(item: dict[str, Any]) -> bool:
+        """
+        Delisted/halted symbols keep returning Binance's last real 24h
+        ticker window forever (no new trade ever rolls it forward), so their
+        priceChangePercent can sit frozen at an extreme value indefinitely.
+        A zero bid/ask means there's no live order book, i.e. the window is
+        stale rather than a genuine live mover.
+        """
+        try:
+            return float(item["bidPrice"]) > 0 and float(item["askPrice"]) > 0
+        except (KeyError, TypeError, ValueError):
+            return False
+
     def ingest(self, top: int = 10) -> list[TopGainersLosersSeriesTable]:
         """
         Pull the current 24h ticker ranking from Binance and persist the
@@ -35,7 +49,11 @@ class TopGainersLosersSeriesCrud:
 
         ticker_data = binance_api.ticker_24()
         ranked = sorted(
-            (item for item in ticker_data if item["symbol"].endswith(fiat)),
+            (
+                item
+                for item in ticker_data
+                if item["symbol"].endswith(fiat) and self._has_active_market(item)
+            ),
             key=lambda item: float(item["priceChangePercent"]),
             reverse=True,
         )

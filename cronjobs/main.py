@@ -94,7 +94,7 @@ def main():
     scheduler.add_job(
         func=top_gainers_losers_series_crud.ingest,
         trigger="cron",
-        timezone="UTC",
+        timezone=config.timezone,
         hour=9,
         minute=0,
         id="ingest_top_gainers_losers",
