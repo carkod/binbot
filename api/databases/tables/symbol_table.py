@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Field, Relationship
 from pybinbot import timestamp
-from sqlalchemy import BigInteger, Column
+from sqlalchemy import BigInteger, Column, String
 from pydantic import field_validator
 from typing import TYPE_CHECKING
 
@@ -21,6 +21,12 @@ class SymbolTable(SQLModel, table=True):
     active: bool = Field(default=True, description="Blacklisted items = False")
     blacklist_reason: str = Field(default="")
     description: str = Field(default="", description="Description of the symbol")
+    asset_class: str = Field(
+        default="",
+        max_length=32,
+        description="Persistent market regime used to route trading strategies",
+        sa_column=Column(String(32), nullable=False, server_default=""),
+    )
     quote_asset: str = Field(
         default="", description="in DOGEUSDC, USDC would be quote asset"
     )

@@ -110,6 +110,7 @@ class SymbolsCrud(SymbolsCrudUtils):
                 id=symbol_table.id,
                 active=symbol_table.active,
                 blacklist_reason=symbol_table.blacklist_reason,
+                asset_class=symbol_table.asset_class,
                 cooldown=symbol_table.cooldown,
                 cooldown_start_ts=symbol_table.cooldown_start_ts,
                 futures_leverage=symbol_table.futures_leverage,
@@ -152,6 +153,7 @@ class SymbolsCrud(SymbolsCrudUtils):
                 data = SymbolModel(
                     active=result.active,
                     blacklist_reason=result.blacklist_reason,
+                    asset_class=result.asset_class,
                     cooldown=result.cooldown,
                     cooldown_start_ts=result.cooldown_start_ts,
                     futures_leverage=result.futures_leverage,
@@ -190,6 +192,7 @@ class SymbolsCrud(SymbolsCrudUtils):
                 data = SymbolModel(
                     active=result.active,
                     blacklist_reason=result.blacklist_reason,
+                    asset_class=result.asset_class,
                     cooldown=result.cooldown,
                     cooldown_start_ts=result.cooldown_start_ts,
                     futures_leverage=result.futures_leverage,
@@ -244,6 +247,7 @@ class SymbolsCrud(SymbolsCrudUtils):
                 id=symbol_table.id,
                 active=symbol_table.active,
                 blacklist_reason=symbol_table.blacklist_reason,
+                asset_class=symbol_table.asset_class,
                 cooldown=symbol_table.cooldown,
                 cooldown_start_ts=symbol_table.cooldown_start_ts,
                 futures_leverage=symbol_table.futures_leverage,
