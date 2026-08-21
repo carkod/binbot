@@ -8,6 +8,7 @@ from pybinbot import (
     timestamp,
 )
 
+from api.databases.crud.autotrade_crud import AutotradeCrud
 from api.databases.crud.symbols_crud import SymbolsCrud
 from api.databases.tables.grid_ladder_table import (
     GridLadderTable,
@@ -62,6 +63,19 @@ class GridLadderLifecycle(BaseLifecycle):
             return
 
         if status == GridLadderStatus.pending.value:
+            if (
+                not AutotradeCrud(session=self.session)
+                .get_settings()
+                .enable_grid_ladders
+            ):
+                self.crud.update_logs(
+                    ladder.id,
+                    {
+                        "event": "grid_ladders_disabled",
+                        "reason": "enable_grid_ladders is off; leaving pending until enabled",
+                    },
+                )
+                return
             self._place_initial_entries(ladder)
             return
 
