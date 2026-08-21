@@ -4,6 +4,8 @@ import pytest
 from pybinbot import SignalCreate, SignalModel
 from sqlmodel import Session, delete, select
 from api.databases.crud.signals_crud import SignalsCrud
+from api.databases.tables.bot_table import BotTable
+from api.databases.tables.grid_ladder_table import GridLadderTable
 from api.databases.tables.signals_table import SignalsTable
 from api.tools.utils import utc_now
 
@@ -175,6 +177,63 @@ def test_delete_entries_older_than_14_days_removes_only_stale_rows():
     assert deleted_count == 1
     rows = session.exec(select(SignalsTable)).all()
     assert {row.algorithm_name for row in rows} == {"recent_strategy"}
+
+
+def test_delete_entries_older_than_14_days_keeps_bot_and_grid_ladder_signals():
+    session = _make_session()
+    crud = SignalsCrud(session)
+    generated_at = utc_now() - timedelta(days=15)
+    bot_signal = crud.create(
+        algorithm_name="bot_strategy",
+        symbol="BTCUSDC",
+        generated_at=generated_at,
+        direction="LONG",
+    )
+    grid_signal = crud.create(
+        algorithm_name="grid_strategy",
+        symbol="ETHUSDC",
+        generated_at=generated_at,
+        direction="grid",
+    )
+    unreferenced_signal = crud.create(
+        algorithm_name="unreferenced_strategy",
+        symbol="SOLUSDC",
+        generated_at=generated_at,
+        direction="LONG",
+    )
+    assert bot_signal.id is not None
+    assert grid_signal.id is not None
+    assert unreferenced_signal.id is not None
+
+    bot = BotTable(pair="BTCUSDC", signal_id=bot_signal.id)
+    ladder = GridLadderTable(
+        signal_id=grid_signal.id,
+        symbol="ETHUSDC",
+        range_low=90,
+        range_high=110,
+        grid_step=10,
+        level_count=3,
+        total_margin=15,
+        breakout_low=85,
+        breakout_high=115,
+    )
+    session.add(bot)
+    session.add(ladder)
+    session.commit()
+
+    try:
+        deleted_count = SignalsCrud().delete_entries_older_than_14_days()
+
+        assert deleted_count == 1
+        rows = session.exec(select(SignalsTable)).all()
+        assert {row.algorithm_name for row in rows} == {
+            "bot_strategy",
+            "grid_strategy",
+        }
+    finally:
+        session.delete(bot)
+        session.delete(ladder)
+        session.commit()
 
 
 def test_post_signal_endpoint(client):

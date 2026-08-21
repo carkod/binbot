@@ -1,8 +1,13 @@
 from datetime import datetime, timedelta
 from typing import Any, Sequence, cast
+
+from sqlalchemy import exists
 from sqlalchemy.orm import load_only
 from sqlmodel import Session, col, delete, select
 from sqlmodel.sql.expression import SelectOfScalar
+
+from api.databases.tables.bot_table import BotTable
+from api.databases.tables.grid_ladder_table import GridLadderTable
 from api.databases.tables.signals_table import SignalsTable
 from api.databases.utils import get_db_session
 from api.tools.utils import utc_now
@@ -150,7 +155,17 @@ class SignalsCrud:
 
     def delete_entries_older_than_14_days(self) -> int:
         cutoff = utc_now() - timedelta(days=14)
-        stmt = delete(SignalsTable).where(col(SignalsTable.generated_at) < cutoff)
+        bot_reference_exists = exists().where(
+            col(BotTable.signal_id) == col(SignalsTable.id)
+        )
+        grid_ladder_reference_exists = exists().where(
+            col(GridLadderTable.signal_id) == col(SignalsTable.id)
+        )
+        stmt = delete(SignalsTable).where(
+            col(SignalsTable.generated_at) < cutoff,
+            ~bot_reference_exists,
+            ~grid_ladder_reference_exists,
+        )
         if self._external_session is not None:
             result = self._external_session.exec(stmt)
             return result.rowcount or 0

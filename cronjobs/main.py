@@ -60,6 +60,15 @@ def main():
         id="delete_old_signals",
     )
     scheduler.add_job(
+        func=top_gainers_losers_series_crud.delete_entries_older_than_90_days,
+        trigger="cron",
+        timezone=config.timezone,
+        day_of_week=6,
+        hour=1,
+        minute=10,
+        id="delete_old_top_gainers_losers_series",
+    )
+    scheduler.add_job(
         func=web3_candidates_ingester.ingest_web3_candidates,
         trigger="cron",
         timezone=config.timezone,
@@ -93,10 +102,9 @@ def main():
     )
     scheduler.add_job(
         func=top_gainers_losers_series_crud.ingest,
-        trigger="cron",
+        trigger="interval",
         timezone=config.timezone,
-        hour=9,
-        minute=0,
+        hours=1,
         id="ingest_top_gainers_losers",
     )
     scheduler.start()

@@ -177,6 +177,36 @@ def test_query_series_returns_empty_list_when_no_data():
     assert TopGainersLosersSeriesCrud(session=session).query_series() == []
 
 
+def test_delete_entries_older_than_90_days_removes_only_stale_rows():
+    session = _make_session()
+    now = datetime.now(timezone.utc)
+    session.add_all(
+        [
+            TopGainersLosersSeriesTable(
+                recorded_at=now - timedelta(days=91),
+                side="gainer",
+                rank=1,
+                symbol="STALEUSDC",
+                price_change_percent=10.0,
+            ),
+            TopGainersLosersSeriesTable(
+                recorded_at=now - timedelta(days=89),
+                side="gainer",
+                rank=1,
+                symbol="RECENTUSDC",
+                price_change_percent=10.0,
+            ),
+        ]
+    )
+    session.commit()
+
+    deleted_count = TopGainersLosersSeriesCrud().delete_entries_older_than_90_days()
+
+    assert deleted_count == 1
+    rows = session.exec(select(TopGainersLosersSeriesTable)).all()
+    assert {row.symbol for row in rows} == {"RECENTUSDC"}
+
+
 def test_get_gainers_losers_series_endpoint(client):
     session = _make_session()
     recorded_at = datetime(2026, 8, 10, 9, 0, tzinfo=timezone.utc)
@@ -207,6 +237,42 @@ def test_get_gainers_losers_series_endpoint(client):
     assert len(body) == 1
     assert body[0]["top_gainers"] == [{"symbol": "AUSDC", "price_change_percent": 10.0}]
     assert body[0]["top_losers"] == [{"symbol": "BUSDC", "price_change_percent": -10.0}]
+
+
+def test_get_gainers_losers_series_defaults_to_seven_days_of_hourly_snapshots(client):
+    session = _make_session()
+    oldest = datetime(2026, 8, 10, 0, 0, tzinfo=timezone.utc)
+    rows = []
+    for index in range(169):
+        recorded_at = oldest + timedelta(hours=index)
+        rows.extend(
+            [
+                TopGainersLosersSeriesTable(
+                    recorded_at=recorded_at,
+                    side="gainer",
+                    rank=1,
+                    symbol=f"G{index}USDC",
+                    price_change_percent=10.0,
+                ),
+                TopGainersLosersSeriesTable(
+                    recorded_at=recorded_at,
+                    side="loser",
+                    rank=1,
+                    symbol=f"L{index}USDC",
+                    price_change_percent=-10.0,
+                ),
+            ]
+        )
+    session.add_all(rows)
+    session.commit()
+
+    response = client.get("/charts/gainers-losers-series")
+
+    assert response.status_code == 200, response.text
+    body = response.json()["data"]
+    assert len(body) == 168
+    assert body[0]["top_gainers"][0]["symbol"] == "G168USDC"
+    assert body[-1]["top_gainers"][0]["symbol"] == "G1USDC"
 
 
 def test_get_gainers_losers_series_endpoint_404_when_empty(client):

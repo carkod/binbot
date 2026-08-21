@@ -6,7 +6,7 @@ from sqlmodel import SQLModel, Field
 class TopGainersLosersSeriesTable(SQLModel, table=True):
     """
     One row per (recorded_at, side, rank) — a symbol's 24h price change
-    percent captured in a daily top-10 gainers/losers snapshot, so patterns
+    percent captured in an hourly top-10 gainers/losers snapshot, so patterns
     across days can be queried directly in SQL for future strategy analysis.
     """
 
