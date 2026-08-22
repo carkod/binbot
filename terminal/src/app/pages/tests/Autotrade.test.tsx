@@ -1,4 +1,5 @@
 import { render, screen as rtlScreen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { makeStore } from "../../store";
 import { MemoryRouter } from "react-router-dom";
@@ -24,6 +25,12 @@ const renderAutotradePage = () =>
     </Provider>,
   );
 
+const enableGridLadders = async () => {
+  const user = userEvent.setup();
+  const toggle = document.querySelector('label[for="enable_grid_ladders"].btn');
+  await user.click(toggle as HTMLElement);
+};
+
 describe("Autotrade page", () => {
   it("renders without crashing", () => {
     const { container } = renderAutotradePage();
@@ -31,10 +38,27 @@ describe("Autotrade page", () => {
     expect(container.querySelector(".container")).not.toBeNull();
   });
 
-  it("renders grid trading settings", () => {
+  it("hides grid ladder fields until enable_grid_ladders is toggled on", () => {
     renderAutotradePage();
 
     expect(rtlScreen.getByText("Grid trading")).toBeTruthy();
+    expect(rtlScreen.getByLabelText("Enable grid ladders?")).toBeTruthy();
+    [
+      "Grid allocation pct",
+      "Grid cash reserve pct",
+      "Grid total margin",
+      "Grid level count",
+      "Grid max active ladders",
+      "Max margin per ladder pct",
+    ].forEach((label) => {
+      expect(rtlScreen.queryByLabelText(label)).toBeNull();
+    });
+  });
+
+  it("reveals grid trading settings once enable_grid_ladders is on", async () => {
+    renderAutotradePage();
+    await enableGridLadders();
+
     [
       "Grid allocation pct",
       "Grid cash reserve pct",
@@ -47,8 +71,9 @@ describe("Autotrade page", () => {
     });
   });
 
-  it("uses grid trading defaults from the autotrade slice", () => {
+  it("uses grid trading defaults from the autotrade slice", async () => {
     renderAutotradePage();
+    await enableGridLadders();
 
     expect(
       (rtlScreen.getByLabelText("Grid allocation pct") as HTMLInputElement)
@@ -77,8 +102,9 @@ describe("Autotrade page", () => {
     ).toBe(String(initialAutotradeSettings.max_margin_per_ladder_pct));
   });
 
-  it("allows fractional grid trading values", () => {
+  it("allows fractional grid trading values", async () => {
     renderAutotradePage();
+    await enableGridLadders();
 
     [
       "Grid allocation pct",
@@ -92,8 +118,9 @@ describe("Autotrade page", () => {
     });
   });
 
-  it("keeps grid count fields on whole-number steps", () => {
+  it("keeps grid count fields on whole-number steps", async () => {
     renderAutotradePage();
+    await enableGridLadders();
 
     ["Grid level count", "Grid max active ladders"].forEach((label) => {
       expect((rtlScreen.getByLabelText(label) as HTMLInputElement).step).toBe(

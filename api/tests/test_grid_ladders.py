@@ -22,6 +22,7 @@ from pybinbot import (
 from sqlmodel import Session, delete
 
 from api.databases.crud.grid_ladder_crud import GridLadderCrud
+from api.databases.tables.autotrade_table import AutotradeTable
 from api.databases.tables.bot_table import BotTable
 from api.databases.tables.deal_table import DealTable
 from api.databases.tables.grid_ladder_table import (
@@ -906,6 +907,42 @@ def test_grid_lifecycle_rounds_pending_ladder_prices_before_placing_orders(
         0.0104,
         0.0106,
     ]
+
+
+def test_grid_lifecycle_leaves_pending_ladder_untouched_when_disabled(
+    client, monkeypatch, create_test_tables
+):
+    """enable_grid_ladders is the master switch: a pending ladder should not
+    place any entries while it's off, and should not be treated as an error
+    either (nothing has been risked yet)."""
+    _patch_balance(monkeypatch, 10_000)
+    _patch_contract_meta(monkeypatch)
+    response = client.post("/grid-ladders", json=_payload())
+    assert response.status_code == 200
+
+    def _set_enable_grid_ladders(value: bool) -> None:
+        with Session(create_test_tables) as session:
+            settings = session.get(AutotradeTable, "autotrade_settings")
+            assert settings is not None
+            settings.enable_grid_ladders = value
+            session.add(settings)
+            session.commit()
+
+    _set_enable_grid_ladders(False)
+    try:
+        fake_api = FakeFuturesApi()
+        with Session(create_test_tables) as session:
+            GridLadderLifecycle(_grid_base(fake_api), session).process_symbol("ADAUSDC")
+
+        assert fake_api.orders == []
+        refreshed = client.get(f"/grid-ladders/{response.json()['detail']['id']}")
+        detail = refreshed.json()["detail"]
+        assert detail["status"] == "pending"
+        assert detail["logs"][-1]["event"] == "grid_ladders_disabled"
+    finally:
+        # This fixture's DB is session-scoped/shared across tests — restore
+        # the flag so later tests aren't silently affected.
+        _set_enable_grid_ladders(True)
 
 
 def test_grid_lifecycle_places_take_profit_after_entry_fill(

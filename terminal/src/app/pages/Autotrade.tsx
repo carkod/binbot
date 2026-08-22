@@ -62,6 +62,7 @@ export const AutotradePage: FC<{}> = () => {
       grid_level_count: settings.grid_level_count,
       grid_max_active_ladders: settings.grid_max_active_ladders,
       max_margin_per_ladder_pct: settings.max_margin_per_ladder_pct,
+      enable_grid_ladders: settings.enable_grid_ladders,
     },
   });
 
@@ -120,6 +121,7 @@ export const AutotradePage: FC<{}> = () => {
         grid_level_count: settings.grid_level_count,
         grid_max_active_ladders: settings.grid_max_active_ladders,
         max_margin_per_ladder_pct: settings.max_margin_per_ladder_pct,
+        enable_grid_ladders: settings.enable_grid_ladders,
       });
     }
 
@@ -408,64 +410,98 @@ export const AutotradePage: FC<{}> = () => {
             <Container>
               <Row>
                 <Col md="3">
-                  <SettingsInput
-                    value={settings.grid_allocation_pct}
-                    name={"grid_allocation_pct"}
-                    label={"Grid allocation pct"}
-                    type="number"
-                    register={register}
-                  />
-                </Col>
-                <Col md="3">
-                  <SettingsInput
-                    value={settings.grid_cash_reserve_pct}
-                    name={"grid_cash_reserve_pct"}
-                    label={"Grid cash reserve pct"}
-                    type="number"
-                    register={register}
-                  />
-                </Col>
-                <Col md="3">
-                  <SettingsInput
-                    value={settings.grid_total_margin}
-                    name={"grid_total_margin"}
-                    label={"Grid total margin"}
-                    type="number"
-                    register={register}
-                  />
-                </Col>
-              </Row>
-              <Row>
-                <Col md="3">
-                  <SettingsInput
-                    value={settings.grid_level_count}
-                    name={"grid_level_count"}
-                    label={"Grid level count"}
-                    type="number"
-                    step={1}
-                    register={register}
-                  />
-                </Col>
-                <Col md="3">
-                  <SettingsInput
-                    value={settings.grid_max_active_ladders}
-                    name={"grid_max_active_ladders"}
-                    label={"Grid max active ladders"}
-                    type="number"
-                    step={1}
-                    register={register}
-                  />
-                </Col>
-                <Col md="3">
-                  <SettingsInput
-                    value={settings.max_margin_per_ladder_pct}
-                    name={"max_margin_per_ladder_pct"}
-                    label={"Max margin per ladder pct"}
-                    type="number"
-                    register={register}
-                  />
+                  <label htmlFor="enable_grid_ladders">
+                    Enable grid ladders?
+                  </label>
+                  <br />
+                  <ButtonGroup>
+                    <ToggleButton
+                      id="enable_grid_ladders"
+                      className="position-relative"
+                      checked={settings.enable_grid_ladders}
+                      value={1}
+                      variant={
+                        settings.enable_grid_ladders ? "primary" : "secondary"
+                      }
+                      onClick={(e) => {
+                        dispatch(
+                          setSettingsToggle({
+                            name: "enable_grid_ladders",
+                            value: !settings.enable_grid_ladders,
+                          }),
+                        );
+                      }}
+                    >
+                      {settings.enable_grid_ladders ? "On" : "Off"}
+                    </ToggleButton>
+                  </ButtonGroup>
                 </Col>
               </Row>
+              {settings.enable_grid_ladders && (
+                <>
+                  <hr />
+                  <Row>
+                    <Col md="3">
+                      <SettingsInput
+                        value={settings.grid_allocation_pct}
+                        name={"grid_allocation_pct"}
+                        label={"Grid allocation pct"}
+                        type="number"
+                        register={register}
+                      />
+                    </Col>
+                    <Col md="3">
+                      <SettingsInput
+                        value={settings.grid_cash_reserve_pct}
+                        name={"grid_cash_reserve_pct"}
+                        label={"Grid cash reserve pct"}
+                        type="number"
+                        register={register}
+                      />
+                    </Col>
+                    <Col md="3">
+                      <SettingsInput
+                        value={settings.grid_total_margin}
+                        name={"grid_total_margin"}
+                        label={"Grid total margin"}
+                        type="number"
+                        register={register}
+                      />
+                    </Col>
+                  </Row>
+                  <Row>
+                    <Col md="3">
+                      <SettingsInput
+                        value={settings.grid_level_count}
+                        name={"grid_level_count"}
+                        label={"Grid level count"}
+                        type="number"
+                        step={1}
+                        register={register}
+                      />
+                    </Col>
+                    <Col md="3">
+                      <SettingsInput
+                        value={settings.grid_max_active_ladders}
+                        name={"grid_max_active_ladders"}
+                        label={"Grid max active ladders"}
+                        type="number"
+                        step={1}
+                        register={register}
+                      />
+                    </Col>
+                    <Col md="3">
+                      <SettingsInput
+                        value={settings.max_margin_per_ladder_pct}
+                        name={"max_margin_per_ladder_pct"}
+                        label={"Max margin per ladder pct"}
+                        type="number"
+                        register={register}
+                      />
+                    </Col>
+                  </Row>
+                </>
+              )}
             </Container>
           </Card.Body>
         </Card>
