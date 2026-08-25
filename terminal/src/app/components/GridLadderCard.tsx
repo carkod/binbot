@@ -8,12 +8,13 @@ import {
   calculateGridUtilization,
   calculateLevelPnlSum,
   calculateOpenOrderCount,
+  GridLadderStatus,
   isActiveGridLadder,
   type GridLadder,
 } from "../../features/gridLadders/gridLadders";
-import type { GridLadderStatus } from "../../features/gridLadders/gridLadders";
 import { returnBadgeBg } from "../../utils/grid-ladder";
 import { roundDecimals } from "../../utils/math";
+import { formatTimestamp } from "../../utils/time";
 
 interface GridLadderCardProps {
   ladder: GridLadder;
@@ -101,6 +102,12 @@ const GridLadderCard: FC<GridLadderCardProps> = ({
           {ladder.exchange} / {ladder.market_type}
         </div>
         <Row>
+          <Col xs={6}>Entry time</Col>
+          <Col xs={6} className="text-end">
+            {formatTimestamp(ladder.created_at)}
+          </Col>
+        </Row>
+        <Row>
           <Col xs={6}>Range</Col>
           <Col xs={6} className="text-end">
             {ladder.range_low} → {ladder.range_high}
@@ -183,6 +190,15 @@ const GridLadderCard: FC<GridLadderCardProps> = ({
                 </Col>
               </Row>
             )}
+            {ladder.status === GridLadderStatus.CLOSED &&
+              ladder.closed_at != null && (
+                <Row>
+                  <Col xs={6}>Exit time</Col>
+                  <Col xs={6} className="text-end">
+                    {formatTimestamp(ladder.closed_at)}
+                  </Col>
+                </Row>
+              )}
             <Row>
               <Col xs={6}>Total realized</Col>
               <Col
