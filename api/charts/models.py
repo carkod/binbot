@@ -98,6 +98,7 @@ class TopMoverEntry(BaseModel):
 
 
 class GainersLosersSnapshot(BaseModel):
+    source: str
     recorded_at: datetime.datetime
     top_gainers: list[TopMoverEntry]
     top_losers: list[TopMoverEntry]

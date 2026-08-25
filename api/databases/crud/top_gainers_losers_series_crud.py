@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from pybinbot import BinanceApi
+from pybinbot import KucoinFutures
 from sqlmodel import Session, col, delete, select
 
 from api.databases.crud.autotrade_crud import AutotradeCrud
@@ -15,69 +15,84 @@ from api.tools.config import Config
 class TopGainersLosersSeriesCrud:
     """
     CRUD operations for `top_gainers_losers_series` — hourly snapshots of the
-    biggest 24h Binance spot movers, kept to spot patterns for new strategies.
+    biggest 24h KuCoin futures movers, kept to identify strategy patterns.
     """
+
+    SOURCE = "kucoin_futures"
 
     def __init__(self, session: Session | None = None):
         self._external_session = session
 
     @staticmethod
-    def _has_active_market(item: dict[str, Any]) -> bool:
+    def _has_active_market(contract: Any, fiat: str) -> bool:
         """
-        Delisted/halted symbols keep returning Binance's last real 24h
-        ticker window forever (no new trade ever rolls it forward), so their
-        priceChangePercent can sit frozen at an extreme value indefinitely.
-        A zero bid/ask means there's no live order book, i.e. the window is
-        stale rather than a genuine live mover.
+        Only rank live perpetual contracts settled in the configured fiat
+        currency and with recent trading.
+
+        KuCoin keeps closed contracts in the all-symbols response, so status,
+        last price, and turnover must agree that the market is active.
         """
         try:
-            return float(item["bidPrice"]) > 0 and float(item["askPrice"]) > 0
-        except (KeyError, TypeError, ValueError):
+            status = getattr(contract.status, "value", contract.status)
+            return (
+                status == "Open"
+                and contract.settle_currency == fiat
+                and not bool(contract.is_inverse)
+                and float(contract.last_trade_price) > 0
+                and float(contract.turnover_of24h) > 0
+                and contract.price_chg_pct is not None
+            )
+        except (AttributeError, TypeError, ValueError):
             return False
 
     def ingest(self, top: int = 10) -> list[TopGainersLosersSeriesTable]:
         """
-        Pull the current 24h ticker ranking from Binance and persist the
+        Pull the current 24h ticker ranking from KuCoin futures and persist the
         top N gainers and top N losers as one row each. Called once an hour
         by the cron. Exchange clients are built here rather than in
         __init__ so the read path (query_series, used by the public,
-        unauthenticated GET endpoint) never needs Binance credentials.
+        unauthenticated GET endpoint) never needs KuCoin credentials.
         """
         config = Config()
-        binance_api = BinanceApi(key=config.binance_key, secret=config.binance_secret)
+        kucoin_futures_api = KucoinFutures(
+            key=config.kucoin_key,
+            secret=config.kucoin_secret,
+            passphrase=config.kucoin_passphrase,
+        )
+        response = kucoin_futures_api.futures_market_api.get_all_symbols()
         fiat = AutotradeCrud(session=self._external_session).get_fiat()
-
-        ticker_data = binance_api.ticker_24()
         ranked = sorted(
             (
-                item
-                for item in ticker_data
-                if item["symbol"].endswith(fiat) and self._has_active_market(item)
+                contract
+                for contract in response.data or []
+                if self._has_active_market(contract, fiat)
             ),
-            key=lambda item: float(item["priceChangePercent"]),
+            key=lambda contract: float(contract.price_chg_pct),
             reverse=True,
         )
         recorded_at = datetime.now(timezone.utc)
 
         rows = [
             TopGainersLosersSeriesTable(
+                source=self.SOURCE,
                 recorded_at=recorded_at,
                 side="gainer",
                 rank=rank,
-                symbol=item["symbol"],
-                price_change_percent=float(item["priceChangePercent"]),
+                symbol=contract.symbol,
+                price_change_percent=float(contract.price_chg_pct) * 100,
             )
-            for rank, item in enumerate(ranked[:top], start=1)
+            for rank, contract in enumerate(ranked[:top], start=1)
         ]
         rows += [
             TopGainersLosersSeriesTable(
+                source=self.SOURCE,
                 recorded_at=recorded_at,
                 side="loser",
                 rank=rank,
-                symbol=item["symbol"],
-                price_change_percent=float(item["priceChangePercent"]),
+                symbol=contract.symbol,
+                price_change_percent=float(contract.price_chg_pct) * 100,
             )
-            for rank, item in enumerate(reversed(ranked[-top:]), start=1)
+            for rank, contract in enumerate(reversed(ranked[-top:]), start=1)
         ]
 
         with get_db_session(self._external_session) as session:
@@ -88,7 +103,9 @@ class TopGainersLosersSeriesCrud:
                 session.commit()
         return created
 
-    def query_series(self, limit: int = 168) -> list[dict[str, Any]]:
+    def query_series(
+        self, limit: int = 168, source: str = SOURCE
+    ) -> list[dict[str, Any]]:
         """
         Return up to `limit` most recent hourly snapshots, newest first, each
         with its top gainers and top losers ordered by rank.
@@ -96,6 +113,7 @@ class TopGainersLosersSeriesCrud:
         with get_db_session(self._external_session) as session:
             distinct_timestamps = session.exec(
                 select(TopGainersLosersSeriesTable.recorded_at)
+                .where(TopGainersLosersSeriesTable.source == source)
                 .distinct()
                 .order_by(col(TopGainersLosersSeriesTable.recorded_at).desc())
                 .limit(limit)
@@ -106,9 +124,10 @@ class TopGainersLosersSeriesCrud:
             rows = session.exec(
                 select(TopGainersLosersSeriesTable)
                 .where(
+                    TopGainersLosersSeriesTable.source == source,
                     col(TopGainersLosersSeriesTable.recorded_at).in_(
                         distinct_timestamps
-                    )
+                    ),
                 )
                 .order_by(
                     col(TopGainersLosersSeriesTable.recorded_at).desc(),
@@ -122,6 +141,7 @@ class TopGainersLosersSeriesCrud:
             snapshot = snapshots.setdefault(
                 row.recorded_at,
                 {
+                    "source": row.source,
                     "recorded_at": row.recorded_at,
                     "top_gainers": [],
                     "top_losers": [],
