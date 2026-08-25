@@ -34,6 +34,10 @@ class SettingsDocument(SQLModel):
     grid_level_count: int = Field(default=3)
     grid_max_active_ladders: int = Field(default=3)
     max_margin_per_ladder_pct: float = Field(default=0.25)
+    enable_grid_ladders: bool = Field(
+        default=False,
+        description="Master switch for the grid-ladder strategy; off by default",
+    )
     autoswitch: bool = Field(
         default=True,
         description="Automatically switch between long bot or short bot based on stop loss a.k.a. margin_short_reversal in bots",

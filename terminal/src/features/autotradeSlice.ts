@@ -27,6 +27,7 @@ export const initialAutotradeSettings: AutotradeSettings = {
   grid_level_count: 3,
   grid_max_active_ladders: 3,
   max_margin_per_ladder_pct: 0.25,
+  enable_grid_ladders: false,
   base_order_size: 0,
   updated_at: 0,
   close_condition: CloseConditions.DYNAMIC_TRAILING,

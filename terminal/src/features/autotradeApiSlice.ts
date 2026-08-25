@@ -26,6 +26,7 @@ export interface AutotradeSettings {
   grid_level_count: number;
   grid_max_active_ladders: number;
   max_margin_per_ladder_pct: number;
+  enable_grid_ladders: boolean;
   base_order_size: number;
   updated_at: number;
   close_condition: CloseConditions;
