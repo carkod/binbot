@@ -1,10 +1,12 @@
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlmodel import Session, delete, select
 
 from api.databases.crud.top_gainers_losers_series_crud import TopGainersLosersSeriesCrud
+from api.databases.tables.autotrade_table import AutotradeTable
 from api.databases.tables.top_gainers_losers_series_table import (
     TopGainersLosersSeriesTable,
 )
@@ -17,28 +19,38 @@ def _make_session() -> Session:
     return Session(_engine, expire_on_commit=False)
 
 
-def _ticker(
+def _contract(
     symbol: str,
     price_change_percent: float,
     *,
-    bid_price: float = 1.0,
-    ask_price: float = 1.0,
-) -> dict:
-    return {
-        "symbol": symbol,
-        "priceChangePercent": str(price_change_percent),
-        "bidPrice": str(bid_price),
-        "askPrice": str(ask_price),
-    }
+    settle_currency: str = "USDC",
+    status: str = "Open",
+    is_inverse: bool = False,
+    last_trade_price: float = 1.0,
+    turnover_of24h: float = 1_000.0,
+) -> SimpleNamespace:
+    return SimpleNamespace(
+        symbol=symbol,
+        price_chg_pct=price_change_percent / 100,
+        settle_currency=settle_currency,
+        status=status,
+        is_inverse=is_inverse,
+        last_trade_price=last_trade_price,
+        turnover_of24h=turnover_of24h,
+    )
 
 
-def _ingest_with_fake_ticker(
-    session: Session, ticker_rows: list[dict], top: int = 10
+def _ingest_with_fake_contracts(
+    session: Session, contracts: list[SimpleNamespace], top: int = 10
 ) -> list[TopGainersLosersSeriesTable]:
     with patch(
-        "api.databases.crud.top_gainers_losers_series_crud.BinanceApi"
-    ) as binance_api_cls:
-        binance_api_cls.return_value = MagicMock(ticker_24=lambda: ticker_rows)
+        "api.databases.crud.top_gainers_losers_series_crud.KucoinFutures"
+    ) as kucoin_futures_cls:
+        kucoin_futures_cls.return_value = MagicMock(
+            futures_market_api=MagicMock(
+                get_all_symbols=lambda: SimpleNamespace(data=contracts)
+            )
+        )
         return TopGainersLosersSeriesCrud(session=session).ingest(top=top)
 
 
@@ -57,66 +69,94 @@ def _clean_top_gainers_losers_series(test_engine):
 
 def test_ingest_ranks_gainers_and_losers_by_percent_change():
     session = _make_session()
-    ticker_rows = [
-        _ticker("AUSDC", 25.0),
-        _ticker("BUSDC", -12.0),
-        _ticker("CUSDC", 5.0),
-        _ticker("DUSDC", -3.0),
-        _ticker("EUSDC", 1.0),
-        _ticker("FBTC", 99.0),  # different quote asset, must be excluded
+    contracts = [
+        _contract("AUSDCM", 25.0),
+        _contract("BUSDCM", -12.0),
+        _contract("CUSDCM", 5.0),
+        _contract("DUSDCM", -3.0),
+        _contract("EUSDCM", 1.0),
+        _contract("FBTCM", 99.0, settle_currency="BTC"),
     ]
 
-    rows = _ingest_with_fake_ticker(session, ticker_rows, top=2)
+    rows = _ingest_with_fake_contracts(session, contracts, top=2)
 
     assert len(rows) == 4
     gainers = sorted((r for r in rows if r.side == "gainer"), key=lambda r: r.rank)
     losers = sorted((r for r in rows if r.side == "loser"), key=lambda r: r.rank)
 
     assert [(g.rank, g.symbol, g.price_change_percent) for g in gainers] == [
-        (1, "AUSDC", 25.0),
-        (2, "CUSDC", 5.0),
+        (1, "AUSDCM", 25.0),
+        (2, "CUSDCM", 5.0),
     ]
     assert [
         (loser.rank, loser.symbol, loser.price_change_percent) for loser in losers
     ] == [
-        (1, "BUSDC", -12.0),
-        (2, "DUSDC", -3.0),
+        (1, "BUSDCM", -12.0),
+        (2, "DUSDCM", -3.0),
     ]
+    assert {row.source for row in rows} == {"kucoin_futures"}
 
 
-def test_ingest_excludes_delisted_symbols_with_no_active_market():
+def test_ingest_excludes_closed_or_inactive_futures_contracts():
     """
-    Delisted/halted symbols keep serving Binance's last real 24h ticker
-    window forever (no new trade ever rolls it forward), frozen with a
-    zero bid/ask and often an extreme priceChangePercent that would
-    otherwise permanently occupy a top rank.
+    KuCoin's all-symbols response includes closed contracts and contracts
+    without recent trading, which must not occupy a top rank.
     """
     session = _make_session()
-    ticker_rows = [
-        _ticker("AUSDC", 25.0),
-        _ticker("DEADUSDC", 999.0, bid_price=0.0, ask_price=0.0),
-        _ticker("CUSDC", 5.0),
-        _ticker("GHOSTUSDC", -999.0, bid_price=0.0, ask_price=0.0),
-        _ticker("DUSDC", -3.0),
+    contracts = [
+        _contract("AUSDCM", 25.0),
+        _contract("DEADUSDCM", 999.0, status="Closed"),
+        _contract("CUSDCM", 5.0),
+        _contract("GHOSTUSDCM", -999.0, turnover_of24h=0.0),
+        _contract("DUSDCM", -3.0),
     ]
 
-    rows = _ingest_with_fake_ticker(session, ticker_rows, top=2)
+    rows = _ingest_with_fake_contracts(session, contracts, top=2)
 
     symbols = {r.symbol for r in rows}
-    assert "DEADUSDC" not in symbols
-    assert "GHOSTUSDC" not in symbols
-    assert symbols == {"AUSDC", "CUSDC", "DUSDC"}
+    assert "DEADUSDCM" not in symbols
+    assert "GHOSTUSDCM" not in symbols
+    assert symbols == {"AUSDCM", "CUSDCM", "DUSDCM"}
 
 
 def test_ingest_persists_rows():
     session = _make_session()
-    ticker_rows = [_ticker("AUSDC", 10.0), _ticker("BUSDC", -10.0)]
+    contracts = [_contract("AUSDCM", 10.0), _contract("BUSDCM", -10.0)]
 
-    _ingest_with_fake_ticker(session, ticker_rows, top=1)
+    _ingest_with_fake_contracts(session, contracts, top=1)
 
     persisted = session.exec(select(TopGainersLosersSeriesTable)).all()
     assert len(persisted) == 2
-    assert {p.symbol for p in persisted} == {"AUSDC", "BUSDC"}
+    assert {p.symbol for p in persisted} == {"AUSDCM", "BUSDCM"}
+
+
+def test_ingest_uses_fiat_from_autotrade_settings():
+    session = _make_session()
+    settings = session.get(AutotradeTable, "autotrade_settings")
+    assert settings is not None
+    original_fiat = settings.fiat
+
+    try:
+        settings.fiat = "BTC"
+        session.add(settings)
+        session.commit()
+
+        rows = _ingest_with_fake_contracts(
+            session,
+            [
+                _contract("AUSDCM", 25.0),
+                _contract("XBTUSDM", 10.0, settle_currency="BTC"),
+            ],
+            top=1,
+        )
+
+        assert {row.symbol for row in rows} == {"XBTUSDM"}
+    finally:
+        settings = session.get(AutotradeTable, "autotrade_settings")
+        assert settings is not None
+        settings.fiat = original_fiat
+        session.add(settings)
+        session.commit()
 
 
 def test_query_series_groups_by_snapshot_newest_first():
@@ -161,6 +201,7 @@ def test_query_series_groups_by_snapshot_newest_first():
     result = TopGainersLosersSeriesCrud(session=session).query_series(limit=7)
 
     assert len(result) == 2
+    assert result[0]["source"] == "kucoin_futures"
     # SQLite (test DB) drops tzinfo on round-trip, unlike Postgres.
     assert result[0]["recorded_at"] == newer.replace(tzinfo=None)
     assert result[0]["top_gainers"] == [
@@ -235,6 +276,7 @@ def test_get_gainers_losers_series_endpoint(client):
     assert response.status_code == 200, response.text
     body = response.json()["data"]
     assert len(body) == 1
+    assert body[0]["source"] == "kucoin_futures"
     assert body[0]["top_gainers"] == [{"symbol": "AUSDC", "price_change_percent": 10.0}]
     assert body[0]["top_losers"] == [{"symbol": "BUSDC", "price_change_percent": -10.0}]
 

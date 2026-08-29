@@ -13,14 +13,22 @@ class TopGainersLosersSeriesTable(SQLModel, table=True):
     __tablename__ = "top_gainers_losers_series"
     __table_args__ = (
         UniqueConstraint(
+            "source",
             "recorded_at",
             "side",
             "rank",
-            name="uq_top_gainers_losers_series_recorded_at_side_rank",
+            name="uq_top_gainers_losers_series_source_recorded_at_side_rank",
         ),
     )
 
     id: int | None = Field(default=None, primary_key=True)
+    source: str = Field(
+        default="kucoin_futures",
+        nullable=False,
+        max_length=32,
+        index=True,
+        description="Market venue and product used to build the ranking",
+    )
     recorded_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), nullable=False, index=True)
     )
