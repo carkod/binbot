@@ -30,6 +30,9 @@ from streaming.strategies.mean_reversion_fade import (
 from streaming.strategies.relative_strength_impulse_rider import (
     RelativeStrengthImpulseRiderLifecycleStrategy,
 )
+from streaming.strategies.top_gainer_early_momentum import (
+    TopGainerEarlyMomentumLifecycleStrategy,
+)
 
 
 INTERVAL_MS = 15 * 60 * 1000
@@ -114,7 +117,7 @@ def _context(
             "relative_strength_impulse_rider",
             RelativeStrengthImpulseRiderLifecycleStrategy,
         ),
-        ("top_gainer_early_momentum", DefaultLifecycleStrategy),
+        ("top_gainer_early_momentum", TopGainerEarlyMomentumLifecycleStrategy),
         ("coinrule_price_tracker", PriceTrackerLifecycleStrategy),
         ("coinrule_buy_the_dip", DefaultLifecycleStrategy),
         ("bb_extreme_reversion", BBExtremeReversionLifecycleStrategy),
@@ -246,6 +249,25 @@ def test_default_runtime_strategy_preserves_pullback_adjustment(monkeypatch) -> 
     assert update is not None
     assert update.trailing_profit == 2.25
     assert update.trailing_deviation == 1.55
+
+
+def test_top_gainer_lifecycle_delays_and_widens_trailing(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "streaming.strategies.default.ApexFlowClose",
+        FakeApexFlowClose,
+    )
+    context = _context(
+        name="top_gainer_early_momentum",
+        stop_loss=2.0,
+        dynamic_trailing=True,
+    )
+
+    update = TopGainerEarlyMomentumLifecycleStrategy().signal(context).parameter_update
+
+    assert update is not None
+    assert update.stop_loss == 2.0
+    assert update.trailing_profit == 6.0
+    assert update.trailing_deviation == 2.5
 
 
 def test_bb_extreme_reversion_uses_atr_stop_and_bb_trailing() -> None:

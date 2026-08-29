@@ -21,6 +21,9 @@ from streaming.strategies.mean_reversion_fade import (
 from streaming.strategies.relative_strength_impulse_rider import (
     RelativeStrengthImpulseRiderLifecycleStrategy,
 )
+from streaming.strategies.top_gainer_early_momentum import (
+    TopGainerEarlyMomentumLifecycleStrategy,
+)
 
 
 @dataclass(frozen=True)
@@ -34,6 +37,7 @@ class LifecycleContextEvaluator:
         MeanReversionFadeLifecycleStrategy,
         LiquidationSweepPumpLifecycleStrategy,
         RelativeStrengthImpulseRiderLifecycleStrategy,
+        TopGainerEarlyMomentumLifecycleStrategy,
         PriceTrackerLifecycleStrategy,
         BBExtremeReversionLifecycleStrategy,
     )
