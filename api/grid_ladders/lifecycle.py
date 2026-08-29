@@ -31,9 +31,8 @@ from api.exchange_apis.kucoin.futures.liquidity import (
 
 GRID_LIQUIDITY_PRICE_BAND_BPS = 50.0
 # Spread/slippage ceilings scale with the ladder's own initial BB-width
-# volatility read (mirrors the ATR-scaled thresholds used for standalone
-# futures entries in KucoinPositionDeal), clamped to [MIN, MAX] so a quiet
-# symbol is held to a tighter bar than a volatile one.
+# volatility read and remain grid-specific. Standalone futures entries use
+# separate fixed participation ceilings in KucoinPositionDeal.
 GRID_LIQUIDITY_MIN_SPREAD_BPS = 15.0
 GRID_LIQUIDITY_MAX_SPREAD_BPS = 40.0
 GRID_LIQUIDITY_SPREAD_BB_WIDTH_MULTIPLIER = 0.05
