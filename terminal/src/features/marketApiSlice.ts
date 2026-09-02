@@ -24,6 +24,18 @@ export interface MarketBreadthData {
   strength_index: number[];
 }
 
+export interface TopMover {
+  symbol: string;
+  price_change_percent: number;
+}
+
+export interface GainersLosersSnapshot {
+  source: string;
+  recorded_at: string;
+  top_gainers: TopMover[];
+  top_losers: TopMover[];
+}
+
 /**
  * Difference between balanceApiSlice and marketApiSlice
  * is one comes from market the other comes from binance account.
@@ -46,7 +58,20 @@ export const marketApiSlice = userApiSlice.injectEndpoints({
         return data;
       },
     }),
+    gainersLosersSeries: build.query<GainersLosersSnapshot[], void>({
+      query: () => ({
+        url: `${import.meta.env.VITE_GAINERS_LOSERS_SERIES || "/charts/gainers-losers-series"}?limit=168`,
+      }),
+      transformResponse: ({ data, message, error }) => {
+        if (error && error === 1) {
+          notifification("error", message);
+        }
+
+        return data;
+      },
+    }),
   }),
 });
 
-export const { useMarketBreadthSeriesQuery } = marketApiSlice;
+export const { useGainersLosersSeriesQuery, useMarketBreadthSeriesQuery } =
+  marketApiSlice;
