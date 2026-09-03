@@ -244,6 +244,25 @@ def test_entry_liquidity_gate_preserves_exchange_book_price_when_tightening_buy(
     assert entry_limit_price == 100.005
 
 
+def test_entry_liquidity_gate_allows_qualified_spread_below_thirty_bps():
+    deal = make_sizing_deal(multiplier=1)
+    deal.active_bot.position = Position.long
+    attach_order_book(
+        deal,
+        bids=[[99.875, 100]],
+        asks=[[100.125, 100]],
+    )
+
+    contracts, entry_limit_price = deal.liquidity_gated_contracts(10, 100.5)
+
+    assert contracts == 10
+    assert entry_limit_price == 100.125
+    assert any(
+        "thresholds: spread<=30.00bps, slippage<=15.00bps" in log
+        for log in deal.active_bot.logs
+    )
+
+
 def test_entry_liquidity_gate_rejects_excessive_spread_and_records_reason():
     deal = make_sizing_deal(multiplier=1)
     deal.active_bot.position = Position.long
@@ -276,6 +295,7 @@ def test_entry_liquidity_gate_rejects_excessive_expected_slippage():
         deal.liquidity_gated_contracts(10, 100.0)
 
     assert "expected_slippage=44.20bps" in deal.active_bot.logs[-1]
+    assert "exceeds 15.00bps" in deal.active_bot.logs[-1]
 
 
 def test_entry_liquidity_gate_rejects_stale_book_data():
@@ -870,7 +890,7 @@ def test_top_gainer_early_momentum_waits_for_half_percent_retest(monkeypatch):
     )
 
 
-def test_top_gainer_stop_triggers_early_and_never_falls_back_to_market():
+def test_top_gainer_stop_triggers_early_as_stop_market():
     deal = make_sizing_deal(multiplier=1)
     deal.active_bot.name = "top_gainer_early_momentum"
     deal.active_bot.position = Position.long
@@ -898,10 +918,10 @@ def test_top_gainer_stop_triggers_early_and_never_falls_back_to_market():
     deal.place_stop_loss()
 
     kwargs = place_order.call_args.kwargs
-    assert kwargs["order_type"] == OrderType.limit
-    assert kwargs["price"] == 98.0
+    assert kwargs["order_type"] == OrderType.market
+    assert "price" not in kwargs
     assert kwargs["stop_price"] == 98.49
-    assert kwargs["allow_market_fallback"] is False
+    assert kwargs["allow_market_fallback"] is True
     assert deal.active_bot.deal.stop_loss_price == 98.0
 
 

@@ -8,7 +8,10 @@ import {
   useGetBotsQuery,
   useGetAlgoRankingQuery,
 } from "../../features/bots/botsApiSlice";
-import { useMarketBreadthSeriesQuery } from "../../features/marketApiSlice";
+import {
+  useGainersLosersSeriesQuery,
+  useMarketBreadthSeriesQuery,
+} from "../../features/marketApiSlice";
 import { useGetSignalsQuery } from "../../features/signalsApiSlice";
 import type {
   BalanceData,
@@ -22,6 +25,7 @@ import GainersLosers from "../components/GainersLosers";
 import PortfolioBenchmarkChart from "../components/PortfolioBenchmark";
 import { SpinnerContext } from "../spinner-context";
 import MarketBreadthCard from "../components/MarketBreadthCard";
+import GainersLosersSeriesCard from "../components/GainersLosersSeriesCard";
 import {
   useFilteredFuturesRankings,
   useFilteredGainerLosers,
@@ -111,6 +115,8 @@ export const DashboardPage: FC<{}> = () => {
 
   const { data: marketBreadthSeries, isLoading: loadingMarketBreadthSeries } =
     useMarketBreadthSeriesQuery();
+  const { data: gainersLosersSeries, isLoading: loadingGainersLosersSeries } =
+    useGainersLosersSeriesQuery();
 
   const { data: algoRanking, isLoading: loadingAlgoRanking } =
     useGetAlgoRankingQuery();
@@ -253,6 +259,7 @@ export const DashboardPage: FC<{}> = () => {
       !loadingCombined &&
       !loadingFuturesRankings &&
       !loadingMarketBreadthSeries &&
+      !loadingGainersLosersSeries &&
       !loadingAlgoRanking &&
       !loadingSignals
     ) {
@@ -275,6 +282,7 @@ export const DashboardPage: FC<{}> = () => {
     loadingErrorBots,
     loadingCombined,
     loadingMarketBreadthSeries,
+    loadingGainersLosersSeries,
     loadingFuturesRankings,
     loadingAlgoRanking,
     loadingSignals,
@@ -583,7 +591,7 @@ export const DashboardPage: FC<{}> = () => {
         </Col>
       </Row>
       <Row>
-        <Col>
+        <Col lg="6" md="12">
           {marketBreadthSeries?.market_breadth && (
             <MarketBreadthCard
               marketBreadth={marketBreadthSeries.market_breadth}
@@ -591,6 +599,11 @@ export const DashboardPage: FC<{}> = () => {
               strengthIndex={marketBreadthSeries.strength_index}
               timestamps={marketBreadthSeries.timestamp}
             />
+          )}
+        </Col>
+        <Col lg="6" md="12">
+          {gainersLosersSeries && gainersLosersSeries.length > 0 && (
+            <GainersLosersSeriesCard snapshots={gainersLosersSeries} />
           )}
         </Col>
       </Row>

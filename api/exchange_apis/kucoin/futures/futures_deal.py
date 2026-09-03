@@ -78,15 +78,14 @@ class KucoinPositionDeal(KucoinBaseBalance):
     TOP_GAINER_EARLY_MOMENTUM_RETEST_DISCOUNT_PCT = 0.5
     TOP_GAINER_EARLY_MOMENTUM_STOP_TRIGGER_BUFFER_PCT = 0.5
     ENTRY_LIQUIDITY_PRICE_BAND_BPS = 50.0
-    # Spread/slippage ceilings scale with the same ATR-derived allowance used
-    # for the body-capped entry price, clamped to [MIN, MAX] so a quiet
-    # symbol is held to a tighter bar than a volatile one.
-    ENTRY_LIQUIDITY_MIN_SPREAD_BPS = 15.0
-    ENTRY_LIQUIDITY_MAX_SPREAD_BPS = 40.0
-    ENTRY_LIQUIDITY_SPREAD_ATR_MULTIPLIER = 0.4
-    ENTRY_LIQUIDITY_MIN_SLIPPAGE_BPS = 18.0
-    ENTRY_LIQUIDITY_MAX_SLIPPAGE_BPS = 50.0
-    ENTRY_LIQUIDITY_SLIPPAGE_ATR_MULTIPLIER = 0.5
+    # Runner entries need enough participation to capture asymmetric upside,
+    # but execution costs must stay small relative to the configured stop.
+    # Live top-gainer evidence supported entries through roughly a 30bps
+    # spread when the requested size still averaged no more than 15bps of
+    # slippage. Keep both limits explicit so a deep first level cannot hide a
+    # pathological spread, and a tight top of book cannot hide a costly walk.
+    ENTRY_LIQUIDITY_MAX_SPREAD_BPS = 30.0
+    ENTRY_LIQUIDITY_MAX_SLIPPAGE_BPS = 15.0
     # Thin books can go many seconds between quote updates without being
     # genuinely stale (KuCoin's ts reflects the last book change, not "now"),
     # confirmed against live low-cap futures books (~15s observed on a quiet
@@ -576,33 +575,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
             f"imbalance={imbalance}, data_age={snapshot.data_age_ms}ms"
         )
 
-    def _atr_scaled_liquidity_thresholds(self) -> tuple[float, float]:
-        """Spread/slippage ceilings, scaled by the ATR allowance already
-        computed for the body-capped entry price (falls back to the same
-        fallback allowance body_capped_entry_limit_price() uses)."""
-        cached_allowance_pct = getattr(self, "_entry_allowance_pct", None)
-        allowance_pct = (
-            cached_allowance_pct
-            if cached_allowance_pct is not None
-            else self.ENTRY_FALLBACK_ALLOWANCE_PCT
-        )
-        atr_bps = allowance_pct * 100
-        spread_threshold_bps = max(
-            self.ENTRY_LIQUIDITY_MIN_SPREAD_BPS,
-            min(
-                atr_bps * self.ENTRY_LIQUIDITY_SPREAD_ATR_MULTIPLIER,
-                self.ENTRY_LIQUIDITY_MAX_SPREAD_BPS,
-            ),
-        )
-        slippage_threshold_bps = max(
-            self.ENTRY_LIQUIDITY_MIN_SLIPPAGE_BPS,
-            min(
-                atr_bps * self.ENTRY_LIQUIDITY_SLIPPAGE_ATR_MULTIPLIER,
-                self.ENTRY_LIQUIDITY_MAX_SLIPPAGE_BPS,
-            ),
-        )
-        return spread_threshold_bps, slippage_threshold_bps
-
     def liquidity_gated_contracts(
         self, requested_contracts: int, candidate_limit_price: float
     ) -> tuple[int, float]:
@@ -611,9 +583,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
             if self.active_bot.position == Position.short
             else AddOrderReq.SideEnum.BUY
         )
-        spread_threshold_bps, slippage_threshold_bps = (
-            self._atr_scaled_liquidity_thresholds()
-        )
+        spread_threshold_bps = self.ENTRY_LIQUIDITY_MAX_SPREAD_BPS
+        slippage_threshold_bps = self.ENTRY_LIQUIDITY_MAX_SLIPPAGE_BPS
         try:
             order_book = load_futures_order_book(
                 self.kucoin_futures_api,
@@ -651,7 +622,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         if requested_snapshot.spread_bps > spread_threshold_bps:
             message = (
                 "Entry rejected: KuCoin futures spread exceeds "
-                f"{spread_threshold_bps:.2f}bps (ATR-scaled). {summary}."
+                f"{spread_threshold_bps:.2f}bps. {summary}."
             )
             self.reject_entry_for_liquidity(message)
 
@@ -679,7 +650,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         ):
             message = (
                 "Entry rejected: expected KuCoin futures slippage exceeds "
-                f"{slippage_threshold_bps:.2f}bps (ATR-scaled). {summary}."
+                f"{slippage_threshold_bps:.2f}bps. {summary}."
             )
             self.reject_entry_for_liquidity(message)
 
@@ -700,7 +671,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         self.active_bot.add_log(
             f"Futures entry liquidity snapshot: {summary}. "
-            f"thresholds(ATR-scaled): spread<={spread_threshold_bps:.2f}bps, "
+            f"thresholds: spread<={spread_threshold_bps:.2f}bps, "
             f"slippage<={slippage_threshold_bps:.2f}bps."
         )
         if approved_contracts < requested_contracts:
@@ -1075,7 +1046,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 10**-self.price_precision
             ):
                 self.active_bot.add_log(
-                    "Bounded top-gainer stop drift detected: "
+                    "Buffered top-gainer stop-market drift detected: "
                     f"expected trigger={expected_trigger_price} exchange={exchange_price}; replacing."
                 )
                 self.cancel_current_sl()
@@ -1316,27 +1287,26 @@ class KucoinPositionDeal(KucoinBaseBalance):
             side = AddOrderReq.SideEnum.SELL
             stop = AddOrderReq.StopEnum.DOWN
 
-        bounded_top_gainer_stop = self.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO
+        buffered_top_gainer_stop = (
+            self.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO
+        )
         trigger_price = (
             self.top_gainer_stop_trigger_price(stop_price)
-            if bounded_top_gainer_stop
+            if buffered_top_gainer_stop
             else stop_price
         )
 
         order_response = self.kucoin_futures_api.place_futures_order(
             symbol=self.kucoin_symbol,
             side=side,
-            order_type=(
-                OrderType.limit if bounded_top_gainer_stop else OrderType.market
-            ),
-            price=stop_price if bounded_top_gainer_stop else None,
+            order_type=OrderType.market,
             stop=stop,
             stop_price=trigger_price,
             stop_price_type=AddOrderReq.StopPriceTypeEnum.MARK_PRICE,
             reduce_only=True,
             size=self.active_bot.deal.opening_qty,
             leverage=self.symbol_info.futures_leverage,
-            allow_market_fallback=not bounded_top_gainer_stop,
+            allow_market_fallback=True,
         )
 
         if order_response.price and order_response.qty:
@@ -1353,9 +1323,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
         self.controller.update_logs(
             bot=self.active_bot,
             log_message=(
-                f"Bounded stop loss trigger set @ {trigger_price}, limit @ {stop_price}"
-                if bounded_top_gainer_stop
-                else f"Stop loss set @ {stop_price}"
+                f"Buffered stop-market trigger set @ {trigger_price} "
+                f"for configured stop @ {stop_price}"
+                if buffered_top_gainer_stop
+                else f"Stop-market set @ {stop_price}"
             ),
         )
 

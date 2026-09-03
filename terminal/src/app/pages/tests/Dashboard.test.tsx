@@ -57,7 +57,23 @@ vi.mock("../../../features/bots/botsApiSlice", () => ({
 
 vi.mock("../../../features/marketApiSlice", () => ({
   useMarketBreadthSeriesQuery: vi.fn(() => ({
-    data: [],
+    data: {
+      timestamp: ["2026-08-10T10:00:00Z"],
+      market_breadth: [0.2],
+      market_breadth_ma: [0.15],
+      strength_index: [0.1],
+    },
+    isLoading: false,
+  })),
+  useGainersLosersSeriesQuery: vi.fn(() => ({
+    data: [
+      {
+        source: "kucoin_futures",
+        recorded_at: "2026-08-10T10:00:00Z",
+        top_gainers: [],
+        top_losers: [],
+      },
+    ],
     isLoading: false,
   })),
 }));
@@ -92,6 +108,10 @@ vi.mock("../../components/MarketBreadthCard", () => ({
   default: () => <div>MarketBreadthCard</div>,
 }));
 
+vi.mock("../../components/GainersLosersSeriesCard", () => ({
+  default: () => <div>GainersLosersSeriesCard</div>,
+}));
+
 describe("Dashboard page", () => {
   const renderDashboard = () =>
     renderWithProviders(
@@ -112,6 +132,17 @@ describe("Dashboard page", () => {
     ).toBeInTheDocument();
     expect(rtlScreen.getByText("110 USDC")).toBeInTheDocument();
     expect(rtlScreen.getByText("1.27 BTC")).toBeInTheDocument();
+  });
+
+  it("renders both market trend charts in half-width desktop columns", () => {
+    renderDashboard();
+
+    expect(
+      rtlScreen.getByText("MarketBreadthCard").closest(".col-lg-6"),
+    ).toBeInTheDocument();
+    expect(
+      rtlScreen.getByText("GainersLosersSeriesCard").closest(".col-lg-6"),
+    ).toBeInTheDocument();
   });
 
   it("renders signals collapsed and ranked by algorithm count", () => {
