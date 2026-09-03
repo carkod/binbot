@@ -2,9 +2,11 @@ from streaming.strategies.default import DefaultLifecycleStrategy
 
 
 class TopGainerEarlyMomentumLifecycleStrategy(DefaultLifecycleStrategy):
-    """Keep volatile top-gainer runners alive long enough to express their edge."""
+    """Keep volatile top-mover runners alive long enough to express their edge."""
 
-    algorithm_names = frozenset({"top_gainer_early_momentum"})
+    algorithm_names = frozenset(
+        {"top_gainer_early_momentum", "top_loser_early_momentum"}
+    )
 
     MIN_STOP_LOSS = 2.0
     MIN_TRAILING_PROFIT = 6.0
