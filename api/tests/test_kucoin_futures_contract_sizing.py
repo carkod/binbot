@@ -943,6 +943,32 @@ def test_top_gainer_early_momentum_waits_for_half_percent_retest(monkeypatch):
     )
 
 
+def test_top_gainer_expected_fill_at_exact_retest_boundary_is_allowed(monkeypatch):
+    deal = prepare_recovery_entry_deal(
+        monkeypatch,
+        position=Position.long,
+        previous_close=100.0,
+        current_open=101.0,
+        candle_range=2.0,
+    )
+    deal.active_bot.name = "top_gainer_early_momentum"
+    deal.active_bot.recovery_params = None
+    candidate_limit_price = deal.body_capped_entry_limit_price()
+    attach_order_book(
+        deal,
+        bids=[[99.49, 100]],
+        asks=[[99.5, 100]],
+    )
+
+    contracts, entry_limit_price = deal.liquidity_gated_contracts(
+        10, candidate_limit_price
+    )
+
+    assert contracts == 10
+    assert candidate_limit_price == 99.5
+    assert entry_limit_price == 99.5
+
+
 def test_top_gainer_stop_triggers_early_as_stop_market():
     deal = make_sizing_deal(multiplier=1)
     deal.active_bot.name = "top_gainer_early_momentum"

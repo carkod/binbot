@@ -21,6 +21,7 @@ from pybinbot import (
     convert_to_kucoin_symbol,
     round_numbers,
     round_timestamp,
+    supress_notation,
 )
 
 from api.databases.crud.bot_crud import BotTableCrud
@@ -657,8 +658,27 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 f"{summary}."
             )
 
+        lower_reference_bound = float(
+            supress_notation(
+                self._entry_reference_price * (1 - self._entry_allowance_pct / 100),
+                self.price_precision,
+            )
+        )
+        upper_reference_bound = float(
+            supress_notation(
+                self._entry_reference_price * (1 + self._entry_allowance_pct / 100),
+                self.price_precision,
+            )
+        )
+        quantized_expected_fill_price = float(
+            supress_notation(expected_fill_price, self.price_precision)
+        )
         displacement_pct = (expected_fill_price / self._entry_reference_price - 1) * 100
-        if abs(displacement_pct) > self._entry_allowance_pct:
+        if not (
+            lower_reference_bound
+            <= quantized_expected_fill_price
+            <= upper_reference_bound
+        ):
             displacement_direction = "above" if displacement_pct > 0 else "below"
             message = (
                 "Entry rejected: expected KuCoin futures fill price "
