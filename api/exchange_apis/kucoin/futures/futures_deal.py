@@ -20,7 +20,9 @@ from pybinbot import (
     Status,
     convert_to_kucoin_symbol,
     round_numbers,
+    round_numbers_ceiling,
     round_timestamp,
+    supress_notation,
 )
 
 from api.databases.crud.bot_crud import BotTableCrud
@@ -601,13 +603,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
             )
             self.reject_entry_for_liquidity(message, cause=error)
 
-        lot_size = float(self.kucoin_symbol_data.lot_size or 1)
-        fillable_lots = int(requested_snapshot.contracts_fillable // lot_size)
-        fillable_contracts = int(fillable_lots * lot_size)
-        approved_contracts = min(requested_contracts, fillable_contracts)
         summary = self.liquidity_snapshot_summary(
             requested_snapshot,
-            approved_contracts,
+            requested_contracts,
         )
 
         if requested_snapshot.data_age_ms > self.ENTRY_LIQUIDITY_MAX_DATA_AGE_MS:
@@ -616,6 +614,68 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 f"maximum age is {self.ENTRY_LIQUIDITY_MAX_DATA_AGE_MS}ms. {summary}."
             )
             self.reject_entry_for_liquidity(message)
+
+        if self._entry_reference_price is None or self._entry_allowance_pct is None:
+            self.reject_entry_for_liquidity(
+                "Entry rejected: candle-reference displacement band is unavailable."
+            )
+
+        lower_reference_bound = float(
+            round_numbers(
+                self._entry_reference_price * (1 - self._entry_allowance_pct / 100),
+                self.price_precision,
+            )
+        )
+        upper_reference_bound = float(
+            round_numbers_ceiling(
+                self._entry_reference_price * (1 + self._entry_allowance_pct / 100),
+                self.price_precision,
+            )
+        )
+        # Current-book VWAP describes an order that crosses now. A resting limit
+        # can only fill at its candidate price or better.
+        marketable = (
+            candidate_limit_price >= requested_snapshot.best_ask
+            if side == AddOrderReq.SideEnum.BUY
+            else candidate_limit_price <= requested_snapshot.best_bid
+        )
+        if not marketable:
+            quantized_candidate_limit_price = float(
+                supress_notation(candidate_limit_price, self.price_precision)
+            )
+            if not (
+                lower_reference_bound
+                <= quantized_candidate_limit_price
+                <= upper_reference_bound
+            ):
+                displacement_pct = (
+                    candidate_limit_price / self._entry_reference_price - 1
+                ) * 100
+                displacement_direction = "above" if displacement_pct > 0 else "below"
+                message = (
+                    "Entry rejected: passive KuCoin futures limit price "
+                    f"{candidate_limit_price:.8g} is {abs(displacement_pct):.2f}% "
+                    f"{displacement_direction} candle reference "
+                    f"{self._entry_reference_price:.8g}; maximum allowed "
+                    f"displacement is {self._entry_allowance_pct:.2f}%. {summary}."
+                )
+                self.reject_entry_for_liquidity(message)
+
+            self.active_bot.add_log(
+                f"Futures passive entry liquidity snapshot: {summary}. "
+                f"Candidate limit {candidate_limit_price:.8g} is not marketable; "
+                "current expected-fill slippage and displacement checks do not apply."
+            )
+            return requested_contracts, candidate_limit_price
+
+        lot_size = float(self.kucoin_symbol_data.lot_size or 1)
+        fillable_lots = int(requested_snapshot.contracts_fillable // lot_size)
+        fillable_contracts = int(fillable_lots * lot_size)
+        approved_contracts = min(requested_contracts, fillable_contracts)
+        summary = self.liquidity_snapshot_summary(
+            requested_snapshot,
+            approved_contracts,
+        )
 
         if approved_contracts <= 0:
             message = (
@@ -645,11 +705,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
             )
             self.reject_entry_for_liquidity(message)
 
-        if self._entry_reference_price is None or self._entry_allowance_pct is None:
-            self.reject_entry_for_liquidity(
-                "Entry rejected: candle-reference displacement band is unavailable."
-            )
-
         expected_fill_price = approved_snapshot.expected_average_fill_price
         if expected_fill_price is None:
             self.reject_entry_for_liquidity(
@@ -657,8 +712,15 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 f"{summary}."
             )
 
+        quantized_expected_fill_price = float(
+            supress_notation(expected_fill_price, self.price_precision)
+        )
         displacement_pct = (expected_fill_price / self._entry_reference_price - 1) * 100
-        if abs(displacement_pct) > self._entry_allowance_pct:
+        if not (
+            lower_reference_bound
+            <= quantized_expected_fill_price
+            <= upper_reference_bound
+        ):
             displacement_direction = "above" if displacement_pct > 0 else "below"
             message = (
                 "Entry rejected: expected KuCoin futures fill price "
@@ -1334,6 +1396,22 @@ class KucoinPositionDeal(KucoinBaseBalance):
         self.active_bot.orders.append(order_model)
         self.active_bot.deal.stop_loss_price = stop_price
 
+        if (
+            order_model.status == OrderStatus.FILLED
+            and order_model.price > 0
+            and order_model.qty > 0
+        ):
+            self.active_bot.deal.closing_price = order_model.price
+            self.active_bot.deal.closing_qty = order_model.qty
+            self.active_bot.deal.closing_timestamp = order_model.timestamp
+            self.active_bot.status = Status.completed
+            self.active_bot.add_log(
+                f"Futures stop loss filled immediately @ {order_model.price} "
+                f"for {order_model.qty} contracts."
+            )
+            self.controller.save(self.active_bot)
+            return
+
         self.controller.update_logs(
             bot=self.active_bot,
             log_message=(
@@ -1645,10 +1723,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
             stop_loss_order = OrderModel.model_construct(**order_base.model_dump())
 
         self.active_bot.orders.append(stop_loss_order)
-        self.active_bot.deal.closing_price = float(stop_loss_order.price)
-        self.active_bot.deal.closing_qty = float(stop_loss_order.qty)
-        self.active_bot.deal.closing_timestamp = stop_loss_order.timestamp
-        self.active_bot.add_log("Completed futures Stop loss.")
 
         if stop_loss_order.status != OrderStatus.FILLED:
             self.controller.update_logs(
@@ -1656,6 +1730,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 log_message=f"Stop loss order not filled immediately, got status {stop_loss_order.status}. Manual intervention may be required.",
             )
         else:
+            self.active_bot.deal.closing_price = stop_loss_order.price
+            self.active_bot.deal.closing_qty = stop_loss_order.qty
+            self.active_bot.deal.closing_timestamp = stop_loss_order.timestamp
+            self.active_bot.add_log("Completed futures Stop loss.")
             self.active_bot.status = Status.completed
 
         self.controller.save(self.active_bot)
@@ -2057,6 +2135,15 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 log_message="Futures position panic-closed successfully",
             )
 
+        elif (
+            not self.active_bot.orders
+            and self.active_bot.deal.opening_timestamp == 0
+            and self.active_bot.deal.opening_qty == 0
+        ):
+            self.active_bot.add_log(
+                "No futures position, entry order, or opening fill exists; "
+                "skipping fill-history reconciliation."
+            )
         else:
             self.active_bot = self.backfill_position_from_fills()
 
@@ -2095,6 +2182,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         # Disarm any stale trail — parameters may have changed (e.g. Update Deal).
         self.active_bot.deal.trailing_stop_loss_price = 0
         self.active_bot = self.update_parameters()
-        self.active_bot.status = Status.active
+        if self.active_bot.status != Status.completed:
+            self.active_bot.status = Status.active
         self.controller.save(self.active_bot)
         return self.active_bot

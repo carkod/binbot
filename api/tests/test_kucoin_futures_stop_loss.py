@@ -17,6 +17,7 @@ from pybinbot import (
     OrderType,
     Position,
     RecoveryBotModel,
+    Status,
 )
 
 from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
@@ -256,6 +257,78 @@ def test_place_stop_loss_for_margin_short_uses_price_above_entry():
     assert captured["stop"] == AddOrderReq.StopEnum.UP
     assert captured["stop_price"] == 102.0
     assert captured["leverage"] == 1
+
+
+def test_place_stop_loss_reconciles_an_immediate_fill():
+    saved_bots: list[BotModel] = []
+    deal = _make_deal()
+    deal.active_bot.status = Status.active
+    deal.controller = types.SimpleNamespace(
+        save=lambda bot: saved_bots.append(bot.model_copy(deep=True)),
+        update_logs=lambda **kwargs: None,
+    )
+    deal.kucoin_futures_api = types.SimpleNamespace(
+        place_futures_order=lambda **kwargs: OrderBase(
+            order_id="immediate-stop-fill",
+            order_type="market",
+            pair=kwargs["symbol"],
+            timestamp=1_788_529_590_286,
+            order_side="sell",
+            qty=1,
+            price=98.0,
+            status=OrderStatus.FILLED,
+            time_in_force="GTC",
+            deal_type=DealType.stop_loss,
+        )
+    )
+
+    KucoinPositionDeal.place_stop_loss(deal)
+
+    assert deal.active_bot.status == Status.completed
+    assert deal.active_bot.deal.closing_price == 98.0
+    assert deal.active_bot.deal.closing_qty == 1
+    assert deal.active_bot.deal.closing_timestamp == 1_788_529_590_286
+    assert deal.active_bot.orders[-1].status == OrderStatus.FILLED
+    assert saved_bots[-1].status == Status.completed
+    assert saved_bots[-1].deal.closing_price == 98.0
+
+
+def test_open_deal_does_not_reactivate_an_immediately_filled_stop_loss():
+    saved_statuses: list[Status] = []
+    deal = _make_deal(
+        orders=[
+            OrderModel(
+                order_id="filled-entry",
+                order_type="market",
+                pair="BEATUSDTM",
+                timestamp=1,
+                order_side="buy",
+                qty=1,
+                price=100.0,
+                status=OrderStatus.FILLED,
+                time_in_force="GTC",
+                deal_type=DealType.base_order,
+            )
+        ]
+    )
+
+    def complete_during_parameter_update() -> BotModel:
+        deal.active_bot.status = Status.completed
+        deal.active_bot.deal.closing_price = 98.0
+        deal.active_bot.deal.closing_qty = 1
+        deal.active_bot.deal.closing_timestamp = 2
+        return deal.active_bot
+
+    deal.update_parameters = complete_during_parameter_update
+    deal.controller = types.SimpleNamespace(
+        save=lambda bot: saved_statuses.append(bot.status),
+    )
+
+    result = KucoinPositionDeal.open_deal(deal)
+
+    assert result.status == Status.completed
+    assert result.deal.closing_price == 98.0
+    assert saved_statuses[-1] == Status.completed
 
 
 def test_should_replace_stop_loss_order_blocks_immaterial_move():

@@ -191,6 +191,35 @@ def test_execute_stop_loss_passes_reference_price_to_buy_for_short():
     assert captured.get("reference_price") == pytest.approx(0.02245, abs=1e-6)
 
 
+def test_canceled_exit_stop_does_not_replace_confirmed_closing_values():
+    def fake_sell(symbol, qty, reduce_only, leverage, reference_price=None):
+        return OrderBase(
+            order_id="canceled-exit-stop",
+            order_type="market",
+            pair=symbol,
+            timestamp=1788529592422,
+            order_side="sell",
+            qty=0,
+            price=0,
+            status=OrderStatus.CANCELED,
+            time_in_force="GTC",
+            deal_type=DealType.stop_loss,
+        )
+
+    deal = _make_fheusdtm_deal()
+    deal.execution.kucoin_futures_api = types.SimpleNamespace(sell=fake_sell)
+    deal.execution.active_bot.deal.closing_price = 0.0007861
+    deal.execution.active_bot.deal.closing_qty = 92
+    deal.execution.active_bot.deal.closing_timestamp = 1788529590286
+
+    deal.execution.execute_stop_loss(reference_price=0.000789)
+
+    assert deal.execution.active_bot.deal.closing_price == 0.0007861
+    assert deal.execution.active_bot.deal.closing_qty == 92
+    assert deal.execution.active_bot.deal.closing_timestamp == 1788529590286
+    assert deal.execution.active_bot.orders[-1].status == OrderStatus.CANCELED
+
+
 def test_paper_trading_execute_stop_loss_uses_reference_price_as_fill():
     """
     Paper-trading branch: when reference_price is provided the simulated fill
