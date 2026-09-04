@@ -59,6 +59,8 @@ def make_sizing_deal(
         DEFAULT_LEVERAGE=1,
     )
     deal.controller = types.SimpleNamespace(save=lambda bot: bot)
+    deal._entry_reference_price = 100.0
+    deal._entry_allowance_pct = 1.5
     return deal
 
 
@@ -244,7 +246,7 @@ def test_entry_liquidity_gate_preserves_exchange_book_price_when_tightening_buy(
     assert entry_limit_price == 100.005
 
 
-def test_entry_liquidity_gate_allows_qualified_spread_below_thirty_bps():
+def test_entry_liquidity_gate_logs_spread_without_a_spread_threshold():
     deal = make_sizing_deal(multiplier=1)
     deal.active_bot.position = Position.long
     attach_order_book(
@@ -258,12 +260,12 @@ def test_entry_liquidity_gate_allows_qualified_spread_below_thirty_bps():
     assert contracts == 10
     assert entry_limit_price == 100.125
     assert any(
-        "thresholds: spread<=30.00bps, slippage<=15.00bps" in log
+        "spread=25.00bps" in log and "threshold: slippage<=15.00bps" in log
         for log in deal.active_bot.logs
     )
 
 
-def test_entry_liquidity_gate_rejects_excessive_spread_and_records_reason():
+def test_entry_liquidity_gate_rejects_wide_spread_through_expected_slippage():
     deal = make_sizing_deal(multiplier=1)
     deal.active_bot.position = Position.long
     saved: list[BotModel] = []
@@ -274,12 +276,14 @@ def test_entry_liquidity_gate_rejects_excessive_spread_and_records_reason():
         asks=[[100.2, 100]],
     )
 
-    with pytest.raises(BinbotErrors, match=r"spread exceeds 30\.00bps"):
+    with pytest.raises(BinbotErrors, match="expected KuCoin futures slippage"):
         deal.liquidity_gated_contracts(10, 100.0)
 
     assert deal.active_bot.status == Status.error
     assert saved == [deal.active_bot]
-    assert "spread exceeds 30.00bps" in deal.active_bot.logs[-1]
+    assert "spread=40.00bps" in deal.active_bot.logs[-1]
+    assert "expected_slippage=20.00bps" in deal.active_bot.logs[-1]
+    assert "exceeds 15.00bps" in deal.active_bot.logs[-1]
 
 
 def test_entry_liquidity_gate_rejects_excessive_expected_slippage():
@@ -296,6 +300,51 @@ def test_entry_liquidity_gate_rejects_excessive_expected_slippage():
 
     assert "expected_slippage=44.20bps" in deal.active_bot.logs[-1]
     assert "exceeds 15.00bps" in deal.active_bot.logs[-1]
+
+
+def test_entry_liquidity_gate_rejects_long_below_candle_reference_band():
+    deal = make_sizing_deal(multiplier=1)
+    deal.active_bot.position = Position.long
+    deal.price_precision = 7
+    deal._entry_reference_price = 0.0008543
+    deal._entry_allowance_pct = 1.37
+    saved: list[BotModel] = []
+    deal.controller = types.SimpleNamespace(save=lambda bot: saved.append(bot))
+    attach_order_book(
+        deal,
+        bids=[[0.0008056, 25_000]],
+        asks=[[0.0008059, 25_000]],
+    )
+
+    with pytest.raises(BinbotErrors, match="below candle reference"):
+        deal.liquidity_gated_contracts(92, 0.000866)
+
+    assert deal.active_bot.status == Status.error
+    assert saved == [deal.active_bot]
+    assert "5.67% below candle reference 0.0008543" in deal.active_bot.logs[-1]
+    assert "maximum allowed displacement is 1.37%" in deal.active_bot.logs[-1]
+
+
+def test_entry_liquidity_gate_rejects_short_above_candle_reference_band():
+    deal = make_sizing_deal(multiplier=1)
+    deal.active_bot.position = Position.short
+    deal._entry_reference_price = 100.0
+    deal._entry_allowance_pct = 1.0
+    saved: list[BotModel] = []
+    deal.controller = types.SimpleNamespace(save=lambda bot: saved.append(bot))
+    attach_order_book(
+        deal,
+        bids=[[105.0, 100]],
+        asks=[[105.02, 100]],
+    )
+
+    with pytest.raises(BinbotErrors, match="above candle reference"):
+        deal.liquidity_gated_contracts(10, 99.0)
+
+    assert deal.active_bot.status == Status.error
+    assert saved == [deal.active_bot]
+    assert "5.00% above candle reference 100" in deal.active_bot.logs[-1]
+    assert "maximum allowed displacement is 1.00%" in deal.active_bot.logs[-1]
 
 
 def test_entry_liquidity_gate_rejects_stale_book_data():
@@ -849,6 +898,8 @@ def test_non_recovery_entry_uses_body_capped_limit_price(monkeypatch):
     limit_price = deal.body_capped_entry_limit_price()
 
     assert limit_price == 0.00625
+    assert deal._entry_reference_price == 0.00619
+    assert deal._entry_allowance_pct == pytest.approx(1.0904684975767376)
     assert any("Body-capped entry" in log for log in deal.active_bot.logs)
 
 
@@ -885,9 +936,37 @@ def test_top_gainer_early_momentum_waits_for_half_percent_retest(monkeypatch):
     limit_price = deal.body_capped_entry_limit_price()
 
     assert limit_price == 99.5
+    assert deal._entry_reference_price == 100.0
+    assert deal._entry_allowance_pct == 0.5
     assert any(
         "Top-gainer momentum retest entry" in log for log in deal.active_bot.logs
     )
+
+
+def test_top_gainer_expected_fill_at_exact_retest_boundary_is_allowed(monkeypatch):
+    deal = prepare_recovery_entry_deal(
+        monkeypatch,
+        position=Position.long,
+        previous_close=100.0,
+        current_open=101.0,
+        candle_range=2.0,
+    )
+    deal.active_bot.name = "top_gainer_early_momentum"
+    deal.active_bot.recovery_params = None
+    candidate_limit_price = deal.body_capped_entry_limit_price()
+    attach_order_book(
+        deal,
+        bids=[[99.49, 100]],
+        asks=[[99.5, 100]],
+    )
+
+    contracts, entry_limit_price = deal.liquidity_gated_contracts(
+        10, candidate_limit_price
+    )
+
+    assert contracts == 10
+    assert candidate_limit_price == 99.5
+    assert entry_limit_price == 99.5
 
 
 def test_top_gainer_stop_triggers_early_as_stop_market():
