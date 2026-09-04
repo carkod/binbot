@@ -78,13 +78,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
     TOP_GAINER_EARLY_MOMENTUM_RETEST_DISCOUNT_PCT = 0.5
     TOP_GAINER_EARLY_MOMENTUM_STOP_TRIGGER_BUFFER_PCT = 0.5
     ENTRY_LIQUIDITY_PRICE_BAND_BPS = 50.0
-    # Runner entries need enough participation to capture asymmetric upside,
-    # but execution costs must stay small relative to the configured stop.
-    # Live top-gainer evidence supported entries through roughly a 30bps
-    # spread when the requested size still averaged no more than 15bps of
-    # slippage. Keep both limits explicit so a deep first level cannot hide a
-    # pathological spread, and a tight top of book cannot hide a costly walk.
-    ENTRY_LIQUIDITY_MAX_SPREAD_BPS = 30.0
+    # Keep size-aware execution costs small relative to the configured stop.
+    # This also bounds the spread: crossing the best quote costs half the
+    # spread from midpoint, and walking the book can only increase that cost.
     ENTRY_LIQUIDITY_MAX_SLIPPAGE_BPS = 15.0
     # Thin books can go many seconds between quote updates without being
     # genuinely stale (KuCoin's ts reflects the last book change, not "now"),
@@ -132,8 +128,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
         )
         self.price_precision = self.symbol_info.price_precision
         # Set by body_capped_entry_limit_price(); reused by
-        # liquidity_gated_contracts() to scale spread/slippage thresholds
-        # with the same ATR read, without a second klines fetch.
+        # liquidity_gated_contracts() so the live executable price must remain
+        # inside the same candle-reference band without a second klines fetch.
+        self._entry_reference_price: float | None = None
         self._entry_allowance_pct: float | None = None
 
     def _direction_multiplier(self) -> int:
@@ -302,6 +299,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             )
 
         if self.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO:
+            self._entry_reference_price = previous_close
             entry_limit_price = round_numbers(
                 previous_close
                 * (1 - self.TOP_GAINER_EARLY_MOMENTUM_RETEST_DISCOUNT_PCT / 100),
@@ -323,6 +321,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         else:
             anchor_price = max(current_open, previous_close)
 
+        self._entry_reference_price = anchor_price
         atr = self.closed_candle_atr(completed_candles)
         if atr is None:
             allowance_pct = self.ENTRY_FALLBACK_ALLOWANCE_PCT
@@ -583,7 +582,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
             if self.active_bot.position == Position.short
             else AddOrderReq.SideEnum.BUY
         )
-        spread_threshold_bps = self.ENTRY_LIQUIDITY_MAX_SPREAD_BPS
         slippage_threshold_bps = self.ENTRY_LIQUIDITY_MAX_SLIPPAGE_BPS
         try:
             order_book = load_futures_order_book(
@@ -619,13 +617,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
             )
             self.reject_entry_for_liquidity(message)
 
-        if requested_snapshot.spread_bps > spread_threshold_bps:
-            message = (
-                "Entry rejected: KuCoin futures spread exceeds "
-                f"{spread_threshold_bps:.2f}bps. {summary}."
-            )
-            self.reject_entry_for_liquidity(message)
-
         if approved_contracts <= 0:
             message = (
                 "Entry rejected: no complete contract lot is executable within "
@@ -654,6 +645,30 @@ class KucoinPositionDeal(KucoinBaseBalance):
             )
             self.reject_entry_for_liquidity(message)
 
+        if self._entry_reference_price is None or self._entry_allowance_pct is None:
+            self.reject_entry_for_liquidity(
+                "Entry rejected: candle-reference displacement band is unavailable."
+            )
+
+        expected_fill_price = approved_snapshot.expected_average_fill_price
+        if expected_fill_price is None:
+            self.reject_entry_for_liquidity(
+                "Entry rejected: expected KuCoin futures fill price is unavailable. "
+                f"{summary}."
+            )
+
+        displacement_pct = (expected_fill_price / self._entry_reference_price - 1) * 100
+        if abs(displacement_pct) > self._entry_allowance_pct:
+            displacement_direction = "above" if displacement_pct > 0 else "below"
+            message = (
+                "Entry rejected: expected KuCoin futures fill price "
+                f"{expected_fill_price:.8g} is {abs(displacement_pct):.2f}% "
+                f"{displacement_direction} candle reference "
+                f"{self._entry_reference_price:.8g}; maximum allowed displacement "
+                f"is {self._entry_allowance_pct:.2f}%. {summary}."
+            )
+            self.reject_entry_for_liquidity(message)
+
         entry_limit_price = candidate_limit_price
         if approved_snapshot.worst_fill_price is not None:
             if side == AddOrderReq.SideEnum.BUY:
@@ -671,8 +686,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         self.active_bot.add_log(
             f"Futures entry liquidity snapshot: {summary}. "
-            f"thresholds: spread<={spread_threshold_bps:.2f}bps, "
-            f"slippage<={slippage_threshold_bps:.2f}bps."
+            f"threshold: slippage<={slippage_threshold_bps:.2f}bps."
         )
         if approved_contracts < requested_contracts:
             self.active_bot.add_log(
