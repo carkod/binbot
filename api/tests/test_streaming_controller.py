@@ -867,7 +867,11 @@ class TestPositionManager:
         monkeypatch.setattr(
             OrderStatus,
             "map_from_kucoin_status",
-            staticmethod(lambda _: OrderStatus.NEW),
+            staticmethod(
+                lambda status: (
+                    OrderStatus.NEW if status == "open" else OrderStatus.CANCELED
+                )
+            ),
         )
         monkeypatch.setattr(
             "streaming.futures_position.convert_to_kucoin_symbol",
@@ -876,13 +880,16 @@ class TestPositionManager:
 
         retrieve_calls: list[str] = []
 
+        system_order_statuses = iter(["open", "canceled"])
+
         base.kucoin_futures_api.retrieve_order = lambda order_id: types.SimpleNamespace(
-            status=types.SimpleNamespace(value="open"),
+            status=types.SimpleNamespace(value=next(system_order_statuses)),
             filled_size=0,
             avg_deal_price=0,
             created_at=bot.orders[0].timestamp,
             price=0.000611,
         )
+        base.kucoin_futures_api.get_futures_position = lambda symbol: None
         base.kucoin_futures_api.cancel_futures_order = lambda order_id: (
             canceled_futures_orders.append(order_id)
         )
@@ -907,6 +914,7 @@ class TestPositionManager:
                 delete_order=lambda order_id, bot_id: deleted.append(order_id)
             ),
             cancel_current_sl=lambda: deleted.append("cancel_current_sl"),
+            _actual_fill=lambda order: (0, 0),
             _reversal_eligible=lambda: False,
         )
 
@@ -920,6 +928,240 @@ class TestPositionManager:
         assert saved == [bot]
         assert bot.orders[0].status == OrderStatus.EXPIRED
         assert any("expired after 5 minutes without fill" in log for log in logs)
+
+    def test_missing_pending_entry_activates_when_exact_fill_is_confirmed(
+        self, monkeypatch
+    ):
+        base = self._make_base_streaming(monkeypatch, active_pairs=["UAIUSDT"])
+        base.exchange = ExchangeId.KUCOIN
+        base.interval = types.SimpleNamespace(get_ms=lambda: 15 * 60 * 1000)
+
+        bot = self._make_bot(
+            pair="UAIUSDT",
+            position=Position.long,
+            market_type=MarketType.FUTURES,
+        )
+        bot.id = "41b32505-2ac5-4ddf-95ca-5fd522898ef2"
+        bot.status = Status.pending
+        bot.deal.opening_price = 0
+        bot.deal.opening_qty = 0
+        bot.deal.opening_timestamp = 0
+        logs: list[str] = []
+        bot.add_log = lambda msg: logs.append(msg)
+        bot.orders = [
+            OrderModel(
+                order_id="486282655340449792",
+                order_type="limit",
+                pair="UAIUSDTM",
+                timestamp=1788752021728,
+                order_side="buy",
+                qty=0,
+                price=0.671,
+                status=OrderStatus.NEW,
+                time_in_force="GTC",
+                deal_type=DealType.base_order,
+            )
+        ]
+
+        canceled: list[str] = []
+        updated: list[OrderModel] = []
+        saved: list[Any] = []
+
+        monkeypatch.setattr(
+            "streaming.futures_position.convert_to_kucoin_symbol",
+            lambda _bot: "UAIUSDTM",
+        )
+        base.kucoin_futures_api.retrieve_order = lambda order_id: (_ for _ in ()).throw(
+            RestError(
+                msg="not found",
+                response=types.SimpleNamespace(code=100001, message="not found"),
+            )
+        )
+        base.kucoin_futures_api.get_futures_position = lambda symbol: (
+            types.SimpleNamespace(current_qty=1)
+        )
+        base.bot_controller.update_order = lambda order: updated.append(order)
+        base.bot_controller.save = lambda *args, **kwargs: saved.append(
+            kwargs.get("data") if "data" in kwargs else args[0]
+        )
+
+        def open_deal():
+            bot.status = Status.active
+            return bot
+
+        fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
+        fp.base_streaming = base
+        fp.price_precision = 5
+        fp.qty_precision = 0
+        fp.execution = types.SimpleNamespace(
+            active_bot=bot,
+            controller=base.bot_controller,
+            bot_crud=types.SimpleNamespace(),
+            cancel_current_sl=lambda: canceled.append("cancel_current_sl"),
+            _actual_fill=lambda order: (1, 0.67318),
+            open_deal=open_deal,
+            _reversal_eligible=lambda: False,
+        )
+
+        FuturesPosition.order_updates(fp)
+
+        assert bot.status == Status.active
+        assert bot.deal.opening_price == 0.67318
+        assert bot.deal.opening_qty == 1
+        assert bot.deal.opening_timestamp == 1788752021728
+        assert bot.orders[0].status == OrderStatus.FILLED
+        assert bot.orders[0].qty == 1
+        assert bot.orders[0].price == 0.67318
+        assert updated == [bot.orders[0]]
+        assert saved == [bot]
+        assert canceled == []
+        assert any("fill was confirmed" in log for log in logs)
+
+    def test_single_missing_pending_entry_response_keeps_zero_position_bot_pending(
+        self, monkeypatch
+    ):
+        base = self._make_base_streaming(monkeypatch, active_pairs=["UAIUSDT"])
+        base.exchange = ExchangeId.KUCOIN
+        base.interval = types.SimpleNamespace(get_ms=lambda: 15 * 60 * 1000)
+
+        bot = self._make_bot(
+            pair="UAIUSDT",
+            position=Position.long,
+            market_type=MarketType.FUTURES,
+        )
+        bot.id = "pending-uai-bot"
+        bot.status = Status.pending
+        bot.deal.opening_price = 0
+        bot.orders = [
+            OrderModel(
+                order_id="missing-entry",
+                order_type="limit",
+                pair="UAIUSDTM",
+                timestamp=int(time.time() * 1000),
+                order_side="buy",
+                qty=0,
+                price=0.671,
+                status=OrderStatus.NEW,
+                time_in_force="GTC",
+                deal_type=DealType.base_order,
+            )
+        ]
+
+        canceled: list[str] = []
+        updated: list[OrderModel] = []
+        saved: list[Any] = []
+
+        monkeypatch.setattr(
+            "streaming.futures_position.convert_to_kucoin_symbol",
+            lambda _bot: "UAIUSDTM",
+        )
+        base.kucoin_futures_api.retrieve_order = lambda order_id: (_ for _ in ()).throw(
+            RestError(
+                msg="not found",
+                response=types.SimpleNamespace(code=100001, message="not found"),
+            )
+        )
+        base.kucoin_futures_api.get_futures_position = lambda symbol: None
+        base.bot_controller.update_order = lambda order: updated.append(order)
+        base.bot_controller.save = lambda *args, **kwargs: saved.append(
+            kwargs.get("data") if "data" in kwargs else args[0]
+        )
+
+        fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
+        fp.base_streaming = base
+        fp.price_precision = 5
+        fp.qty_precision = 0
+        fp.execution = types.SimpleNamespace(
+            active_bot=bot,
+            controller=base.bot_controller,
+            bot_crud=types.SimpleNamespace(),
+            cancel_current_sl=lambda: canceled.append("cancel_current_sl"),
+            _actual_fill=lambda order: (0, 0),
+            _reversal_eligible=lambda: False,
+        )
+
+        FuturesPosition.order_updates(fp)
+
+        assert bot.status == Status.pending
+        assert bot.orders[0].status == OrderStatus.NEW
+        assert updated == []
+        assert saved == []
+        assert canceled == []
+
+    def test_terminal_entry_without_fills_stays_pending_while_position_is_live(
+        self, monkeypatch
+    ):
+        base = self._make_base_streaming(monkeypatch, active_pairs=["UAIUSDT"])
+        base.exchange = ExchangeId.KUCOIN
+        base.interval = types.SimpleNamespace(get_ms=lambda: 15 * 60 * 1000)
+
+        bot = self._make_bot(
+            pair="UAIUSDT",
+            position=Position.long,
+            market_type=MarketType.FUTURES,
+        )
+        bot.id = "live-position-uai-bot"
+        bot.status = Status.pending
+        bot.deal.opening_price = 0
+        bot.orders = [
+            OrderModel(
+                order_id="terminal-entry",
+                order_type="limit",
+                pair="UAIUSDTM",
+                timestamp=int(time.time() * 1000),
+                order_side="buy",
+                qty=0,
+                price=0.671,
+                status=OrderStatus.NEW,
+                time_in_force="GTC",
+                deal_type=DealType.base_order,
+            )
+        ]
+
+        updated: list[OrderModel] = []
+        saved: list[Any] = []
+
+        monkeypatch.setattr(
+            OrderStatus,
+            "map_from_kucoin_status",
+            staticmethod(lambda _: OrderStatus.FILLED),
+        )
+        monkeypatch.setattr(
+            "streaming.futures_position.convert_to_kucoin_symbol",
+            lambda _bot: "UAIUSDTM",
+        )
+        base.kucoin_futures_api.retrieve_order = lambda order_id: types.SimpleNamespace(
+            status=types.SimpleNamespace(value="done"),
+            filled_size=0,
+            avg_deal_price=0,
+            created_at=bot.orders[0].timestamp,
+            price=0.671,
+        )
+        base.kucoin_futures_api.get_futures_position = lambda symbol: (
+            types.SimpleNamespace(current_qty=1)
+        )
+        base.bot_controller.update_order = lambda order: updated.append(order)
+        base.bot_controller.save = lambda *args, **kwargs: saved.append(
+            kwargs.get("data") if "data" in kwargs else args[0]
+        )
+
+        fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
+        fp.base_streaming = base
+        fp.price_precision = 5
+        fp.qty_precision = 0
+        fp.execution = types.SimpleNamespace(
+            active_bot=bot,
+            controller=base.bot_controller,
+            _actual_fill=lambda order: (0, 0),
+            _reversal_eligible=lambda: False,
+        )
+
+        FuturesPosition.order_updates(fp)
+
+        assert bot.status == Status.pending
+        assert bot.orders[0].status == OrderStatus.NEW
+        assert updated == []
+        assert saved == []
 
     def test_pending_entry_cancel_uses_sdk_standard_cancel_before_stop_cancel(
         self, monkeypatch

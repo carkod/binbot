@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from kucoin_universal_sdk.generate.futures.order.model_get_order_by_order_id_resp import (
     GetOrderByOrderIdResp,
@@ -111,6 +112,14 @@ class FuturesPosition(PositionMarket):
                 return None
             raise error
 
+    def _absolute_position_qty(self, kucoin_symbol: str) -> float:
+        position = self.base_streaming.kucoin_futures_api.get_futures_position(
+            kucoin_symbol
+        )
+        if position is None:
+            return 0
+        return abs(float(position.current_qty))
+
     @staticmethod
     def _cancel_futures_order_by_id(api, order_id: str) -> bool:
         cancel_by_id = getattr(api, "cancel_futures_order", None)
@@ -197,12 +206,31 @@ class FuturesPosition(PositionMarket):
         self._cancel_pending_entry_order(order, kucoin_symbol)
 
         refreshed_order = self._retrieve_order_or_none(str(order.order_id))
-        if refreshed_order is not None:
-            refreshed_status = OrderStatus.map_from_kucoin_status(
-                refreshed_order.status.value
+        if refreshed_order is None:
+            logging.warning(
+                "Pending entry %s remained unavailable after cancellation; "
+                "keeping bot %s pending until cancellation and position state "
+                "can be confirmed",
+                order.order_id,
+                self.execution.active_bot.id,
             )
-            refreshed_filled_size = float(refreshed_order.filled_size)
-            refreshed_price_used = float(refreshed_order.avg_deal_price)
+            return
+
+        refreshed_status = OrderStatus.map_from_kucoin_status(
+            refreshed_order.status.value
+        )
+        refreshed_filled_size = float(refreshed_order.filled_size)
+        refreshed_price_used = float(refreshed_order.avg_deal_price)
+        if refreshed_status == OrderStatus.FILLED and refreshed_filled_size <= 0:
+            refreshed_status = OrderStatus.CANCELED
+
+        actual_filled_size, actual_price_used = self.execution._actual_fill(order)
+        if actual_filled_size > 0 and actual_price_used > 0:
+            refreshed_filled_size = actual_filled_size
+            refreshed_price_used = actual_price_used
+            refreshed_status = OrderStatus.FILLED
+
+        if refreshed_filled_size > 0 and refreshed_price_used > 0:
             self._apply_system_order_update(
                 order,
                 refreshed_order,
@@ -210,16 +238,48 @@ class FuturesPosition(PositionMarket):
                 refreshed_filled_size,
                 refreshed_price_used,
             )
-            if refreshed_filled_size > 0 and refreshed_price_used > 0:
-                self.execution.controller.update_order(order)
-                self._activate_filled_base_order(
-                    order,
-                    "Entry order filled while expiry cancellation was being processed. "
-                    "Bot activated with confirmed fill.",
-                )
-                self.execution.controller.save(data=self.execution.active_bot)
-                return
+            self.execution.controller.update_order(order)
+            self._activate_filled_base_order(
+                order,
+                "Entry order filled while expiry cancellation was being processed. "
+                "Bot activated with confirmed fill.",
+            )
+            self.execution.controller.save(data=self.execution.active_bot)
+            return
 
+        position_qty = self._absolute_position_qty(kucoin_symbol)
+        if position_qty > 0:
+            logging.warning(
+                "Pending entry %s reported no fill after cancellation, but %s "
+                "still has %s contracts; keeping bot %s pending",
+                order.order_id,
+                kucoin_symbol,
+                position_qty,
+                self.execution.active_bot.id,
+            )
+            return
+
+        if refreshed_status not in {
+            OrderStatus.CANCELED,
+            OrderStatus.EXPIRED,
+            OrderStatus.REJECTED,
+        }:
+            logging.warning(
+                "Pending entry %s cancellation is not terminal (status=%s); "
+                "keeping bot %s pending",
+                order.order_id,
+                refreshed_status.value,
+                self.execution.active_bot.id,
+            )
+            return
+
+        self._apply_system_order_update(
+            order,
+            refreshed_order,
+            refreshed_status,
+            refreshed_filled_size,
+            refreshed_price_used,
+        )
         order.status = OrderStatus.EXPIRED
         order.qty = 0
         self.execution.controller.update_order(order)
@@ -333,6 +393,46 @@ class FuturesPosition(PositionMarket):
                     )
                     filled_size = float(system_order.filled_size)
                     price_used = float(system_order.avg_deal_price)
+                    if (
+                        order.deal_type == DealType.base_order
+                        and self.execution.active_bot.deal.opening_price == 0
+                        and status == OrderStatus.FILLED
+                        and filled_size <= 0
+                    ):
+                        status = OrderStatus.CANCELED
+
+                    if (
+                        order.deal_type == DealType.base_order
+                        and self.execution.active_bot.deal.opening_price == 0
+                        and filled_size <= 0
+                        and status
+                        in {
+                            OrderStatus.CANCELED,
+                            OrderStatus.EXPIRED,
+                            OrderStatus.REJECTED,
+                        }
+                    ):
+                        actual_filled_size, actual_price_used = (
+                            self.execution._actual_fill(order)
+                        )
+                        if actual_filled_size > 0 and actual_price_used > 0:
+                            filled_size = actual_filled_size
+                            price_used = actual_price_used
+                            status = OrderStatus.FILLED
+                        else:
+                            position_qty = self._absolute_position_qty(kucoin_symbol)
+                            if position_qty > 0:
+                                logging.warning(
+                                    "Entry order %s reported terminal status %s "
+                                    "without fills, but %s still has %s contracts; "
+                                    "keeping bot %s pending for reconciliation",
+                                    order.order_id,
+                                    status.value,
+                                    kucoin_symbol,
+                                    position_qty,
+                                    self.execution.active_bot.id,
+                                )
+                                continue
 
                     previous_qty = float(order.qty)
                     previous_status = order.status
@@ -417,14 +517,40 @@ class FuturesPosition(PositionMarket):
                     if float(e.response.code) == 100001:
                         try:
                             if order.deal_type == DealType.base_order:
-                                self.execution.cancel_current_sl()
-                                self.execution.active_bot.status = Status.inactive
-                                self.execution.active_bot.add_log(
-                                    f"Order {order.order_id} expired and cancelled. Bot set to inactive.",
+                                filled_size, price_used = self.execution._actual_fill(
+                                    order
                                 )
-                                self.execution.controller.save(
-                                    data=self.execution.active_bot
+                                position_qty = self._absolute_position_qty(
+                                    kucoin_symbol
                                 )
+                                if filled_size > 0 and price_used > 0:
+                                    order.qty = round_numbers(
+                                        filled_size, self.qty_precision
+                                    )
+                                    order.price = round_numbers(
+                                        price_used, self.price_precision
+                                    )
+                                    order.status = OrderStatus.FILLED
+                                    self.execution.controller.update_order(order)
+                                    self._activate_filled_base_order(
+                                        order,
+                                        "Entry order was temporarily unavailable, "
+                                        "but its fill was confirmed from exchange fills. "
+                                        "Bot activated with confirmed fill.",
+                                    )
+                                    self.execution.controller.save(
+                                        data=self.execution.active_bot
+                                    )
+                                else:
+                                    logging.warning(
+                                        "Pending entry %s returned 100001; exact "
+                                        "fills=%s and position_qty=%s. Keeping bot "
+                                        "%s pending for reconciliation",
+                                        order.order_id,
+                                        filled_size,
+                                        position_qty,
+                                        self.execution.active_bot.id,
+                                    )
                             elif self.should_expire_order_by_age(order):
                                 self.execution.cancel_current_sl()
                                 self.execution.active_bot.add_log(
@@ -451,7 +577,8 @@ class FuturesPosition(PositionMarket):
                                 )
                         except Exception as cancel_e:
                             self.execution.active_bot.add_log(
-                                f"Failed to cancel all futures orders for {kucoin_symbol}: {str(cancel_e)}"
+                                f"Failed to reconcile exchange order {order.order_id} "
+                                f"for {kucoin_symbol}: {str(cancel_e)}"
                             )
                             self.execution.controller.save(
                                 data=self.execution.active_bot
