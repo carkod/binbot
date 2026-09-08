@@ -1153,7 +1153,7 @@ def test_unfilled_capped_base_order_uses_pending_entry_ttl_not_legacy_age_expiry
     bot = types.SimpleNamespace(
         name="another_strategy",
         status=Status.pending,
-        deal=types.SimpleNamespace(opening_price=0),
+        deal=types.SimpleNamespace(opening_price=0, opening_timestamp=0),
     )
     position.execution = types.SimpleNamespace(active_bot=bot)
 
