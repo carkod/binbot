@@ -48,7 +48,7 @@ class SymbolsCrudUtils:
     # -------------------------
     # Insert / update helpers (explicit session)
     # -------------------------
-    def _add_exchange_link_if_not_exists(
+    def upsert_exchange_link(
         self,
         session: Session,
         symbol: str,
@@ -59,8 +59,22 @@ class SymbolsCrudUtils:
         quote_asset: str,
         base_asset: str,
         is_margin_trading_allowed: bool,
-        multiplier: float = 1.0,
+        multiplier: float | None = None,
     ):
+        """
+        Creates the exchange link, or refreshes `multiplier` on an existing one.
+
+        `multiplier` is refreshed because the a0e265d5cb35 migration backfilled
+        every pre-existing row to 1.0, and futures PnL/notional read from it are
+        silently wrong until the real contract value lands. The remaining columns
+        stay insert-only: they feed live order placement, so changing their
+        refresh semantics is a separate decision.
+
+        `None` means the caller has no contract multiplier to report (spot and
+        margin ingestion), so the stored value is left alone. Without this the
+        spot pass would reset a futures multiplier to 1.0 whenever both passes
+        cover the same symbol, which happens for any fiat other than USDT.
+        """
         existing_exchange_link = session.exec(
             select(SymbolExchangeTable).where(
                 (SymbolExchangeTable.symbol_id == symbol)
@@ -77,13 +91,19 @@ class SymbolsCrudUtils:
                 quote_asset=quote_asset,
                 base_asset=base_asset,
                 is_margin_trading_allowed=is_margin_trading_allowed,
-                multiplier=multiplier,
+                multiplier=1.0 if multiplier is None else multiplier,
             )
             session.add(exchange_link)
             # commit/refresh handled by get_db_session() caller
             session.flush()
             session.refresh(exchange_link)
             return exchange_link
+
+        if multiplier is not None and existing_exchange_link.multiplier != multiplier:
+            existing_exchange_link.multiplier = multiplier
+            session.add(existing_exchange_link)
+            session.flush()
+            session.refresh(existing_exchange_link)
         return existing_exchange_link
 
     def calculate_precisions(self, item) -> tuple[int, int, float]:
