@@ -5,6 +5,7 @@ from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddO
 
 from api.exchange_apis.kucoin.futures.liquidity import (
     calculate_liquidity_snapshot,
+    floor_price_to_tick,
     load_futures_order_book,
 )
 from api.exchange_apis.kucoin.futures.models import FuturesOrderBook, OrderBookLevel
@@ -27,6 +28,16 @@ def representative_order_book() -> FuturesOrderBook:
         exchange_timestamp_ms=now_ms - 125,
         received_timestamp_ms=now_ms,
     )
+
+
+def test_floor_price_to_tick_uses_exact_increment_not_decimal_precision():
+    assert floor_price_to_tick(1.063, 0.005) == 1.06
+
+
+@pytest.mark.parametrize("tick_size", [0, -0.01, float("nan")])
+def test_floor_price_to_tick_rejects_invalid_tick_size(tick_size):
+    with pytest.raises(ValueError, match="Tick size must be positive"):
+        floor_price_to_tick(1.0, tick_size)
 
 
 def test_buy_liquidity_snapshot_reports_depth_vwap_slippage_and_imbalance():

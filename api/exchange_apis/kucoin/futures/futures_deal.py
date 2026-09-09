@@ -33,6 +33,7 @@ from api.exchange_apis.kucoin.deals.base import KucoinBaseBalance
 from api.exchange_apis.kucoin.futures.balance import KucoinFuturesBalance
 from api.exchange_apis.kucoin.futures.liquidity import (
     calculate_liquidity_snapshot,
+    floor_price_to_tick,
     load_futures_order_book,
 )
 from api.exchange_apis.kucoin.futures.models import LiquiditySnapshot
@@ -77,7 +78,16 @@ class KucoinPositionDeal(KucoinBaseBalance):
     ENTRY_MIN_ALLOWANCE_PCT = 0.5
     ENTRY_MAX_ALLOWANCE_PCT = 1.5
     ENTRY_FALLBACK_ALLOWANCE_PCT = 0.75
-    TOP_GAINER_EARLY_MOMENTUM_RETEST_DISCOUNT_PCT = 0.5
+    # Top-gainer retests adapt to both realized volatility and the live book.
+    # A quarter ATR centers the old 0.5% heuristic at 2% ATR; two spreads and
+    # two ticks keep the distance meaningful for each contract. The 1% cap is
+    # half of this strategy's current 2% stop and prevents unfillable deep bids.
+    TOP_GAINER_RETEST_ATR_MULTIPLIER = 0.25
+    TOP_GAINER_RETEST_FALLBACK_DISCOUNT_PCT = 0.5
+    TOP_GAINER_RETEST_MIN_DISCOUNT_PCT = 0.1
+    TOP_GAINER_RETEST_MAX_DISCOUNT_PCT = 1.0
+    TOP_GAINER_RETEST_SPREAD_MULTIPLIER = 2.0
+    TOP_GAINER_RETEST_MIN_TICKS = 2
     TOP_GAINER_EARLY_MOMENTUM_STOP_TRIGGER_BUFFER_PCT = 0.5
     ENTRY_LIQUIDITY_PRICE_BAND_BPS = 50.0
     # Keep size-aware execution costs small relative to the configured stop.
@@ -134,6 +144,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         # inside the same candle-reference band without a second klines fetch.
         self._entry_reference_price: float | None = None
         self._entry_allowance_pct: float | None = None
+        self._top_gainer_volatility_discount_pct: float | None = None
 
     def _direction_multiplier(self) -> int:
         return -1 if self.active_bot.position == Position.short else 1
@@ -302,18 +313,51 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         if self.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO:
             self._entry_reference_price = previous_close
-            entry_limit_price = round_numbers(
-                previous_close
-                * (1 - self.TOP_GAINER_EARLY_MOMENTUM_RETEST_DISCOUNT_PCT / 100),
-                self.price_precision,
+            atr = self.closed_candle_atr(completed_candles)
+            if atr is None:
+                volatility_discount_pct = self.TOP_GAINER_RETEST_FALLBACK_DISCOUNT_PCT
+                discount_source = "fallback"
+            else:
+                volatility_discount_pct = (
+                    self.TOP_GAINER_RETEST_ATR_MULTIPLIER * atr / previous_close * 100
+                )
+                discount_source = "ATR"
+
+            volatility_discount_pct = max(
+                self.TOP_GAINER_RETEST_MIN_DISCOUNT_PCT,
+                min(
+                    volatility_discount_pct,
+                    self.TOP_GAINER_RETEST_MAX_DISCOUNT_PCT,
+                ),
             )
-            self._entry_allowance_pct = (
-                self.TOP_GAINER_EARLY_MOMENTUM_RETEST_DISCOUNT_PCT
+            self._top_gainer_volatility_discount_pct = volatility_discount_pct
+            self._entry_allowance_pct = volatility_discount_pct
+            try:
+                raw_tick_size = getattr(self.kucoin_symbol_data, "tick_size", None)
+                if raw_tick_size is None:
+                    raise ValueError("tick size is missing")
+                tick_size = float(raw_tick_size)
+                entry_limit_price = floor_price_to_tick(
+                    previous_close * (1 - volatility_discount_pct / 100),
+                    tick_size,
+                )
+            except (TypeError, ValueError) as exc:
+                self.active_bot.add_log(
+                    f"Entry rejected: invalid KuCoin futures tick size ({exc})."
+                )
+                raise BinbotErrors(
+                    "Reliable tick-size data is unavailable for futures entry."
+                ) from exc
+
+            actual_discount_pct = (
+                (previous_close - entry_limit_price) / previous_close * 100
             )
+            self._entry_allowance_pct = actual_discount_pct
             self.active_bot.add_log(
-                "Top-gainer momentum retest entry: "
+                "Top-gainer momentum retest entry (provisional): "
                 f"confirmation_close={previous_close}, "
-                f"discount={self.TOP_GAINER_EARLY_MOMENTUM_RETEST_DISCOUNT_PCT:.2f}%, "
+                f"volatility_discount={volatility_discount_pct:.2f}% "
+                f"({discount_source}), tick_size={tick_size}, "
                 f"limit={entry_limit_price}."
             )
             return entry_limit_price
@@ -614,6 +658,71 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 f"maximum age is {self.ENTRY_LIQUIDITY_MAX_DATA_AGE_MS}ms. {summary}."
             )
             self.reject_entry_for_liquidity(message)
+
+        if self.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO:
+            volatility_discount_pct = self._top_gainer_volatility_discount_pct
+            if volatility_discount_pct is None or self._entry_reference_price is None:
+                self.reject_entry_for_liquidity(
+                    "Entry rejected: top-gainer volatility discount is unavailable."
+                )
+
+            try:
+                raw_tick_size = getattr(self.kucoin_symbol_data, "tick_size", None)
+                if raw_tick_size is None:
+                    raise ValueError("tick size is missing")
+                tick_size = float(raw_tick_size)
+                tick_distance_pct = (
+                    tick_size
+                    * self.TOP_GAINER_RETEST_MIN_TICKS
+                    / self._entry_reference_price
+                    * 100
+                )
+                spread_distance_pct = (
+                    requested_snapshot.spread_bps
+                    * self.TOP_GAINER_RETEST_SPREAD_MULTIPLIER
+                    / 100
+                )
+                discount_pct = min(
+                    max(
+                        volatility_discount_pct,
+                        tick_distance_pct,
+                        spread_distance_pct,
+                        self.TOP_GAINER_RETEST_MIN_DISCOUNT_PCT,
+                    ),
+                    self.TOP_GAINER_RETEST_MAX_DISCOUNT_PCT,
+                )
+                candidate_limit_price = floor_price_to_tick(
+                    self._entry_reference_price * (1 - discount_pct / 100),
+                    tick_size,
+                )
+            except (TypeError, ValueError) as exc:
+                self.reject_entry_for_liquidity(
+                    f"Entry rejected: invalid top-gainer microstructure data ({exc}).",
+                    cause=exc,
+                )
+
+            actual_discount_pct = (
+                (self._entry_reference_price - candidate_limit_price)
+                / self._entry_reference_price
+                * 100
+            )
+            if actual_discount_pct > self.TOP_GAINER_RETEST_MAX_DISCOUNT_PCT + 1e-9:
+                self.reject_entry_for_liquidity(
+                    "Entry rejected: exact tick-size quantization would move the "
+                    f"top-gainer retest {actual_discount_pct:.2f}% below its "
+                    f"reference, beyond the {self.TOP_GAINER_RETEST_MAX_DISCOUNT_PCT:.2f}% cap."
+                )
+
+            self._entry_allowance_pct = actual_discount_pct
+            self.active_bot.add_log(
+                "Top-gainer momentum microstructure-aware retest entry: "
+                f"confirmation_close={self._entry_reference_price}, "
+                f"ATR_component={volatility_discount_pct:.2f}%, "
+                f"spread_component={spread_distance_pct:.2f}%, "
+                f"tick_component={tick_distance_pct:.2f}%, "
+                f"discount={actual_discount_pct:.2f}%, tick_size={tick_size}, "
+                f"limit={candidate_limit_price}."
+            )
 
         if self._entry_reference_price is None or self._entry_allowance_pct is None:
             self.reject_entry_for_liquidity(

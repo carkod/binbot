@@ -1037,6 +1037,7 @@ class TestPositionManager:
             compute_available_balance=lambda: 10.0,
             required_margin_for_contracts=lambda contracts, price: 3.75,
             _reversal_eligible=lambda: False,
+            kucoin_symbol_data=types.SimpleNamespace(tick_size=0.001),
         )
 
         FuturesPosition.order_updates(fp)

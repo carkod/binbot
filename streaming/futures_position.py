@@ -18,7 +18,10 @@ from pybinbot import (
 )
 
 from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
-from api.exchange_apis.kucoin.futures.liquidity import load_futures_order_book
+from api.exchange_apis.kucoin.futures.liquidity import (
+    floor_price_to_tick,
+    load_futures_order_book,
+)
 from api.tools.constants import (
     RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO,
     RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES,
@@ -32,6 +35,7 @@ from streaming.position_market import PositionMarket
 class FuturesPosition(PositionMarket):
     PENDING_ENTRY_TTL_MS = 5 * 60 * 1000
     TOP_GAINER_ENTRY_REPRICE_COOLDOWN_MS = 60 * 1000
+    TOP_GAINER_ENTRY_REPRICE_MAX_UPLIFT_PCT = 1.0
     TERMINAL_ORDER_STATUSES = {
         OrderStatus.FILLED,
         OrderStatus.CANCELED,
@@ -348,18 +352,33 @@ class FuturesPosition(PositionMarket):
             )
             return False
 
-        discount_ratio = (
-            KucoinPositionDeal.TOP_GAINER_EARLY_MOMENTUM_RETEST_DISCOUNT_PCT / 100
-        )
-        reprice_cap = round_numbers(
-            initial_order.price * (1 + discount_ratio) / (1 - discount_ratio),
-            self.price_precision,
-        )
-        best_bid = order_book.bids[0].price
-        target_price = round_numbers(
-            min(best_bid, reprice_cap),
-            self.price_precision,
-        )
+        try:
+            raw_tick_size = getattr(
+                self.execution.kucoin_symbol_data,
+                "tick_size",
+                None,
+            )
+            if raw_tick_size is None:
+                raise ValueError("tick size is missing")
+            tick_size = float(raw_tick_size)
+            reprice_cap = floor_price_to_tick(
+                initial_order.price
+                * (1 + self.TOP_GAINER_ENTRY_REPRICE_MAX_UPLIFT_PCT / 100),
+                tick_size,
+            )
+            best_bid = order_book.bids[0].price
+            target_price = floor_price_to_tick(
+                min(best_bid, reprice_cap),
+                tick_size,
+            )
+        except (TypeError, ValueError) as exc:
+            logging.warning(
+                "Skipping pending top-gainer entry reprice for %s because "
+                "tick-size data is invalid: %s",
+                order.order_id,
+                exc,
+            )
+            return False
         if target_price <= order.price:
             return False
 

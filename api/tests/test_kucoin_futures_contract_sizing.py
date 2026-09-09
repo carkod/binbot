@@ -53,6 +53,7 @@ def make_sizing_deal(
         taker_fee_rate=0.0006,
         lot_size=lot_size,
         mark_price=0.93269,
+        tick_size=0.00001,
     )
     deal.kucoin_futures_api = types.SimpleNamespace(
         DEFAULT_MULTIPLIER=1,
@@ -1073,6 +1074,114 @@ def test_top_gainer_expected_fill_at_exact_retest_boundary_is_allowed(monkeypatc
     assert contracts == 10
     assert candidate_limit_price == 99.5
     assert entry_limit_price == 99.5
+
+
+def test_top_gainer_retest_uses_spread_when_it_exceeds_atr_component(monkeypatch):
+    deal = prepare_recovery_entry_deal(
+        monkeypatch,
+        position=Position.long,
+        previous_close=100.0,
+        current_open=100.1,
+        candle_range=0.4,
+    )
+    deal.active_bot.name = "top_gainer_early_momentum"
+    deal.active_bot.recovery_params = None
+
+    provisional_limit_price = deal.body_capped_entry_limit_price()
+    attach_order_book(
+        deal,
+        bids=[[99.95, 100]],
+        asks=[[100.05, 100]],
+    )
+
+    contracts, entry_limit_price = deal.liquidity_gated_contracts(
+        10,
+        provisional_limit_price,
+    )
+
+    assert contracts == 10
+    assert provisional_limit_price == 99.9
+    assert entry_limit_price == 99.8
+    assert deal._entry_allowance_pct == pytest.approx(0.2)
+    assert any(
+        "ATR_component=0.10%" in log
+        and "spread_component=0.20%" in log
+        and "discount=0.20%" in log
+        for log in deal.active_bot.logs
+    )
+
+
+def test_top_gainer_retest_uses_exact_tick_distance(monkeypatch):
+    deal = prepare_recovery_entry_deal(
+        monkeypatch,
+        position=Position.long,
+        previous_close=100.0,
+        current_open=100.1,
+        candle_range=0.2,
+    )
+    deal.active_bot.name = "top_gainer_early_momentum"
+    deal.active_bot.recovery_params = None
+    deal.kucoin_symbol_data.tick_size = 0.25
+
+    provisional_limit_price = deal.body_capped_entry_limit_price()
+    attach_order_book(
+        deal,
+        bids=[[99.9, 100]],
+        asks=[[100.1, 100]],
+    )
+
+    _, entry_limit_price = deal.liquidity_gated_contracts(
+        10,
+        provisional_limit_price,
+    )
+
+    assert entry_limit_price == 99.5
+    assert deal._entry_allowance_pct == pytest.approx(0.5)
+    assert any("tick_component=0.50%" in log for log in deal.active_bot.logs)
+
+
+def test_top_gainer_retest_caps_high_volatility_discount(monkeypatch):
+    deal = prepare_recovery_entry_deal(
+        monkeypatch,
+        position=Position.long,
+        previous_close=100.0,
+        current_open=101.0,
+        candle_range=8.0,
+    )
+    deal.active_bot.name = "top_gainer_early_momentum"
+    deal.active_bot.recovery_params = None
+
+    limit_price = deal.body_capped_entry_limit_price()
+
+    assert limit_price == 99.0
+    assert deal._top_gainer_volatility_discount_pct == 1.0
+
+
+def test_top_gainer_retest_rejects_tick_quantization_beyond_cap(monkeypatch):
+    deal = prepare_recovery_entry_deal(
+        monkeypatch,
+        position=Position.long,
+        previous_close=100.0,
+        current_open=100.1,
+        candle_range=0.2,
+    )
+    deal.active_bot.name = "top_gainer_early_momentum"
+    deal.active_bot.recovery_params = None
+    deal.kucoin_symbol_data.tick_size = 2.0
+    provisional_limit_price = deal.body_capped_entry_limit_price()
+    saved: list[BotModel] = []
+    deal.controller = types.SimpleNamespace(save=lambda bot: saved.append(bot))
+    attach_order_book(
+        deal,
+        bids=[[98.0, 100]],
+        asks=[[100.0, 100]],
+    )
+
+    with pytest.raises(BinbotErrors, match="tick-size quantization"):
+        deal.liquidity_gated_contracts(10, provisional_limit_price)
+
+    assert deal.active_bot.status == Status.error
+    assert saved == [deal.active_bot]
 
 
 def test_top_gainer_stop_triggers_early_as_stop_market():
