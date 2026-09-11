@@ -9,6 +9,9 @@ import pytest
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import (
     AddOrderReq,
 )
+from kucoin_universal_sdk.generate.futures.order.model_get_order_by_order_id_resp import (
+    GetOrderByOrderIdResp,
+)
 from pybinbot import (
     BinbotErrors,
     BotModel,
@@ -583,6 +586,74 @@ def test_liquidity_downsized_entry_is_revalidated_with_required_margin():
         entry_limit_price=10,
     )
     assert opened_bot.deal.base_order_size == 4
+
+
+def test_base_order_cancels_partial_remainder_before_freezing_entry_quantity():
+    entry_order = OrderBase(
+        order_id="partial-entry",
+        order_type="limit",
+        pair="TESTUSDTM",
+        timestamp=1775008219262,
+        order_side="buy",
+        qty=5000,
+        price=10,
+        status=OrderStatus.NEW,
+        time_in_force="GTC",
+        deal_type=DealType.base_order,
+    )
+    retrieve_order = Mock(
+        side_effect=[
+            GetOrderByOrderIdResp(
+                filled_size=1800,
+                avg_deal_price="10",
+                is_active=True,
+            ),
+            GetOrderByOrderIdResp(
+                filled_size=4522,
+                avg_deal_price="10.1",
+                is_active=False,
+            ),
+            GetOrderByOrderIdResp(
+                filled_size=4522,
+                avg_deal_price="10.1",
+                is_active=False,
+            ),
+        ]
+    )
+    futures_api = types.SimpleNamespace(
+        buy=Mock(return_value=entry_order),
+        get_mark_price=Mock(return_value=10),
+        retrieve_order=retrieve_order,
+        cancel_futures_order=Mock(),
+    )
+    deal = make_sizing_deal(fiat_order_size=5000, multiplier=1)
+    deal.active_bot.position = Position.long
+    deal.active_bot.fiat = "USDT"
+    deal.fiat = "USDT"
+    deal.kucoin_symbol = "TESTUSDTM"
+    deal.kucoin_futures_api = futures_api
+    deal.calculate_contracts = lambda balance, price: 5000
+    deal.compute_available_balance = lambda: 100_000
+    deal.body_capped_entry_limit_price = lambda: 10
+    deal.max_contracts_for_margin = lambda available_balance, price: 5000
+    deal.liquidity_gated_contracts = lambda contracts, price: (contracts, price)
+    deal.required_margin_for_contracts = lambda contracts, price: contracts
+    deal.notional_for_contracts = lambda contracts, price: contracts * price
+    saved: list[BotModel] = []
+    deal.controller = types.SimpleNamespace(
+        update_logs=lambda **kwargs: None,
+        save=lambda bot: saved.append(bot),
+    )
+
+    opened_bot = KucoinPositionDeal.base_order(deal)
+
+    futures_api.cancel_futures_order.assert_called_once_with("partial-entry")
+    assert opened_bot.deal.opening_qty == 4522
+    assert opened_bot.deal.current_position_qty == 4522
+    assert opened_bot.deal.base_order_size == 4522
+    assert opened_bot.orders[0].qty == 4522
+    assert opened_bot.status == Status.pending
+    assert saved == []
 
 
 def test_base_order_affordability_check_uses_post_gate_price():

@@ -176,6 +176,7 @@ class TestPositionManager:
     ):
         # Lightweight BotModel-like object for tests
         bot = types.SimpleNamespace()
+        bot.id = f"test-bot-{id(bot)}"
         bot.name = "apex_aggressive_momo"
         bot.pair = pair
         bot.fiat = "USDC"
@@ -608,6 +609,7 @@ class TestPositionManager:
             avg_deal_price=1.267,
             created_at=int(time.time() * 1000),
             price=1.267,
+            remark=None,
         )
         base.kucoin_futures_api.get_futures_position = lambda symbol: (
             types.SimpleNamespace(current_qty=2)
@@ -707,6 +709,7 @@ class TestPositionManager:
             avg_deal_price=1.267,
             created_at=int(time.time() * 1000),
             price=1.267,
+            remark=None,
         )
         base.kucoin_futures_api.get_futures_position = lambda symbol: None
 
@@ -803,6 +806,7 @@ class TestPositionManager:
             avg_deal_price=0,
             created_at=int(time.time() * 1000),
             price=0,
+            remark=None,
         )
         base.bot_controller.update_order = lambda order: updated.append(order)
         base.bot_controller.save = lambda *args, **kwargs: saved.append(
@@ -889,6 +893,7 @@ class TestPositionManager:
             avg_deal_price=0,
             created_at=bot.orders[0].timestamp,
             price=0.000611,
+            remark=None,
         )
         base.kucoin_futures_api.get_futures_position = lambda symbol: None
         base.kucoin_futures_api.cancel_futures_order = lambda order_id: (
@@ -992,6 +997,7 @@ class TestPositionManager:
             avg_deal_price=0,
             created_at=original_order.timestamp,
             price=1.05,
+            remark=None,
         )
         canceled: list[str] = []
         base.kucoin_futures_api.cancel_futures_order = lambda order_id: canceled.append(
@@ -1118,6 +1124,7 @@ class TestPositionManager:
             avg_deal_price=0,
             created_at=now_ms - 30_000,
             price=1.055,
+            remark=None,
         )
         base.bot_controller.update_order = lambda order: pytest.fail(
             "order updated during cooldown"
@@ -1427,6 +1434,7 @@ class TestPositionManager:
             avg_deal_price=0,
             created_at=bot.orders[0].timestamp,
             price=0.671,
+            remark=None,
         )
         base.kucoin_futures_api.get_futures_position = lambda symbol: (
             types.SimpleNamespace(current_qty=1)
@@ -1618,6 +1626,46 @@ class TestPositionManager:
         assert placed == [98.0]
         assert any("No live stop loss order found" in log for log in logs)
         assert saved == [bot]
+
+    def test_missing_stop_loss_retry_respects_cooldown(self, monkeypatch):
+        base = self._make_base_streaming(monkeypatch, active_pairs=["BTCUSDT"])
+        bot = self._make_bot(
+            pair="BTCUSDT",
+            position=Position.long,
+            market_type=MarketType.FUTURES,
+        )
+        bot.status = Status.active
+        bot.stop_loss = 2.0
+        bot.margin_short_reversal = False
+        bot.recovery_params = None
+        bot.deal.trailing_stop_loss_price = 0
+        bot.orders = [
+            OrderModel(
+                order_id="just-rejected-stop",
+                order_type="market",
+                pair="BTCUSDTM",
+                timestamp=int(time.time() * 1000),
+                order_side="sell",
+                qty=10,
+                price=98,
+                status=OrderStatus.REJECTED,
+                time_in_force="GTC",
+                deal_type=DealType.stop_loss,
+            )
+        ]
+        placed: list[float] = []
+        fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
+        fp.execution = types.SimpleNamespace(
+            active_bot=bot,
+            controller=base.bot_controller,
+            _reversal_eligible=lambda: False,
+            recompute_derived_prices=lambda: None,
+            place_stop_loss=lambda: placed.append(1),
+        )
+
+        FuturesPosition.backfill_missing_stop_loss(fp)
+
+        assert placed == []
 
     def test_futures_order_updates_skips_stop_loss_backfill_for_reversal_bot(
         self, monkeypatch

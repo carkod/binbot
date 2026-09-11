@@ -11,14 +11,14 @@ flowchart LR
         Telegram["Telegram"]
     end
 
-    subgraph Platform["Binbot and Binquant"]
+    subgraph Platform["Back-end services"]
         direction TB
 
         subgraph Binbot["Binbot"]
             direction LR
-            API["FastAPI app<br/>API and trading execution"]
-            Streaming["Streaming service<br/>position lifecycle"]
-            Cronjobs["Cronjobs<br/>scheduled maintenance"]
+            API["FastAPI app<br/>(API and trading execution)"]
+            Streaming["Streaming service<br/>(lifecycle)"]
+            Cronjobs["Cronjobs<br/>（scheduled maintenance and data ingestion)"]
         end
 
         subgraph Binquant["Binquant"]
