@@ -112,7 +112,7 @@ class SymbolDataEtl(SymbolsCrud):
                         select(SymbolTable).where(SymbolTable.id == symbol)
                     ).first()
                     if result:
-                        self._add_exchange_link_if_not_exists(
+                        self.upsert_exchange_link(
                             s,
                             symbol=symbol,
                             exchange_id=ExchangeId.KUCOIN,
@@ -137,7 +137,7 @@ class SymbolDataEtl(SymbolsCrud):
                             multiplier=multiplier,
                         )
                         # ensure exchange link added in same session
-                        self._add_exchange_link_if_not_exists(
+                        self.upsert_exchange_link(
                             s,
                             symbol=symbol,
                             exchange_id=ExchangeId.KUCOIN,
@@ -178,7 +178,7 @@ class SymbolDataEtl(SymbolsCrud):
                             s.add(result)
                             s.flush()
                             s.refresh(result)
-                            self._add_exchange_link_if_not_exists(
+                            self.upsert_exchange_link(
                                 s,
                                 symbol=symbol,
                                 exchange_id=ExchangeId.KUCOIN,
@@ -204,7 +204,7 @@ class SymbolDataEtl(SymbolsCrud):
                         select(SymbolTable).where(SymbolTable.id == symbol)
                     ).first()
                     if result:
-                        self._add_exchange_link_if_not_exists(
+                        self.upsert_exchange_link(
                             s,
                             symbol=symbol,
                             exchange_id=ExchangeId.KUCOIN,
@@ -227,7 +227,7 @@ class SymbolDataEtl(SymbolsCrud):
                             min_notional=min_notional,
                         )
                         # ensure exchange link added in same session
-                        self._add_exchange_link_if_not_exists(
+                        self.upsert_exchange_link(
                             s,
                             symbol=symbol,
                             exchange_id=ExchangeId.KUCOIN,

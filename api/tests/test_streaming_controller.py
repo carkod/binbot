@@ -196,6 +196,7 @@ class TestPositionManager:
         deal = types.SimpleNamespace()
         deal.base_order_size = 10
         deal.opening_price = 100.0
+        deal.opening_timestamp = 0
         deal.closing_price = 0.0
         deal.current_price = 100.0
         deal.closing_timestamp = 0
@@ -928,6 +929,296 @@ class TestPositionManager:
         assert saved == [bot]
         assert bot.orders[0].status == OrderStatus.EXPIRED
         assert any("expired after 5 minutes without fill" in log for log in logs)
+
+    def test_pending_top_gainer_entry_reprices_to_passive_cap(self, monkeypatch):
+        base = self._make_base_streaming(monkeypatch, active_pairs=["DOTUSDTM"])
+        base.exchange = ExchangeId.KUCOIN
+        base.interval = types.SimpleNamespace(get_ms=lambda: 15 * 60 * 1000)
+        base.config = types.SimpleNamespace(env="staging")
+
+        now_ms = int(time.time() * 1000)
+        bot = self._make_bot(
+            pair="DOTUSDTM",
+            position=Position.long,
+            market_type=MarketType.FUTURES,
+        )
+        bot.id = "dot-top-gainer"
+        bot.name = "top_gainer_early_momentum"
+        bot.status = Status.pending
+        bot.deal.base_order_size = 7
+        bot.deal.opening_price = 0
+        bot.deal.opening_timestamp = now_ms - 61_000
+        logs: list[str] = []
+        bot.add_log = lambda message: logs.append(message)
+        original_order = OrderModel(
+            order_id="original-entry",
+            order_type="limit",
+            pair="DOTUSDTM",
+            timestamp=bot.deal.opening_timestamp,
+            order_side="buy",
+            qty=0,
+            price=1.05,
+            status=OrderStatus.NEW,
+            time_in_force="GTC",
+            deal_type=DealType.base_order,
+        )
+        bot.orders = [original_order]
+
+        monkeypatch.setattr(
+            "streaming.futures_position.convert_to_kucoin_symbol",
+            lambda _bot: "DOTUSDTM",
+        )
+        monkeypatch.setattr(
+            "streaming.futures_position.load_futures_order_book",
+            lambda api, symbol: types.SimpleNamespace(
+                bids=(types.SimpleNamespace(price=1.065),),
+                data_age_ms=250,
+            ),
+        )
+        monkeypatch.setattr(
+            OrderStatus,
+            "map_from_kucoin_status",
+            staticmethod(
+                lambda status: (
+                    OrderStatus.NEW if status == "open" else OrderStatus.CANCELED
+                )
+            ),
+        )
+
+        system_statuses = iter(["open", "canceled"])
+        base.kucoin_futures_api.retrieve_order = lambda order_id: types.SimpleNamespace(
+            status=types.SimpleNamespace(value=next(system_statuses)),
+            filled_size=0,
+            avg_deal_price=0,
+            created_at=original_order.timestamp,
+            price=1.05,
+        )
+        canceled: list[str] = []
+        base.kucoin_futures_api.cancel_futures_order = lambda order_id: canceled.append(
+            order_id
+        )
+        base.kucoin_futures_api.get_futures_position = lambda symbol: None
+        submitted: list[tuple[str, float, float]] = []
+
+        def buy(symbol, qty, entry_limit_price):
+            submitted.append((symbol, qty, entry_limit_price))
+            return OrderModel(
+                order_id="replacement-entry",
+                order_type="limit",
+                pair=symbol,
+                timestamp=now_ms,
+                order_side="buy",
+                qty=0,
+                price=entry_limit_price,
+                status=OrderStatus.NEW,
+                time_in_force="GTC",
+                deal_type=DealType.base_order,
+            )
+
+        base.kucoin_futures_api.buy = buy
+        updated: list[str] = []
+        saved: list[Any] = []
+        base.bot_controller.update_order = lambda order: updated.append(
+            str(order.order_id)
+        )
+        base.bot_controller.save = lambda *args, **kwargs: saved.append(
+            kwargs.get("data") if "data" in kwargs else args[0]
+        )
+
+        fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
+        fp.base_streaming = base
+        fp.price_precision = 3
+        fp.qty_precision = 0
+        fp.execution = types.SimpleNamespace(
+            active_bot=bot,
+            controller=base.bot_controller,
+            bot_crud=types.SimpleNamespace(),
+            _actual_fill=lambda order: (0, 0),
+            compute_available_balance=lambda: 10.0,
+            required_margin_for_contracts=lambda contracts, price: 3.75,
+            _reversal_eligible=lambda: False,
+            kucoin_symbol_data=types.SimpleNamespace(tick_size=0.001),
+        )
+
+        FuturesPosition.order_updates(fp)
+
+        assert canceled == ["original-entry"]
+        assert submitted == [("DOTUSDTM", 7, 1.06)]
+        assert updated == ["original-entry"]
+        assert len(bot.orders) == 2
+        assert bot.orders[0].status == OrderStatus.CANCELED
+        assert bot.orders[1].order_id == "replacement-entry"
+        assert bot.orders[1].price == 1.06
+        assert bot.deal.opening_timestamp == now_ms - 61_000
+        assert saved == [bot]
+        assert any("repriced passively from 1.05 to 1.06" in log for log in logs)
+
+    def test_pending_top_gainer_reprice_respects_replacement_cooldown(
+        self, monkeypatch
+    ):
+        base = self._make_base_streaming(monkeypatch, active_pairs=["DOTUSDTM"])
+        base.exchange = ExchangeId.KUCOIN
+        base.interval = types.SimpleNamespace(get_ms=lambda: 15 * 60 * 1000)
+        base.config = types.SimpleNamespace(env="staging")
+
+        now_ms = int(time.time() * 1000)
+        bot = self._make_bot(
+            pair="DOTUSDTM",
+            position=Position.long,
+            market_type=MarketType.FUTURES,
+        )
+        bot.id = "cooldown-top-gainer"
+        bot.name = "top_gainer_early_momentum"
+        bot.status = Status.pending
+        bot.deal.opening_price = 0
+        bot.deal.opening_timestamp = now_ms - 2 * 60_000
+        bot.orders = [
+            OrderModel(
+                order_id="original-entry",
+                order_type="limit",
+                pair="DOTUSDTM",
+                timestamp=bot.deal.opening_timestamp,
+                order_side="buy",
+                qty=0,
+                price=1.05,
+                status=OrderStatus.CANCELED,
+                time_in_force="GTC",
+                deal_type=DealType.base_order,
+            ),
+            OrderModel(
+                order_id="recent-replacement",
+                order_type="limit",
+                pair="DOTUSDTM",
+                timestamp=now_ms - 30_000,
+                order_side="buy",
+                qty=0,
+                price=1.055,
+                status=OrderStatus.NEW,
+                time_in_force="GTC",
+                deal_type=DealType.base_order,
+            ),
+        ]
+
+        monkeypatch.setattr(
+            "streaming.futures_position.convert_to_kucoin_symbol",
+            lambda _bot: "DOTUSDTM",
+        )
+        monkeypatch.setattr(
+            "streaming.futures_position.load_futures_order_book",
+            lambda api, symbol: pytest.fail("order book loaded during cooldown"),
+        )
+        monkeypatch.setattr(
+            OrderStatus,
+            "map_from_kucoin_status",
+            staticmethod(lambda status: OrderStatus.NEW),
+        )
+        base.kucoin_futures_api.retrieve_order = lambda order_id: types.SimpleNamespace(
+            status=types.SimpleNamespace(value="open"),
+            filled_size=0,
+            avg_deal_price=0,
+            created_at=now_ms - 30_000,
+            price=1.055,
+        )
+        base.bot_controller.update_order = lambda order: pytest.fail(
+            "order updated during cooldown"
+        )
+        base.bot_controller.save = lambda *args, **kwargs: pytest.fail(
+            "bot saved during cooldown"
+        )
+
+        fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
+        fp.base_streaming = base
+        fp.price_precision = 3
+        fp.qty_precision = 0
+        fp.execution = types.SimpleNamespace(
+            active_bot=bot,
+            controller=base.bot_controller,
+            bot_crud=types.SimpleNamespace(),
+            _reversal_eligible=lambda: False,
+        )
+
+        FuturesPosition.order_updates(fp)
+
+        assert bot.orders[1].status == OrderStatus.NEW
+        assert bot.orders[1].price == 1.055
+
+    def test_pending_top_gainer_entry_does_not_reprice_outside_staging(
+        self, monkeypatch
+    ):
+        now_ms = int(time.time() * 1000)
+        bot = self._make_bot(
+            pair="DOTUSDTM",
+            position=Position.long,
+            market_type=MarketType.FUTURES,
+        )
+        bot.name = "top_gainer_early_momentum"
+        bot.status = Status.pending
+        bot.deal.opening_price = 0
+        order = OrderModel(
+            order_id="production-entry",
+            order_type="limit",
+            pair="DOTUSDTM",
+            timestamp=now_ms - 61_000,
+            order_side="buy",
+            qty=0,
+            price=1.05,
+            status=OrderStatus.NEW,
+            time_in_force="GTC",
+            deal_type=DealType.base_order,
+        )
+        bot.orders = [order]
+
+        monkeypatch.setattr(
+            "streaming.futures_position.load_futures_order_book",
+            lambda api, symbol: pytest.fail("production loaded the order book"),
+        )
+
+        fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
+        fp.base_streaming = types.SimpleNamespace(
+            config=types.SimpleNamespace(env="production")
+        )
+        fp.execution = types.SimpleNamespace(active_bot=bot)
+
+        assert not fp._reprice_pending_top_gainer_entry(
+            order,
+            "DOTUSDTM",
+            now_ms,
+        )
+
+    def test_repriced_entry_expires_from_original_pending_timestamp(self):
+        interval_ms = 15 * 60 * 1000
+        bot = self._make_bot(
+            pair="DOTUSDTM",
+            position=Position.long,
+            market_type=MarketType.FUTURES,
+        )
+        bot.name = "top_gainer_early_momentum"
+        bot.status = Status.pending
+        bot.deal.opening_price = 0
+        bot.deal.opening_timestamp = 1
+        replacement_order = OrderModel(
+            order_id="replacement-entry",
+            order_type="limit",
+            pair="DOTUSDTM",
+            timestamp=interval_ms - 10_000,
+            order_side="buy",
+            qty=0,
+            price=1.06,
+            status=OrderStatus.NEW,
+            time_in_force="GTC",
+            deal_type=DealType.base_order,
+        )
+
+        fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
+        fp.base_streaming = types.SimpleNamespace(
+            interval=types.SimpleNamespace(get_ms=lambda: interval_ms)
+        )
+        fp.execution = types.SimpleNamespace(active_bot=bot)
+
+        assert fp.is_pending_base_entry_expired(
+            replacement_order,
+            now_ms=interval_ms + 2,
+        )
 
     def test_missing_pending_entry_activates_when_exact_fill_is_confirmed(
         self, monkeypatch

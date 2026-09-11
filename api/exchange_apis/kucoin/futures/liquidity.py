@@ -1,3 +1,5 @@
+from decimal import Decimal, ROUND_FLOOR
+from math import isfinite
 from time import time_ns
 from typing import Any
 
@@ -13,6 +15,22 @@ from api.exchange_apis.kucoin.futures.models import (
 
 ORDER_BOOK_DEPTH_LEVELS = 100
 DEPTH_BANDS_BPS = (10, 25, 50)
+
+
+def floor_price_to_tick(price: float, tick_size: float) -> float:
+    """Floor a positive price to an exact exchange tick boundary."""
+    if not isfinite(price) or price <= 0:
+        raise ValueError("Price must be positive")
+    if not isfinite(tick_size) or tick_size <= 0:
+        raise ValueError("Tick size must be positive")
+
+    price_decimal = Decimal(str(price))
+    tick_decimal = Decimal(str(tick_size))
+    ticks = (price_decimal / tick_decimal).to_integral_value(rounding=ROUND_FLOOR)
+    quantized_price = ticks * tick_decimal
+    if quantized_price <= 0:
+        raise ValueError("Price is below one exchange tick")
+    return float(quantized_price)
 
 
 def _exchange_timestamp_ms(raw_timestamp: Any) -> int:

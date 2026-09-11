@@ -11,12 +11,17 @@ from pybinbot import (
     ExchangeId,
     OrderModel,
     OrderStatus,
+    Position,
     Status,
     convert_to_kucoin_symbol,
     round_numbers,
 )
 
 from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
+from api.exchange_apis.kucoin.futures.liquidity import (
+    floor_price_to_tick,
+    load_futures_order_book,
+)
 from api.tools.constants import (
     RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO,
     RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES,
@@ -29,6 +34,8 @@ from streaming.position_market import PositionMarket
 
 class FuturesPosition(PositionMarket):
     PENDING_ENTRY_TTL_MS = 5 * 60 * 1000
+    TOP_GAINER_ENTRY_REPRICE_COOLDOWN_MS = 60 * 1000
+    TOP_GAINER_ENTRY_REPRICE_MAX_UPLIFT_PCT = 1.0
     TERMINAL_ORDER_STATUSES = {
         OrderStatus.FILLED,
         OrderStatus.CANCELED,
@@ -65,11 +72,15 @@ class FuturesPosition(PositionMarket):
                 self.base_streaming.interval.get_ms()
                 * TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES
             )
+        pending_entry_started_at = self.execution.active_bot.deal.opening_timestamp
+        if pending_entry_started_at == 0:
+            pending_entry_started_at = order.timestamp
+
         return (
             self.execution.active_bot.status == Status.pending
             and order.deal_type == DealType.base_order
             and self.execution.active_bot.deal.opening_price == 0
-            and now_ms - int(order.timestamp) > pending_entry_ttl_ms
+            and now_ms - pending_entry_started_at > pending_entry_ttl_ms
         )
 
     def should_expire_order_by_age(self, order: OrderModel) -> bool:
@@ -200,9 +211,12 @@ class FuturesPosition(PositionMarket):
             self.execution.active_bot.add_log(log_message)
         self.execution.active_bot = self.execution.open_deal()
 
-    def _expire_unfilled_base_order(
-        self, order: OrderModel, kucoin_symbol: str
-    ) -> None:
+    def _cancel_pending_entry_and_confirm_unfilled(
+        self,
+        order: OrderModel,
+        kucoin_symbol: str,
+        fill_log_message: str,
+    ) -> bool:
         self._cancel_pending_entry_order(order, kucoin_symbol)
 
         refreshed_order = self._retrieve_order_or_none(str(order.order_id))
@@ -214,7 +228,7 @@ class FuturesPosition(PositionMarket):
                 order.order_id,
                 self.execution.active_bot.id,
             )
-            return
+            return False
 
         refreshed_status = OrderStatus.map_from_kucoin_status(
             refreshed_order.status.value
@@ -239,13 +253,9 @@ class FuturesPosition(PositionMarket):
                 refreshed_price_used,
             )
             self.execution.controller.update_order(order)
-            self._activate_filled_base_order(
-                order,
-                "Entry order filled while expiry cancellation was being processed. "
-                "Bot activated with confirmed fill.",
-            )
+            self._activate_filled_base_order(order, fill_log_message)
             self.execution.controller.save(data=self.execution.active_bot)
-            return
+            return False
 
         position_qty = self._absolute_position_qty(kucoin_symbol)
         if position_qty > 0:
@@ -257,7 +267,7 @@ class FuturesPosition(PositionMarket):
                 position_qty,
                 self.execution.active_bot.id,
             )
-            return
+            return False
 
         if refreshed_status not in {
             OrderStatus.CANCELED,
@@ -271,7 +281,7 @@ class FuturesPosition(PositionMarket):
                 refreshed_status.value,
                 self.execution.active_bot.id,
             )
-            return
+            return False
 
         self._apply_system_order_update(
             order,
@@ -280,6 +290,188 @@ class FuturesPosition(PositionMarket):
             refreshed_filled_size,
             refreshed_price_used,
         )
+        return True
+
+    def _reprice_pending_top_gainer_entry(
+        self,
+        order: OrderModel,
+        kucoin_symbol: str,
+        now_ms: int,
+    ) -> bool:
+        bot = self.execution.active_bot
+        if (
+            bot.name != TOP_GAINER_EARLY_MOMENTUM_ALGO
+            or bot.status != Status.pending
+            or bot.position != Position.long
+            or bot.deal.opening_price != 0
+            or order.deal_type != DealType.base_order
+        ):
+            return False
+
+        # STAGING EXPERIMENT: On the next `$binquant-live-analysis` strategy
+        # review, decide whether to remove this repricing or deliberately
+        # productionize it based on the observed fill rate and execution cost.
+        if self.base_streaming.config.env.lower() != "staging":
+            return False
+
+        base_orders = sorted(
+            (
+                candidate
+                for candidate in bot.orders
+                if candidate.deal_type == DealType.base_order
+            ),
+            key=lambda candidate: candidate.timestamp,
+        )
+        if not base_orders:
+            return False
+
+        initial_order = base_orders[0]
+        if now_ms - order.timestamp < self.TOP_GAINER_ENTRY_REPRICE_COOLDOWN_MS:
+            return False
+
+        try:
+            order_book = load_futures_order_book(
+                self.base_streaming.kucoin_futures_api,
+                kucoin_symbol,
+            )
+        except Exception as exc:
+            logging.warning(
+                "Unable to reprice pending top-gainer entry %s from the live "
+                "order book: %s",
+                order.order_id,
+                exc,
+            )
+            return False
+
+        if order_book.data_age_ms > KucoinPositionDeal.ENTRY_LIQUIDITY_MAX_DATA_AGE_MS:
+            logging.warning(
+                "Skipping pending top-gainer entry reprice for %s because the "
+                "order book is stale (age=%sms)",
+                order.order_id,
+                order_book.data_age_ms,
+            )
+            return False
+
+        try:
+            raw_tick_size = getattr(
+                self.execution.kucoin_symbol_data,
+                "tick_size",
+                None,
+            )
+            if raw_tick_size is None:
+                raise ValueError("tick size is missing")
+            tick_size = float(raw_tick_size)
+            reprice_cap = floor_price_to_tick(
+                initial_order.price
+                * (1 + self.TOP_GAINER_ENTRY_REPRICE_MAX_UPLIFT_PCT / 100),
+                tick_size,
+            )
+            best_bid = order_book.bids[0].price
+            target_price = floor_price_to_tick(
+                min(best_bid, reprice_cap),
+                tick_size,
+            )
+        except (TypeError, ValueError) as exc:
+            logging.warning(
+                "Skipping pending top-gainer entry reprice for %s because "
+                "tick-size data is invalid: %s",
+                order.order_id,
+                exc,
+            )
+            return False
+        if target_price <= order.price:
+            return False
+
+        old_order_id = str(order.order_id)
+        if not self._cancel_pending_entry_and_confirm_unfilled(
+            order,
+            kucoin_symbol,
+            "Entry order filled while passive repricing cancellation was being "
+            "processed. Bot activated with confirmed fill.",
+        ):
+            return True
+
+        order.status = OrderStatus.CANCELED
+        order.qty = 0
+        self.execution.controller.update_order(order)
+
+        try:
+            available_balance = self.execution.compute_available_balance()
+            required_margin = self.execution.required_margin_for_contracts(
+                bot.deal.base_order_size,
+                target_price,
+            )
+            if required_margin > available_balance:
+                bot.status = Status.error
+                bot.add_log(
+                    "Pending top-gainer entry replacement stopped after "
+                    f"cancelling order {old_order_id}: required futures margin "
+                    f"{required_margin} {bot.fiat} exceeds available balance "
+                    f"{available_balance} {bot.fiat}. Bot set to error."
+                )
+                self.execution.controller.save(data=bot)
+                return True
+
+            replacement = self.base_streaming.kucoin_futures_api.buy(
+                symbol=kucoin_symbol,
+                qty=bot.deal.base_order_size,
+                entry_limit_price=target_price,
+            )
+        except Exception as exc:
+            bot.status = Status.error
+            bot.add_log(
+                "Pending top-gainer entry replacement failed after cancelling "
+                f"order {old_order_id}: {exc}. Bot set to error."
+            )
+            self.execution.controller.save(data=bot)
+            logging.exception(
+                "Failed to replace pending top-gainer entry %s for bot %s",
+                old_order_id,
+                bot.id,
+            )
+            return True
+
+        replacement.deal_type = DealType.base_order
+        replacement_order = OrderModel(**replacement.model_dump())
+        bot.orders.append(replacement_order)
+        bot.add_log(
+            "Pending top-gainer entry repriced passively from "
+            f"{order.price} to {target_price} (best_bid={best_bid}, "
+            f"cap={reprice_cap}); order {old_order_id} replaced by "
+            f"{replacement_order.order_id}."
+        )
+
+        if replacement_order.status in self.TERMINAL_ORDER_STATUSES:
+            if replacement_order.qty > 0 and replacement_order.price > 0:
+                self._activate_filled_base_order(
+                    replacement_order,
+                    "Passively repriced entry filled during replacement "
+                    "submission. Bot activated with confirmed fill.",
+                )
+                self.execution.controller.save(data=self.execution.active_bot)
+                return True
+
+            bot.status = Status.error
+            bot.add_log(
+                f"Replacement entry order {replacement_order.order_id} ended "
+                f"with status {replacement_order.status.value} before fill. "
+                "Bot set to error."
+            )
+
+        self.execution.controller.save(data=bot)
+        return True
+
+    def _expire_unfilled_base_order(
+        self, order: OrderModel, kucoin_symbol: str
+    ) -> None:
+        if not self._cancel_pending_entry_and_confirm_unfilled(
+            order,
+            kucoin_symbol,
+            "Entry order filled while expiry cancellation was being processed. "
+            "Bot activated with confirmed fill.",
+        ):
+            return
+
         order.status = OrderStatus.EXPIRED
         order.qty = 0
         self.execution.controller.update_order(order)
@@ -477,6 +669,13 @@ class FuturesPosition(PositionMarket):
 
                     if is_pending_entry_expired:
                         self._expire_unfilled_base_order(order, kucoin_symbol)
+                        continue
+
+                    if self._reprice_pending_top_gainer_entry(
+                        order,
+                        kucoin_symbol,
+                        now_ms,
+                    ):
                         continue
 
                     if order.status == status and (
