@@ -1,8 +1,8 @@
-"""add current position quantity
+"""repair current position quantity
 
-Revision ID: a7b8c9d0e1f2
-Revises: 615975c99625, e6f7a8b9c0d1
-Create Date: 2026-09-11
+Revision ID: b8c9d0e1f2a3
+Revises: a7b8c9d0e1f2
+Create Date: 2026-09-12
 
 """
 
@@ -12,11 +12,8 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = "a7b8c9d0e1f2"
-down_revision: str | Sequence[str] | None = (
-    "615975c99625",
-    "e6f7a8b9c0d1",
-)
+revision: str = "b8c9d0e1f2a3"
+down_revision: str | Sequence[str] | None = "a7b8c9d0e1f2"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -36,6 +33,7 @@ def upgrade() -> None:
                 server_default=sa.text("0"),
             ),
         )
+
     op.execute(
         """
         UPDATE deal
@@ -60,8 +58,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    bind = op.get_bind()
-    inspector = sa.inspect(bind)
-    columns = {column["name"] for column in inspector.get_columns("deal")}
-    if "current_position_qty" in columns:
-        op.drop_column("deal", "current_position_qty")
+    # Revision a7b8c9d0e1f2 owns the column; this repair must not remove it.
+    pass
