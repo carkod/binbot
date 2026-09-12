@@ -293,6 +293,7 @@ class PositionMarket:
                 new_size = round_numbers(
                     abs(int(position.current_qty)), self.qty_precision
                 )
+                self.execution.active_bot.deal.current_position_qty = new_size
                 if new_size != old_size:
                     self.execution.active_bot.deal.base_order_size = new_size
                     self.execution.active_bot.add_log(

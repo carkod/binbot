@@ -14,6 +14,7 @@ export interface Deal {
   stop_loss_price?: number;
   opening_price: number;
   opening_qty: number;
+  current_position_qty: number;
   opening_timestamp: number;
   closing_price: number;
   closing_qty: number;
@@ -105,6 +106,7 @@ export const singleBot: Bot = {
     stop_loss_price: 0,
     opening_price: 0,
     opening_qty: 0,
+    current_position_qty: 0,
     opening_timestamp: 0,
     closing_price: 0,
     closing_qty: 0,
