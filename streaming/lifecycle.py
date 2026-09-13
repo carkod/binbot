@@ -507,6 +507,9 @@ class Lifecycle:
         """
         Exit logic for futures positions.
         """
+        if self.execution.active_bot.status == Status.completed:
+            return self.execution.active_bot
+
         current_price = round_numbers(close_price, self.execution.price_precision)
         self.execution.active_bot.deal.current_price = current_price
         self.execution.controller.save(self.execution.active_bot)
@@ -702,7 +705,26 @@ class Lifecycle:
                         f"Reversal circuit-breaker tripped: prior {self.execution.active_bot.name} leg on {self.execution.active_bot.pair} was a loss; closing instead of flipping.",
                         self.execution.active_bot,
                     )
-                else:
+                if evaluation.policy.wait_for_exit_liquidity:
+                    suitable_price = (
+                        self.execution.suitable_exit_price(exit_reference_price)
+                        if exit_reference_price is not None
+                        else None
+                    )
+                    if suitable_price is None:
+                        book_side = (
+                            "asks"
+                            if self.execution.active_bot.position == Position.short
+                            else "bids"
+                        )
+                        self._add_recovery_log_once(
+                            "Stop-loss exit deferred for liquidity:",
+                            "Stop-loss exit deferred for liquidity: no full-position "
+                            f"{book_side} are available inside the anti-wick band; "
+                            "retrying on the next tick.",
+                        )
+                        return self.execution.active_bot
+                if not self.execution.active_bot.margin_short_reversal:
                     self.execution.controller.update_logs(
                         f"Executing futures {position_name} stop_loss after hitting {self.execution.active_bot.deal.stop_loss_price}",
                         self.execution.active_bot,

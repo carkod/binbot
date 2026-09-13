@@ -225,6 +225,28 @@ def test_exit_pending_calls_open_deal_and_returns_early():
     assert result.status == Status.active
 
 
+def test_exit_completed_bot_does_not_submit_another_close():
+    bot = BotModel(
+        pair="CTRUSDTM",
+        market_type=MarketType.FUTURES,
+        status=Status.completed,
+    )
+    close_calls: list[bool] = []
+    execution = types.SimpleNamespace(
+        active_bot=bot,
+        execute_stop_loss=lambda **kwargs: close_calls.append(True),
+    )
+    position_deal = Lifecycle(
+        execution=cast(Any, execution),
+        base_streaming=types.SimpleNamespace(),
+    )
+
+    result = Lifecycle.exit(position_deal, close_price=0.0103)
+
+    assert result.status == Status.completed
+    assert close_calls == []
+
+
 def test_exit_pending_returns_persisted_liquidity_rejection_without_crashing():
     bot = BotModel(
         pair="BTCUSDT",

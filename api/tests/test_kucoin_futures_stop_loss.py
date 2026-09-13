@@ -1,8 +1,10 @@
 import types
 from time import time
 from typing import Any, cast
+from unittest.mock import Mock
 from uuid import uuid4
 
+import pytest
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import (
     AddOrderReq,
 )
@@ -994,6 +996,105 @@ def test_reconcile_exchange_sl_skips_for_recovery_bot():
     KucoinPositionDeal.reconcile_exchange_sl(deal)
 
     assert calls == []
+
+
+@pytest.mark.parametrize(
+    "algorithm_name",
+    ["top_gainer_early_momentum", "top_loser_early_momentum"],
+)
+def test_reconcile_exchange_sl_skips_for_liquidity_gated_top_mover(
+    algorithm_name: str,
+):
+    calls: list[str] = []
+    deal = _make_deal()
+    deal.active_bot.name = algorithm_name
+    deal.cancel_current_sl = lambda: calls.append("cancel")
+    deal.place_stop_loss = lambda: calls.append("place")
+
+    KucoinPositionDeal.reconcile_exchange_sl(deal)
+
+    assert calls == []
+
+
+@pytest.mark.parametrize(
+    ("position", "expected_side"),
+    [
+        (Position.long, AddOrderReq.SideEnum.SELL),
+        (Position.short, AddOrderReq.SideEnum.BUY),
+    ],
+)
+def test_suitable_exit_price_checks_full_position_on_executable_book_side(
+    position: Position,
+    expected_side: AddOrderReq.SideEnum,
+):
+    deal = _make_deal(position=position)
+    deal.kucoin_symbol = "CTRUSDTM"
+    deal.current_position_quantity = lambda: 6
+    matching_engine = Mock(return_value=0.0115)
+    deal.kucoin_futures_api = types.SimpleNamespace(matching_engine=matching_engine)
+
+    assert deal.suitable_exit_price(0.01153) == 0.0115
+    matching_engine.assert_called_once_with(
+        symbol="CTRUSDTM",
+        size=6,
+        side=expected_side,
+        reference_price=0.01153,
+    )
+
+
+def test_top_gainer_exit_waits_one_tick_for_full_bid_liquidity():
+    deal = _make_lifecycle(stop_loss=2.0, stop_loss_price=98.0)
+    deal.execution.active_bot.name = "top_gainer_early_momentum"
+    now_ms = int(time() * 1000)
+    deal.klines = [
+        [
+            now_ms - 120_000,
+            100.0,
+            101.0,
+            98.0,
+            99.0,
+            1.0,
+            now_ms - 60_001,
+        ],
+        [
+            now_ms - 60_000,
+            99.0,
+            99.0,
+            97.0,
+            97.5,
+            1.0,
+            now_ms + 1,
+        ],
+    ]
+    available_prices = iter([None, 98.9])
+    liquidity_references: list[float] = []
+    stop_calls: list[float | None] = []
+
+    def suitable_exit_price(reference_price: float) -> float | None:
+        liquidity_references.append(reference_price)
+        return next(available_prices)
+
+    def execute_stop_loss(reference_price: float | None = None) -> BotModel:
+        stop_calls.append(reference_price)
+        return deal.execution.active_bot
+
+    cast(Any, deal.execution).suitable_exit_price = suitable_exit_price
+    cast(Any, deal.execution).execute_stop_loss = execute_stop_loss
+
+    Lifecycle.exit(deal, 97.5)
+
+    assert stop_calls == []
+    assert any(
+        "Stop-loss exit deferred for liquidity" in log
+        and "bids" in log
+        and "next tick" in log
+        for log in deal.execution.active_bot.logs
+    )
+
+    Lifecycle.exit(deal, 97.5)
+
+    assert liquidity_references == [99.0, 99.0]
+    assert stop_calls == [99.0]
 
 
 def test_reconcile_exchange_sl_places_when_exchange_missing():

@@ -91,7 +91,7 @@ export default function spotTrading(
           text: `Trailing profit ${bot.trailing_profit}%`,
           tooltip: [bot.status, " Breakpoint to move up trailing profit"],
           quantity: `${qtyText} ${quoteAsset}`,
-          price: bot.deal.closing_price, // closing_price is probably the most accurate closing position price, trailing_profit may not be the price it was sold at
+          price: bot.deal.trailing_profit_price || bot.deal.closing_price,
           color: dealColors.trailing_profit,
           lineStyle: 2,
         });

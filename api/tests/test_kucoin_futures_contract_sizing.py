@@ -1287,7 +1287,7 @@ def test_top_gainer_retest_rejects_when_minimum_ticks_cannot_fit_within_cap(
     assert saved == [deal.active_bot]
 
 
-def test_top_gainer_stop_triggers_early_as_stop_market():
+def test_top_gainer_stop_is_owned_by_streaming_lifecycle():
     deal = make_sizing_deal(multiplier=1)
     deal.active_bot.name = "top_gainer_early_momentum"
     deal.active_bot.position = Position.long
@@ -1295,30 +1295,13 @@ def test_top_gainer_stop_triggers_early_as_stop_market():
     deal.active_bot.deal.opening_qty = 3
     deal.active_bot.deal.stop_loss_price = 98.0
     deal.kucoin_symbol = "SIRENUSDTM"
-    place_order = Mock(
-        return_value=OrderBase(
-            order_id="bounded-stop",
-            order_type="limit",
-            pair="SIRENUSDTM",
-            timestamp=1,
-            order_side="sell",
-            qty=3,
-            price=98.0,
-            status=OrderStatus.NEW,
-            time_in_force="GTC",
-            deal_type=DealType.stop_loss,
-        )
-    )
+    place_order = Mock()
     deal.kucoin_futures_api = types.SimpleNamespace(place_futures_order=place_order)
     deal.controller = types.SimpleNamespace(update_logs=Mock())
 
     deal.place_stop_loss()
 
-    kwargs = place_order.call_args.kwargs
-    assert kwargs["order_type"] == OrderType.market
-    assert "price" not in kwargs
-    assert kwargs["stop_price"] == 98.49
-    assert kwargs["allow_market_fallback"] is True
+    place_order.assert_not_called()
     assert deal.active_bot.deal.stop_loss_price == 98.0
 
 
