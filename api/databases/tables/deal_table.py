@@ -51,7 +51,20 @@ class DealBase(SQLModel):
     )
     opening_qty: float = Field(
         default=0,
-        description="buy quantity (long spot) or short sell quantity (short margin trading)",
+        description=(
+            "Historical quantity filled by the opening order. Unlike "
+            "current_position_qty, this does not shrink after partial exits or ADL."
+        ),
+    )
+    current_position_qty: float = Field(
+        default=0,
+        ge=0,
+        sa_column=Column(Float()),
+        description=(
+            "Remaining open position quantity reported by the exchange. Unlike "
+            "opening_qty, this can shrink after partial exits or ADL and becomes "
+            "zero when the position is flat."
+        ),
     )
     opening_timestamp: int = Field(default=0, sa_column=Column(BigInteger()))
     closing_price: float = Field(

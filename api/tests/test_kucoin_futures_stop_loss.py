@@ -6,6 +6,12 @@ from uuid import uuid4
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import (
     AddOrderReq,
 )
+from kucoin_universal_sdk.generate.futures.order.model_get_stop_order_list_resp import (
+    GetStopOrderListItems,
+)
+from kucoin_universal_sdk.generate.futures.positions.model_get_position_details_resp import (
+    GetPositionDetailsResp,
+)
 from pybinbot import (
     BotModel,
     DealModel,
@@ -24,6 +30,14 @@ from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from streaming.lifecycle import Lifecycle
 
 
+def _stop_order(**kwargs) -> GetStopOrderListItems:
+    return GetStopOrderListItems(**kwargs)
+
+
+def _position(current_qty: int | None = None) -> GetPositionDetailsResp:
+    return GetPositionDetailsResp(current_qty=current_qty)
+
+
 def _make_deal(
     *,
     stop_loss: float = 2.0,
@@ -37,7 +51,7 @@ def _make_deal(
     deal = cast(Any, KucoinPositionDeal.__new__(KucoinPositionDeal))
     deal.price_precision = 2
     deal.kucoin_symbol = "BEATUSDTM"
-    deal.symbol_info = types.SimpleNamespace(futures_leverage=1)
+    deal.symbol_info = types.SimpleNamespace(futures_leverage=1, qty_precision=0)
     deal.active_bot = BotModel(
         pair="BEATUSDT",
         position=position,
@@ -259,6 +273,135 @@ def test_place_stop_loss_for_margin_short_uses_price_above_entry():
     assert captured["leverage"] == 1
 
 
+def test_place_stop_loss_prefers_live_position_quantity():
+    deal = _make_deal()
+    deal.symbol_info.qty_precision = 0
+    deal.active_bot.deal.opening_qty = 4522
+    deal.active_bot.deal.current_position_qty = 1800
+    captured: dict[str, Any] = {}
+    deal.kucoin_futures_api = types.SimpleNamespace(
+        get_futures_position=lambda symbol: _position(922),
+        get_all_stop_loss_orders=lambda symbol: [],
+        place_futures_order=lambda **kwargs: (
+            captured.update(kwargs)
+            or OrderBase(
+                order_id="live-sized-stop",
+                order_type="market",
+                pair=kwargs["symbol"],
+                timestamp=1,
+                order_side="sell",
+                qty=kwargs["size"],
+                price=kwargs["stop_price"],
+                status=OrderStatus.NEW,
+                time_in_force="GTC",
+                deal_type=DealType.stop_loss,
+            )
+        ),
+    )
+
+    deal.place_stop_loss()
+
+    assert captured["size"] == 922
+    assert deal.active_bot.deal.current_position_qty == 922
+
+
+def test_place_stop_loss_falls_back_to_historical_position_quantity():
+    deal = _make_deal()
+    deal.active_bot.deal.opening_qty = 4522
+    deal.active_bot.deal.current_position_qty = 922
+    captured: dict[str, Any] = {}
+    deal.kucoin_futures_api = types.SimpleNamespace(
+        get_futures_position=lambda symbol: _position(),
+        get_all_stop_loss_orders=lambda symbol: [],
+        place_futures_order=lambda **kwargs: (
+            captured.update(kwargs)
+            or OrderBase(
+                order_id="fallback-sized-stop",
+                order_type="market",
+                pair=kwargs["symbol"],
+                timestamp=1,
+                order_side="sell",
+                qty=kwargs["size"],
+                price=kwargs["stop_price"],
+                status=OrderStatus.NEW,
+                time_in_force="GTC",
+                deal_type=DealType.stop_loss,
+            )
+        ),
+    )
+
+    deal.place_stop_loss()
+
+    assert captured["size"] == 922
+
+
+def test_current_position_quantity_treats_exchange_zero_as_confirmed_flat():
+    deal = _make_deal()
+    deal.symbol_info.qty_precision = 0
+    deal.active_bot.deal.opening_qty = 4522
+    deal.active_bot.deal.current_position_qty = 922
+    deal.kucoin_futures_api = types.SimpleNamespace(
+        get_futures_position=lambda symbol: _position(0),
+    )
+
+    qty = deal.current_position_quantity()
+
+    assert qty == 0
+    assert deal.active_bot.deal.current_position_qty == 0
+
+
+def test_place_stop_loss_adopts_matching_kucoin_order_without_duplicate():
+    deal = _make_deal()
+    deal.active_bot.deal.current_position_qty = 1
+    place_order = cast(Any, types.SimpleNamespace(calls=0))
+
+    def record_place(**kwargs):
+        place_order.calls += 1
+
+    deal.kucoin_futures_api = types.SimpleNamespace(
+        get_futures_position=lambda symbol: _position(1),
+        get_all_stop_loss_orders=lambda symbol: [
+            _stop_order(
+                id="existing-kucoin-stop",
+                client_oid="kucoin-client-oid",
+                stop_price="98",
+                size=1,
+                side="sell",
+                reduce_only=True,
+                created_at=1,
+            )
+        ],
+        place_futures_order=record_place,
+    )
+
+    deal.place_stop_loss()
+
+    assert place_order.calls == 0
+    assert deal.active_bot.orders[-1].order_id == "existing-kucoin-stop"
+
+
+def test_reconcile_exchange_stop_replaces_stale_quantity():
+    deal = _make_deal()
+    deal.symbol_info.qty_precision = 0
+    deal.active_bot.deal.opening_qty = 4522
+    deal.active_bot.deal.current_position_qty = 1800
+    deal.kucoin_futures_api = types.SimpleNamespace(
+        get_futures_position=lambda symbol: _position(922),
+        get_all_stop_loss_orders=lambda symbol: [
+            _stop_order(id="oversized-stop", stop_price="98", size=1800)
+        ],
+    )
+    cancelled: list[bool] = []
+    replacements: list[float | None] = []
+    deal.cancel_current_sl = lambda: cancelled.append(True)
+    deal.place_stop_loss = lambda position_qty=None: replacements.append(position_qty)
+
+    deal.reconcile_exchange_sl()
+
+    assert cancelled == [True]
+    assert replacements == [922]
+
+
 def test_place_stop_loss_reconciles_an_immediate_fill():
     saved_bots: list[BotModel] = []
     deal = _make_deal()
@@ -407,7 +550,7 @@ def test_reconcile_exchange_sl_keeps_existing_armed_trailing_stop():
     deal = _make_position_deal(trailing_stop_loss_price=99.0)
     deal.kucoin_futures_api = types.SimpleNamespace(
         get_all_stop_loss_orders=lambda symbol: [
-            types.SimpleNamespace(stop_price="99.0", id="trail-1")
+            _stop_order(stop_price="99.0", id="trail-1")
         ],
         batch_cancel_stop_loss_orders=lambda ids: None,
     )
@@ -425,7 +568,7 @@ def test_reconcile_trailing_stop_loss_replaces_worse_exchange_stop():
     deal = _make_position_deal(trailing_stop_loss_price=99.0)
     deal.kucoin_futures_api = types.SimpleNamespace(
         get_all_stop_loss_orders=lambda symbol: [
-            types.SimpleNamespace(stop_price="97.0", id="stale-emergency-sl")
+            _stop_order(stop_price="97.0", id="stale-emergency-sl")
         ],
         batch_cancel_stop_loss_orders=lambda ids: None,
     )
@@ -441,7 +584,7 @@ def test_reconcile_trailing_stop_loss_keeps_better_exchange_stop():
     deal = _make_position_deal(trailing_stop_loss_price=99.0)
     deal.kucoin_futures_api = types.SimpleNamespace(
         get_all_stop_loss_orders=lambda symbol: [
-            types.SimpleNamespace(stop_price="100.0", id="manual-tighter-sl")
+            _stop_order(stop_price="100.0", id="manual-tighter-sl")
         ],
         batch_cancel_stop_loss_orders=lambda ids: None,
     )
@@ -486,8 +629,8 @@ def test_reconcile_trailing_stop_loss_uses_tracked_trailing_order():
     )
     deal.kucoin_futures_api = types.SimpleNamespace(
         get_all_stop_loss_orders=lambda symbol: [
-            types.SimpleNamespace(stop_price="97.0", id="emergency-sl"),
-            types.SimpleNamespace(stop_price="99.0", id="trail-1"),
+            _stop_order(stop_price="97.0", id="emergency-sl"),
+            _stop_order(stop_price="99.0", id="trail-1"),
         ],
         batch_cancel_stop_loss_orders=lambda ids: None,
     )
@@ -506,9 +649,9 @@ def test_place_trailing_stop_loss_keeps_existing_exchange_stop_without_cancel():
         save=lambda bot: None,
     )
     deal.kucoin_futures_api = types.SimpleNamespace(
-        get_futures_position=lambda symbol: types.SimpleNamespace(current_qty=1),
+        get_futures_position=lambda symbol: _position(1),
         get_all_stop_loss_orders=lambda symbol: [
-            types.SimpleNamespace(stop_price="99.0", id="trail-1")
+            _stop_order(stop_price="99.0", id="trail-1")
         ],
         batch_cancel_stop_loss_orders=lambda ids: calls.append("cancel"),
         place_futures_order=lambda **kwargs: calls.append("place"),
@@ -572,10 +715,10 @@ def test_place_trailing_stop_loss_cancels_only_tracked_trailing_order():
         save=lambda bot: None,
     )
     deal.kucoin_futures_api = types.SimpleNamespace(
-        get_futures_position=lambda symbol: types.SimpleNamespace(current_qty=1),
+        get_futures_position=lambda symbol: _position(1),
         get_all_stop_loss_orders=lambda symbol: [
-            types.SimpleNamespace(stop_price="97.0", id="emergency-sl"),
-            types.SimpleNamespace(stop_price="98.0", id="trail-1"),
+            _stop_order(stop_price="97.0", id="emergency-sl"),
+            _stop_order(stop_price="98.0", id="trail-1"),
         ],
         batch_cancel_stop_loss_orders=lambda ids: cancelled_ids.extend(ids),
         place_futures_order=fake_place_futures_order,
@@ -614,9 +757,9 @@ def test_place_trailing_stop_loss_blocks_recent_trailing_replace():
         save=lambda bot: None,
     )
     deal.kucoin_futures_api = types.SimpleNamespace(
-        get_futures_position=lambda symbol: types.SimpleNamespace(current_qty=1),
+        get_futures_position=lambda symbol: _position(1),
         get_all_stop_loss_orders=lambda symbol: [
-            types.SimpleNamespace(stop_price="98.0", id="trail-1")
+            _stop_order(stop_price="98.0", id="trail-1")
         ],
         batch_cancel_stop_loss_orders=lambda ids: calls.append("cancel"),
         place_futures_order=lambda **kwargs: calls.append("place"),
@@ -697,7 +840,7 @@ def test_place_trailing_stop_loss_logs_new_status_as_armed_stop():
         save=lambda bot: None,
     )
     deal.kucoin_futures_api = types.SimpleNamespace(
-        get_futures_position=lambda symbol: types.SimpleNamespace(current_qty=1),
+        get_futures_position=lambda symbol: _position(1),
         get_all_stop_loss_orders=lambda symbol: [],
         batch_cancel_stop_loss_orders=lambda ids: None,
         place_futures_order=fake_place_futures_order,
@@ -1104,7 +1247,7 @@ def test_reconcile_exchange_sl_adopts_exchange_drift_without_replacing():
     # Exchange shows an SL at 97.5 (not 98.0). Within cooldown — should not replace.
     deal.kucoin_futures_api = types.SimpleNamespace(
         get_all_stop_loss_orders=lambda symbol: [
-            types.SimpleNamespace(stop_price="97.5", id="x-1")
+            _stop_order(stop_price="97.5", id="x-1")
         ],
         batch_cancel_stop_loss_orders=lambda ids: None,
     )
@@ -1149,7 +1292,7 @@ def test_reconcile_exchange_sl_replaces_after_drift_once_ratchet_is_material():
     # Exchange still has the stale SL from placement time.
     deal.kucoin_futures_api = types.SimpleNamespace(
         get_all_stop_loss_orders=lambda symbol: [
-            types.SimpleNamespace(stop_price="97.5", id="x-1")
+            _stop_order(stop_price="97.5", id="x-1")
         ],
         batch_cancel_stop_loss_orders=lambda ids: None,
     )

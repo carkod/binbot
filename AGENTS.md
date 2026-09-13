@@ -45,6 +45,14 @@ These projects are interconnected, and Codex conversations often refer across th
 - Do not write patterns such as `float(self.active_bot.deal.trailing_stop_loss_price or 0)`, `float(self.active_bot.stop_loss)`, or `int(self.active_bot.deal.opening_timestamp)` for validated Pydantic model fields.
 - Add explicit fallbacks or casts only at real trust boundaries, such as raw exchange payloads, database rows before validation, or optional third-party values.
 
+## Database Migrations
+
+- Every Alembic migration must be idempotent and safe to replay against a database whose physical schema may already contain some or all of the intended changes.
+- When adding a field, inspect the target table first and add the column only when it does not already exist. Apply the same existence checks to tables, indexes, constraints, and other schema objects before creating or dropping them.
+- A field migration must tolerate the column already existing while its Alembic revision marker is missing, and must still perform any required data backfill.
+- Never delete or collapse multiple rows from `alembic_version` merely because more than one row exists. Multiple rows can represent legitimate branch heads; let Alembic resolve and merge them.
+- Add a focused regression test showing that each migration can run against both the pre-migration schema and an already-migrated or partially migrated schema.
+
 ## Tests
 
 - Add small regression tests for sizing, rounding, stop placement, and reversal logic whenever those calculations change.

@@ -110,73 +110,35 @@ class ApiDb:
                 )
                 return
 
-            head_revision = heads[0]
             versions: list[str] = []
 
-            # Auto-heal a duplicated/branched alembic_version table if it ever happens.
-            # Keep the real head revision and drop any older rows so Alembic can continue.
             try:
                 with engine.connect() as conn:
                     result = conn.execute(
                         text("SELECT version_num FROM alembic_version")
                     )
                     versions = [row[0] for row in result]
-
-                    if len(versions) > 1:
-                        keep_version = None
-                        for v in versions:
-                            if v in heads:
-                                keep_version = v
-                                break
-
-                        if keep_version is None:
-                            keep_version = versions[0]
-                            logging.warning(
-                                "Alembic version table has multiple entries %s but none match known heads %s; "
-                                "keeping %s and dropping the rest.",
-                                versions,
-                                heads,
-                                keep_version,
-                            )
-                        else:
-                            logging.warning(
-                                "Alembic version table has multiple entries %s; keeping head %s and dropping the rest.",
-                                versions,
-                                keep_version,
-                            )
-
-                        conn.execute(
-                            text(
-                                "DELETE FROM alembic_version WHERE version_num != :keep_version"
-                            ),
-                            {"keep_version": keep_version},
-                        )
-                        conn.commit()
-                        versions = [keep_version]
-            except Exception as heal_exc:
-                # If anything goes wrong while reading/healing, log and continue.
+            except Exception as inspect_exc:
                 # Alembic can still upgrade from base when no version row exists yet.
                 logging.info(
                     "Unable to inspect alembic_version table (maybe it does not exist yet): %s",
-                    heal_exc,
+                    inspect_exc,
                 )
                 versions = []
 
-            current_revision = versions[0] if versions else None
-
-            if current_revision == head_revision:
+            if set(versions) == set(heads):
                 logging.info(
-                    "Database already at Alembic head %s; skipping migration run.",
-                    head_revision,
+                    "Database already at Alembic heads %s; skipping migration run.",
+                    heads,
                 )
                 return
 
             logging.info(
-                "Upgrading database from revision %s to head %s.",
-                current_revision or "base",
-                head_revision,
+                "Upgrading database from revisions %s to heads %s.",
+                versions or ["base"],
+                heads,
             )
-            command.upgrade(alembic_cfg, "head")
+            command.upgrade(alembic_cfg, "heads")
             logging.info("Alembic migrations completed successfully")
         except Exception as exc:
             logging.error(f"Alembic migrations failed: {exc}", exc_info=True)

@@ -34,6 +34,8 @@ from streaming.position_market import PositionMarket
 
 class FuturesPosition(PositionMarket):
     PENDING_ENTRY_TTL_MS = 5 * 60 * 1000
+    MISSING_STOP_RETRY_COOLDOWN_MS = 60 * 1000
+    _missing_stop_retry_after_ms: dict[str, int] = {}
     TOP_GAINER_ENTRY_REPRICE_COOLDOWN_MS = 60 * 1000
     TOP_GAINER_ENTRY_REPRICE_MAX_UPLIFT_PCT = 1.0
     TERMINAL_ORDER_STATUSES = {
@@ -106,7 +108,9 @@ class FuturesPosition(PositionMarket):
         if position:
             current_qty = abs(float(position.current_qty))
             if current_qty > 0:
+                self.execution.active_bot.deal.current_position_qty = current_qty
                 return False
+            self.execution.active_bot.deal.current_position_qty = 0
 
         elif filled_size > 0:
             self.execution.active_bot = self.execution.backfill_position_from_fills()
@@ -202,6 +206,8 @@ class FuturesPosition(PositionMarket):
     ) -> None:
         self.execution.active_bot.deal.opening_price = order.price
         self.execution.active_bot.deal.opening_qty = order.qty
+        self.execution.active_bot.deal.current_position_qty = order.qty
+        self.execution.active_bot.deal.base_order_size = order.qty
         self.execution.active_bot.deal.opening_timestamp = (
             self.execution.matching_exchange_fill_timestamp(order)
             if self.execution.active_bot.name == RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO
@@ -495,7 +501,7 @@ class FuturesPosition(PositionMarket):
         )
         self.execution.controller.save(data=self.execution.active_bot)
 
-    def backfill_missing_stop_loss(self) -> None:
+    def backfill_missing_stop_loss(self, force: bool = False) -> None:
         """
         Safety net for an active futures position whose emergency stop loss
         order has disappeared from the local order list (cancelled but never
@@ -525,6 +531,29 @@ class FuturesPosition(PositionMarket):
         if has_live_stop_loss:
             return
 
+        now_ms = int(datetime.now().timestamp() * 1000)
+        bot_id = str(self.execution.active_bot.id)
+        if not force:
+            if now_ms < self._missing_stop_retry_after_ms.get(bot_id, 0):
+                return
+            latest_protective_order_timestamp = max(
+                (
+                    order.timestamp
+                    for order in self.execution.active_bot.orders
+                    if order.deal_type == DealType.stop_loss
+                ),
+                default=0,
+            )
+            if (
+                latest_protective_order_timestamp > 0
+                and now_ms - latest_protective_order_timestamp
+                < self.MISSING_STOP_RETRY_COOLDOWN_MS
+            ):
+                return
+
+        self._missing_stop_retry_after_ms[bot_id] = (
+            now_ms + self.MISSING_STOP_RETRY_COOLDOWN_MS
+        )
         self.execution.active_bot.add_log(
             "No live stop loss order found for active futures position. "
             "Placing emergency stop loss from bot.stop_loss and entry price."
@@ -543,6 +572,7 @@ class FuturesPosition(PositionMarket):
         Take order id from list of bot.orders
         and fetch order details from exchange
         """
+        retry_missing_stop_loss = False
         for order in list(self.execution.active_bot.orders):
             if order.status in self.TERMINAL_ORDER_STATUSES:
                 continue
@@ -586,6 +616,33 @@ class FuturesPosition(PositionMarket):
                     filled_size = float(system_order.filled_size)
                     price_used = float(system_order.avg_deal_price)
                     if (
+                        order.deal_type != DealType.base_order
+                        and status == OrderStatus.FILLED
+                        and filled_size <= 0
+                    ):
+                        status = OrderStatus.CANCELED
+
+                    system_remark = str(system_order.remark or "")
+                    if (
+                        order.deal_type == DealType.stop_loss
+                        and status
+                        in {
+                            OrderStatus.CANCELED,
+                            OrderStatus.EXPIRED,
+                            OrderStatus.REJECTED,
+                        }
+                        and any(
+                            rejection_text in system_remark.lower()
+                            for rejection_text in (
+                                "insufficient margin",
+                                "insufficient position",
+                                "quantity",
+                                "size",
+                            )
+                        )
+                    ):
+                        retry_missing_stop_loss = True
+                    if (
                         order.deal_type == DealType.base_order
                         and self.execution.active_bot.deal.opening_price == 0
                         and status == OrderStatus.FILLED
@@ -628,6 +685,21 @@ class FuturesPosition(PositionMarket):
 
                     previous_qty = float(order.qty)
                     previous_status = order.status
+
+                    if (
+                        order.deal_type == DealType.base_order
+                        and self.execution.active_bot.deal.opening_price == 0
+                        and 0 < filled_size < previous_qty
+                        and status not in self.TERMINAL_ORDER_STATUSES
+                    ):
+                        self._cancel_pending_entry_and_confirm_unfilled(
+                            order,
+                            kucoin_symbol,
+                            "Entry order partially filled and its remainder was "
+                            "cancelled. Bot activated with the final confirmed fill.",
+                        )
+                        continue
+
                     self._apply_system_order_update(
                         order, system_order, status, filled_size, price_used
                     )
@@ -708,6 +780,7 @@ class FuturesPosition(PositionMarket):
                         self.execution.active_bot.deal.closing_timestamp = (
                             order.timestamp
                         )
+                        self.execution.active_bot.deal.current_position_qty = 0
                         self.execution.active_bot.status = Status.completed
 
                     self.execution.controller.save(data=self.execution.active_bot)
@@ -785,5 +858,5 @@ class FuturesPosition(PositionMarket):
                     else:
                         raise e
 
-        self.backfill_missing_stop_loss()
+        self.backfill_missing_stop_loss(force=retry_missing_stop_loss)
         return self.execution.active_bot
