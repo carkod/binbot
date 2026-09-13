@@ -37,7 +37,7 @@ export const makeStore = (preloadedState?: Partial<RootState>) => {
         .concat(kucoinApiSlice.middleware);
     },
     preloadedState,
-    devTools: process.env.NODE_ENV !== "production",
+    devTools: import.meta.env.DEV,
   });
   // configure listeners using the provided defaults
   // optional, but required for `refetchOnFocus`/`refetchOnReconnect` behaviors

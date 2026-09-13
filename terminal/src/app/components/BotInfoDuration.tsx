@@ -1,12 +1,13 @@
 import { ListGroupItem } from "react-bootstrap";
-import { RenderTimestamp } from "./RenderTs";
+import type { Bot } from "../../features/bots/botInitialState";
+import { renderDuration } from "../../utils/time";
 
-const BotInfoDuration = (bot) => {
+const BotInfoDuration = (bot: Bot) => {
   if (bot.deal) {
     return (
       <ListGroupItem className="d-flex justify-content-between align-items-start">
         <strong>duration</strong>
-        {RenderTimestamp(bot)}
+        {renderDuration(bot)}
       </ListGroupItem>
     );
   } else {

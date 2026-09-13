@@ -14,6 +14,7 @@ const mockSymbolContextValue = {
   symbolsList: ["BTCUSDT", "ETHUSDT"],
   quoteAsset: "USDT",
   baseAsset: "BTC",
+  futuresLeverage: 1,
   updateQuoteBaseState: vi.fn(),
   isLoading: false,
 };

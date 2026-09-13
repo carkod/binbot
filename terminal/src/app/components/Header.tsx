@@ -6,11 +6,13 @@ import { routes } from "../routes";
 export const Header: FC<{ onExpand: () => void }> = ({ onExpand }) => {
   const location = useLocation();
   const loadData = routes.find((route) => {
-    const match = matchPath(route.path, location.pathname);
-    if (match) {
-      return route.name;
+    if (route.index) {
+      return location.pathname === "/";
     }
-    return null;
+
+    return route.path
+      ? Boolean(matchPath(route.path, location.pathname))
+      : false;
   });
 
   return (

@@ -18,9 +18,6 @@ export default defineConfig({
     },
   },
   publicDir: "/charting_library",
-  define: {
-    "process.env": process.env,
-  },
   server: {
     open: true,
     port: 5173,
