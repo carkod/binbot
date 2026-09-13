@@ -27,6 +27,7 @@ from api.tools.constants import (
     RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES,
     TOP_GAINER_EARLY_MOMENTUM_ALGO,
     TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES,
+    TOP_MOVER_EARLY_MOMENTUM_ALGOS,
 )
 from streaming.base import BaseStreaming
 from streaming.position_market import PositionMarket
@@ -519,6 +520,7 @@ class FuturesPosition(PositionMarket):
             or self.execution.active_bot.stop_loss <= 0
             or self.execution.active_bot.deal.opening_price <= 0
             or self.execution._reversal_eligible()
+            or self.execution.active_bot.name in TOP_MOVER_EARLY_MOMENTUM_ALGOS
             or self.execution.active_bot.deal.trailing_stop_loss_price != 0
         ):
             return

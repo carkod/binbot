@@ -33,6 +33,7 @@ from api.exchange_apis.kucoin.deals.base import KucoinBaseBalance
 from api.exchange_apis.kucoin.futures.balance import KucoinFuturesBalance
 from api.exchange_apis.kucoin.futures.liquidity import (
     calculate_liquidity_snapshot,
+    ceil_price_to_tick,
     floor_price_to_tick,
     load_futures_order_book,
 )
@@ -42,6 +43,7 @@ from api.tools.constants import (
     RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES,
     TOP_GAINER_EARLY_MOMENTUM_ALGO,
     TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES,
+    TOP_MOVER_EARLY_MOMENTUM_ALGOS,
 )
 
 
@@ -88,7 +90,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
     TOP_GAINER_RETEST_MAX_DISCOUNT_PCT = 1.0
     TOP_GAINER_RETEST_SPREAD_MULTIPLIER = 2.0
     TOP_GAINER_RETEST_MIN_TICKS = 2
-    TOP_GAINER_EARLY_MOMENTUM_STOP_TRIGGER_BUFFER_PCT = 0.5
     ENTRY_LIQUIDITY_PRICE_BAND_BPS = 50.0
     # Keep size-aware execution costs small relative to the configured stop.
     # This also bounds the spread: crossing the best quote costs half the
@@ -205,6 +206,13 @@ class KucoinPositionDeal(KucoinBaseBalance):
         return (
             self.active_bot.margin_short_reversal
             or self.active_bot.recovery_params is not None
+        )
+
+    def _uses_bot_side_stop_loss(self) -> bool:
+        """Whether the streaming lifecycle, rather than KuCoin, owns the exit."""
+        return (
+            self._reversal_eligible()
+            or self.active_bot.name in TOP_MOVER_EARLY_MOMENTUM_ALGOS
         )
 
     @classmethod
@@ -691,10 +699,18 @@ class KucoinPositionDeal(KucoinBaseBalance):
                     ),
                     self.TOP_GAINER_RETEST_MAX_DISCOUNT_PCT,
                 )
+                maximum_discount_price = self._entry_reference_price * (
+                    1 - self.TOP_GAINER_RETEST_MAX_DISCOUNT_PCT / 100
+                )
                 candidate_limit_price = floor_price_to_tick(
                     self._entry_reference_price * (1 - discount_pct / 100),
                     tick_size,
                 )
+                if candidate_limit_price < maximum_discount_price:
+                    candidate_limit_price = ceil_price_to_tick(
+                        maximum_discount_price,
+                        tick_size,
+                    )
             except (TypeError, ValueError) as exc:
                 self.reject_entry_for_liquidity(
                     f"Entry rejected: invalid top-gainer microstructure data ({exc}).",
@@ -706,6 +722,17 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 / self._entry_reference_price
                 * 100
             )
+            minimum_tick_retest_price = (
+                self._entry_reference_price
+                - tick_size * self.TOP_GAINER_RETEST_MIN_TICKS
+            )
+            if candidate_limit_price > minimum_tick_retest_price + tick_size * 1e-9:
+                self.reject_entry_for_liquidity(
+                    "Entry rejected: exact tick-size quantization cannot place the "
+                    f"top-gainer retest at least {self.TOP_GAINER_RETEST_MIN_TICKS} "
+                    "ticks below its reference without exceeding the "
+                    f"{self.TOP_GAINER_RETEST_MAX_DISCOUNT_PCT:.2f}% cap."
+                )
             if actual_discount_pct > self.TOP_GAINER_RETEST_MAX_DISCOUNT_PCT + 1e-9:
                 self.reject_entry_for_liquidity(
                     "Entry rejected: exact tick-size quantization would move the "
@@ -1192,15 +1219,15 @@ class KucoinPositionDeal(KucoinBaseBalance):
              move is material and the cooldown has elapsed.
 
         Skipped when:
-          - bot is reversal-eligible (margin_short_reversal=True or recovery_params set);
-            those bots exit bot-side via exit() so a native exchange stop must not be
-            placed or it would complete the bot before the gated reversal can run.
+          - bot uses a bot-side stop (reversal logic or liquidity-gated top-gainer
+            exit); a native exchange stop would complete the bot before that logic
+            can run.
           - trailing has armed (trailing_stop_loss_price != 0); in that
             mode the exit is bot-side, the emergency SL is left alone.
         """
         if self.active_bot.stop_loss <= 0:
             return
-        if self._reversal_eligible():
+        if self._uses_bot_side_stop_loss():
             return
         if self.active_bot.deal.trailing_stop_loss_price != 0:
             trailing_reconciler = getattr(self, "reconcile_trailing_stop_loss", None)
@@ -1243,21 +1270,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
             )
             self.cancel_current_sl()
             self.place_stop_loss(position_qty=expected_qty)
-            return
-
-        if self.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO:
-            expected_trigger_price = self.top_gainer_stop_trigger_price(
-                self.active_bot.deal.stop_loss_price
-            )
-            if abs(exchange_price - expected_trigger_price) > (
-                10**-self.price_precision
-            ):
-                self.active_bot.add_log(
-                    "Buffered top-gainer stop-market drift detected: "
-                    f"expected trigger={expected_trigger_price} exchange={exchange_price}; replacing."
-                )
-                self.cancel_current_sl()
-                self.place_stop_loss()
             return
 
         # Case 2: exchange disagrees with our local record. Log the drift,
@@ -1530,21 +1542,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
             return self.active_bot.deal.current_position_qty
         return self.active_bot.deal.opening_qty
 
-    def top_gainer_stop_trigger_price(self, stop_price: float) -> float:
-        direction = self._direction_multiplier()
-        return round_numbers(
-            stop_price
-            * (
-                1
-                + direction
-                * self.TOP_GAINER_EARLY_MOMENTUM_STOP_TRIGGER_BUFFER_PCT
-                / 100
-            ),
-            self.price_precision,
-        )
-
     def place_stop_loss(self, position_qty: float | None = None) -> None:
-        if self.active_bot.stop_loss <= 0:
+        if self.active_bot.stop_loss <= 0 or self._uses_bot_side_stop_loss():
             return
 
         direction = self._direction_multiplier()
@@ -1566,15 +1565,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
         else:
             side = AddOrderReq.SideEnum.SELL
             stop = AddOrderReq.StopEnum.DOWN
-
-        buffered_top_gainer_stop = (
-            self.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO
-        )
-        trigger_price = (
-            self.top_gainer_stop_trigger_price(stop_price)
-            if buffered_top_gainer_stop
-            else stop_price
-        )
 
         qty = (
             position_qty
@@ -1603,7 +1593,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             exchange_qty = (
                 abs(float(raw_exchange_qty)) if raw_exchange_qty is not None else None
             )
-            if abs(exchange_price - trigger_price) > 10**-self.price_precision:
+            if abs(exchange_price - stop_price) > 10**-self.price_precision:
                 continue
             if exchange_qty is not None and exchange_qty != qty:
                 continue
@@ -1631,7 +1621,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                         pair=self.kucoin_symbol,
                         order_side=side.value,
                         order_type=OrderType.market,
-                        price=trigger_price,
+                        price=stop_price,
                         qty=exchange_qty if exchange_qty is not None else qty,
                         time_in_force="GTC",
                         status=OrderStatus.NEW,
@@ -1655,7 +1645,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             side=side,
             order_type=OrderType.market,
             stop=stop,
-            stop_price=trigger_price,
+            stop_price=stop_price,
             stop_price_type=AddOrderReq.StopPriceTypeEnum.MARK_PRICE,
             reduce_only=True,
             size=qty,
@@ -1693,13 +1683,32 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         self.controller.update_logs(
             bot=self.active_bot,
-            log_message=(
-                f"Buffered stop-market trigger set @ {trigger_price} "
-                f"for configured stop @ {stop_price}"
-                if buffered_top_gainer_stop
-                else f"Stop-market set @ {stop_price}"
-            ),
+            log_message=f"Stop-market set @ {stop_price}",
         )
+
+    def suitable_exit_price(self, reference_price: float) -> float | None:
+        """Return an in-band price that can execute the full current position."""
+        qty = self.current_position_quantity()
+        if reference_price <= 0 or qty <= 0:
+            return None
+
+        side = (
+            AddOrderReq.SideEnum.BUY
+            if self.active_bot.position == Position.short
+            else AddOrderReq.SideEnum.SELL
+        )
+        try:
+            return self.kucoin_futures_api.matching_engine(
+                symbol=self.kucoin_symbol,
+                size=qty,
+                side=side,
+                reference_price=reference_price,
+            )
+        except Exception as exc:
+            self.active_bot.add_log(
+                f"Could not inspect exit liquidity for {self.kucoin_symbol}: {exc}."
+            )
+            return None
 
     def recompute_derived_prices(self) -> BotModel:
         """
