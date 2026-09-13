@@ -1228,7 +1228,39 @@ def test_top_gainer_retest_caps_high_volatility_discount(monkeypatch):
     assert deal._top_gainer_volatility_discount_pct == 1.0
 
 
-def test_top_gainer_retest_rejects_tick_quantization_beyond_cap(monkeypatch):
+def test_top_gainer_retest_uses_cap_safe_tick_for_low_priced_contract(monkeypatch):
+    deal = prepare_recovery_entry_deal(
+        monkeypatch,
+        position=Position.long,
+        previous_close=0.01682,
+        current_open=0.01712,
+        candle_range=0.00034,
+    )
+    deal.active_bot.name = "top_gainer_early_momentum"
+    deal.active_bot.recovery_params = None
+    deal.kucoin_symbol_data.tick_size = 0.00001
+    provisional_limit_price = deal.body_capped_entry_limit_price()
+    attach_order_book(
+        deal,
+        bids=[[0.01664, 100]],
+        asks=[[0.01682, 100]],
+    )
+
+    contracts, entry_limit_price = deal.liquidity_gated_contracts(
+        10,
+        provisional_limit_price,
+    )
+
+    assert contracts == 10
+    assert provisional_limit_price == 0.01673
+    assert entry_limit_price == 0.01666
+    assert deal._entry_allowance_pct == pytest.approx(0.9512485136741997)
+    assert deal.active_bot.status != Status.error
+
+
+def test_top_gainer_retest_rejects_when_minimum_ticks_cannot_fit_within_cap(
+    monkeypatch,
+):
     deal = prepare_recovery_entry_deal(
         monkeypatch,
         position=Position.long,

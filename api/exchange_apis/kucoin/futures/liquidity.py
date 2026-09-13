@@ -1,4 +1,4 @@
-from decimal import Decimal, ROUND_FLOOR
+from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR
 from math import isfinite
 from time import time_ns
 from typing import Any
@@ -31,6 +31,19 @@ def floor_price_to_tick(price: float, tick_size: float) -> float:
     if quantized_price <= 0:
         raise ValueError("Price is below one exchange tick")
     return float(quantized_price)
+
+
+def ceil_price_to_tick(price: float, tick_size: float) -> float:
+    """Ceil a positive price to an exact exchange tick boundary."""
+    if not isfinite(price) or price <= 0:
+        raise ValueError("Price must be positive")
+    if not isfinite(tick_size) or tick_size <= 0:
+        raise ValueError("Tick size must be positive")
+
+    price_decimal = Decimal(str(price))
+    tick_decimal = Decimal(str(tick_size))
+    ticks = (price_decimal / tick_decimal).to_integral_value(rounding=ROUND_CEILING)
+    return float(ticks * tick_decimal)
 
 
 def _exchange_timestamp_ms(raw_timestamp: Any) -> int:

@@ -5,6 +5,7 @@ from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddO
 
 from api.exchange_apis.kucoin.futures.liquidity import (
     calculate_liquidity_snapshot,
+    ceil_price_to_tick,
     floor_price_to_tick,
     load_futures_order_book,
 )
@@ -32,6 +33,10 @@ def representative_order_book() -> FuturesOrderBook:
 
 def test_floor_price_to_tick_uses_exact_increment_not_decimal_precision():
     assert floor_price_to_tick(1.063, 0.005) == 1.06
+
+
+def test_ceil_price_to_tick_uses_exact_increment_not_decimal_precision():
+    assert ceil_price_to_tick(1.061, 0.005) == 1.065
 
 
 @pytest.mark.parametrize("tick_size", [0, -0.01, float("nan")])

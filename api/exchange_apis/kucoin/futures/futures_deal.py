@@ -33,6 +33,7 @@ from api.exchange_apis.kucoin.deals.base import KucoinBaseBalance
 from api.exchange_apis.kucoin.futures.balance import KucoinFuturesBalance
 from api.exchange_apis.kucoin.futures.liquidity import (
     calculate_liquidity_snapshot,
+    ceil_price_to_tick,
     floor_price_to_tick,
     load_futures_order_book,
 )
@@ -691,10 +692,18 @@ class KucoinPositionDeal(KucoinBaseBalance):
                     ),
                     self.TOP_GAINER_RETEST_MAX_DISCOUNT_PCT,
                 )
+                maximum_discount_price = self._entry_reference_price * (
+                    1 - self.TOP_GAINER_RETEST_MAX_DISCOUNT_PCT / 100
+                )
                 candidate_limit_price = floor_price_to_tick(
                     self._entry_reference_price * (1 - discount_pct / 100),
                     tick_size,
                 )
+                if candidate_limit_price < maximum_discount_price:
+                    candidate_limit_price = ceil_price_to_tick(
+                        maximum_discount_price,
+                        tick_size,
+                    )
             except (TypeError, ValueError) as exc:
                 self.reject_entry_for_liquidity(
                     f"Entry rejected: invalid top-gainer microstructure data ({exc}).",
@@ -706,6 +715,17 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 / self._entry_reference_price
                 * 100
             )
+            minimum_tick_retest_price = (
+                self._entry_reference_price
+                - tick_size * self.TOP_GAINER_RETEST_MIN_TICKS
+            )
+            if candidate_limit_price > minimum_tick_retest_price + tick_size * 1e-9:
+                self.reject_entry_for_liquidity(
+                    "Entry rejected: exact tick-size quantization cannot place the "
+                    f"top-gainer retest at least {self.TOP_GAINER_RETEST_MIN_TICKS} "
+                    "ticks below its reference without exceeding the "
+                    f"{self.TOP_GAINER_RETEST_MAX_DISCOUNT_PCT:.2f}% cap."
+                )
             if actual_discount_pct > self.TOP_GAINER_RETEST_MAX_DISCOUNT_PCT + 1e-9:
                 self.reject_entry_for_liquidity(
                     "Entry rejected: exact tick-size quantization would move the "
