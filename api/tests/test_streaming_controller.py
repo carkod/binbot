@@ -1,5 +1,6 @@
 import time
 import types
+from contextlib import nullcontext
 from typing import Any, cast
 
 import pandas as pd
@@ -177,6 +178,7 @@ class TestPositionManager:
         # Lightweight BotModel-like object for tests
         bot = types.SimpleNamespace()
         bot.id = f"test-bot-{id(bot)}"
+        bot.signal_id = 123
         bot.name = "apex_aggressive_momo"
         bot.pair = pair
         bot.fiat = "USDC"
@@ -939,7 +941,7 @@ class TestPositionManager:
         base = self._make_base_streaming(monkeypatch, active_pairs=["DOTUSDTM"])
         base.exchange = ExchangeId.KUCOIN
         base.interval = types.SimpleNamespace(get_ms=lambda: 15 * 60 * 1000)
-        base.config = types.SimpleNamespace(env="staging")
+        base.config = types.SimpleNamespace(env="production")
 
         now_ms = int(time.time() * 1000)
         bot = self._make_bot(
@@ -981,6 +983,11 @@ class TestPositionManager:
             ),
         )
         monkeypatch.setattr(
+            FuturesPosition,
+            "_top_gainer_reprice_validation",
+            lambda self, now_ms: (True, "valid continuation"),
+        )
+        monkeypatch.setattr(
             OrderStatus,
             "map_from_kucoin_status",
             staticmethod(
@@ -1004,10 +1011,10 @@ class TestPositionManager:
             order_id
         )
         base.kucoin_futures_api.get_futures_position = lambda symbol: None
-        submitted: list[tuple[str, float, float]] = []
+        submitted: list[tuple[str, float, float, bool]] = []
 
-        def buy(symbol, qty, entry_limit_price):
-            submitted.append((symbol, qty, entry_limit_price))
+        def buy(symbol, qty, entry_limit_price, post_only):
+            submitted.append((symbol, qty, entry_limit_price, post_only))
             return OrderModel(
                 order_id="replacement-entry",
                 order_type="limit",
@@ -1049,7 +1056,7 @@ class TestPositionManager:
         FuturesPosition.order_updates(fp)
 
         assert canceled == ["original-entry"]
-        assert submitted == [("DOTUSDTM", 7, 1.06)]
+        assert submitted == [("DOTUSDTM", 7, 1.06, True)]
         assert updated == ["original-entry"]
         assert len(bot.orders) == 2
         assert bot.orders[0].status == OrderStatus.CANCELED
@@ -1057,7 +1064,7 @@ class TestPositionManager:
         assert bot.orders[1].price == 1.06
         assert bot.deal.opening_timestamp == now_ms - 61_000
         assert saved == [bot]
-        assert any("repriced passively from 1.05 to 1.06" in log for log in logs)
+        assert any("repriced passively (1/2) from 1.05 to 1.06" in log for log in logs)
 
     def test_pending_top_gainer_reprice_respects_replacement_cooldown(
         self, monkeypatch
@@ -1149,9 +1156,7 @@ class TestPositionManager:
         assert bot.orders[1].status == OrderStatus.NEW
         assert bot.orders[1].price == 1.055
 
-    def test_pending_top_gainer_entry_does_not_reprice_outside_staging(
-        self, monkeypatch
-    ):
+    def test_pending_top_gainer_entry_allows_second_reprice(self, monkeypatch):
         now_ms = int(time.time() * 1000)
         bot = self._make_bot(
             pair="DOTUSDTM",
@@ -1161,23 +1166,140 @@ class TestPositionManager:
         bot.name = "top_gainer_early_momentum"
         bot.status = Status.pending
         bot.deal.opening_price = 0
-        order = OrderModel(
-            order_id="production-entry",
-            order_type="limit",
-            pair="DOTUSDTM",
-            timestamp=now_ms - 61_000,
-            order_side="buy",
-            qty=0,
-            price=1.05,
-            status=OrderStatus.NEW,
-            time_in_force="GTC",
-            deal_type=DealType.base_order,
-        )
-        bot.orders = [order]
+        bot.deal.base_order_size = 7
+        logs: list[str] = []
+        bot.add_log = lambda message: logs.append(message)
+        bot.orders = [
+            OrderModel(
+                order_id="original-entry",
+                order_type="limit",
+                pair="DOTUSDTM",
+                timestamp=now_ms - 2 * 60_000,
+                order_side="buy",
+                qty=0,
+                price=1.05,
+                status=OrderStatus.CANCELED,
+                time_in_force="GTC",
+                deal_type=DealType.base_order,
+            ),
+            OrderModel(
+                order_id="first-reprice",
+                order_type="limit",
+                pair="DOTUSDTM",
+                timestamp=now_ms - 61_000,
+                order_side="buy",
+                qty=0,
+                price=1.055,
+                status=OrderStatus.NEW,
+                time_in_force="GTC",
+                deal_type=DealType.base_order,
+            ),
+        ]
+        current_order = bot.orders[-1]
 
         monkeypatch.setattr(
+            FuturesPosition,
+            "_top_gainer_reprice_validation",
+            lambda self, now_ms: (True, "valid continuation"),
+        )
+        monkeypatch.setattr(
             "streaming.futures_position.load_futures_order_book",
-            lambda api, symbol: pytest.fail("production loaded the order book"),
+            lambda api, symbol: types.SimpleNamespace(
+                bids=(types.SimpleNamespace(price=1.065),),
+                data_age_ms=250,
+            ),
+        )
+        monkeypatch.setattr(
+            OrderStatus,
+            "map_from_kucoin_status",
+            staticmethod(lambda status: OrderStatus.CANCELED),
+        )
+
+        api = types.SimpleNamespace(
+            cancel_futures_order=lambda order_id: None,
+            retrieve_order=lambda order_id: types.SimpleNamespace(
+                status=types.SimpleNamespace(value="canceled"),
+                filled_size=0,
+                avg_deal_price=0,
+                created_at=current_order.timestamp,
+                price=current_order.price,
+            ),
+            get_futures_position=lambda symbol: None,
+        )
+
+        def buy(symbol, qty, entry_limit_price, post_only):
+            assert post_only
+            return OrderModel(
+                order_id="second-reprice",
+                order_type="limit",
+                pair=symbol,
+                timestamp=now_ms,
+                order_side="buy",
+                qty=0,
+                price=entry_limit_price,
+                status=OrderStatus.NEW,
+                time_in_force="GTC",
+                deal_type=DealType.base_order,
+            )
+
+        api.buy = buy
+        controller = types.SimpleNamespace(
+            update_order=lambda order: None,
+            save=lambda *args, **kwargs: None,
+        )
+        fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
+        fp.base_streaming = types.SimpleNamespace(kucoin_futures_api=api)
+        fp.price_precision = 3
+        fp.qty_precision = 0
+        fp.execution = types.SimpleNamespace(
+            active_bot=bot,
+            controller=controller,
+            _actual_fill=lambda order: (0, 0),
+            compute_available_balance=lambda: 10.0,
+            required_margin_for_contracts=lambda contracts, price: 3.75,
+            kucoin_symbol_data=types.SimpleNamespace(tick_size=0.001),
+        )
+
+        assert fp._reprice_pending_top_gainer_entry(
+            current_order,
+            "DOTUSDTM",
+            now_ms,
+        )
+        assert len(bot.orders) == 3
+        assert bot.orders[-1].order_id == "second-reprice"
+        assert any("repriced passively (2/2)" in log for log in logs)
+
+    def test_pending_top_gainer_entry_stops_after_two_reprices(self, monkeypatch):
+        now_ms = int(time.time() * 1000)
+        bot = self._make_bot(
+            pair="DOTUSDTM",
+            position=Position.long,
+            market_type=MarketType.FUTURES,
+        )
+        bot.name = "top_gainer_early_momentum"
+        bot.status = Status.pending
+        bot.deal.opening_price = 0
+        bot.orders = [
+            OrderModel(
+                order_id=f"entry-{index}",
+                order_type="limit",
+                pair="DOTUSDTM",
+                timestamp=now_ms - 61_000,
+                order_side="buy",
+                qty=0,
+                price=1.05 + index * 0.005,
+                status=OrderStatus.CANCELED if index < 2 else OrderStatus.NEW,
+                time_in_force="GTC",
+                deal_type=DealType.base_order,
+            )
+            for index in range(3)
+        ]
+        order = bot.orders[-1]
+
+        monkeypatch.setattr(
+            FuturesPosition,
+            "_top_gainer_reprice_validation",
+            lambda self, now_ms: pytest.fail("third reprice was validated"),
         )
 
         fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
@@ -1191,6 +1313,140 @@ class TestPositionManager:
             "DOTUSDTM",
             now_ms,
         )
+
+    def test_top_gainer_reprice_validation_requires_live_trend_continuation(
+        self, monkeypatch
+    ):
+        interval_ms = 15 * 60 * 1000
+        now_ms = int(time.time() * 1000)
+        current_open_time = now_ms - 60_000
+        closes = [1.0 + index * 0.001 for index in range(50)]
+        klines = [
+            [
+                current_open_time - (50 - index) * interval_ms,
+                close - 0.0005,
+                close + 0.001,
+                close - 0.001,
+                close,
+                100,
+                current_open_time - (49 - index) * interval_ms - 1,
+            ]
+            for index, close in enumerate(closes)
+        ]
+        klines.append(
+            [
+                current_open_time,
+                1.052,
+                1.056,
+                1.051,
+                1.055,
+                100,
+                current_open_time + interval_ms - 1,
+            ]
+        )
+
+        signal = types.SimpleNamespace(
+            context={
+                "symbol_features": {
+                    "DOTUSDTM": {
+                        "micro_regime": "TREND_UP",
+                        "micro_regime_strength": 0.7,
+                        "micro_regime_transition": None,
+                    }
+                }
+            },
+            indicators={"second_confirmation_close": 1.05},
+        )
+        session = types.SimpleNamespace(get=lambda model, signal_id: signal)
+        monkeypatch.setattr(
+            "streaming.futures_position.get_db_session",
+            lambda: nullcontext(session),
+        )
+
+        bot = self._make_bot(
+            pair="DOTUSDTM",
+            position=Position.long,
+            market_type=MarketType.FUTURES,
+        )
+        fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
+        fp.execution = types.SimpleNamespace(active_bot=bot)
+        fp.klines = klines
+
+        assert fp._top_gainer_reprice_validation(now_ms) == (
+            True,
+            "live TREND_UP continuation remains valid",
+        )
+
+        signal.context["symbol_features"]["DOTUSDTM"]["micro_regime"] = "RANGE"
+        is_valid, reason = fp._top_gainer_reprice_validation(now_ms)
+
+        assert not is_valid
+        assert "not a strong TREND_UP" in reason
+
+    def test_top_gainer_reprice_validation_blocks_reversal_and_vertical_extension(
+        self, monkeypatch
+    ):
+        interval_ms = 15 * 60 * 1000
+        now_ms = int(time.time() * 1000)
+        current_open_time = now_ms - 60_000
+        klines = [
+            [
+                current_open_time - (50 - index) * interval_ms,
+                1.0 + index * 0.001,
+                1.002 + index * 0.001,
+                0.999 + index * 0.001,
+                1.001 + index * 0.001,
+                100,
+                current_open_time - (49 - index) * interval_ms - 1,
+            ]
+            for index in range(50)
+        ]
+        klines.append(
+            [
+                current_open_time,
+                1.075,
+                1.08,
+                1.05,
+                1.07,
+                100,
+                current_open_time + interval_ms - 1,
+            ]
+        )
+        signal = types.SimpleNamespace(
+            context={
+                "symbol_features": {
+                    "DOTUSDTM": {
+                        "micro_regime": "TREND_UP",
+                        "micro_regime_strength": 0.7,
+                        "micro_regime_transition": None,
+                    }
+                }
+            },
+            indicators={"second_confirmation_close": 1.05},
+        )
+        session = types.SimpleNamespace(get=lambda model, signal_id: signal)
+        monkeypatch.setattr(
+            "streaming.futures_position.get_db_session",
+            lambda: nullcontext(session),
+        )
+
+        bot = self._make_bot(
+            pair="DOTUSDTM",
+            position=Position.long,
+            market_type=MarketType.FUTURES,
+        )
+        fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
+        fp.execution = types.SimpleNamespace(active_bot=bot)
+        fp.klines = klines
+
+        is_valid, reason = fp._top_gainer_reprice_validation(now_ms)
+        assert not is_valid
+        assert "live extension" in reason
+
+        signal.indicators["second_confirmation_close"] = 1.065
+        is_valid, reason = fp._top_gainer_reprice_validation(now_ms)
+        assert not is_valid
+        assert "reversed below its open" in reason
 
     def test_repriced_entry_expires_from_original_pending_timestamp(self):
         interval_ms = 15 * 60 * 1000
