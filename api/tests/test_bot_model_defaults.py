@@ -225,6 +225,47 @@ def test_exit_pending_calls_open_deal_and_returns_early():
     assert result.status == Status.active
 
 
+def test_exit_pending_retries_deferred_liquidity_entry_on_next_tick():
+    bot = BotModel(
+        pair="BTCUSDT",
+        market_type=MarketType.FUTURES,
+        status=Status.pending,
+    )
+    open_deal_calls = 0
+
+    class StubController:
+        def save(self, b):
+            return b
+
+    def open_deal():
+        nonlocal open_deal_calls
+        open_deal_calls += 1
+        if open_deal_calls == 1:
+            bot.status = Status.pending
+            raise EntryLiquidityError("Entry displacement retry 1/1")
+        bot.status = Status.active
+        return bot
+
+    execution = types.SimpleNamespace(
+        active_bot=bot,
+        controller=StubController(),
+        price_precision=2,
+        open_deal=open_deal,
+    )
+    position_deal = Lifecycle(
+        execution=cast(Any, execution),
+        base_streaming=types.SimpleNamespace(),
+    )
+
+    first_tick = Lifecycle.exit(position_deal, close_price=100.0)
+    assert first_tick.status == Status.pending
+
+    second_tick = Lifecycle.exit(position_deal, close_price=100.0)
+
+    assert second_tick.status == Status.active
+    assert open_deal_calls == 2
+
+
 def test_exit_completed_bot_does_not_submit_another_close():
     bot = BotModel(
         pair="CTRUSDTM",
