@@ -49,6 +49,11 @@ class FakeApexFlowClose:
         return 101.0, 100.0
 
 
+class FakeApexFlowCloseDowntrend(FakeApexFlowClose):
+    def get_trend_ema(self) -> tuple[float, float]:
+        return 100.0, 101.0
+
+
 def _candles(count: int = 220, *, start: int = 1_800_000_000_000) -> list:
     return [
         [
@@ -215,6 +220,52 @@ def test_default_dynamic_signal_runs_for_long_and_short(monkeypatch) -> None:
     assert short_signal.parameter_update is not None
     assert long_signal.parameter_update.stop_loss == 1.5
     assert short_signal.parameter_update.stop_loss == 2.0
+
+
+def test_default_dynamic_signal_widens_stop_loss_when_trend_favorable(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "streaming.strategies.default.ApexFlowClose",
+        FakeApexFlowClose,
+    )
+
+    signal = DefaultLifecycleStrategy().signal(
+        _context(
+            dynamic_trailing=True,
+            position=Position.long,
+            stop_loss=1.0,
+            bb_metrics=(3.0, 2.5),
+        )
+    )
+
+    assert signal.parameter_update is not None
+    # Trend favors the long (ema_fast > ema_slow): the band distance (2.5)
+    # widens the emergency stop past its prior value (1.0).
+    assert signal.parameter_update.stop_loss == 2.5
+
+
+def test_default_dynamic_signal_does_not_widen_against_unfavorable_trend(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "streaming.strategies.default.ApexFlowClose",
+        FakeApexFlowCloseDowntrend,
+    )
+
+    signal = DefaultLifecycleStrategy().signal(
+        _context(
+            dynamic_trailing=True,
+            position=Position.long,
+            stop_loss=1.0,
+            bb_metrics=(3.0, 2.5),
+        )
+    )
+
+    assert signal.parameter_update is not None
+    # Trend is against the long (ema_fast < ema_slow): stop_loss stays on
+    # the tighten-only ratchet and is unaffected by the wider band.
+    assert signal.parameter_update.stop_loss == 1.0
 
 
 def test_default_dynamic_signal_preserves_recovery_parameters(monkeypatch) -> None:
