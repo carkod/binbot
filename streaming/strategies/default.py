@@ -163,11 +163,15 @@ class DefaultLifecycleStrategy(BaseLifecycleStrategy):
                 self.MIN_STOP_LOSS,
                 self.MAX_STOP_LOSS,
             )
-            stop_loss = clamp(
-                min(existing_stop_loss, band_stop_loss),
-                self.MIN_STOP_LOSS,
-                self.MAX_STOP_LOSS,
+            # Trend-favorable: let the emergency stop track the band distance
+            # in either direction. Otherwise, ratchet tighter only — never
+            # widen against an unfavorable or unclear trend.
+            stop_loss = (
+                band_stop_loss
+                if trend_favorable
+                else min(existing_stop_loss, band_stop_loss)
             )
+            stop_loss = clamp(stop_loss, self.MIN_STOP_LOSS, self.MAX_STOP_LOSS)
         else:
             stop_loss = self._initial_stop_loss(context, expansion_range)
 
