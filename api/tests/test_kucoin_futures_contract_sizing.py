@@ -352,7 +352,7 @@ def test_passive_short_entry_uses_candidate_instead_of_current_expected_fill():
     )
 
 
-def test_passive_entry_rejects_candidate_outside_candle_reference_band():
+def test_passive_entry_errors_after_candidate_exceeds_displacement_twice():
     deal = make_sizing_deal(multiplier=1)
     deal.active_bot.position = Position.long
     deal._entry_reference_price = 100.0
@@ -368,8 +368,16 @@ def test_passive_entry_rejects_candidate_outside_candle_reference_band():
     with pytest.raises(BinbotErrors, match="passive KuCoin futures limit price"):
         deal.liquidity_gated_contracts(10, 99.0)
 
-    assert deal.active_bot.status == Status.error
+    assert deal.active_bot.status == Status.pending
     assert saved == [deal.active_bot]
+    assert "Entry displacement retry 1/1:" in deal.active_bot.logs[-1]
+    assert "1.00% below candle reference 100" in deal.active_bot.logs[-1]
+
+    with pytest.raises(BinbotErrors, match="passive KuCoin futures limit price"):
+        deal.liquidity_gated_contracts(10, 99.0)
+
+    assert deal.active_bot.status == Status.error
+    assert len(saved) == 2
     assert "1.00% below candle reference 100" in deal.active_bot.logs[-1]
 
 
@@ -391,7 +399,7 @@ def test_passive_entry_accepts_directionally_floored_reference_boundary():
     assert entry_limit_price == 0.03617
 
 
-def test_entry_liquidity_gate_rejects_long_below_candle_reference_band():
+def test_entry_liquidity_gate_errors_after_long_displacement_twice():
     deal = make_sizing_deal(multiplier=1)
     deal.active_bot.position = Position.long
     deal.price_precision = 7
@@ -408,13 +416,21 @@ def test_entry_liquidity_gate_rejects_long_below_candle_reference_band():
     with pytest.raises(BinbotErrors, match="below candle reference"):
         deal.liquidity_gated_contracts(92, 0.000866)
 
-    assert deal.active_bot.status == Status.error
+    assert deal.active_bot.status == Status.pending
     assert saved == [deal.active_bot]
+    assert "Entry displacement retry 1/1:" in deal.active_bot.logs[-1]
+    assert "5.67% below candle reference 0.0008543" in deal.active_bot.logs[-1]
+
+    with pytest.raises(BinbotErrors, match="below candle reference"):
+        deal.liquidity_gated_contracts(92, 0.000866)
+
+    assert deal.active_bot.status == Status.error
+    assert len(saved) == 2
     assert "5.67% below candle reference 0.0008543" in deal.active_bot.logs[-1]
     assert "maximum allowed displacement is 1.37%" in deal.active_bot.logs[-1]
 
 
-def test_entry_liquidity_gate_rejects_short_above_candle_reference_band():
+def test_entry_liquidity_gate_retries_short_displacement_then_accepts_next_tick():
     deal = make_sizing_deal(multiplier=1)
     deal.active_bot.position = Position.short
     deal._entry_reference_price = 100.0
@@ -430,10 +446,23 @@ def test_entry_liquidity_gate_rejects_short_above_candle_reference_band():
     with pytest.raises(BinbotErrors, match="above candle reference"):
         deal.liquidity_gated_contracts(10, 99.0)
 
-    assert deal.active_bot.status == Status.error
+    assert deal.active_bot.status == Status.pending
     assert saved == [deal.active_bot]
+    assert "Entry displacement retry 1/1:" in deal.active_bot.logs[-1]
     assert "5.00% above candle reference 100" in deal.active_bot.logs[-1]
     assert "maximum allowed displacement is 1.00%" in deal.active_bot.logs[-1]
+
+    attach_order_book(
+        deal,
+        bids=[[99.99, 100]],
+        asks=[[100.01, 100]],
+    )
+
+    contracts, entry_limit_price = deal.liquidity_gated_contracts(10, 99.0)
+
+    assert contracts == 10
+    assert entry_limit_price == 99.99
+    assert deal.active_bot.status == Status.pending
 
 
 def test_entry_liquidity_gate_rejects_stale_book_data():

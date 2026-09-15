@@ -186,7 +186,7 @@ describe("Dashboard page", () => {
         },
       ],
       isLoading: false,
-    } as ReturnType<typeof useGetSignalsQuery>);
+    } as unknown as ReturnType<typeof useGetSignalsQuery>);
 
     renderDashboard();
 

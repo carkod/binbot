@@ -12,6 +12,7 @@ type SymbolSearchProps = {
   required?: boolean;
   disabled?: boolean;
   placeholder?: string;
+  options?: string[];
   onBlur?: (e: ChangeEvent<HTMLInputElement>) => void;
   errors?: object;
 };
@@ -25,10 +26,12 @@ const SymbolSearch: FC<SymbolSearchProps> = ({
   disabled = false,
   errors = {},
   placeholder = "",
+  options: providedOptions,
 }) => {
   const [state, setState] = useState<string>(value ?? "");
   const [options, setOptions] = useState<string[]>([]);
   const { symbolsList } = useSymbolData();
+  const availableOptions = providedOptions ?? symbolsList;
 
   useEffect(() => {
     if (value !== undefined) {
@@ -37,10 +40,10 @@ const SymbolSearch: FC<SymbolSearchProps> = ({
   }, [value]);
 
   useEffect(() => {
-    if (symbolsList && symbolsList.length > 0) {
-      setOptions(symbolsList);
+    if (availableOptions.length > 0) {
+      setOptions(availableOptions);
     }
-  }, [symbolsList]);
+  }, [availableOptions]);
 
   return (
     <Form.Group>

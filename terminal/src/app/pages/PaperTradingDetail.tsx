@@ -55,14 +55,11 @@ export const PaperTradingDetail: FC = () => {
           {paperTrading && id && (
             <Row>
               <Col md="7" sm="12">
-                <BotInfo bot={paperTrading} marketType={currentMarketType} />
+                <BotInfo bot={paperTrading} />
               </Col>
               <Col md="5" sm="12">
                 {paperTrading.logs?.length > 0 && (
-                  <LogsInfo
-                    events={paperTrading.logs}
-                    marketType={currentMarketType}
-                  />
+                  <LogsInfo events={paperTrading.logs} />
                 )}
               </Col>
             </Row>

@@ -1,4 +1,5 @@
 import React from "react";
+import type { IndexRouteObject, NonIndexRouteObject } from "react-router-dom";
 import AutotradePage from "./pages/Autotrade";
 import BotDetail from "./pages/BotDetail";
 import FuturesBotDetail from "./pages/FuturesBotDetail";
@@ -14,21 +15,23 @@ import TestAutotradePage from "./pages/TestAutotrade";
 import UserFormPage from "./pages/UserForm";
 import UsersPage from "./pages/Users";
 
-export type Routes = {
-  path: string;
+interface RouteMetadata {
   name?: string;
   icon?: string;
   link?: string;
-  element: React.ReactNode;
   id?: string;
   nav?: boolean;
-  index?: boolean;
-};
+}
 
-export const routes: Routes[] = [
+interface AppIndexRoute extends IndexRouteObject, RouteMetadata {}
+
+interface AppNonIndexRoute extends NonIndexRouteObject, RouteMetadata {}
+
+type AppRoute = AppIndexRoute | AppNonIndexRoute;
+
+export const routes: AppRoute[] = [
   {
     index: true,
-    path: "/",
     link: "/",
     name: "Home",
     icon: "fas fa-chart-simple",

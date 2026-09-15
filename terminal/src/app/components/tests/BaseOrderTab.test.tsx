@@ -7,7 +7,7 @@ import { vi } from "vitest";
 import { makeStore } from "../../store";
 import { SymbolContext } from "../../hooks";
 import BaseOrderTab from "../BaseOrderTab";
-import { BotType, TabsKeys } from "../../../utils/enums";
+import { BotType, QuoteAsset, TabsKeys } from "../../../utils/enums";
 import { setBot } from "../../../features/bots/botSlice";
 import { singleBot } from "../../../features/bots/botInitialState";
 
@@ -44,7 +44,7 @@ describe("BaseOrderTab", () => {
           ...singleBot,
           fiat: "USDC",
           fiat_order_size: 777,
-          quote_asset: "USDC",
+          quote_asset: QuoteAsset.USDC,
         },
       }),
     );

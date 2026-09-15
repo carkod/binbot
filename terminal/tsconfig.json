@@ -18,5 +18,6 @@
   },
   "references": [
     { "path": "./tsconfig.node.json" }
-  ]
+  ],
+  "include": ["src", "eslint.config.mjs", "setupTests.js"]
 }

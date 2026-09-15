@@ -48,7 +48,7 @@ from api.tools.constants import (
 
 
 class EntryLiquidityError(BinbotErrors):
-    """A persisted, terminal rejection from the pre-entry liquidity gate."""
+    """A persisted rejection or retry deferral from the pre-entry liquidity gate."""
 
 
 class KucoinPositionDeal(KucoinBaseBalance):
@@ -100,6 +100,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
     # confirmed against live low-cap futures books (~15s observed on a quiet
     # book). 20s comfortably clears that while still catching a hung fetch.
     ENTRY_LIQUIDITY_MAX_DATA_AGE_MS = 20_000
+    ENTRY_DISPLACEMENT_RETRY_MARKER = "Entry displacement retry 1/1:"
     # How long to wait after the first (limit) close leg before checking its
     # fill status — mirrors pybinbot's _EXIT_ESCALATION_SLEEP_S for the same
     # reason: KuCoin's order/position endpoints can lag fill processing.
@@ -795,7 +796,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                     f"{self._entry_reference_price:.8g}; maximum allowed "
                     f"displacement is {self._entry_allowance_pct:.2f}%. {summary}."
                 )
-                self.reject_entry_for_liquidity(message)
+                self.reject_entry_for_displacement(message)
 
             self.active_bot.add_log(
                 f"Futures passive entry liquidity snapshot: {summary}. "
@@ -865,7 +866,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 f"{self._entry_reference_price:.8g}; maximum allowed displacement "
                 f"is {self._entry_allowance_pct:.2f}%. {summary}."
             )
-            self.reject_entry_for_liquidity(message)
+            self.reject_entry_for_displacement(message)
 
         entry_limit_price = candidate_limit_price
         if approved_snapshot.worst_fill_price is not None:
@@ -911,6 +912,23 @@ class KucoinPositionDeal(KucoinBaseBalance):
         self.controller.save(self.active_bot)
         if cause is not None:
             raise EntryLiquidityError(message) from cause
+        raise EntryLiquidityError(message)
+
+    def reject_entry_for_displacement(self, message: str) -> NoReturn:
+        already_retried = any(
+            self.ENTRY_DISPLACEMENT_RETRY_MARKER in str(log)
+            for log in self.active_bot.logs
+        )
+        if already_retried:
+            self.reject_entry_for_liquidity(message)
+
+        detail = message.removeprefix("Entry rejected: ")
+        self.active_bot.status = Status.pending
+        self.active_bot.add_log(
+            f"{self.ENTRY_DISPLACEMENT_RETRY_MARKER} {detail} "
+            "Bot remains pending and will retry on the next tick."
+        )
+        self.controller.save(self.active_bot)
         raise EntryLiquidityError(message)
 
     def backfill_position_from_fills(self) -> BotModel:

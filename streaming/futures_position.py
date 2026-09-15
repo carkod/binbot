@@ -7,6 +7,7 @@ from kucoin_universal_sdk.generate.futures.order import CancelOrderByIdReqBuilde
 from kucoin_universal_sdk.model.common import RestError
 from pybinbot import (
     BotModel,
+    Candles,
     DealType,
     ExchangeId,
     OrderModel,
@@ -17,6 +18,8 @@ from pybinbot import (
     round_numbers,
 )
 
+from api.databases.tables.signals_table import SignalsTable
+from api.databases.utils import get_db_session
 from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from api.exchange_apis.kucoin.futures.liquidity import (
     floor_price_to_tick,
@@ -38,7 +41,10 @@ class FuturesPosition(PositionMarket):
     MISSING_STOP_RETRY_COOLDOWN_MS = 60 * 1000
     _missing_stop_retry_after_ms: dict[str, int] = {}
     TOP_GAINER_ENTRY_REPRICE_COOLDOWN_MS = 60 * 1000
+    TOP_GAINER_ENTRY_MAX_REPRICES = 2
     TOP_GAINER_ENTRY_REPRICE_MAX_UPLIFT_PCT = 1.0
+    TOP_GAINER_ENTRY_MIN_MICRO_REGIME_STRENGTH = 0.52
+    TOP_GAINER_ENTRY_MAX_UPPER_WICK_FRACTION = 0.30
     TERMINAL_ORDER_STATUSES = {
         OrderStatus.FILLED,
         OrderStatus.CANCELED,
@@ -315,12 +321,6 @@ class FuturesPosition(PositionMarket):
         ):
             return False
 
-        # STAGING EXPERIMENT: On the next `$binquant-live-analysis` strategy
-        # review, decide whether to remove this repricing or deliberately
-        # productionize it based on the observed fill rate and execution cost.
-        if self.base_streaming.config.env.lower() != "staging":
-            return False
-
         base_orders = sorted(
             (
                 candidate
@@ -333,7 +333,21 @@ class FuturesPosition(PositionMarket):
             return False
 
         initial_order = base_orders[0]
+        reprice_count = len(base_orders) - 1
+        if reprice_count >= self.TOP_GAINER_ENTRY_MAX_REPRICES:
+            return False
         if now_ms - order.timestamp < self.TOP_GAINER_ENTRY_REPRICE_COOLDOWN_MS:
+            return False
+
+        reprice_is_valid, validation_reason = self._top_gainer_reprice_validation(
+            now_ms
+        )
+        if not reprice_is_valid:
+            logging.info(
+                "Skipping pending top-gainer entry reprice for %s: %s",
+                order.order_id,
+                validation_reason,
+            )
             return False
 
         try:
@@ -423,6 +437,7 @@ class FuturesPosition(PositionMarket):
                 symbol=kucoin_symbol,
                 qty=bot.deal.base_order_size,
                 entry_limit_price=target_price,
+                post_only=True,
             )
         except Exception as exc:
             bot.status = Status.error
@@ -442,7 +457,8 @@ class FuturesPosition(PositionMarket):
         replacement_order = OrderModel(**replacement.model_dump())
         bot.orders.append(replacement_order)
         bot.add_log(
-            "Pending top-gainer entry repriced passively from "
+            "Pending top-gainer entry repriced passively "
+            f"({reprice_count + 1}/{self.TOP_GAINER_ENTRY_MAX_REPRICES}) from "
             f"{order.price} to {target_price} (best_bid={best_bid}, "
             f"cap={reprice_cap}); order {old_order_id} replaced by "
             f"{replacement_order.order_id}."
@@ -467,6 +483,120 @@ class FuturesPosition(PositionMarket):
 
         self.execution.controller.save(data=bot)
         return True
+
+    @staticmethod
+    def _ema(values: list[float], span: int) -> float:
+        multiplier = 2 / (span + 1)
+        ema = values[0]
+        for value in values[1:]:
+            ema = value * multiplier + ema * (1 - multiplier)
+        return ema
+
+    def _top_gainer_reprice_validation(self, now_ms: int) -> tuple[bool, str]:
+        bot = self.execution.active_bot
+        if bot.signal_id is None:
+            return False, "the originating signal is unavailable"
+
+        try:
+            with get_db_session() as session:
+                signal = session.get(SignalsTable, bot.signal_id)
+                if signal is None:
+                    return False, f"signal {bot.signal_id} was not found"
+                signal_context = signal.context
+                signal_indicators = signal.indicators
+        except Exception as exc:
+            return False, f"signal validation is unavailable ({exc})"
+
+        symbol_features = (signal_context.get("symbol_features") or {}).get(bot.pair)
+        if not isinstance(symbol_features, dict):
+            return False, "the signal has no symbol micro-regime context"
+
+        micro_regime = symbol_features.get("micro_regime")
+        micro_regime_strength = float(symbol_features.get("micro_regime_strength") or 0)
+        micro_regime_transition = symbol_features.get("micro_regime_transition")
+        if (
+            micro_regime != "TREND_UP"
+            or micro_regime_strength < self.TOP_GAINER_ENTRY_MIN_MICRO_REGIME_STRENGTH
+        ):
+            return (
+                False,
+                "signal micro-regime is not a strong TREND_UP "
+                f"(regime={micro_regime}, strength={micro_regime_strength:.2f})",
+            )
+        if micro_regime_transition in {
+            "BREAKDOWN",
+            "ENTERED_TREND_DOWN",
+            "VOLATILITY_EXPANSION",
+        }:
+            return (
+                False,
+                f"signal transition {micro_regime_transition} is not long-safe",
+            )
+
+        try:
+            normalized_klines = KucoinPositionDeal.normalize_entry_klines(self.klines)
+            completed_candles, current_candle = Candles.partition_closed_candles(
+                normalized_klines,
+                now_ms=now_ms,
+            )
+            if current_candle is None or len(completed_candles) < 50:
+                return False, "live candle history is incomplete"
+
+            closes = [float(candle[4]) for candle in completed_candles[-50:]]
+            current_open = float(current_candle[1])
+            current_high = float(current_candle[2])
+            current_low = float(current_candle[3])
+            current_close = float(current_candle[4])
+            closes.append(current_close)
+
+            raw_reference_price = (
+                signal_indicators.get("second_confirmation_close")
+                or signal_indicators.get("current_price")
+                or signal_indicators.get("close")
+            )
+            if raw_reference_price is None:
+                return False, "the signal reference price is unavailable"
+            reference_price = float(raw_reference_price)
+        except (TypeError, ValueError, ZeroDivisionError):
+            return False, "live continuation inputs are invalid"
+
+        ema20 = self._ema(closes, 20)
+        ema50 = self._ema(closes, 50)
+        if not current_close > ema20 > ema50:
+            return (
+                False,
+                "live price structure no longer confirms TREND_UP "
+                f"(close={current_close}, ema20={ema20}, ema50={ema50})",
+            )
+        if current_close < reference_price:
+            return (
+                False,
+                f"continuation failed below signal reference {reference_price}",
+            )
+
+        live_extension_pct = (current_close / reference_price - 1) * 100
+        if live_extension_pct > self.TOP_GAINER_ENTRY_REPRICE_MAX_UPLIFT_PCT:
+            return (
+                False,
+                f"live extension {live_extension_pct:.2f}% exceeds the "
+                f"{self.TOP_GAINER_ENTRY_REPRICE_MAX_UPLIFT_PCT:.2f}% cap",
+            )
+        if current_close < current_open:
+            return False, "the live candle has reversed below its open"
+
+        candle_range = current_high - current_low
+        if candle_range <= 0:
+            return False, "the live candle range is invalid"
+        upper_wick_fraction = (
+            current_high - max(current_open, current_close)
+        ) / candle_range
+        if upper_wick_fraction > self.TOP_GAINER_ENTRY_MAX_UPPER_WICK_FRACTION:
+            return (
+                False,
+                f"live upper wick {upper_wick_fraction:.2f} indicates rejection",
+            )
+
+        return True, "live TREND_UP continuation remains valid"
 
     def _expire_unfilled_base_order(
         self, order: OrderModel, kucoin_symbol: str
