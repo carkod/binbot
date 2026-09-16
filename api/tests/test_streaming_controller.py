@@ -1069,6 +1069,7 @@ class TestPositionManager:
     def test_pending_top_gainer_reprice_respects_replacement_cooldown(
         self, monkeypatch
     ):
+        assert FuturesPosition.TOP_GAINER_ENTRY_REPRICE_COOLDOWN_MS == 30_000
         base = self._make_base_streaming(monkeypatch, active_pairs=["DOTUSDTM"])
         base.exchange = ExchangeId.KUCOIN
         base.interval = types.SimpleNamespace(get_ms=lambda: 15 * 60 * 1000)
@@ -1102,7 +1103,7 @@ class TestPositionManager:
                 order_id="recent-replacement",
                 order_type="limit",
                 pair="DOTUSDTM",
-                timestamp=now_ms - 30_000,
+                timestamp=now_ms - 29_000,
                 order_side="buy",
                 qty=0,
                 price=1.055,
@@ -1129,7 +1130,7 @@ class TestPositionManager:
             status=types.SimpleNamespace(value="open"),
             filled_size=0,
             avg_deal_price=0,
-            created_at=now_ms - 30_000,
+            created_at=now_ms - 29_000,
             price=1.055,
             remark=None,
         )
