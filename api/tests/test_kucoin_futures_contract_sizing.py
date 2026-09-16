@@ -1489,7 +1489,7 @@ def test_top_gainer_retest_rejects_when_minimum_ticks_cannot_fit_within_cap(
     assert saved == [deal.active_bot]
 
 
-def test_top_gainer_stop_is_owned_by_streaming_lifecycle():
+def test_top_gainer_places_exchange_native_emergency_backstop():
     deal = make_sizing_deal(multiplier=1)
     deal.active_bot.name = "top_gainer_early_momentum"
     deal.active_bot.position = Position.long
@@ -1497,14 +1497,38 @@ def test_top_gainer_stop_is_owned_by_streaming_lifecycle():
     deal.active_bot.deal.opening_qty = 3
     deal.active_bot.deal.stop_loss_price = 98.0
     deal.kucoin_symbol = "SIRENUSDTM"
-    place_order = Mock()
+    stop_order = OrderModel(
+        order_id="top-mover-backstop",
+        order_type=OrderType.market,
+        pair="SIRENUSDTM",
+        timestamp=1,
+        order_side="sell",
+        qty=3,
+        price=0,
+        status=OrderStatus.NEW,
+        time_in_force="GTC",
+        deal_type=DealType.stop_loss,
+    )
+    place_order = Mock(return_value=stop_order)
     deal.kucoin_futures_api = types.SimpleNamespace(place_futures_order=place_order)
     deal.controller = types.SimpleNamespace(update_logs=Mock())
 
     deal.place_stop_loss()
 
-    place_order.assert_not_called()
+    place_order.assert_called_once_with(
+        symbol="SIRENUSDTM",
+        side=AddOrderReq.SideEnum.SELL,
+        order_type=OrderType.market,
+        stop=AddOrderReq.StopEnum.DOWN,
+        stop_price=98.0,
+        stop_price_type=AddOrderReq.StopPriceTypeEnum.MARK_PRICE,
+        reduce_only=True,
+        size=3,
+        leverage=1,
+        allow_market_fallback=True,
+    )
     assert deal.active_bot.deal.stop_loss_price == 98.0
+    assert deal.active_bot.orders[-1].order_id == "top-mover-backstop"
 
 
 def test_entry_klines_normalizes_kucoin_dashboard_ohlc_order():

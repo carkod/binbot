@@ -1831,8 +1831,12 @@ class TestPositionManager:
         assert [order.order_id for order in bot.orders] == []
         assert saved == [bot]
 
+    @pytest.mark.parametrize(
+        "algorithm_name",
+        ["coinrule_buy_the_dip", "top_gainer_early_momentum"],
+    )
     def test_futures_order_updates_backfills_missing_stop_loss_for_active_position(
-        self, monkeypatch
+        self, monkeypatch, algorithm_name
     ):
         base = self._make_base_streaming(monkeypatch, active_pairs=["BTCUSDT"])
         base.exchange = ExchangeId.KUCOIN
@@ -1844,6 +1848,7 @@ class TestPositionManager:
             market_type=MarketType.FUTURES,
         )
         bot.status = Status.active
+        bot.name = algorithm_name
         bot.stop_loss = 2.0
         bot.margin_short_reversal = False
         bot.recovery_params = None

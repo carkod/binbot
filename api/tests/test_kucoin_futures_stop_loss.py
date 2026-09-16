@@ -1,7 +1,6 @@
 import types
 from time import time
 from typing import Any, cast
-from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
@@ -1002,7 +1001,7 @@ def test_reconcile_exchange_sl_skips_for_recovery_bot():
     "algorithm_name",
     ["top_gainer_early_momentum", "top_loser_early_momentum"],
 )
-def test_reconcile_exchange_sl_skips_for_liquidity_gated_top_mover(
+def test_reconcile_exchange_sl_places_native_backstop_for_top_mover(
     algorithm_name: str,
 ):
     calls: list[str] = []
@@ -1013,36 +1012,10 @@ def test_reconcile_exchange_sl_skips_for_liquidity_gated_top_mover(
 
     KucoinPositionDeal.reconcile_exchange_sl(deal)
 
-    assert calls == []
+    assert calls == ["cancel", "place"]
 
 
-@pytest.mark.parametrize(
-    ("position", "expected_side"),
-    [
-        (Position.long, AddOrderReq.SideEnum.SELL),
-        (Position.short, AddOrderReq.SideEnum.BUY),
-    ],
-)
-def test_suitable_exit_price_checks_full_position_on_executable_book_side(
-    position: Position,
-    expected_side: AddOrderReq.SideEnum,
-):
-    deal = _make_deal(position=position)
-    deal.kucoin_symbol = "CTRUSDTM"
-    deal.current_position_quantity = lambda: 6
-    matching_engine = Mock(return_value=0.0115)
-    deal.kucoin_futures_api = types.SimpleNamespace(matching_engine=matching_engine)
-
-    assert deal.suitable_exit_price(0.01153) == 0.0115
-    matching_engine.assert_called_once_with(
-        symbol="CTRUSDTM",
-        size=6,
-        side=expected_side,
-        reference_price=0.01153,
-    )
-
-
-def test_top_gainer_exit_waits_one_tick_for_full_bid_liquidity():
+def test_top_gainer_hard_stop_executes_without_liquidity_precheck():
     deal = _make_lifecycle(stop_loss=2.0, stop_loss_price=98.0)
     deal.execution.active_bot.name = "top_gainer_early_momentum"
     now_ms = int(time() * 1000)
@@ -1066,35 +1039,48 @@ def test_top_gainer_exit_waits_one_tick_for_full_bid_liquidity():
             now_ms + 1,
         ],
     ]
-    available_prices = iter([None, 98.9])
-    liquidity_references: list[float] = []
     stop_calls: list[float | None] = []
-
-    def suitable_exit_price(reference_price: float) -> float | None:
-        liquidity_references.append(reference_price)
-        return next(available_prices)
 
     def execute_stop_loss(reference_price: float | None = None) -> BotModel:
         stop_calls.append(reference_price)
         return deal.execution.active_bot
 
-    cast(Any, deal.execution).suitable_exit_price = suitable_exit_price
     cast(Any, deal.execution).execute_stop_loss = execute_stop_loss
 
     Lifecycle.exit(deal, 97.5)
 
-    assert stop_calls == []
-    assert any(
-        "Stop-loss exit deferred for liquidity" in log
-        and "bids" in log
-        and "next tick" in log
-        for log in deal.execution.active_bot.logs
-    )
-
-    Lifecycle.exit(deal, 97.5)
-
-    assert liquidity_references == [99.0, 99.0]
     assert stop_calls == [99.0]
+
+
+def test_top_mover_hard_stop_cancels_native_backstop_before_reduce_only_close():
+    events: list[str] = []
+    deal = _make_deal()
+    deal.active_bot.name = "top_gainer_early_momentum"
+    deal.current_position_quantity = lambda: 1
+    deal.cancel_current_sl = lambda: events.append("cancel_backstop")
+
+    def sell(**kwargs) -> OrderBase:
+        events.append("sell")
+        return OrderBase(
+            order_id="bot-side-hard-stop",
+            order_type="limit",
+            pair=kwargs["symbol"],
+            timestamp=1,
+            order_side="sell",
+            qty=kwargs["qty"],
+            price=97.9,
+            status=OrderStatus.FILLED,
+            time_in_force="IOC",
+            deal_type=DealType.stop_loss,
+        )
+
+    deal.kucoin_futures_api = types.SimpleNamespace(sell=sell)
+
+    result = deal.execute_stop_loss(reference_price=99.0)
+
+    assert events == ["cancel_backstop", "sell"]
+    assert result.status == Status.completed
+    assert result.deal.closing_price == 97.9
 
 
 def test_reconcile_exchange_sl_places_when_exchange_missing():
@@ -1376,6 +1362,7 @@ def test_reconcile_exchange_sl_replaces_after_drift_once_ratchet_is_material():
     calls: list[str] = []
     old_timestamp = int(time() * 1000) - 60_000  # past the 30s cooldown
     deal = _make_deal(stop_loss_price=98.5)
+    deal.active_bot.name = "top_gainer_early_momentum"
     deal.active_bot.orders = [
         OrderModel(
             order_id="sl-1",

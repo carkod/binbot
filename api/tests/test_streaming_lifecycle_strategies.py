@@ -146,13 +146,11 @@ def test_strategy_policies_replace_lifecycle_name_branches() -> None:
         _context(name="relative_strength_impulse_rider")
     )
     liquidation_sweep = evaluator.evaluate(_context(name="liquidation_sweep_pump"))
-    top_gainer = evaluator.evaluate(_context(name="top_gainer_early_momentum"))
 
     assert mean_reversion.policy.low_price_stop_floor_pct is None
     assert relative_strength.policy.low_price_stop_floor_pct is None
     assert liquidation_sweep.policy.emergency_stop_bounds.minimum_pct == 0.35
     assert liquidation_sweep.policy.emergency_stop_bounds.maximum_pct == 0.75
-    assert top_gainer.policy.wait_for_exit_liquidity is True
     assert evaluator.evaluate(_context()).policy.low_price_stop_floor_pct == 4.0
 
 

@@ -222,12 +222,27 @@ class KucoinPositionDeal(KucoinBaseBalance):
             or self.active_bot.recovery_params is not None
         )
 
-    def _uses_bot_side_stop_loss(self) -> bool:
-        """Whether the streaming lifecycle, rather than KuCoin, owns the exit."""
-        return (
-            self._reversal_eligible()
-            or self.active_bot.name in TOP_MOVER_EARLY_MOMENTUM_ALGOS
-        )
+    def _blocks_native_stop_loss(self) -> bool:
+        """Whether an exchange stop would bypass required reversal logic."""
+        return self._reversal_eligible()
+
+    def _cancel_top_mover_native_backstop(self) -> None:
+        """Disarm the hybrid backstop before a top-mover bot-side close."""
+        if (
+            isinstance(self.controller, PaperTradingTableCrud)
+            or self.active_bot.name not in TOP_MOVER_EARLY_MOMENTUM_ALGOS
+        ):
+            return
+
+        try:
+            self.cancel_current_sl()
+        except Exception as exc:
+            # A reduce-only close remains safe if cancellation races a trigger.
+            # Do not let an exchange cancellation failure defer the hard exit.
+            self.active_bot.add_log(
+                "Could not cancel the top-mover native stop before the bot-side "
+                f"close ({exc}); proceeding with the reduce-only exit."
+            )
 
     @classmethod
     def closed_candle_atr(cls, completed_candles: list) -> float | None:
@@ -1458,15 +1473,15 @@ class KucoinPositionDeal(KucoinBaseBalance):
              move is material and the cooldown has elapsed.
 
         Skipped when:
-          - bot uses a bot-side stop (reversal logic or liquidity-gated top-gainer
-            exit); a native exchange stop would complete the bot before that logic
-            can run.
-          - trailing has armed (trailing_stop_loss_price != 0); in that
-            mode the exit is bot-side, the emergency SL is left alone.
+          - bot requires reversal logic; a native exchange stop would complete
+            the source position before that logic can run.
+          - trailing has armed (trailing_stop_loss_price != 0); in that mode
+            the broad emergency stop has been replaced by the exchange-native
+            trailing stop and its dedicated reconciler owns further updates.
         """
         if self.active_bot.stop_loss <= 0:
             return
-        if self._uses_bot_side_stop_loss():
+        if self._blocks_native_stop_loss():
             return
         if self.active_bot.deal.trailing_stop_loss_price != 0:
             trailing_reconciler = getattr(self, "reconcile_trailing_stop_loss", None)
@@ -1790,7 +1805,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         return self.active_bot.deal.opening_qty
 
     def place_stop_loss(self, position_qty: float | None = None) -> None:
-        if self.active_bot.stop_loss <= 0 or self._uses_bot_side_stop_loss():
+        if self.active_bot.stop_loss <= 0 or self._blocks_native_stop_loss():
             return
 
         direction = self._direction_multiplier()
@@ -1932,30 +1947,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
             bot=self.active_bot,
             log_message=f"Stop-market set @ {stop_price}",
         )
-
-    def suitable_exit_price(self, reference_price: float) -> float | None:
-        """Return an in-band price that can execute the full current position."""
-        qty = self.current_position_quantity()
-        if reference_price <= 0 or qty <= 0:
-            return None
-
-        side = (
-            AddOrderReq.SideEnum.BUY
-            if self.active_bot.position == Position.short
-            else AddOrderReq.SideEnum.SELL
-        )
-        try:
-            return self.kucoin_futures_api.matching_engine(
-                symbol=self.kucoin_symbol,
-                size=qty,
-                side=side,
-                reference_price=reference_price,
-            )
-        except Exception as exc:
-            self.active_bot.add_log(
-                f"Could not inspect exit liquidity for {self.kucoin_symbol}: {exc}."
-            )
-            return None
 
     def recompute_derived_prices(self) -> BotModel:
         """
@@ -2130,6 +2121,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 status=OrderStatus.FILLED,
             )
         else:
+            self._cancel_top_mover_native_backstop()
             # Real futures: close current LONG position via reduce-only SELL
             position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
             if not position or float(position.current_qty) == 0:
@@ -2222,7 +2214,12 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 status=OrderStatus.FILLED,
             )
         else:
+            self._cancel_top_mover_native_backstop()
             qty = self.current_position_quantity()
+            if qty <= 0:
+                self.active_bot = self.backfill_position_from_fills()
+                self.controller.save(self.active_bot)
+                return self.active_bot
             try:
                 if self.active_bot.position == Position.short:
                     order_base = self.kucoin_futures_api.buy(
@@ -2629,6 +2626,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         deal_type = (
             DealType.algorithmic_close if algorithmic_close else DealType.panic_close
         )
+        self._cancel_top_mover_native_backstop()
         position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
 
         if position and float(position.current_qty) != 0:
