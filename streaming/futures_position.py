@@ -30,6 +30,8 @@ from api.tools.constants import (
     RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES,
     TOP_GAINER_EARLY_MOMENTUM_ALGO,
     TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES,
+    TOP_GAINER_FAILURE_REVERSAL_ALGO,
+    TOP_GAINER_FAILURE_REVERSAL_PENDING_ENTRY_TTL_MS,
 )
 from streaming.base import BaseStreaming
 from streaming.position_market import PositionMarket
@@ -80,6 +82,8 @@ class FuturesPosition(PositionMarket):
                 self.base_streaming.interval.get_ms()
                 * TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES
             )
+        elif self.execution.active_bot.name == TOP_GAINER_FAILURE_REVERSAL_ALGO:
+            pending_entry_ttl_ms = TOP_GAINER_FAILURE_REVERSAL_PENDING_ENTRY_TTL_MS
         pending_entry_started_at = self.execution.active_bot.deal.opening_timestamp
         if pending_entry_started_at == 0:
             pending_entry_started_at = order.timestamp
@@ -625,6 +629,10 @@ class FuturesPosition(PositionMarket):
                 * TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES
                 // 60_000
             )
+        elif self.execution.active_bot.name == TOP_GAINER_FAILURE_REVERSAL_ALGO:
+            pending_entry_minutes = (
+                TOP_GAINER_FAILURE_REVERSAL_PENDING_ENTRY_TTL_MS // 60_000
+            )
         self.execution.active_bot.add_log(
             f"Entry limit order {order.order_id} expired after {pending_entry_minutes} minutes without fill. "
             "Order cancelled and bot set to inactive."
@@ -909,7 +917,14 @@ class FuturesPosition(PositionMarket):
                         self.execution.active_bot.deal.closing_price = order.price
                         self.execution.active_bot.deal.closing_qty = order.qty
                         self.execution.active_bot.deal.closing_timestamp = (
-                            order.timestamp
+                            self.execution.matching_exchange_fill_timestamp(
+                                order,
+                                fallback_timestamp=int(
+                                    getattr(system_order, "updated_at", 0)
+                                    or getattr(system_order, "end_at", 0)
+                                    or now_ms
+                                ),
+                            )
                         )
                         self.execution.active_bot.deal.current_position_qty = 0
                         self.execution.active_bot.status = Status.completed

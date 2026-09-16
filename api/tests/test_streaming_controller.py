@@ -727,6 +727,9 @@ class TestPositionManager:
                 self.price_precision = 4
                 self.symbol_info = types.SimpleNamespace(qty_precision=4)
                 self.cancel_current_sl = lambda: None
+                self.matching_exchange_fill_timestamp = lambda order, **kwargs: (
+                    order.timestamp
+                )
 
                 def backfill():
                     backfill_called["value"] = True
@@ -835,6 +838,78 @@ class TestPositionManager:
         assert updated == []
         assert saved == []
         assert bot.orders[0].qty == 116
+
+    def test_futures_stop_completion_uses_exchange_fill_timestamp(self, monkeypatch):
+        base = self._make_base_streaming(monkeypatch, active_pairs=["ONUSDT"])
+        base.exchange = ExchangeId.KUCOIN
+        base.interval = types.SimpleNamespace(get_ms=lambda: 15 * 60 * 1000)
+        created_at = int(time.time() * 1000) - 30 * 60 * 1000
+        filled_at = int(time.time() * 1000) - 5_000
+
+        bot = self._make_bot(
+            pair="ONUSDT",
+            position=Position.long,
+            market_type=MarketType.FUTURES,
+        )
+        bot.status = Status.active
+        bot.orders = [
+            OrderModel(
+                order_id="native-stop-fill",
+                order_type="market",
+                pair="ONUSDTM",
+                timestamp=created_at,
+                order_side="sell",
+                qty=4,
+                price=0,
+                status=OrderStatus.NEW,
+                time_in_force="GTC",
+                deal_type=DealType.stop_loss,
+            )
+        ]
+
+        monkeypatch.setattr(
+            OrderStatus,
+            "map_from_kucoin_status",
+            staticmethod(lambda _: OrderStatus.FILLED),
+        )
+        monkeypatch.setattr(
+            "streaming.futures_position.convert_to_kucoin_symbol",
+            lambda _bot: "ONUSDTM",
+        )
+        base.kucoin_futures_api.retrieve_order = lambda order_id: types.SimpleNamespace(
+            status=types.SimpleNamespace(value="done"),
+            filled_size=4,
+            avg_deal_price=0.1754,
+            created_at=created_at,
+            price=0,
+            remark=None,
+        )
+        base.kucoin_futures_api.get_futures_position = lambda symbol: (
+            types.SimpleNamespace(current_qty=0)
+        )
+        base.bot_controller.update_order = lambda order: order
+        base.bot_controller.save = lambda *args, **kwargs: (
+            kwargs.get("data") if "data" in kwargs else args[0]
+        )
+
+        fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
+        fp.base_streaming = base
+        fp.price_precision = 4
+        fp.qty_precision = 4
+        fp.execution = types.SimpleNamespace(
+            active_bot=bot,
+            controller=base.bot_controller,
+            bot_crud=types.SimpleNamespace(delete_order=lambda **kwargs: None),
+            backfill_position_from_fills=lambda: bot,
+            matching_exchange_fill_timestamp=lambda order, **kwargs: filled_at,
+            _reversal_eligible=lambda: False,
+        )
+
+        FuturesPosition.order_updates(fp)
+
+        assert bot.status == Status.completed
+        assert bot.deal.closing_price == 0.1754
+        assert bot.deal.closing_timestamp == filled_at
 
     def test_futures_order_updates_expires_aged_pending_base_order(self, monkeypatch):
         base = self._make_base_streaming(monkeypatch, active_pairs=["MEMEUSDT"])

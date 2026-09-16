@@ -1180,6 +1180,57 @@ def test_relative_strength_impulse_rider_uses_prompt_body_capped_entry_after_rec
     assert any("Body-capped entry" in log for log in deal.active_bot.logs)
 
 
+def test_top_gainer_failure_reversal_anchors_prompt_entry_to_current_close(
+    monkeypatch,
+):
+    deal = prepare_recovery_entry_deal(
+        monkeypatch,
+        position=Position.short,
+        previous_close=100.0,
+        current_open=99.0,
+        candle_range=2.0,
+    )
+    deal.active_bot.name = "top_gainer_failure_reversal"
+
+    limit_price = deal.body_capped_entry_limit_price()
+
+    assert limit_price == 99.0
+    assert deal._entry_reference_price == 99.0
+    assert any(
+        "Top-gainer failure-reversal prompt entry" in log
+        for log in deal.active_bot.logs
+    )
+
+
+def test_top_gainer_failure_reversal_crosses_approved_bid_depth(monkeypatch):
+    deal = prepare_recovery_entry_deal(
+        monkeypatch,
+        position=Position.short,
+        previous_close=100.0,
+        current_open=99.0,
+        candle_range=2.0,
+    )
+    deal.active_bot.name = "top_gainer_failure_reversal"
+    candidate_limit_price = deal.body_capped_entry_limit_price()
+    attach_order_book(
+        deal,
+        bids=[[98.99, 5], [98.98, 5]],
+        asks=[[99.0, 100]],
+    )
+
+    contracts, entry_limit_price = deal.liquidity_gated_contracts(
+        10,
+        candidate_limit_price,
+    )
+
+    assert contracts == 10
+    assert entry_limit_price == 98.98
+    assert any(
+        "failure-reversal entry routed as a marketable limit" in log
+        for log in deal.active_bot.logs
+    )
+
+
 def test_top_gainer_early_momentum_waits_for_half_percent_retest(monkeypatch):
     deal = prepare_recovery_entry_deal(
         monkeypatch,
@@ -1646,6 +1697,33 @@ def test_top_gainer_retest_entry_waits_one_configured_candle(interval_minutes):
 
     assert position.is_pending_base_entry_expired(order, now_ms=interval_ms) is False
     assert position.is_pending_base_entry_expired(order, now_ms=interval_ms + 2) is True
+
+
+def test_top_gainer_failure_reversal_pending_entry_expires_after_two_minutes():
+    position = cast(Any, FuturesPosition.__new__(FuturesPosition))
+    order = OrderModel(
+        order_id="top-gainer-failure-reversal-entry",
+        order_type="limit",
+        pair="ONUSDTM",
+        timestamp=1,
+        order_side="sell",
+        qty=150,
+        price=0.173,
+        status=OrderStatus.NEW,
+        time_in_force="GTC",
+        deal_type=DealType.base_order,
+    )
+    position.execution = types.SimpleNamespace(
+        active_bot=BotModel(
+            pair="ONUSDTM",
+            name="top_gainer_failure_reversal",
+            position=Position.short,
+            status=Status.pending,
+        )
+    )
+
+    assert position.is_pending_base_entry_expired(order, now_ms=120_001) is False
+    assert position.is_pending_base_entry_expired(order, now_ms=120_002) is True
 
 
 def test_relative_strength_impulse_rider_delayed_fill_starts_holding_clock_at_fill(
