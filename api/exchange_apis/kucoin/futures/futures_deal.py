@@ -29,6 +29,8 @@ from api.databases.crud.bot_crud import BotTableCrud
 from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
 from api.databases.crud.symbols_crud import SymbolsCrud
 from api.databases.tables.bot_table import BotTable, PaperTradingTable
+from api.databases.tables.signals_table import SignalsTable
+from api.databases.utils import get_db_session
 from api.exchange_apis.kucoin.deals.base import KucoinBaseBalance
 from api.exchange_apis.kucoin.futures.balance import KucoinFuturesBalance
 from api.exchange_apis.kucoin.futures.liquidity import (
@@ -43,6 +45,8 @@ from api.tools.constants import (
     RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES,
     TOP_GAINER_EARLY_MOMENTUM_ALGO,
     TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES,
+    TOP_GAINER_FAILURE_REVERSAL_ALGO,
+    TOP_GAINER_FAILURE_REVERSAL_PENDING_ENTRY_TTL_MS,
     TOP_MOVER_EARLY_MOMENTUM_ALGOS,
 )
 
@@ -76,6 +80,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         OrderStatus.REJECTED,
     )
     ENTRY_ATR_WINDOW = 14
+    ENTRY_TREND_WINDOW = 50
     ENTRY_ATR_MULTIPLIER = 0.5
     ENTRY_MIN_ALLOWANCE_PCT = 0.5
     ENTRY_MAX_ALLOWANCE_PCT = 1.5
@@ -90,6 +95,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
     TOP_GAINER_RETEST_MAX_DISCOUNT_PCT = 1.0
     TOP_GAINER_RETEST_SPREAD_MULTIPLIER = 2.0
     TOP_GAINER_RETEST_MIN_TICKS = 2
+    TOP_GAINER_PULLBACK_GRACE_PCT = 0.20
+    TOP_GAINER_PULLBACK_MAX_DISPLACEMENT_PCT = 1.0
+    TOP_GAINER_ENTRY_MIN_MICRO_REGIME_STRENGTH = 0.52
+    TOP_GAINER_ENTRY_MAX_UPPER_WICK_FRACTION = 0.30
     ENTRY_LIQUIDITY_PRICE_BAND_BPS = 50.0
     # Keep size-aware execution costs small relative to the configured stop.
     # This also bounds the spread: crossing the best quote costs half the
@@ -147,20 +156,31 @@ class KucoinPositionDeal(KucoinBaseBalance):
         self._entry_reference_price: float | None = None
         self._entry_allowance_pct: float | None = None
         self._top_gainer_volatility_discount_pct: float | None = None
+        self._entry_completed_candles: list = []
+        self._entry_current_candle: list | None = None
+        self._entry_signal_loaded = False
+        self._entry_signal_context: dict[str, Any] | None = None
+        self._entry_signal_indicators: dict[str, Any] | None = None
+        self._entry_post_only = False
 
     def _direction_multiplier(self) -> int:
         return -1 if self.active_bot.position == Position.short else 1
 
-    def matching_exchange_fill_timestamp(self, order: OrderModel) -> int:
-        """Return the first exchange fill time for an entry order, in milliseconds."""
+    def matching_exchange_fill_timestamp(
+        self,
+        order: OrderModel,
+        fallback_timestamp: int | None = None,
+    ) -> int:
+        """Return the first exchange fill time for an order, in milliseconds."""
+        resolved_fallback = fallback_timestamp or order.timestamp
         try:
             fills = self.kucoin_futures_api.get_fills(order_id=str(order.order_id))
         except Exception as exc:
             self.active_bot.add_log(
                 f"Unable to load fill timestamp for order {order.order_id}: {exc}. "
-                "Using the exchange order timestamp."
+                "Using the exchange update timestamp."
             )
-            return order.timestamp
+            return resolved_fallback
 
         matching_fills = [
             fill
@@ -185,9 +205,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         self.active_bot.add_log(
             f"No matching exchange fill timestamp found for order {order.order_id}. "
-            "Using the exchange order timestamp."
+            "Using the exchange update timestamp."
         )
-        return order.timestamp
+        return resolved_fallback
 
     def _is_recovery_bot(self) -> bool:
         recovery_params = self.active_bot.recovery_params
@@ -209,12 +229,27 @@ class KucoinPositionDeal(KucoinBaseBalance):
             or self.active_bot.recovery_params is not None
         )
 
-    def _uses_bot_side_stop_loss(self) -> bool:
-        """Whether the streaming lifecycle, rather than KuCoin, owns the exit."""
-        return (
-            self._reversal_eligible()
-            or self.active_bot.name in TOP_MOVER_EARLY_MOMENTUM_ALGOS
-        )
+    def _blocks_native_stop_loss(self) -> bool:
+        """Whether an exchange stop would bypass required reversal logic."""
+        return self._reversal_eligible()
+
+    def _cancel_top_mover_native_backstop(self) -> None:
+        """Disarm the hybrid backstop before a top-mover bot-side close."""
+        if (
+            isinstance(self.controller, PaperTradingTableCrud)
+            or self.active_bot.name not in TOP_MOVER_EARLY_MOMENTUM_ALGOS
+        ):
+            return
+
+        try:
+            self.cancel_current_sl()
+        except Exception as exc:
+            # A reduce-only close remains safe if cancellation races a trigger.
+            # Do not let an exchange cancellation failure defer the hard exit.
+            self.active_bot.add_log(
+                "Could not cancel the top-mover native stop before the bot-side "
+                f"close ({exc}); proceeding with the reduce-only exit."
+            )
 
     @classmethod
     def closed_candle_atr(cls, completed_candles: list) -> float | None:
@@ -282,6 +317,193 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         return normalized_klines
 
+    @staticmethod
+    def _ema(values: list[float], span: int) -> float:
+        multiplier = 2 / (span + 1)
+        ema = values[0]
+        for value in values[1:]:
+            ema = value * multiplier + ema * (1 - multiplier)
+        return ema
+
+    def _top_gainer_signal_data(
+        self,
+    ) -> tuple[dict[str, Any], dict[str, Any]] | None:
+        if getattr(self, "_entry_signal_loaded", False):
+            context = getattr(self, "_entry_signal_context", None)
+            indicators = getattr(self, "_entry_signal_indicators", None)
+            if context is None or indicators is None:
+                return None
+            return context, indicators
+
+        self._entry_signal_loaded = True
+        self._entry_signal_context = None
+        self._entry_signal_indicators = None
+        if self.active_bot.signal_id is None:
+            return None
+
+        try:
+            with get_db_session() as session:
+                signal = session.get(SignalsTable, self.active_bot.signal_id)
+                if signal is None:
+                    return None
+                self._entry_signal_context = signal.context
+                self._entry_signal_indicators = signal.indicators
+        except Exception as exc:
+            self.active_bot.add_log(
+                f"Top-gainer signal metadata unavailable for entry validation ({exc})."
+            )
+            return None
+
+        return self._entry_signal_context, self._entry_signal_indicators
+
+    def _is_sustained_top_gainer_signal(self) -> bool:
+        if (
+            self.active_bot.name != TOP_GAINER_EARLY_MOMENTUM_ALGO
+            or self.active_bot.position != Position.long
+        ):
+            return False
+        signal_data = self._top_gainer_signal_data()
+        if signal_data is None:
+            return False
+        _, indicators = signal_data
+        return indicators.get("route_reason") == "sustained_top_gainer_long"
+
+    def _top_gainer_shallow_pullback_validation(
+        self,
+        execution_price: float,
+    ) -> tuple[bool, str, float]:
+        reference_price = self._entry_reference_price
+        allowance_pct = self._entry_allowance_pct
+        if (
+            self.active_bot.name != TOP_GAINER_EARLY_MOMENTUM_ALGO
+            or self.active_bot.position != Position.long
+            or reference_price is None
+            or allowance_pct is None
+            or execution_price >= reference_price
+        ):
+            return False, "not a top-gainer downward pullback", 0
+
+        displacement_pct = (reference_price - execution_price) / reference_price * 100
+        soft_limit_pct = min(
+            allowance_pct + self.TOP_GAINER_PULLBACK_GRACE_PCT,
+            self.TOP_GAINER_PULLBACK_MAX_DISPLACEMENT_PCT,
+        )
+        if (
+            displacement_pct <= allowance_pct + 1e-9
+            or displacement_pct > soft_limit_pct + 1e-9
+        ):
+            return False, "outside the shallow-pullback grace band", soft_limit_pct
+
+        signal_data = self._top_gainer_signal_data()
+        if signal_data is None:
+            return False, "the originating signal is unavailable", soft_limit_pct
+        signal_context, _ = signal_data
+        symbol_features = (signal_context.get("symbol_features") or {}).get(
+            self.active_bot.pair
+        )
+        if not isinstance(symbol_features, dict):
+            return (
+                False,
+                "the signal has no symbol micro-regime context",
+                soft_limit_pct,
+            )
+
+        try:
+            micro_regime = symbol_features.get("micro_regime")
+            micro_regime_strength = float(
+                symbol_features.get("micro_regime_strength") or 0
+            )
+            micro_regime_transition = symbol_features.get("micro_regime_transition")
+            completed_candles = self._entry_completed_candles
+            current_candle = self._entry_current_candle
+            if (
+                current_candle is None
+                or len(completed_candles) < self.ENTRY_TREND_WINDOW
+            ):
+                return False, "live candle history is incomplete", soft_limit_pct
+
+            closes = [
+                float(candle[4])
+                for candle in completed_candles[-self.ENTRY_TREND_WINDOW :]
+            ]
+            current_open = float(current_candle[1])
+            current_high = float(current_candle[2])
+            current_low = float(current_candle[3])
+            current_close = float(current_candle[4])
+            closes.append(current_close)
+        except (TypeError, ValueError):
+            return False, "live pullback validation inputs are invalid", soft_limit_pct
+
+        if (
+            micro_regime != "TREND_UP"
+            or micro_regime_strength < self.TOP_GAINER_ENTRY_MIN_MICRO_REGIME_STRENGTH
+        ):
+            return (
+                False,
+                "signal micro-regime is not a strong TREND_UP",
+                soft_limit_pct,
+            )
+        if micro_regime_transition in {
+            "BREAKDOWN",
+            "ENTERED_TREND_DOWN",
+            "VOLATILITY_EXPANSION",
+        }:
+            return (
+                False,
+                f"signal transition {micro_regime_transition} is not long-safe",
+                soft_limit_pct,
+            )
+
+        ema20 = self._ema(closes, 20)
+        ema50 = self._ema(closes, 50)
+        if not current_close > ema20 > ema50:
+            return (
+                False,
+                "live price structure no longer confirms TREND_UP",
+                soft_limit_pct,
+            )
+        if current_close < current_open:
+            return False, "the live candle has reversed below its open", soft_limit_pct
+
+        candle_range = current_high - current_low
+        if candle_range <= 0:
+            return False, "the live candle range is invalid", soft_limit_pct
+        upper_wick_fraction = (
+            current_high - max(current_open, current_close)
+        ) / candle_range
+        if upper_wick_fraction > self.TOP_GAINER_ENTRY_MAX_UPPER_WICK_FRACTION:
+            return False, "the live upper wick indicates rejection", soft_limit_pct
+
+        return True, "live TREND_UP pullback remains valid", soft_limit_pct
+
+    def _entry_price_is_within_displacement_band(
+        self,
+        execution_price: float,
+        lower_reference_bound: float,
+        upper_reference_bound: float,
+    ) -> bool:
+        if lower_reference_bound <= execution_price <= upper_reference_bound:
+            return True
+
+        is_valid, validation_reason, soft_limit_pct = (
+            self._top_gainer_shallow_pullback_validation(execution_price)
+        )
+        if not is_valid:
+            return False
+
+        reference_price = self._entry_reference_price
+        allowance_pct = self._entry_allowance_pct
+        if reference_price is None or allowance_pct is None:
+            return False
+        displacement_pct = (reference_price - execution_price) / reference_price * 100
+        self.active_bot.add_log(
+            "Top-gainer shallow pullback accepted: "
+            f"price={execution_price:.8g}, displacement={displacement_pct:.2f}%, "
+            f"standard_limit={allowance_pct:.2f}%, "
+            f"soft_limit={soft_limit_pct:.2f}%; {validation_reason}."
+        )
+        return True
+
     def body_capped_entry_limit_price(self) -> float:
         interval = BinanceKlineIntervals(
             self.active_bot.candlestick_interval
@@ -290,7 +512,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             klines = self.kucoin_futures_api.get_ui_klines(
                 symbol=self.kucoin_symbol,
                 interval=interval,
-                limit=self.ENTRY_ATR_WINDOW + 3,
+                limit=max(self.ENTRY_ATR_WINDOW + 3, self.ENTRY_TREND_WINDOW + 1),
             )
         except Exception as exc:
             self.active_bot.add_log(
@@ -310,14 +532,19 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 "Reliable current and completed candles are unavailable for futures entry."
             )
 
+        self._entry_completed_candles = completed_candles
+        self._entry_current_candle = current_candle
+
         previous_close = float(completed_candles[-1][4])
         current_open = float(current_candle[1])
-        if previous_close <= 0 or current_open <= 0:
+        current_close = float(current_candle[4])
+        if previous_close <= 0 or current_open <= 0 or current_close <= 0:
             self.active_bot.add_log(
-                "Entry rejected: candle open or previous close is invalid."
+                "Entry rejected: candle open, current close, or previous close is invalid."
             )
             raise BinbotErrors(
-                "Reliable candle open and previous close are unavailable for futures entry."
+                "Reliable candle open, current close, and previous close are unavailable "
+                "for futures entry."
             )
 
         if self.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO:
@@ -371,7 +598,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
             )
             return entry_limit_price
 
-        if self.active_bot.position == Position.short:
+        is_failure_reversal = self.active_bot.name == TOP_GAINER_FAILURE_REVERSAL_ALGO
+        if is_failure_reversal:
+            anchor_price = current_close
+        elif self.active_bot.position == Position.short:
             anchor_price = min(current_open, previous_close)
         else:
             anchor_price = max(current_open, previous_close)
@@ -390,15 +620,22 @@ class KucoinPositionDeal(KucoinBaseBalance):
             allowance_source = "ATR"
 
         self._entry_allowance_pct = allowance_pct
-        direction = self._direction_multiplier()
-        entry_limit_price = round_numbers(
-            anchor_price * (1 + direction * allowance_pct / 100),
-            self.price_precision,
-        )
+        if is_failure_reversal:
+            entry_limit_price = round_numbers(anchor_price, self.price_precision)
+        else:
+            direction = self._direction_multiplier()
+            entry_limit_price = round_numbers(
+                anchor_price * (1 + direction * allowance_pct / 100),
+                self.price_precision,
+            )
         entry_label = (
-            "Recovery body-capped entry"
-            if self.active_bot.recovery_params is not None
-            else "Body-capped entry"
+            "Top-gainer failure-reversal prompt entry"
+            if is_failure_reversal
+            else (
+                "Recovery body-capped entry"
+                if self.active_bot.recovery_params is not None
+                else "Body-capped entry"
+            )
         )
         self.active_bot.add_log(
             f"{entry_label}: "
@@ -632,6 +869,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
     def liquidity_gated_contracts(
         self, requested_contracts: int, candidate_limit_price: float
     ) -> tuple[int, float]:
+        self._entry_post_only = False
         side = (
             AddOrderReq.SideEnum.SELL
             if self.active_bot.position == Position.short
@@ -752,6 +990,20 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 f"limit={candidate_limit_price}."
             )
 
+        if self.active_bot.name == TOP_GAINER_FAILURE_REVERSAL_ALGO:
+            if side != AddOrderReq.SideEnum.SELL:
+                self.reject_entry_for_liquidity(
+                    "Entry rejected: top-gainer failure reversal must open short."
+                )
+            candidate_limit_price = (
+                requested_snapshot.worst_fill_price or requested_snapshot.best_bid
+            )
+            self.active_bot.add_log(
+                "Top-gainer failure-reversal entry routed as a marketable limit: "
+                f"live_bid={requested_snapshot.best_bid}, "
+                f"requested_depth_limit={candidate_limit_price}."
+            )
+
         if self._entry_reference_price is None or self._entry_allowance_pct is None:
             self.reject_entry_for_liquidity(
                 "Entry rejected: candle-reference displacement band is unavailable."
@@ -769,6 +1021,23 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 self.price_precision,
             )
         )
+        if self._is_sustained_top_gainer_signal():
+            sustained_best_bid = floor_price_to_tick(
+                requested_snapshot.best_bid,
+                tick_size,
+            )
+            if (
+                sustained_best_bid > candidate_limit_price
+                and lower_reference_bound <= sustained_best_bid <= upper_reference_bound
+            ):
+                candidate_limit_price = sustained_best_bid
+                self._entry_post_only = True
+                self.active_bot.add_log(
+                    "Sustained top-gainer maker entry joined the current best bid: "
+                    f"best_bid={sustained_best_bid}, permitted_band="
+                    f"{lower_reference_bound}-{upper_reference_bound}."
+                )
+
         # Current-book VWAP describes an order that crosses now. A resting limit
         # can only fill at its candidate price or better.
         marketable = (
@@ -780,10 +1049,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
             quantized_candidate_limit_price = float(
                 supress_notation(candidate_limit_price, self.price_precision)
             )
-            if not (
-                lower_reference_bound
-                <= quantized_candidate_limit_price
-                <= upper_reference_bound
+            if not self._entry_price_is_within_displacement_band(
+                quantized_candidate_limit_price,
+                lower_reference_bound,
+                upper_reference_bound,
             ):
                 displacement_pct = (
                     candidate_limit_price / self._entry_reference_price - 1
@@ -853,10 +1122,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
             supress_notation(expected_fill_price, self.price_precision)
         )
         displacement_pct = (expected_fill_price / self._entry_reference_price - 1) * 100
-        if not (
-            lower_reference_bound
-            <= quantized_expected_fill_price
-            <= upper_reference_bound
+        if not self._entry_price_is_within_displacement_band(
+            quantized_expected_fill_price,
+            lower_reference_bound,
+            upper_reference_bound,
         ):
             displacement_direction = "above" if displacement_pct > 0 else "below"
             message = (
@@ -869,7 +1138,32 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self.reject_entry_for_displacement(message)
 
         entry_limit_price = candidate_limit_price
-        if approved_snapshot.worst_fill_price is not None:
+        if (
+            self.active_bot.name == TOP_GAINER_FAILURE_REVERSAL_ALGO
+            and approved_snapshot.worst_fill_price is not None
+        ):
+            entry_limit_price = approved_snapshot.worst_fill_price
+            quantized_entry_limit_price = float(
+                supress_notation(entry_limit_price, self.price_precision)
+            )
+            if not self._entry_price_is_within_displacement_band(
+                quantized_entry_limit_price,
+                lower_reference_bound,
+                upper_reference_bound,
+            ):
+                displacement_pct = (
+                    entry_limit_price / self._entry_reference_price - 1
+                ) * 100
+                displacement_direction = "above" if displacement_pct > 0 else "below"
+                message = (
+                    "Entry rejected: marketable top-gainer failure-reversal limit "
+                    f"{entry_limit_price:.8g} is {abs(displacement_pct):.2f}% "
+                    f"{displacement_direction} candle reference "
+                    f"{self._entry_reference_price:.8g}; maximum allowed "
+                    f"displacement is {self._entry_allowance_pct:.2f}%. {summary}."
+                )
+                self.reject_entry_for_displacement(message)
+        elif approved_snapshot.worst_fill_price is not None:
             if side == AddOrderReq.SideEnum.BUY:
                 entry_limit_price = min(
                     candidate_limit_price, approved_snapshot.worst_fill_price
@@ -1237,15 +1531,15 @@ class KucoinPositionDeal(KucoinBaseBalance):
              move is material and the cooldown has elapsed.
 
         Skipped when:
-          - bot uses a bot-side stop (reversal logic or liquidity-gated top-gainer
-            exit); a native exchange stop would complete the bot before that logic
-            can run.
-          - trailing has armed (trailing_stop_loss_price != 0); in that
-            mode the exit is bot-side, the emergency SL is left alone.
+          - bot requires reversal logic; a native exchange stop would complete
+            the source position before that logic can run.
+          - trailing has armed (trailing_stop_loss_price != 0); in that mode
+            the broad emergency stop has been replaced by the exchange-native
+            trailing stop and its dedicated reconciler owns further updates.
         """
         if self.active_bot.stop_loss <= 0:
             return
-        if self._uses_bot_side_stop_loss():
+        if self._blocks_native_stop_loss():
             return
         if self.active_bot.deal.trailing_stop_loss_price != 0:
             trailing_reconciler = getattr(self, "reconcile_trailing_stop_loss", None)
@@ -1411,11 +1705,19 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 entry_limit_price=entry_limit_price,
             )
         else:
-            order = self.kucoin_futures_api.buy(
-                symbol=self.kucoin_symbol,
-                qty=contracts,
-                entry_limit_price=entry_limit_price,
-            )
+            if getattr(self, "_entry_post_only", False):
+                order = self.kucoin_futures_api.buy(
+                    symbol=self.kucoin_symbol,
+                    qty=contracts,
+                    entry_limit_price=entry_limit_price,
+                    post_only=True,
+                )
+            else:
+                order = self.kucoin_futures_api.buy(
+                    symbol=self.kucoin_symbol,
+                    qty=contracts,
+                    entry_limit_price=entry_limit_price,
+                )
 
         order.deal_type = DealType.base_order
         order = OrderModel(**order.model_dump())
@@ -1514,6 +1816,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
                     * TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES
                     // 60_000
                 )
+            elif self.active_bot.name == TOP_GAINER_FAILURE_REVERSAL_ALGO:
+                pending_entry_minutes = (
+                    TOP_GAINER_FAILURE_REVERSAL_PENDING_ENTRY_TTL_MS // 60_000
+                )
             log_message = (
                 f"Futures {position_label} entry limit order {order.order_id} submitted "
                 f"at {entry_limit_price} with {contracts} contracts. Bot is pending "
@@ -1561,7 +1867,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         return self.active_bot.deal.opening_qty
 
     def place_stop_loss(self, position_qty: float | None = None) -> None:
-        if self.active_bot.stop_loss <= 0 or self._uses_bot_side_stop_loss():
+        if self.active_bot.stop_loss <= 0 or self._blocks_native_stop_loss():
             return
 
         direction = self._direction_multiplier()
@@ -1703,30 +2009,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
             bot=self.active_bot,
             log_message=f"Stop-market set @ {stop_price}",
         )
-
-    def suitable_exit_price(self, reference_price: float) -> float | None:
-        """Return an in-band price that can execute the full current position."""
-        qty = self.current_position_quantity()
-        if reference_price <= 0 or qty <= 0:
-            return None
-
-        side = (
-            AddOrderReq.SideEnum.BUY
-            if self.active_bot.position == Position.short
-            else AddOrderReq.SideEnum.SELL
-        )
-        try:
-            return self.kucoin_futures_api.matching_engine(
-                symbol=self.kucoin_symbol,
-                size=qty,
-                side=side,
-                reference_price=reference_price,
-            )
-        except Exception as exc:
-            self.active_bot.add_log(
-                f"Could not inspect exit liquidity for {self.kucoin_symbol}: {exc}."
-            )
-            return None
 
     def recompute_derived_prices(self) -> BotModel:
         """
@@ -1901,6 +2183,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 status=OrderStatus.FILLED,
             )
         else:
+            self._cancel_top_mover_native_backstop()
             # Real futures: close current LONG position via reduce-only SELL
             position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
             if not position or float(position.current_qty) == 0:
@@ -1993,7 +2276,12 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 status=OrderStatus.FILLED,
             )
         else:
+            self._cancel_top_mover_native_backstop()
             qty = self.current_position_quantity()
+            if qty <= 0:
+                self.active_bot = self.backfill_position_from_fills()
+                self.controller.save(self.active_bot)
+                return self.active_bot
             try:
                 if self.active_bot.position == Position.short:
                     order_base = self.kucoin_futures_api.buy(
@@ -2400,6 +2688,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         deal_type = (
             DealType.algorithmic_close if algorithmic_close else DealType.panic_close
         )
+        self._cancel_top_mover_native_backstop()
         position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
 
         if position and float(position.current_qty) != 0:

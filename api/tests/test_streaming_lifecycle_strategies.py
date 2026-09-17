@@ -49,6 +49,11 @@ class FakeApexFlowClose:
         return 101.0, 100.0
 
 
+class FakeApexFlowCloseDowntrend(FakeApexFlowClose):
+    def get_trend_ema(self) -> tuple[float, float]:
+        return 100.0, 101.0
+
+
 def _candles(count: int = 220, *, start: int = 1_800_000_000_000) -> list:
     return [
         [
@@ -141,13 +146,11 @@ def test_strategy_policies_replace_lifecycle_name_branches() -> None:
         _context(name="relative_strength_impulse_rider")
     )
     liquidation_sweep = evaluator.evaluate(_context(name="liquidation_sweep_pump"))
-    top_gainer = evaluator.evaluate(_context(name="top_gainer_early_momentum"))
 
     assert mean_reversion.policy.low_price_stop_floor_pct is None
     assert relative_strength.policy.low_price_stop_floor_pct is None
     assert liquidation_sweep.policy.emergency_stop_bounds.minimum_pct == 0.35
     assert liquidation_sweep.policy.emergency_stop_bounds.maximum_pct == 0.75
-    assert top_gainer.policy.wait_for_exit_liquidity is True
     assert evaluator.evaluate(_context()).policy.low_price_stop_floor_pct == 4.0
 
 
@@ -215,6 +218,52 @@ def test_default_dynamic_signal_runs_for_long_and_short(monkeypatch) -> None:
     assert short_signal.parameter_update is not None
     assert long_signal.parameter_update.stop_loss == 1.5
     assert short_signal.parameter_update.stop_loss == 2.0
+
+
+def test_default_dynamic_signal_widens_stop_loss_when_trend_favorable(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "streaming.strategies.default.ApexFlowClose",
+        FakeApexFlowClose,
+    )
+
+    signal = DefaultLifecycleStrategy().signal(
+        _context(
+            dynamic_trailing=True,
+            position=Position.long,
+            stop_loss=1.0,
+            bb_metrics=(3.0, 2.5),
+        )
+    )
+
+    assert signal.parameter_update is not None
+    # Trend favors the long (ema_fast > ema_slow): the band distance (2.5)
+    # widens the emergency stop past its prior value (1.0).
+    assert signal.parameter_update.stop_loss == 2.5
+
+
+def test_default_dynamic_signal_does_not_widen_against_unfavorable_trend(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "streaming.strategies.default.ApexFlowClose",
+        FakeApexFlowCloseDowntrend,
+    )
+
+    signal = DefaultLifecycleStrategy().signal(
+        _context(
+            dynamic_trailing=True,
+            position=Position.long,
+            stop_loss=1.0,
+            bb_metrics=(3.0, 2.5),
+        )
+    )
+
+    assert signal.parameter_update is not None
+    # Trend is against the long (ema_fast < ema_slow): stop_loss stays on
+    # the tighten-only ratchet and is unaffected by the wider band.
+    assert signal.parameter_update.stop_loss == 1.0
 
 
 def test_default_dynamic_signal_preserves_recovery_parameters(monkeypatch) -> None:

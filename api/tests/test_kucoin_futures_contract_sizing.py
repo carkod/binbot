@@ -617,6 +617,57 @@ def test_liquidity_downsized_entry_is_revalidated_with_required_margin():
     assert opened_bot.deal.base_order_size == 4
 
 
+def test_sustained_top_gainer_base_order_is_submitted_post_only():
+    order = OrderBase(
+        order_id="sustained-maker-entry",
+        order_type="limit",
+        pair="TESTUSDTM",
+        timestamp=1775008219262,
+        order_side="buy",
+        qty=0,
+        price=10,
+        status=OrderStatus.NEW,
+        time_in_force="GTC",
+        deal_type=DealType.base_order,
+    )
+    futures_api = types.SimpleNamespace(
+        DEFAULT_MULTIPLIER=1,
+        DEFAULT_LEVERAGE=1,
+        buy=Mock(return_value=order),
+        get_mark_price=Mock(return_value=10),
+        retrieve_order=Mock(
+            return_value=types.SimpleNamespace(filled_size="0", avg_deal_price="0")
+        ),
+    )
+    deal = make_sizing_deal(fiat_order_size=10, multiplier=1)
+    deal.active_bot.position = Position.long
+    deal.active_bot.fiat = "USDT"
+    deal.fiat = "USDT"
+    deal.kucoin_symbol = "TESTUSDTM"
+    deal.kucoin_futures_api = futures_api
+    deal.controller = types.SimpleNamespace(
+        update_logs=lambda **kwargs: None,
+        save=lambda bot: bot,
+    )
+    deal.compute_available_balance = lambda: 100
+    deal.body_capped_entry_limit_price = lambda: 10
+
+    def maker_liquidity_gate(contracts, price):
+        deal._entry_post_only = True
+        return contracts, price
+
+    deal.liquidity_gated_contracts = maker_liquidity_gate
+
+    KucoinPositionDeal.base_order(deal)
+
+    futures_api.buy.assert_called_once_with(
+        symbol="TESTUSDTM",
+        qty=1,
+        entry_limit_price=10,
+        post_only=True,
+    )
+
+
 def test_base_order_cancels_partial_remainder_before_freezing_entry_quantity():
     entry_order = OrderBase(
         order_id="partial-entry",
@@ -1129,6 +1180,57 @@ def test_relative_strength_impulse_rider_uses_prompt_body_capped_entry_after_rec
     assert any("Body-capped entry" in log for log in deal.active_bot.logs)
 
 
+def test_top_gainer_failure_reversal_anchors_prompt_entry_to_current_close(
+    monkeypatch,
+):
+    deal = prepare_recovery_entry_deal(
+        monkeypatch,
+        position=Position.short,
+        previous_close=100.0,
+        current_open=99.0,
+        candle_range=2.0,
+    )
+    deal.active_bot.name = "top_gainer_failure_reversal"
+
+    limit_price = deal.body_capped_entry_limit_price()
+
+    assert limit_price == 99.0
+    assert deal._entry_reference_price == 99.0
+    assert any(
+        "Top-gainer failure-reversal prompt entry" in log
+        for log in deal.active_bot.logs
+    )
+
+
+def test_top_gainer_failure_reversal_crosses_approved_bid_depth(monkeypatch):
+    deal = prepare_recovery_entry_deal(
+        monkeypatch,
+        position=Position.short,
+        previous_close=100.0,
+        current_open=99.0,
+        candle_range=2.0,
+    )
+    deal.active_bot.name = "top_gainer_failure_reversal"
+    candidate_limit_price = deal.body_capped_entry_limit_price()
+    attach_order_book(
+        deal,
+        bids=[[98.99, 5], [98.98, 5]],
+        asks=[[99.0, 100]],
+    )
+
+    contracts, entry_limit_price = deal.liquidity_gated_contracts(
+        10,
+        candidate_limit_price,
+    )
+
+    assert contracts == 10
+    assert entry_limit_price == 98.98
+    assert any(
+        "failure-reversal entry routed as a marketable limit" in log
+        for log in deal.active_bot.logs
+    )
+
+
 def test_top_gainer_early_momentum_waits_for_half_percent_retest(monkeypatch):
     deal = prepare_recovery_entry_deal(
         monkeypatch,
@@ -1174,6 +1276,128 @@ def test_top_gainer_expected_fill_at_exact_retest_boundary_is_allowed(monkeypatc
     assert contracts == 10
     assert candidate_limit_price == 99.5
     assert entry_limit_price == 99.5
+
+
+def test_top_gainer_accepts_shallow_downward_displacement_during_valid_uptrend(
+    monkeypatch,
+):
+    deal = prepare_recovery_entry_deal(
+        monkeypatch,
+        position=Position.long,
+        previous_close=100.0,
+        current_open=100.1,
+        candle_range=2.0,
+    )
+    deal.active_bot.name = "top_gainer_early_momentum"
+    deal.active_bot.recovery_params = None
+    deal.body_capped_entry_limit_price()
+    deal._entry_signal_loaded = True
+    deal._entry_signal_context = {
+        "symbol_features": {
+            deal.active_bot.pair: {
+                "micro_regime": "TREND_UP",
+                "micro_regime_strength": 0.7,
+                "micro_regime_transition": None,
+            }
+        }
+    }
+    deal._entry_signal_indicators = {"route_reason": "confirmed_top_gainer_long"}
+    deal._entry_completed_candles = [
+        [index, close, close + 0.1, close - 0.1, close]
+        for index, close in enumerate(
+            95.0 + index * 0.1 for index in range(deal.ENTRY_TREND_WINDOW)
+        )
+    ]
+    deal._entry_current_candle = [0, 99.35, 99.42, 99.30, 99.40]
+    attach_order_book(
+        deal,
+        bids=[[99.39, 100]],
+        asks=[[99.40, 100]],
+    )
+
+    contracts, entry_limit_price = deal.liquidity_gated_contracts(10, 99.5)
+
+    assert contracts == 10
+    assert entry_limit_price == 99.4
+    assert any(
+        "Top-gainer shallow pullback accepted" in log
+        and "displacement=0.60%" in log
+        and "soft_limit=0.70%" in log
+        for log in deal.active_bot.logs
+    )
+
+
+def test_top_gainer_shallow_pullback_grace_never_exceeds_one_percent(monkeypatch):
+    deal = prepare_recovery_entry_deal(
+        monkeypatch,
+        position=Position.long,
+        previous_close=100.0,
+        current_open=100.1,
+        candle_range=2.0,
+    )
+    deal.active_bot.name = "top_gainer_early_momentum"
+    deal.active_bot.recovery_params = None
+    deal.body_capped_entry_limit_price()
+    deal._entry_allowance_pct = 0.95
+    deal._entry_signal_loaded = True
+    deal._entry_signal_context = {
+        "symbol_features": {
+            deal.active_bot.pair: {
+                "micro_regime": "TREND_UP",
+                "micro_regime_strength": 0.7,
+                "micro_regime_transition": None,
+            }
+        }
+    }
+    deal._entry_signal_indicators = {"route_reason": "confirmed_top_gainer_long"}
+    deal._entry_completed_candles = [
+        [index, close, close + 0.1, close - 0.1, close]
+        for index, close in enumerate(
+            95.0 + index * 0.1 for index in range(deal.ENTRY_TREND_WINDOW)
+        )
+    ]
+    deal._entry_current_candle = [0, 99.35, 99.42, 99.30, 99.40]
+
+    at_cap, _, soft_limit_pct = deal._top_gainer_shallow_pullback_validation(99.0)
+    beyond_cap, _, _ = deal._top_gainer_shallow_pullback_validation(98.99)
+
+    assert at_cap
+    assert soft_limit_pct == 1.0
+    assert not beyond_cap
+
+
+def test_sustained_top_gainer_joins_best_bid_inside_candle_band(monkeypatch):
+    deal = prepare_recovery_entry_deal(
+        monkeypatch,
+        position=Position.long,
+        previous_close=100.0,
+        current_open=100.1,
+        candle_range=2.0,
+    )
+    deal.active_bot.name = "top_gainer_early_momentum"
+    deal.active_bot.recovery_params = None
+    provisional_limit_price = deal.body_capped_entry_limit_price()
+    deal._entry_signal_loaded = True
+    deal._entry_signal_context = {}
+    deal._entry_signal_indicators = {"route_reason": "sustained_top_gainer_long"}
+    attach_order_book(
+        deal,
+        bids=[[99.80, 100]],
+        asks=[[100.10, 100]],
+    )
+
+    contracts, entry_limit_price = deal.liquidity_gated_contracts(
+        10,
+        provisional_limit_price,
+    )
+
+    assert contracts == 10
+    assert entry_limit_price == 99.8
+    assert deal._entry_post_only
+    assert any(
+        "Sustained top-gainer maker entry joined the current best bid" in log
+        for log in deal.active_bot.logs
+    )
 
 
 def test_top_gainer_retest_uses_spread_when_it_exceeds_atr_component(monkeypatch):
@@ -1316,7 +1540,7 @@ def test_top_gainer_retest_rejects_when_minimum_ticks_cannot_fit_within_cap(
     assert saved == [deal.active_bot]
 
 
-def test_top_gainer_stop_is_owned_by_streaming_lifecycle():
+def test_top_gainer_places_exchange_native_emergency_backstop():
     deal = make_sizing_deal(multiplier=1)
     deal.active_bot.name = "top_gainer_early_momentum"
     deal.active_bot.position = Position.long
@@ -1324,14 +1548,38 @@ def test_top_gainer_stop_is_owned_by_streaming_lifecycle():
     deal.active_bot.deal.opening_qty = 3
     deal.active_bot.deal.stop_loss_price = 98.0
     deal.kucoin_symbol = "SIRENUSDTM"
-    place_order = Mock()
+    stop_order = OrderModel(
+        order_id="top-mover-backstop",
+        order_type=OrderType.market,
+        pair="SIRENUSDTM",
+        timestamp=1,
+        order_side="sell",
+        qty=3,
+        price=0,
+        status=OrderStatus.NEW,
+        time_in_force="GTC",
+        deal_type=DealType.stop_loss,
+    )
+    place_order = Mock(return_value=stop_order)
     deal.kucoin_futures_api = types.SimpleNamespace(place_futures_order=place_order)
     deal.controller = types.SimpleNamespace(update_logs=Mock())
 
     deal.place_stop_loss()
 
-    place_order.assert_not_called()
+    place_order.assert_called_once_with(
+        symbol="SIRENUSDTM",
+        side=AddOrderReq.SideEnum.SELL,
+        order_type=OrderType.market,
+        stop=AddOrderReq.StopEnum.DOWN,
+        stop_price=98.0,
+        stop_price_type=AddOrderReq.StopPriceTypeEnum.MARK_PRICE,
+        reduce_only=True,
+        size=3,
+        leverage=1,
+        allow_market_fallback=True,
+    )
     assert deal.active_bot.deal.stop_loss_price == 98.0
+    assert deal.active_bot.orders[-1].order_id == "top-mover-backstop"
 
 
 def test_entry_klines_normalizes_kucoin_dashboard_ohlc_order():
@@ -1449,6 +1697,33 @@ def test_top_gainer_retest_entry_waits_one_configured_candle(interval_minutes):
 
     assert position.is_pending_base_entry_expired(order, now_ms=interval_ms) is False
     assert position.is_pending_base_entry_expired(order, now_ms=interval_ms + 2) is True
+
+
+def test_top_gainer_failure_reversal_pending_entry_expires_after_two_minutes():
+    position = cast(Any, FuturesPosition.__new__(FuturesPosition))
+    order = OrderModel(
+        order_id="top-gainer-failure-reversal-entry",
+        order_type="limit",
+        pair="ONUSDTM",
+        timestamp=1,
+        order_side="sell",
+        qty=150,
+        price=0.173,
+        status=OrderStatus.NEW,
+        time_in_force="GTC",
+        deal_type=DealType.base_order,
+    )
+    position.execution = types.SimpleNamespace(
+        active_bot=BotModel(
+            pair="ONUSDTM",
+            name="top_gainer_failure_reversal",
+            position=Position.short,
+            status=Status.pending,
+        )
+    )
+
+    assert position.is_pending_base_entry_expired(order, now_ms=120_001) is False
+    assert position.is_pending_base_entry_expired(order, now_ms=120_002) is True
 
 
 def test_relative_strength_impulse_rider_delayed_fill_starts_holding_clock_at_fill(

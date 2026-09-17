@@ -19,7 +19,6 @@ class LifecyclePolicy:
         default_factory=EmergencyStopBounds
     )
     block_reversal_after_loss: bool = False
-    wait_for_exit_liquidity: bool = False
 
 
 class LifecycleExitKind(str, Enum):

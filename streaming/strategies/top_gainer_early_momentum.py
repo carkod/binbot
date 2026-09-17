@@ -1,4 +1,3 @@
-from streaming.strategies.base import LifecyclePolicy
 from streaming.strategies.default import DefaultLifecycleStrategy
 
 from api.tools.constants import TOP_MOVER_EARLY_MOMENTUM_ALGOS
@@ -14,4 +13,3 @@ class TopGainerEarlyMomentumLifecycleStrategy(DefaultLifecycleStrategy):
     MAX_TRAILING_PROFIT = 8.0
     MIN_TRAILING_DEVIATION = 2.5
     MAX_TRAILING_DEVIATION = 4.0
-    policy = LifecyclePolicy(wait_for_exit_liquidity=True)
