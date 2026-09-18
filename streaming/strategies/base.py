@@ -37,6 +37,9 @@ class LifecycleParameterUpdate:
     stop_loss: float
     trailing_profit: float
     trailing_deviation: float
+    enable_dynamic_trailing: bool = False
+    allow_stop_loss_widening: bool = False
+    trailing_stop_floor_at_entry: bool = False
 
 
 @dataclass(frozen=True)
