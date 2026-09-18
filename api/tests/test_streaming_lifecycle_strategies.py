@@ -13,9 +13,14 @@ from pybinbot import (
     RecoveryBotModel,
 )
 
-from streaming.context_evaluator import LifecycleContextEvaluator
+from streaming.context_evaluator import LifecycleContextEvaluator, LifecycleEvaluation
+from streaming.lifecycle import Lifecycle, calculate_trailing_stop_price
 from streaming.position_market import PositionMarket
-from streaming.strategies.base import LifecycleContext, LifecycleExitKind
+from streaming.strategies.base import (
+    LifecycleContext,
+    LifecycleExitKind,
+    LifecyclePolicy,
+)
 from streaming.strategies.coinrule.bb_extreme_reversion import (
     BBExtremeReversionLifecycleStrategy,
 )
@@ -241,6 +246,7 @@ def test_default_dynamic_signal_widens_stop_loss_when_trend_favorable(
     # Trend favors the long (ema_fast > ema_slow): the band distance (2.5)
     # widens the emergency stop past its prior value (1.0).
     assert signal.parameter_update.stop_loss == 2.5
+    assert signal.parameter_update.allow_stop_loss_widening is True
 
 
 def test_default_dynamic_signal_does_not_widen_against_unfavorable_trend(
@@ -326,6 +332,131 @@ def test_top_mover_lifecycle_delays_and_widens_trailing(
     assert update.stop_loss == 2.0
     assert update.trailing_profit == 6.0
     assert update.trailing_deviation == 2.5
+
+
+def test_top_gainer_strong_uptrend_enables_loose_dynamic_profile(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "streaming.strategies.default.ApexFlowClose",
+        FakeApexFlowClose,
+    )
+    monkeypatch.setattr(
+        "streaming.strategies.top_gainer_early_momentum.ApexFlowClose",
+        FakeApexFlowClose,
+    )
+    candles = _candles()
+    for index, candle in enumerate(candles[-6:]):
+        candle[2] = 102.0 + index
+        candle[3] = 99.0 + index
+        candle[4] = 101.0 + index
+
+    context = _context(
+        name="top_gainer_early_momentum",
+        stop_loss=2.0,
+        dynamic_trailing=False,
+        klines=candles,
+        completed_candles=candles,
+        current_price=109.0,
+        bot_profit=9.0,
+    )
+
+    signal = TopGainerEarlyMomentumLifecycleStrategy().signal(context)
+
+    assert signal.parameter_update is not None
+    assert signal.parameter_update.enable_dynamic_trailing is True
+    assert signal.parameter_update.allow_stop_loss_widening is True
+    assert signal.parameter_update.trailing_stop_floor_at_entry is True
+    assert signal.parameter_update.stop_loss == 10.0
+    assert signal.parameter_update.trailing_profit == 9.0
+    assert signal.parameter_update.trailing_deviation == 9.0
+    assert "Strong uptrend confirmed" in signal.log_messages[0]
+
+
+def test_lifecycle_applies_strong_uptrend_dynamic_profile(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "streaming.strategies.default.ApexFlowClose",
+        FakeApexFlowClose,
+    )
+    monkeypatch.setattr(
+        "streaming.strategies.top_gainer_early_momentum.ApexFlowClose",
+        FakeApexFlowClose,
+    )
+    candles = _candles()
+    for index, candle in enumerate(candles[-6:]):
+        candle[2] = 102.0 + index
+        candle[3] = 99.0 + index
+        candle[4] = 101.0 + index
+    context = _context(
+        name="top_gainer_early_momentum",
+        stop_loss=2.0,
+        dynamic_trailing=False,
+        klines=candles,
+        completed_candles=candles,
+        current_price=109.0,
+        bot_profit=9.0,
+    )
+    signal = TopGainerEarlyMomentumLifecycleStrategy().signal(context)
+    update_calls: list[dict[str, bool]] = []
+
+    def update_parameters(**kwargs) -> BotModel:
+        update_calls.append(kwargs)
+        return context.bot
+
+    execution = types.SimpleNamespace(
+        active_bot=context.bot,
+        update_parameters=update_parameters,
+        controller=types.SimpleNamespace(save=lambda bot: None),
+    )
+    lifecycle = cast(Any, Lifecycle.__new__(Lifecycle))
+    lifecycle.execution = execution
+
+    lifecycle._apply_strategy_signal(
+        LifecycleEvaluation(policy=LifecyclePolicy(), signal=signal)
+    )
+
+    assert context.bot.dynamic_trailing is True
+    assert context.bot.stop_loss == 10.0
+    assert context.bot.trailing_profit == 9.0
+    assert context.bot.trailing_deviation == 9.0
+    assert update_calls == [{"allow_stop_loss_widening": True}]
+
+
+def test_strong_uptrend_trailing_profile_can_arm_at_entry() -> None:
+    assert (
+        calculate_trailing_stop_price(
+            current_price=109.0,
+            opening_price=100.0,
+            trailing_deviation=9.0,
+            direction=1,
+            price_precision=2,
+            floor_at_entry=True,
+        )
+        == 100.0
+    )
+
+    assert (
+        calculate_trailing_stop_price(
+            current_price=109.0,
+            opening_price=100.0,
+            trailing_deviation=9.0,
+            direction=1,
+            price_precision=2,
+            floor_at_entry=False,
+        )
+        == 99.19
+    )
+
+    marscoin_stop = calculate_trailing_stop_price(
+        current_price=0.12472,
+        opening_price=0.11365,
+        trailing_deviation=9.0,
+        direction=1,
+        price_precision=5,
+        floor_at_entry=True,
+    )
+    assert marscoin_stop == 0.11365
+    assert marscoin_stop < 0.11440
 
 
 def test_bb_extreme_reversion_uses_atr_stop_and_bb_trailing() -> None:

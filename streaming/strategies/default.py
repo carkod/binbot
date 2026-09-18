@@ -194,6 +194,7 @@ class DefaultLifecycleStrategy(BaseLifecycleStrategy):
             stop_loss=round_numbers(stop_loss, 2),
             trailing_profit=round_numbers(trailing_profit, 2),
             trailing_deviation=round_numbers(trailing_deviation, 2),
+            allow_stop_loss_widening=trend_favorable,
         )
 
     def signal(self, context: LifecycleContext) -> LifecycleSignal:

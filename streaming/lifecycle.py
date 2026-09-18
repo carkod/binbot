@@ -35,6 +35,27 @@ from streaming.strategies.base import (
 )
 
 
+def calculate_trailing_stop_price(
+    *,
+    current_price: float,
+    opening_price: float,
+    trailing_deviation: float,
+    direction: int,
+    price_precision: int,
+    floor_at_entry: bool,
+) -> float:
+    trailing_stop = current_price - direction * (
+        current_price * (trailing_deviation / 100)
+    )
+    if floor_at_entry:
+        trailing_stop = (
+            max(trailing_stop, opening_price)
+            if direction > 0
+            else min(trailing_stop, opening_price)
+        )
+    return round_numbers(trailing_stop, price_precision)
+
+
 class Lifecycle:
     """
     Position lifecycle for Kucoin futures trading.
@@ -107,10 +128,18 @@ class Lifecycle:
             return
 
         bot = self.execution.active_bot
+        parameters_changed = (
+            bot.stop_loss != update.stop_loss
+            or bot.trailing_profit != update.trailing_profit
+            or bot.trailing_deviation != update.trailing_deviation
+        )
+        dynamic_trailing_changed = (
+            update.enable_dynamic_trailing and not bot.dynamic_trailing
+        )
         if (
-            bot.stop_loss == update.stop_loss
-            and bot.trailing_profit == update.trailing_profit
-            and bot.trailing_deviation == update.trailing_deviation
+            not parameters_changed
+            and not dynamic_trailing_changed
+            and not update.allow_stop_loss_widening
         ):
             if signal.log_messages:
                 self.execution.controller.save(bot)
@@ -119,7 +148,11 @@ class Lifecycle:
         bot.stop_loss = update.stop_loss
         bot.trailing_profit = update.trailing_profit
         bot.trailing_deviation = update.trailing_deviation
-        self.execution.active_bot = self.execution.update_parameters()
+        if update.enable_dynamic_trailing:
+            bot.dynamic_trailing = True
+        self.execution.active_bot = self.execution.update_parameters(
+            allow_stop_loss_widening=update.allow_stop_loss_widening,
+        )
         self.execution.controller.save(self.execution.active_bot)
 
     def _recovery_atr_pct(self, reference_price: float) -> float | None:
@@ -751,14 +784,18 @@ class Lifecycle:
                 new_take_profit = current_price * (
                     1 + direction * ((self.execution.active_bot.trailing_profit) / 100)
                 )
-                new_trailing_stop_loss: float = round_numbers(
-                    current_price
-                    - direction
-                    * (
-                        current_price
-                        * ((self.execution.active_bot.trailing_deviation) / 100)
+                update = evaluation.signal.parameter_update
+                new_trailing_stop_loss = calculate_trailing_stop_price(
+                    current_price=current_price,
+                    opening_price=self.execution.active_bot.deal.opening_price,
+                    trailing_deviation=self.execution.active_bot.trailing_deviation,
+                    direction=direction,
+                    price_precision=self.execution.price_precision,
+                    floor_at_entry=(
+                        update.trailing_stop_floor_at_entry
+                        if update is not None
+                        else False
                     ),
-                    self.execution.price_precision,
                 )
 
                 # Avoid duplicate logs
@@ -776,10 +813,17 @@ class Lifecycle:
 
                 # Bot is not able to break ceiling profit
                 # so time to close with net profit
-                if (
+                stop_is_profitable = (
                     new_trailing_stop_loss
                     - self.execution.active_bot.deal.opening_price
-                ) * direction > 0 and self.execution.should_refresh_trailing_stop_loss(
+                ) * direction
+                floor_at_entry = (
+                    update.trailing_stop_floor_at_entry if update is not None else False
+                )
+                if (
+                    stop_is_profitable > 0
+                    or (floor_at_entry and stop_is_profitable == 0)
+                ) and self.execution.should_refresh_trailing_stop_loss(
                     current_stop_price=self.execution.active_bot.deal.trailing_stop_loss_price,
                     new_stop_price=new_trailing_stop_loss,
                     direction=direction,
