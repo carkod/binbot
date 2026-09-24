@@ -1,3 +1,4 @@
+import logging
 from math import ceil
 from time import time
 from typing import Union
@@ -10,6 +11,7 @@ from pybinbot import (
     Candles,
     KucoinApi,
     KucoinFutures,
+    MarketBreadthSeries,
     MarketType,
     Position,
     RecoveryParams,
@@ -17,7 +19,9 @@ from pybinbot import (
     round_numbers,
 )
 
+from api.charts.utils import fetch_market_breadth_series
 from api.databases.crud.autotrade_crud import AutotradeCrud
+from api.databases.utils import get_db_session
 from api.exchange_apis.kucoin.futures.futures_deal import (
     EntryLiquidityError,
     KucoinPositionDeal,
@@ -71,7 +75,20 @@ class Lifecycle:
         self.df = DataFrame()
         self.btc_df = DataFrame()
         self.bb_metrics: tuple[float, float] | None = None
+        self.market_breadth: MarketBreadthSeries | None = None
         self.context_evaluator = LifecycleContextEvaluator()
+
+    def _fetch_market_breadth(self) -> MarketBreadthSeries | None:
+        try:
+            with get_db_session() as session:
+                return fetch_market_breadth_series(session, size=20)
+        except Exception:
+            logging.exception(
+                "Failed to fetch market breadth for %s; lifecycle strategies "
+                "that need it will skip this tick.",
+                self.execution.active_bot.pair,
+            )
+            return None
 
     def _evaluate_strategy(
         self,
@@ -92,6 +109,7 @@ class Lifecycle:
             btc_df=self.btc_df,
             bb_metrics=self.bb_metrics,
             bot_profit=bot_profit,
+            market_breadth=self.market_breadth,
         )
         return self.context_evaluator.evaluate(context)
 
@@ -860,6 +878,10 @@ class Lifecycle:
         self.df = cls.df
         self.btc_df = cls.btc_df
         self.bb_metrics = cls.build_bb_metrics()
+        # Only top_gainer_breadth's lifecycle strategy reads market breadth;
+        # skip the DB read for every other bot's tick.
+        if self.execution.active_bot.name == "top_gainer_breadth":
+            self.market_breadth = self._fetch_market_breadth()
 
         self.execution.active_bot = cls.order_updates()
 

@@ -3,7 +3,7 @@ from enum import Enum
 from typing import ClassVar, Protocol
 
 from pandas import DataFrame
-from pybinbot import BotModel, Position
+from pybinbot import BotModel, MarketBreadthSeries, Position
 
 
 @dataclass(frozen=True)
@@ -58,6 +58,7 @@ class LifecycleContext:
     btc_df: DataFrame
     bb_metrics: tuple[float, float] | None
     bot_profit: float
+    market_breadth: MarketBreadthSeries | None = None
 
 
 class LifecycleStrategy(Protocol):

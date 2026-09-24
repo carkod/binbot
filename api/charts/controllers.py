@@ -1,11 +1,11 @@
 import logging
 from datetime import datetime, timezone
-from typing import Any, Iterable, cast
-from sqlalchemy import Table
+from typing import Any, Iterable
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
 from api.charts.models import MarketBreadthSample
+from api.charts.utils import fetch_market_breadth_series
 from api.databases.crud.autotrade_crud import AutotradeCrud
 from api.databases.crud.symbols_crud import SymbolsCrud
 from api.databases.tables.market_breadth_table import MarketBreadthTable
@@ -13,9 +13,9 @@ from api.databases.utils import independent_session
 from kucoin_universal_sdk.generate.spot.market.model_get_symbol_resp import (
     GetSymbolResp,
 )
-from pybinbot import BinanceApi, ExchangeId, KucoinApi, MarketBreadthSeries
+from pybinbot import BinanceApi, ExchangeId, KucoinApi
 from api.tools.config import Config
-from api.tools.utils import datetime_to_iso, utc_now
+from api.tools.utils import utc_now
 
 
 class MarketDominationController:
@@ -172,20 +172,6 @@ class MarketDominationController:
             return None
         return payload
 
-    @staticmethod
-    def _ema(values: list[float], window: int) -> list[float]:
-        alpha = 2 / (max(int(window), 1) + 1)
-        smoothed: list[float] = []
-        current: float | None = None
-
-        for value in values:
-            current = (
-                value if current is None else alpha * value + (1 - alpha) * current
-            )
-            smoothed.append(current)
-
-        return smoothed
-
     def get_market_breadth_series(
         self, size: int = 7, window: int = 8, exchange: ExchangeId | None = None
     ) -> dict[str, list] | None:
@@ -194,51 +180,10 @@ class MarketDominationController:
         storage except market_breadth_ma, which is an EMA-smoothed market
         breadth level computed over chronological samples.
         """
-        output_size = size + max(int(window) - 1, 0)
-        fetch_size = output_size + max(int(window) * 3, 0)
-        market_breadth = cast(Table, getattr(MarketBreadthTable, "__table__"))
-
-        recent_columns = (
-            market_breadth.c.timestamp,
-            market_breadth.c.advancers,
-            market_breadth.c.decliners,
-            market_breadth.c.total_volume,
-            market_breadth.c.strength_index,
-            market_breadth.c.adp.label("market_breadth"),
-            market_breadth.c.avg_gain,
-            market_breadth.c.avg_loss,
+        series = fetch_market_breadth_series(
+            self.session, size=size, window=window, exchange=exchange
         )
-
-        recent_stmt = market_breadth.select().with_only_columns(*recent_columns)
-        if exchange:
-            recent_stmt = recent_stmt.where(market_breadth.c.source == exchange.value)
-
-        stmt = recent_stmt.order_by(market_breadth.c.timestamp.desc()).limit(fetch_size)
-        result = self.session.execute(stmt)
-        rows = result.mappings().all()
-
-        if not rows:
-            return None
-
-        chronological_rows = list(reversed(rows))
-        chronological_market_breadth = [
-            float(r["market_breadth"]) for r in chronological_rows
-        ]
-        chronological_ema = self._ema(chronological_market_breadth, window)
-        rows_with_ema = list(zip(chronological_rows, chronological_ema, strict=True))
-        output_rows = list(reversed(rows_with_ema))[:output_size]
-
-        return MarketBreadthSeries(
-            timestamp=[datetime_to_iso(r["timestamp"]) for r, _ in output_rows],
-            advancers=[r["advancers"] for r, _ in output_rows],
-            decliners=[r["decliners"] for r, _ in output_rows],
-            market_breadth=[float(r["market_breadth"]) for r, _ in output_rows],
-            market_breadth_ma=[float(ema) for _, ema in output_rows],
-            avg_gain=[float(r["avg_gain"]) for r, _ in output_rows],
-            avg_loss=[float(r["avg_loss"]) for r, _ in output_rows],
-            total_volume=[float(r["total_volume"]) for r, _ in output_rows],
-            strength_index=[float(r["strength_index"]) for r, _ in output_rows],
-        ).model_dump()
+        return series.model_dump() if series is not None else None
 
     def gainers_losers(self) -> tuple[Iterable[Any], Iterable[Any]]:
         """
