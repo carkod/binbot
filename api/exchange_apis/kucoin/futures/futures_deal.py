@@ -1475,14 +1475,16 @@ class KucoinPositionDeal(KucoinBaseBalance):
         new_stop_price: float,
         last_replace_ts_ms: int | None = None,
         cooldown_ms: int | None = None,
+        allow_widening: bool = False,
     ) -> bool:
         """
         Decide whether the on-exchange SL needs replacing.
 
         Replace only when:
           - we have a meaningful new price, and
-          - either there's no current SL, or the new one is *better* by more
-            than the min-move threshold, and
+          - either there's no current SL, the new one is *better*, or the
+            caller has explicitly allowed favorable-trend widening, and
+          - the move exceeds the min-move threshold, and
           - the cooldown since the last replace has elapsed.
         """
         if new_stop_price <= 0:
@@ -1492,8 +1494,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
             return True
 
         direction = self._direction_multiplier()
-        improvement = (new_stop_price - current_stop_price) * direction
-        if improvement <= 0:
+        directional_move = (new_stop_price - current_stop_price) * direction
+        if directional_move == 0 or (directional_move < 0 and not allow_widening):
             return False
 
         tick_size = 10 ** (-self.price_precision)
@@ -1501,7 +1503,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             abs(current_stop_price) * self.STOP_LOSS_REPLACE_MIN_MOVE_RATIO,
             tick_size * self.STOP_LOSS_REPLACE_MIN_TICKS,
         )
-        if improvement < min_replace_move:
+        if abs(directional_move) < min_replace_move:
             return False
 
         if last_replace_ts_ms and last_replace_ts_ms > 0:
@@ -1516,7 +1518,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         return True
 
-    def reconcile_exchange_sl(self) -> None:
+    def reconcile_exchange_sl(self, *, allow_widening: bool = False) -> None:
         """
         Reconcile the on-exchange emergency stop loss with what the bot
         thinks should be there.
@@ -1529,6 +1531,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
              it manually) and only replace if it's now unsafe.
           3. Bot wants to ratchet SL closer to entry — only replace if the
              move is material and the cooldown has elapsed.
+          4. A favorable-trend strategy explicitly permits widening — use
+             the same material-move and cooldown protection before replacing.
 
         Skipped when:
           - bot requires reversal logic; a native exchange stop would complete
@@ -1603,7 +1607,13 @@ class KucoinPositionDeal(KucoinBaseBalance):
             current_stop_price=exchange_price,
             new_stop_price=ratcheted_target,
             last_replace_ts_ms=last_replace_ts_ms,
+            allow_widening=allow_widening,
         ):
+            if (ratcheted_target - exchange_price) * self._direction_multiplier() < 0:
+                self.active_bot.add_log(
+                    "Favorable-trend volatility expansion widened the exchange "
+                    f"stop from {exchange_price} to {ratcheted_target}."
+                )
             self.cancel_current_sl()
             self.place_stop_loss()
         else:
@@ -2057,7 +2067,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         return self.active_bot
 
-    def update_parameters(self) -> BotModel:
+    def update_parameters(self, *, allow_stop_loss_widening: bool = False) -> BotModel:
         """
         Update derived prices in-memory and reconcile the on-exchange
         emergency SL with what the bot now expects. The two halves are
@@ -2068,7 +2078,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             drift detection + min-move + cooldown to avoid order churn.
         """
         self.recompute_derived_prices()
-        self.reconcile_exchange_sl()
+        self.reconcile_exchange_sl(allow_widening=allow_stop_loss_widening)
         return self.active_bot
 
     def update_parameters_with_activation(self) -> BotModel:

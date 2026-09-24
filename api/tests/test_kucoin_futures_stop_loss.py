@@ -534,6 +534,21 @@ def test_should_replace_stop_loss_order_blocks_worse_move():
     )
 
 
+def test_should_replace_stop_loss_order_allows_explicit_volatility_widening():
+    deal = _make_deal()
+
+    assert (
+        KucoinPositionDeal.should_replace_stop_loss_order(
+            deal,
+            current_stop_price=98.0,
+            new_stop_price=90.0,
+            last_replace_ts_ms=None,
+            allow_widening=True,
+        )
+        is True
+    )
+
+
 def test_reconcile_exchange_sl_delegates_armed_trailing_to_exchange_service():
     calls: list[str] = []
     deal = _make_deal(trailing_stop_loss_price=99.0)
@@ -1390,3 +1405,38 @@ def test_reconcile_exchange_sl_replaces_after_drift_once_ratchet_is_material():
     KucoinPositionDeal.reconcile_exchange_sl(deal)
 
     assert calls == ["cancel", "place"]
+
+
+def test_reconcile_exchange_sl_replaces_tighter_live_stop_for_favorable_trend():
+    calls: list[str] = []
+    old_timestamp = int(time() * 1000) - 60_000
+    deal = _make_deal(stop_loss_price=90.0)
+    deal.active_bot.orders = [
+        OrderModel(
+            order_id="sl-1",
+            order_type="market",
+            pair="BEATUSDT",
+            order_side="sell",
+            qty=1,
+            price=0.0,
+            status=OrderStatus.NEW,
+            timestamp=old_timestamp,
+            time_in_force="GTC",
+            deal_type=DealType.stop_loss,
+        )
+    ]
+    deal.kucoin_futures_api = types.SimpleNamespace(
+        get_all_stop_loss_orders=lambda symbol: [
+            _stop_order(stop_price="98.0", id="sl-1")
+        ],
+        batch_cancel_stop_loss_orders=lambda ids: None,
+    )
+    deal.cancel_current_sl = lambda: calls.append("cancel")
+    deal.place_stop_loss = lambda: calls.append("place")
+
+    KucoinPositionDeal.reconcile_exchange_sl(deal, allow_widening=True)
+
+    assert calls == ["cancel", "place"]
+    assert any(
+        "volatility expansion widened" in message for message in deal.active_bot.logs
+    )
