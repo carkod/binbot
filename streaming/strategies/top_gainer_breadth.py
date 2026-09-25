@@ -11,4 +11,9 @@ class TopGainerBreadthLifecycleStrategy(DefaultLifecycleStrategy):
     """
 
     algorithm_names = frozenset({"top_gainer_breadth"})
-    policy = LifecyclePolicy(stale_position_close_enabled=False)
+    policy = LifecyclePolicy(
+        low_price_stop_floor_pct=None,
+        reversal_enabled=False,
+        recovery_enabled=False,
+        stale_position_close_enabled=False,
+    )

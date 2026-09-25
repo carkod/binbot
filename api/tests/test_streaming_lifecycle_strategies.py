@@ -318,6 +318,28 @@ def test_default_runtime_strategy_preserves_pullback_adjustment(monkeypatch) -> 
     assert update.trailing_deviation == 1.55
 
 
+def test_default_dynamic_signal_uses_short_pullback_direction(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "streaming.strategies.default.ApexFlowClose",
+        FakeApexFlowCloseDowntrend,
+    )
+    entry_timestamp = 1_800_000_000_000
+    context = _context(
+        position=Position.short,
+        dynamic_trailing=True,
+        opening_timestamp=entry_timestamp,
+        current_price=95.0,
+        klines=[
+            [entry_timestamp, 100.0, 105.0, 94.0, 95.0, 1.0, entry_timestamp + 1]
+        ],
+    )
+
+    update = DefaultLifecycleStrategy().signal(context).parameter_update
+
+    assert update is not None
+    assert update.trailing_profit == 1.5
+
+
 @pytest.mark.parametrize(
     "algorithm_name",
     ["top_gainer_early_momentum", "top_loser_early_momentum"],
@@ -448,6 +470,12 @@ def test_top_gainer_breadth_short_only_applies_default_protection(monkeypatch) -
         position=Position.short,
         dynamic_trailing=True,
     )
+    context.bot.recovery_params = RecoveryBotModel(
+        id=uuid4(),
+        reversal_path="recovery",
+        created_at=1,
+        updated_at=1,
+    )
 
     signal = TopGainerBreadthLifecycleStrategy().signal(context)
 
@@ -456,6 +484,9 @@ def test_top_gainer_breadth_short_only_applies_default_protection(monkeypatch) -
     assert signal.parameter_update.stop_loss <= 4.0
     assert signal.parameter_update.trailing_profit <= 3.5
     assert signal.parameter_update.trailing_deviation <= 2.5
+    assert TopGainerBreadthLifecycleStrategy.policy.low_price_stop_floor_pct is None
+    assert TopGainerBreadthLifecycleStrategy.policy.reversal_enabled is False
+    assert TopGainerBreadthLifecycleStrategy.policy.recovery_enabled is False
 
 
 def test_position_market_generic_helpers_remain_strategy_agnostic() -> None:

@@ -48,6 +48,7 @@ from api.tools.constants import (
     TOP_GAINER_FAILURE_REVERSAL_ALGO,
     TOP_GAINER_FAILURE_REVERSAL_PENDING_ENTRY_TTL_MS,
 )
+from streaming.context_evaluator import LifecycleContextEvaluator
 
 
 class EntryLiquidityError(BinbotErrors):
@@ -223,9 +224,13 @@ class KucoinPositionDeal(KucoinBaseBalance):
         - recovery bots (margin_short_reversal=False, reversal_path="recovery")
         - plain margin-short bots (margin_short_reversal=True, no recovery_params)
         """
-        return (
+        policy = LifecycleContextEvaluator.resolve(self.active_bot.name).policy
+        return policy.reversal_enabled and (
             self.active_bot.margin_short_reversal
-            or self.active_bot.recovery_params is not None
+            or (
+                policy.recovery_enabled
+                and self.active_bot.recovery_params is not None
+            )
         )
 
     def _blocks_native_stop_loss(self) -> bool:

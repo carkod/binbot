@@ -580,9 +580,16 @@ class Lifecycle:
             self.execution.close_all()
             return self.execution.active_bot
 
-        recovery_params = self.execution.active_bot.recovery_params
+        recovery_params = (
+            self.execution.active_bot.recovery_params
+            if evaluation.policy.recovery_enabled
+            else None
+        )
         sl_pct = self.execution.active_bot.stop_loss
-        is_recovery_bot = self.execution._is_recovery_bot()
+        is_recovery_bot = (
+            evaluation.policy.recovery_enabled
+            and self.execution._is_recovery_bot()
+        )
         if (
             is_recovery_bot
             and recovery_params is not None
@@ -628,7 +635,17 @@ class Lifecycle:
             )
             reversal_requires_confirmation = recovery_params is not None
 
-            if reversal_requires_confirmation:
+            if not evaluation.policy.reversal_enabled:
+                self.execution.controller.update_logs(
+                    f"Executing futures {position_name} stop_loss after hitting "
+                    f"{self.execution.active_bot.deal.stop_loss_price}; "
+                    "strategy policy disables reversal and recovery.",
+                    self.execution.active_bot,
+                )
+                self.execution.active_bot = self.execution.execute_stop_loss(
+                    reference_price=exit_reference_price
+                )
+            elif reversal_requires_confirmation:
                 stop_loss_price = self.execution.active_bot.deal.stop_loss_price
                 emergency_price, emergency_pct = self.recovery_emergency_stop_price(
                     stop_loss_price=stop_loss_price,

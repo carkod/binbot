@@ -1020,6 +1020,78 @@ def test_reconcile_exchange_sl_places_native_backstop_for_strategy(
     assert calls == ["cancel", "place"]
 
 
+@pytest.mark.parametrize("recovery_enabled", [False, True])
+def test_top_gainer_breadth_ignores_malformed_reversal_configuration(
+    recovery_enabled: bool,
+):
+    calls: list[str] = []
+    deal = _make_deal(
+        margin_short_reversal=not recovery_enabled,
+        position=Position.short,
+    )
+    deal.active_bot.name = "top_gainer_breadth"
+    if recovery_enabled:
+        recovery_id = uuid4()
+        deal.active_bot.recovery_mode_id = recovery_id
+        deal.active_bot.recovery_params = RecoveryBotModel(
+            id=recovery_id,
+            reversal_path="recovery",
+            source_contracts=1,
+            source_loss_fiat=1.0,
+            stop_loss_pct=2.0,
+            created_at=1,
+            updated_at=1,
+        )
+    deal.cancel_current_sl = lambda: calls.append("cancel")
+    deal.place_stop_loss = lambda: calls.append("place")
+
+    KucoinPositionDeal.reconcile_exchange_sl(deal)
+
+    assert calls == ["cancel", "place"]
+
+
+def test_top_gainer_breadth_stop_breach_closes_without_reversal():
+    deal = _make_lifecycle(
+        stop_loss=2.0,
+        stop_loss_price=102.0,
+        margin_short_reversal=True,
+        position=Position.short,
+    )
+    deal.execution.active_bot.name = "top_gainer_breadth"
+    deal.execution.active_bot.trailing = False
+    deal.klines = None
+    stop_calls: list[float | None] = []
+    reverse_calls: list[float | None] = []
+    deal.execution.execute_stop_loss = lambda reference_price=None: (
+        stop_calls.append(reference_price) or deal.execution.active_bot
+    )
+    deal.reverse_position = lambda reference_price=None: (
+        reverse_calls.append(reference_price) or deal.execution.active_bot
+    )
+
+    Lifecycle.exit(deal, 103.0)
+
+    assert stop_calls == [None]
+    assert reverse_calls == []
+
+
+def test_top_gainer_breadth_low_price_stop_is_not_widened():
+    deal = _make_lifecycle(
+        stop_loss=2.0,
+        stop_loss_price=0.0,
+        position=Position.short,
+    )
+    deal.execution.active_bot.name = "top_gainer_breadth"
+    deal.execution.active_bot.trailing = False
+    deal.execution.active_bot.deal.opening_price = 0.04
+    deal.execution.price_precision = 5
+    deal.klines = None
+
+    Lifecycle.exit(deal, 0.04)
+
+    assert deal.execution.active_bot.deal.stop_loss_price == 0.0408
+
+
 def test_top_gainer_hard_stop_executes_without_liquidity_precheck():
     deal = _make_lifecycle(stop_loss=2.0, stop_loss_price=98.0)
     deal.execution.active_bot.name = "top_gainer_early_momentum"
