@@ -998,18 +998,19 @@ def test_reconcile_exchange_sl_skips_for_recovery_bot():
 
 
 @pytest.mark.parametrize(
-    "algorithm_name",
+    ("algorithm_name", "position"),
     [
-        "top_gainer_early_momentum",
-        "top_loser_early_momentum",
-        "top_gainer_breadth",
+        ("top_gainer_early_momentum", Position.long),
+        ("top_loser_early_momentum", Position.short),
+        ("top_gainer_breadth", Position.short),
     ],
 )
 def test_reconcile_exchange_sl_places_native_backstop_for_strategy(
     algorithm_name: str,
+    position: Position,
 ):
     calls: list[str] = []
-    deal = _make_deal()
+    deal = _make_deal(position=position)
     deal.active_bot.name = algorithm_name
     deal.cancel_current_sl = lambda: calls.append("cancel")
     deal.place_stop_loss = lambda: calls.append("place")
@@ -1087,36 +1088,6 @@ def test_top_mover_hard_stop_cancels_native_backstop_before_reduce_only_close():
     assert result.deal.closing_price == 97.9
 
 
-def test_top_gainer_breadth_close_cancels_native_backstop_before_position_close():
-    events: list[str] = []
-    deal = _make_deal()
-    deal.active_bot.name = "top_gainer_breadth"
-    deal.cancel_current_sl = lambda: events.append("cancel_backstop")
-    deal.kucoin_futures_api.get_futures_position = lambda symbol: (
-        events.append("read_position") or _position(1)
-    )
-    close_order = OrderBase(
-        order_id="breadth-close",
-        order_type="market",
-        pair="BEATUSDTM",
-        timestamp=1,
-        order_side="sell",
-        qty=1,
-        price=99.0,
-        status=OrderStatus.FILLED,
-        time_in_force="GTC",
-        deal_type=DealType.algorithmic_close,
-    )
-    deal._close_with_market_fallback = lambda side, qty: (
-        events.append("close_position") or [(close_order, 1, 99.0)]
-    )
-
-    result = KucoinPositionDeal.close_all(deal, algorithmic_close=True)
-
-    assert events == ["cancel_backstop", "read_position", "close_position"]
-    assert result.status == Status.completed
-
-
 def test_reconcile_exchange_sl_places_when_exchange_missing():
     """Drift case: bot expected an SL, exchange has none — re-place it."""
     calls: list[str] = []
@@ -1176,6 +1147,30 @@ def test_exit_panic_closes_stale_mild_loser_after_three_days(monkeypatch):
     Lifecycle.exit(deal, 99.5)
 
     assert closed == [True]
+
+
+def test_top_gainer_breadth_short_is_not_closed_by_stale_position_rule(monkeypatch):
+    deal = _make_lifecycle(stop_loss=0, position=Position.short)
+    deal.klines = None
+    deal.execution.active_bot.name = "top_gainer_breadth"
+    deal.execution.active_bot.trailing = False
+    deal.execution.active_bot.deal.opening_price = 100.0
+    deal.execution.active_bot.deal.opening_timestamp = 1_000
+    cast(Any, deal.execution).controller = types.SimpleNamespace(
+        save=lambda bot: None,
+        update_logs=lambda *args, **kwargs: None,
+    )
+    closed: list[bool] = []
+    cast(Any, deal.execution).close_all = lambda: closed.append(True)
+
+    monkeypatch.setattr(
+        "streaming.lifecycle.time",
+        lambda: (1_000 + (4 * 24 * 60 * 60 * 1000)) / 1000,
+    )
+
+    Lifecycle.exit(deal, 100.5)
+
+    assert closed == []
 
 
 def test_exit_keeps_stale_loser_below_panic_close_band(monkeypatch):

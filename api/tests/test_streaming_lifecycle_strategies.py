@@ -1,5 +1,4 @@
 import types
-from datetime import datetime, timezone
 from time import time
 from typing import Any, cast
 from uuid import uuid4
@@ -9,7 +8,6 @@ from pandas import DataFrame
 from pybinbot import (
     BotModel,
     DealModel,
-    ExchangeId,
     MarketBreadthSeries,
     MarketType,
     Position,
@@ -17,7 +15,6 @@ from pybinbot import (
 )
 
 from streaming.context_evaluator import LifecycleContextEvaluator
-from streaming.lifecycle import Lifecycle
 from streaming.position_market import PositionMarket
 from streaming.strategies.base import LifecycleContext, LifecycleExitKind
 from streaming.strategies.coinrule.bb_extreme_reversion import (
@@ -39,42 +36,7 @@ from streaming.strategies.top_gainer_early_momentum import (
     TopGainerEarlyMomentumLifecycleStrategy,
 )
 
-# 9 bars of extended bullish breadth (0.30), then a 3-bar fade ending at 0.16
-# (still >= 0.15, i.e. still extended) on the bar the fast/slow EMA
-# oscillator turns bearish — the exact mirror of binquant's entry pattern,
-# and the setup TopGainerBreadthLifecycleStrategy should close a long on.
-BEARISH_REVERSAL_BREADTH = [0.30] * 9 + [0.24, 0.20, 0.16]
-BEARISH_REVERSAL_BREADTH_MA = [0.24] * 9 + [0.235, 0.225, 0.21]
 INTERVAL_MS = 15 * 60 * 1000
-
-
-def _market_breadth(
-    breadth_values: list[float],
-    breadth_ma_values: list[float],
-    *,
-    latest_timestamp_ms: int | None = None,
-) -> MarketBreadthSeries:
-    length = len(breadth_values)
-    if latest_timestamp_ms is None:
-        latest_timestamp_ms = int(time() * 1000)
-    timestamps = [
-        datetime.fromtimestamp(
-            (latest_timestamp_ms - (length - index - 1) * INTERVAL_MS) / 1000,
-            tz=timezone.utc,
-        ).isoformat()
-        for index in range(length)
-    ]
-    return MarketBreadthSeries(
-        timestamp=timestamps,
-        advancers=[500] * length,
-        decliners=[500] * length,
-        market_breadth=breadth_values,
-        market_breadth_ma=breadth_ma_values,
-        avg_gain=[0.03] * length,
-        avg_loss=[-0.01] * length,
-        total_volume=[1_000.0] * length,
-        strength_index=[0.1] * length,
-    )
 
 
 def _btc_df(*, uptrend: bool = True, rows: int = 20) -> DataFrame:
@@ -476,161 +438,15 @@ def test_mean_reversion_rsi_is_100_for_window_without_losses() -> None:
     assert float(rsi.iloc[-1]) == 100.0
 
 
-def test_top_gainer_breadth_closes_long_on_bearish_reversal_with_btc_downtrend() -> (
-    None
-):
-    context = _context(
-        name="top_gainer_breadth",
-        position=Position.long,
-        btc_df=_btc_df(uptrend=False),
-        market_breadth=_market_breadth(
-            BEARISH_REVERSAL_BREADTH, BEARISH_REVERSAL_BREADTH_MA
-        ),
-    )
-
-    signal = TopGainerBreadthLifecycleStrategy().signal(context)
-
-    assert signal.exit_intent is not None
-    assert signal.exit_intent.kind == LifecycleExitKind.algorithmic_close
-    assert "breadth momentum reversed" in signal.exit_intent.log_message
-
-
-def test_top_gainer_breadth_holds_when_btc_still_uptrend() -> None:
-    context = _context(
-        name="top_gainer_breadth",
-        position=Position.long,
-        btc_df=_btc_df(uptrend=True),
-        market_breadth=_market_breadth(
-            BEARISH_REVERSAL_BREADTH, BEARISH_REVERSAL_BREADTH_MA
-        ),
-    )
-
-    signal = TopGainerBreadthLifecycleStrategy().signal(context)
-
-    assert signal.exit_intent is None
-
-
-def test_top_gainer_breadth_ignores_reversal_older_than_current_interval() -> None:
-    now_ms = int(time() * 1000)
-    context = _context(
-        name="top_gainer_breadth",
-        position=Position.long,
-        opening_timestamp=now_ms - 2 * INTERVAL_MS,
-        now_ms=now_ms,
-        btc_df=_btc_df(uptrend=False),
-        market_breadth=_market_breadth(
-            BEARISH_REVERSAL_BREADTH,
-            BEARISH_REVERSAL_BREADTH_MA,
-            latest_timestamp_ms=now_ms - INTERVAL_MS - 1,
-        ),
-    )
-
-    signal = TopGainerBreadthLifecycleStrategy().signal(context)
-
-    assert signal.exit_intent is None
-
-
-def test_top_gainer_breadth_ignores_reversal_before_position_opened() -> None:
-    now_ms = int(time() * 1000)
-    context = _context(
-        name="top_gainer_breadth",
-        position=Position.long,
-        opening_timestamp=now_ms - 1_000,
-        now_ms=now_ms,
-        btc_df=_btc_df(uptrend=False),
-        market_breadth=_market_breadth(
-            BEARISH_REVERSAL_BREADTH,
-            BEARISH_REVERSAL_BREADTH_MA,
-            latest_timestamp_ms=now_ms - 2_000,
-        ),
-    )
-
-    signal = TopGainerBreadthLifecycleStrategy().signal(context)
-
-    assert signal.exit_intent is None
-
-
-def test_lifecycle_fetches_breadth_for_configured_exchange(monkeypatch) -> None:
-    captured: dict[str, Any] = {}
-    expected = _market_breadth(
-        BEARISH_REVERSAL_BREADTH,
-        BEARISH_REVERSAL_BREADTH_MA,
-    )
-    session = object()
-
-    class SessionContext:
-        def __enter__(self):
-            return session
-
-        def __exit__(self, exc_type, exc_value, traceback):
-            return False
-
-    def fetch(fake_session, **kwargs):
-        captured["session"] = fake_session
-        captured.update(kwargs)
-        return expected
-
-    monkeypatch.setattr("streaming.lifecycle.get_db_session", SessionContext)
-    monkeypatch.setattr("streaming.lifecycle.fetch_market_breadth_series", fetch)
-    lifecycle = Lifecycle(
-        execution=types.SimpleNamespace(
-            active_bot=types.SimpleNamespace(pair="BEATUSDTM")
-        ),
-        base_streaming=types.SimpleNamespace(exchange=ExchangeId.KUCOIN),
-    )
-
-    result = lifecycle._fetch_market_breadth()
-
-    assert result is expected
-    assert captured == {
-        "session": session,
-        "size": 20,
-        "exchange": ExchangeId.KUCOIN,
-    }
-
-
-def test_top_gainer_breadth_holds_when_market_breadth_unavailable() -> None:
-    context = _context(
-        name="top_gainer_breadth",
-        position=Position.long,
-        btc_df=_btc_df(uptrend=False),
-        market_breadth=None,
-    )
-
-    signal = TopGainerBreadthLifecycleStrategy().signal(context)
-
-    assert signal.exit_intent is None
-
-
-def test_top_gainer_breadth_ignores_short_positions() -> None:
-    """This algo is long-only; a bearish reversal must never close a short."""
-    context = _context(
-        name="top_gainer_breadth",
-        position=Position.short,
-        btc_df=_btc_df(uptrend=False),
-        market_breadth=_market_breadth(
-            BEARISH_REVERSAL_BREADTH, BEARISH_REVERSAL_BREADTH_MA
-        ),
-    )
-
-    signal = TopGainerBreadthLifecycleStrategy().signal(context)
-
-    assert signal.exit_intent is None
-
-
-def test_top_gainer_breadth_still_applies_default_dynamic_trailing(monkeypatch) -> None:
-    """Confirms the exit check is additive: it doesn't suppress the inherited
-    DefaultLifecycleStrategy parameter_update when not exiting."""
+def test_top_gainer_breadth_short_only_applies_default_protection(monkeypatch) -> None:
     monkeypatch.setattr(
         "streaming.strategies.default.ApexFlowClose",
         FakeApexFlowClose,
     )
     context = _context(
         name="top_gainer_breadth",
-        position=Position.long,
+        position=Position.short,
         dynamic_trailing=True,
-        btc_df=_btc_df(uptrend=True),
-        market_breadth=None,
     )
 
     signal = TopGainerBreadthLifecycleStrategy().signal(context)

@@ -1,4 +1,3 @@
-import logging
 from math import ceil
 from time import time
 from typing import Union
@@ -11,7 +10,6 @@ from pybinbot import (
     Candles,
     KucoinApi,
     KucoinFutures,
-    MarketBreadthSeries,
     MarketType,
     Position,
     RecoveryParams,
@@ -19,9 +17,7 @@ from pybinbot import (
     round_numbers,
 )
 
-from api.charts.utils import fetch_market_breadth_series
 from api.databases.crud.autotrade_crud import AutotradeCrud
-from api.databases.utils import get_db_session
 from api.exchange_apis.kucoin.futures.futures_deal import (
     EntryLiquidityError,
     KucoinPositionDeal,
@@ -75,24 +71,7 @@ class Lifecycle:
         self.df = DataFrame()
         self.btc_df = DataFrame()
         self.bb_metrics: tuple[float, float] | None = None
-        self.market_breadth: MarketBreadthSeries | None = None
         self.context_evaluator = LifecycleContextEvaluator()
-
-    def _fetch_market_breadth(self) -> MarketBreadthSeries | None:
-        try:
-            with get_db_session() as session:
-                return fetch_market_breadth_series(
-                    session,
-                    size=20,
-                    exchange=self.base_streaming.exchange,
-                )
-        except Exception:
-            logging.exception(
-                "Failed to fetch market breadth for %s; lifecycle strategies "
-                "that need it will skip this tick.",
-                self.execution.active_bot.pair,
-            )
-            return None
 
     def _evaluate_strategy(
         self,
@@ -113,7 +92,7 @@ class Lifecycle:
             btc_df=self.btc_df,
             bb_metrics=self.bb_metrics,
             bot_profit=bot_profit,
-            market_breadth=self.market_breadth,
+            market_breadth=None,
         )
         return self.context_evaluator.evaluate(context)
 
@@ -589,7 +568,11 @@ class Lifecycle:
             >= 1.5 * 24 * 60 * 60 * 1000
         )
         # Panic close stale low-conviction positions after 1.5 days.
-        if -1 <= bot_profit < 1 and is_1_5_days:
+        if (
+            evaluation.policy.stale_position_close_enabled
+            and -1 <= bot_profit < 1
+            and is_1_5_days
+        ):
             self.execution.controller.update_logs(
                 f"Panic close triggered for stale {position_name} position after 1.5 days with profit {bot_profit}. Closing position immediately.",
                 self.execution.active_bot,
@@ -882,11 +865,6 @@ class Lifecycle:
         self.df = cls.df
         self.btc_df = cls.btc_df
         self.bb_metrics = cls.build_bb_metrics()
-        # Only top_gainer_breadth's lifecycle strategy reads market breadth;
-        # skip the DB read for every other bot's tick.
-        if self.execution.active_bot.name == "top_gainer_breadth":
-            self.market_breadth = self._fetch_market_breadth()
-
         self.execution.active_bot = cls.order_updates()
 
         # Fetch position AFTER order_updates so any fill-promotion is already
