@@ -43,6 +43,7 @@ from api.exchange_apis.kucoin.futures.models import LiquiditySnapshot
 from api.tools.constants import (
     RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO,
     RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES,
+    TOP_GAINER_BREADTH_ALGO,
     TOP_GAINER_EARLY_MOMENTUM_ALGO,
     TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES,
     TOP_GAINER_FAILURE_REVERSAL_ALGO,
@@ -223,6 +224,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
         - recovery bots (margin_short_reversal=False, reversal_path="recovery")
         - plain margin-short bots (margin_short_reversal=True, no recovery_params)
         """
+        if self.active_bot.name == TOP_GAINER_BREADTH_ALGO:
+            return False
         return (
             self.active_bot.margin_short_reversal
             or self.active_bot.recovery_params is not None

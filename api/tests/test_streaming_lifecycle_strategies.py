@@ -458,9 +458,7 @@ def test_mean_reversion_rsi_is_100_for_window_without_losses() -> None:
     assert float(rsi.iloc[-1]) == 100.0
 
 
-def test_top_gainer_breadth_short_applies_protection_and_recovery_policy(
-    monkeypatch,
-) -> None:
+def test_top_gainer_breadth_short_only_applies_default_protection(monkeypatch) -> None:
     monkeypatch.setattr(
         "streaming.strategies.default.ApexFlowClose",
         FakeApexFlowClose,
@@ -485,8 +483,8 @@ def test_top_gainer_breadth_short_applies_protection_and_recovery_policy(
     assert signal.parameter_update.trailing_profit <= 3.5
     assert signal.parameter_update.trailing_deviation <= 2.5
     assert TopGainerBreadthLifecycleStrategy.policy.low_price_stop_floor_pct is None
-    assert TopGainerBreadthLifecycleStrategy.policy.reversal_enabled is True
-    assert TopGainerBreadthLifecycleStrategy.policy.recovery_enabled is True
+    assert TopGainerBreadthLifecycleStrategy.policy.reversal_enabled is False
+    assert TopGainerBreadthLifecycleStrategy.policy.recovery_enabled is False
 
 
 def test_position_market_generic_helpers_remain_strategy_agnostic() -> None:

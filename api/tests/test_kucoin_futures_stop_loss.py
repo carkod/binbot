@@ -1021,7 +1021,7 @@ def test_reconcile_exchange_sl_places_native_backstop_for_strategy(
 
 
 @pytest.mark.parametrize("recovery_enabled", [False, True])
-def test_top_gainer_breadth_recovery_configuration_blocks_native_stop(
+def test_top_gainer_breadth_ignores_recovery_configuration_for_native_stop(
     recovery_enabled: bool,
 ):
     calls: list[str] = []
@@ -1047,10 +1047,10 @@ def test_top_gainer_breadth_recovery_configuration_blocks_native_stop(
 
     KucoinPositionDeal.reconcile_exchange_sl(deal)
 
-    assert calls == []
+    assert calls == ["cancel", "place"]
 
 
-def test_top_gainer_breadth_confirmed_stop_breach_starts_long_recovery():
+def test_top_gainer_breadth_stop_breach_closes_without_recovery():
     deal = _make_lifecycle(
         stop_loss=2.0,
         stop_loss_price=102.0,
@@ -1070,12 +1070,7 @@ def test_top_gainer_breadth_confirmed_stop_breach_starts_long_recovery():
         created_at=1,
         updated_at=1,
     )
-    deal.klines = [
-        [1, 100.0, 101.0, 99.0, 100.0, 1.0, 2],
-        [3, 100.0, 101.0, 99.0, 100.0, 1.0, 4],
-        [5, 100.0, 101.0, 99.0, 100.0, 1.0, 6],
-        [7, 101.0, 103.0, 100.0, 102.5, 1.0, 8],
-    ]
+    deal.klines = None
     stop_calls: list[float | None] = []
     reverse_calls: list[float | None] = []
 
@@ -1090,10 +1085,10 @@ def test_top_gainer_breadth_confirmed_stop_breach_starts_long_recovery():
     cast(Any, deal.execution).execute_stop_loss = execute_stop_loss
     cast(Any, deal).reverse_position = reverse_position
 
-    Lifecycle.exit(deal, 102.5)
+    Lifecycle.exit(deal, 103.0)
 
-    assert stop_calls == []
-    assert reverse_calls == [102.5]
+    assert stop_calls == [None]
+    assert reverse_calls == []
 
 
 def test_top_gainer_breadth_low_price_stop_is_not_widened():
