@@ -3,17 +3,18 @@ from streaming.strategies.default import DefaultLifecycleStrategy
 
 
 class TopGainerBreadthLifecycleStrategy(DefaultLifecycleStrategy):
-    """Manage an open top-gainer breadth short with standard protection.
+    """Manage a top-gainer breadth short and its recovery long.
 
-    Entry belongs to binquant. Once the short is open, this strategy only
-    derives bounded stop-loss and trailing parameters from the live market.
-    It deliberately emits no breadth-based algorithmic exit.
+    Entry belongs to binquant. The source short uses bounded stop-loss and
+    trailing parameters from the live market. A confirmed stop breakout may
+    reverse it into one protected recovery long. This strategy deliberately
+    emits no breadth-based algorithmic exit.
     """
 
     algorithm_names = frozenset({"top_gainer_breadth"})
     policy = LifecyclePolicy(
         low_price_stop_floor_pct=None,
-        reversal_enabled=False,
-        recovery_enabled=False,
+        reversal_enabled=True,
+        recovery_enabled=True,
         stale_position_close_enabled=False,
     )

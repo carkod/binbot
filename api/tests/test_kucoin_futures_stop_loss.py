@@ -1021,7 +1021,7 @@ def test_reconcile_exchange_sl_places_native_backstop_for_strategy(
 
 
 @pytest.mark.parametrize("recovery_enabled", [False, True])
-def test_top_gainer_breadth_ignores_malformed_reversal_configuration(
+def test_top_gainer_breadth_recovery_configuration_blocks_native_stop(
     recovery_enabled: bool,
 ):
     calls: list[str] = []
@@ -1047,10 +1047,10 @@ def test_top_gainer_breadth_ignores_malformed_reversal_configuration(
 
     KucoinPositionDeal.reconcile_exchange_sl(deal)
 
-    assert calls == ["cancel", "place"]
+    assert calls == []
 
 
-def test_top_gainer_breadth_stop_breach_closes_without_reversal():
+def test_top_gainer_breadth_confirmed_stop_breach_starts_long_recovery():
     deal = _make_lifecycle(
         stop_loss=2.0,
         stop_loss_price=102.0,
@@ -1059,20 +1059,41 @@ def test_top_gainer_breadth_stop_breach_closes_without_reversal():
     )
     deal.execution.active_bot.name = "top_gainer_breadth"
     deal.execution.active_bot.trailing = False
-    deal.klines = None
+    recovery_id = uuid4()
+    deal.execution.active_bot.recovery_mode_id = recovery_id
+    deal.execution.active_bot.recovery_params = RecoveryBotModel(
+        id=recovery_id,
+        reversal_path="source",
+        source_contracts=0,
+        source_loss_fiat=0,
+        stop_loss_pct=0,
+        created_at=1,
+        updated_at=1,
+    )
+    deal.klines = [
+        [1, 100.0, 101.0, 99.0, 100.0, 1.0, 2],
+        [3, 100.0, 101.0, 99.0, 100.0, 1.0, 4],
+        [5, 100.0, 101.0, 99.0, 100.0, 1.0, 6],
+        [7, 101.0, 103.0, 100.0, 102.5, 1.0, 8],
+    ]
     stop_calls: list[float | None] = []
     reverse_calls: list[float | None] = []
-    deal.execution.execute_stop_loss = lambda reference_price=None: (
-        stop_calls.append(reference_price) or deal.execution.active_bot
-    )
-    deal.reverse_position = lambda reference_price=None: (
-        reverse_calls.append(reference_price) or deal.execution.active_bot
-    )
 
-    Lifecycle.exit(deal, 103.0)
+    def execute_stop_loss(reference_price: float | None = None) -> BotModel:
+        stop_calls.append(reference_price)
+        return deal.execution.active_bot
 
-    assert stop_calls == [None]
-    assert reverse_calls == []
+    def reverse_position(reference_price: float | None = None) -> BotModel:
+        reverse_calls.append(reference_price)
+        return deal.execution.active_bot
+
+    cast(Any, deal.execution).execute_stop_loss = execute_stop_loss
+    cast(Any, deal).reverse_position = reverse_position
+
+    Lifecycle.exit(deal, 102.5)
+
+    assert stop_calls == []
+    assert reverse_calls == [102.5]
 
 
 def test_top_gainer_breadth_low_price_stop_is_not_widened():
