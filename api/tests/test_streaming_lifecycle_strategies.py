@@ -524,8 +524,7 @@ def test_top_gainer_breadth_holds_when_market_breadth_unavailable() -> None:
 
 
 def test_top_gainer_breadth_ignores_short_positions() -> None:
-    """This algo is long-only; a bearish reversal must never panic-close a
-    short (e.g. a margin_short_reversal recovery leg)."""
+    """This algo is long-only; a bearish reversal must never close a short."""
     context = _context(
         name="top_gainer_breadth",
         position=Position.short,
@@ -559,6 +558,9 @@ def test_top_gainer_breadth_still_applies_default_dynamic_trailing(monkeypatch) 
 
     assert signal.exit_intent is None
     assert signal.parameter_update is not None
+    assert signal.parameter_update.stop_loss <= 4.0
+    assert signal.parameter_update.trailing_profit <= 3.5
+    assert signal.parameter_update.trailing_deviation <= 2.5
 
 
 def test_position_market_generic_helpers_remain_strategy_agnostic() -> None:

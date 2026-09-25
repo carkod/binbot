@@ -999,9 +999,13 @@ def test_reconcile_exchange_sl_skips_for_recovery_bot():
 
 @pytest.mark.parametrize(
     "algorithm_name",
-    ["top_gainer_early_momentum", "top_loser_early_momentum"],
+    [
+        "top_gainer_early_momentum",
+        "top_loser_early_momentum",
+        "top_gainer_breadth",
+    ],
 )
-def test_reconcile_exchange_sl_places_native_backstop_for_top_mover(
+def test_reconcile_exchange_sl_places_native_backstop_for_strategy(
     algorithm_name: str,
 ):
     calls: list[str] = []
