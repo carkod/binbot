@@ -32,6 +32,13 @@ class TopGainerBreadthLifecycleStrategy(DefaultLifecycleStrategy):
         if exit_values is None:
             return None
 
+        breadth_timestamp_ms = int(exit_values["breadth_timestamp"] * 1000)
+        if breadth_timestamp_ms < max(
+            context.now_ms - context.interval_ms,
+            context.bot.deal.opening_timestamp,
+        ):
+            return None
+
         if btc_trend_confirms(context.btc_df, direction=-1) is None:
             return None
 

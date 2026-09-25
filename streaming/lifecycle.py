@@ -81,7 +81,11 @@ class Lifecycle:
     def _fetch_market_breadth(self) -> MarketBreadthSeries | None:
         try:
             with get_db_session() as session:
-                return fetch_market_breadth_series(session, size=20)
+                return fetch_market_breadth_series(
+                    session,
+                    size=20,
+                    exchange=self.base_streaming.exchange,
+                )
         except Exception:
             logging.exception(
                 "Failed to fetch market breadth for %s; lifecycle strategies "

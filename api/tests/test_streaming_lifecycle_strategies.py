@@ -1,4 +1,5 @@
 import types
+from datetime import datetime, timezone
 from time import time
 from typing import Any, cast
 from uuid import uuid4
@@ -8,6 +9,7 @@ from pandas import DataFrame
 from pybinbot import (
     BotModel,
     DealModel,
+    ExchangeId,
     MarketBreadthSeries,
     MarketType,
     Position,
@@ -15,6 +17,7 @@ from pybinbot import (
 )
 
 from streaming.context_evaluator import LifecycleContextEvaluator
+from streaming.lifecycle import Lifecycle
 from streaming.position_market import PositionMarket
 from streaming.strategies.base import LifecycleContext, LifecycleExitKind
 from streaming.strategies.coinrule.bb_extreme_reversion import (
@@ -42,28 +45,27 @@ from streaming.strategies.top_gainer_early_momentum import (
 # and the setup TopGainerBreadthLifecycleStrategy should close a long on.
 BEARISH_REVERSAL_BREADTH = [0.30] * 9 + [0.24, 0.20, 0.16]
 BEARISH_REVERSAL_BREADTH_MA = [0.24] * 9 + [0.235, 0.225, 0.21]
-BREADTH_TIMESTAMPS = [
-    "2026-09-23T07:30:00+00:00",
-    "2026-09-23T07:45:00+00:00",
-    "2026-09-23T08:00:00+00:00",
-    "2026-09-23T08:15:00+00:00",
-    "2026-09-23T08:30:00+00:00",
-    "2026-09-23T08:45:00+00:00",
-    "2026-09-23T09:00:00+00:00",
-    "2026-09-23T09:15:00+00:00",
-    "2026-09-23T09:30:00+00:00",
-    "2026-09-23T09:45:00+00:00",
-    "2026-09-23T10:00:00+00:00",
-    "2026-09-23T10:15:00+00:00",
-]
+INTERVAL_MS = 15 * 60 * 1000
 
 
 def _market_breadth(
-    breadth_values: list[float], breadth_ma_values: list[float]
+    breadth_values: list[float],
+    breadth_ma_values: list[float],
+    *,
+    latest_timestamp_ms: int | None = None,
 ) -> MarketBreadthSeries:
     length = len(breadth_values)
+    if latest_timestamp_ms is None:
+        latest_timestamp_ms = int(time() * 1000)
+    timestamps = [
+        datetime.fromtimestamp(
+            (latest_timestamp_ms - (length - index - 1) * INTERVAL_MS) / 1000,
+            tz=timezone.utc,
+        ).isoformat()
+        for index in range(length)
+    ]
     return MarketBreadthSeries(
-        timestamp=BREADTH_TIMESTAMPS[-length:],
+        timestamp=timestamps,
         advancers=[500] * length,
         decliners=[500] * length,
         market_breadth=breadth_values,
@@ -82,9 +84,6 @@ def _btc_df(*, uptrend: bool = True, rows: int = 20) -> DataFrame:
         else [100.0 - i for i in range(rows)]
     )
     return DataFrame({"close": closes})
-
-
-INTERVAL_MS = 15 * 60 * 1000
 
 
 class FakeApexFlowClose:
@@ -132,6 +131,7 @@ def _context(
     bot_profit: float = 0.0,
     btc_df: DataFrame | None = None,
     market_breadth: MarketBreadthSeries | None = None,
+    now_ms: int | None = None,
 ) -> LifecycleContext:
     bot = BotModel(
         pair="BEATUSDTM",
@@ -154,7 +154,7 @@ def _context(
         bot=bot,
         current_price=current_price,
         interval_ms=INTERVAL_MS,
-        now_ms=int(time() * 1000),
+        now_ms=now_ms if now_ms is not None else int(time() * 1000),
         klines=rows,
         completed_candles=completed_candles or rows,
         df=DataFrame([{"high": 102.0, "low": 98.0}]),
@@ -508,6 +508,85 @@ def test_top_gainer_breadth_holds_when_btc_still_uptrend() -> None:
     signal = TopGainerBreadthLifecycleStrategy().signal(context)
 
     assert signal.exit_intent is None
+
+
+def test_top_gainer_breadth_ignores_reversal_older_than_current_interval() -> None:
+    now_ms = int(time() * 1000)
+    context = _context(
+        name="top_gainer_breadth",
+        position=Position.long,
+        opening_timestamp=now_ms - 2 * INTERVAL_MS,
+        now_ms=now_ms,
+        btc_df=_btc_df(uptrend=False),
+        market_breadth=_market_breadth(
+            BEARISH_REVERSAL_BREADTH,
+            BEARISH_REVERSAL_BREADTH_MA,
+            latest_timestamp_ms=now_ms - INTERVAL_MS - 1,
+        ),
+    )
+
+    signal = TopGainerBreadthLifecycleStrategy().signal(context)
+
+    assert signal.exit_intent is None
+
+
+def test_top_gainer_breadth_ignores_reversal_before_position_opened() -> None:
+    now_ms = int(time() * 1000)
+    context = _context(
+        name="top_gainer_breadth",
+        position=Position.long,
+        opening_timestamp=now_ms - 1_000,
+        now_ms=now_ms,
+        btc_df=_btc_df(uptrend=False),
+        market_breadth=_market_breadth(
+            BEARISH_REVERSAL_BREADTH,
+            BEARISH_REVERSAL_BREADTH_MA,
+            latest_timestamp_ms=now_ms - 2_000,
+        ),
+    )
+
+    signal = TopGainerBreadthLifecycleStrategy().signal(context)
+
+    assert signal.exit_intent is None
+
+
+def test_lifecycle_fetches_breadth_for_configured_exchange(monkeypatch) -> None:
+    captured: dict[str, Any] = {}
+    expected = _market_breadth(
+        BEARISH_REVERSAL_BREADTH,
+        BEARISH_REVERSAL_BREADTH_MA,
+    )
+    session = object()
+
+    class SessionContext:
+        def __enter__(self):
+            return session
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            return False
+
+    def fetch(fake_session, **kwargs):
+        captured["session"] = fake_session
+        captured.update(kwargs)
+        return expected
+
+    monkeypatch.setattr("streaming.lifecycle.get_db_session", SessionContext)
+    monkeypatch.setattr("streaming.lifecycle.fetch_market_breadth_series", fetch)
+    lifecycle = Lifecycle(
+        execution=types.SimpleNamespace(
+            active_bot=types.SimpleNamespace(pair="BEATUSDTM")
+        ),
+        base_streaming=types.SimpleNamespace(exchange=ExchangeId.KUCOIN),
+    )
+
+    result = lifecycle._fetch_market_breadth()
+
+    assert result is expected
+    assert captured == {
+        "session": session,
+        "size": 20,
+        "exchange": ExchangeId.KUCOIN,
+    }
 
 
 def test_top_gainer_breadth_holds_when_market_breadth_unavailable() -> None:

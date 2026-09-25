@@ -1087,6 +1087,36 @@ def test_top_mover_hard_stop_cancels_native_backstop_before_reduce_only_close():
     assert result.deal.closing_price == 97.9
 
 
+def test_top_gainer_breadth_close_cancels_native_backstop_before_position_close():
+    events: list[str] = []
+    deal = _make_deal()
+    deal.active_bot.name = "top_gainer_breadth"
+    deal.cancel_current_sl = lambda: events.append("cancel_backstop")
+    deal.kucoin_futures_api.get_futures_position = lambda symbol: (
+        events.append("read_position") or _position(1)
+    )
+    close_order = OrderBase(
+        order_id="breadth-close",
+        order_type="market",
+        pair="BEATUSDTM",
+        timestamp=1,
+        order_side="sell",
+        qty=1,
+        price=99.0,
+        status=OrderStatus.FILLED,
+        time_in_force="GTC",
+        deal_type=DealType.algorithmic_close,
+    )
+    deal._close_with_market_fallback = lambda side, qty: (
+        events.append("close_position") or [(close_order, 1, 99.0)]
+    )
+
+    result = KucoinPositionDeal.close_all(deal, algorithmic_close=True)
+
+    assert events == ["cancel_backstop", "read_position", "close_position"]
+    assert result.status == Status.completed
+
+
 def test_reconcile_exchange_sl_places_when_exchange_missing():
     """Drift case: bot expected an SL, exchange has none — re-place it."""
     calls: list[str] = []
