@@ -329,9 +329,7 @@ def test_default_dynamic_signal_uses_short_pullback_direction(monkeypatch) -> No
         dynamic_trailing=True,
         opening_timestamp=entry_timestamp,
         current_price=95.0,
-        klines=[
-            [entry_timestamp, 100.0, 105.0, 94.0, 95.0, 1.0, entry_timestamp + 1]
-        ],
+        klines=[[entry_timestamp, 100.0, 105.0, 94.0, 95.0, 1.0, entry_timestamp + 1]],
     )
 
     update = DefaultLifecycleStrategy().signal(context).parameter_update

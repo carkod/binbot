@@ -587,8 +587,7 @@ class Lifecycle:
         )
         sl_pct = self.execution.active_bot.stop_loss
         is_recovery_bot = (
-            evaluation.policy.recovery_enabled
-            and self.execution._is_recovery_bot()
+            evaluation.policy.recovery_enabled and self.execution._is_recovery_bot()
         )
         if (
             is_recovery_bot

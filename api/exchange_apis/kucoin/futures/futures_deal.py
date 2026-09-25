@@ -227,10 +227,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         policy = LifecycleContextEvaluator.resolve(self.active_bot.name).policy
         return policy.reversal_enabled and (
             self.active_bot.margin_short_reversal
-            or (
-                policy.recovery_enabled
-                and self.active_bot.recovery_params is not None
-            )
+            or (policy.recovery_enabled and self.active_bot.recovery_params is not None)
         )
 
     def _blocks_native_stop_loss(self) -> bool:

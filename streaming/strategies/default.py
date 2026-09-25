@@ -67,9 +67,7 @@ class DefaultLifecycleStrategy(BaseLifecycleStrategy):
             return None
 
         if context.bot.position == Position.short:
-            peak_profit_pct = (
-                (entry_price - peak_price_since_entry) / entry_price * 100
-            )
+            peak_profit_pct = (entry_price - peak_price_since_entry) / entry_price * 100
             pullback_pct = max(
                 0.0,
                 (context.current_price - peak_price_since_entry)
@@ -77,9 +75,7 @@ class DefaultLifecycleStrategy(BaseLifecycleStrategy):
                 * 100,
             )
         else:
-            peak_profit_pct = (
-                (peak_price_since_entry - entry_price) / entry_price * 100
-            )
+            peak_profit_pct = (peak_price_since_entry - entry_price) / entry_price * 100
             pullback_pct = max(
                 0.0,
                 (peak_price_since_entry - context.current_price)
