@@ -235,8 +235,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
         """Whether an exchange stop would bypass required reversal logic."""
         return self._reversal_eligible()
 
-    def _cancel_native_protection_before_close(self) -> None:
-        """Disarm exchange-native protection before a bot-side close."""
+    def _cleanup_native_protection_after_close(self) -> None:
+        """Remove exchange-native protection after a confirmed bot-side close."""
         if (
             isinstance(self.controller, PaperTradingTableCrud)
             or self._blocks_native_stop_loss()
@@ -246,11 +246,11 @@ class KucoinPositionDeal(KucoinBaseBalance):
         try:
             self.cancel_current_sl()
         except Exception as exc:
-            # A reduce-only close remains safe if cancellation races a trigger.
-            # Do not let an exchange cancellation failure defer the hard exit.
+            # The position is already confirmed closed. A stale reduce-only
+            # stop cannot reopen it, so cleanup failure is safe to retry later.
             self.active_bot.add_log(
-                "Could not cancel exchange-native protection before the bot-side "
-                f"close ({exc}); proceeding with the reduce-only exit."
+                "Could not clean up exchange-native protection after the "
+                f"confirmed bot-side close ({exc})."
             )
 
     @classmethod
@@ -2195,7 +2195,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 status=OrderStatus.FILLED,
             )
         else:
-            self._cancel_native_protection_before_close()
             # Real futures: close current LONG position via reduce-only SELL
             position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
             if not position or float(position.current_qty) == 0:
@@ -2237,6 +2236,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
         self.active_bot.deal.closing_timestamp = round_timestamp(order_data.timestamp)
         self.active_bot.deal.current_position_qty = 0
         self.active_bot.status = Status.completed
+
+        if order_data.status == OrderStatus.FILLED:
+            self._cleanup_native_protection_after_close()
 
         self.active_bot.add_log("Completed futures take profit.")
         self.controller.save(self.active_bot)
@@ -2288,7 +2290,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 status=OrderStatus.FILLED,
             )
         else:
-            self._cancel_native_protection_before_close()
             qty = self.current_position_quantity()
             if qty <= 0:
                 self.active_bot = self.backfill_position_from_fills()
@@ -2346,6 +2347,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self.active_bot.deal.current_position_qty = 0
             self.active_bot.add_log("Completed futures Stop loss.")
             self.active_bot.status = Status.completed
+            self._cleanup_native_protection_after_close()
 
         self.controller.save(self.active_bot)
 
@@ -2700,7 +2702,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
         deal_type = (
             DealType.algorithmic_close if algorithmic_close else DealType.panic_close
         )
-        self._cancel_native_protection_before_close()
         position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
 
         if position and float(position.current_qty) != 0:
@@ -2743,6 +2744,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             )
             self.active_bot.deal.current_position_qty = 0
             self.active_bot.status = Status.completed
+            self._cleanup_native_protection_after_close()
             self.controller.update_logs(
                 bot=self.active_bot,
                 log_message="Futures position panic-closed successfully",

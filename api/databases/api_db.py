@@ -47,6 +47,7 @@ class ApiDb:
         try:
             self.run_migrations()
             self.init_users()
+            self.init_autotrade_settings()
             self.init_test_autotrade_settings()
             self.create_dummy_bot()
             self.init_symbols()
@@ -185,6 +186,17 @@ class ApiDb:
         self.session.add(test_autotrade_data)
         self.session.commit()
         pass
+
+    def init_autotrade_settings(self) -> None:
+        """Create the production settings document on a fresh database."""
+        statement = select(AutotradeTable).where(
+            AutotradeTable.id == AutotradeSettingsDocument.settings
+        )
+        if self.session.exec(statement).first():
+            return
+
+        self.session.add(AutotradeTable())
+        self.session.commit()
 
     def init_users(self):
         """
