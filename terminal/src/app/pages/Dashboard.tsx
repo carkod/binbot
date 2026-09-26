@@ -8,10 +8,8 @@ import {
   useGetBotsQuery,
   useGetAlgoRankingQuery,
 } from "../../features/bots/botsApiSlice";
-import {
-  useGainersLosersSeriesQuery,
-  useMarketBreadthSeriesQuery,
-} from "../../features/marketApiSlice";
+import { useMarketBreadthSeriesQuery } from "../../features/marketApiSlice";
+import { useBtcCloseSeriesQuery } from "../../features/kucoinApiSlice";
 import { useGetSignalsQuery } from "../../features/signalsApiSlice";
 import type {
   BalanceData,
@@ -25,7 +23,7 @@ import GainersLosers from "../components/GainersLosers";
 import PortfolioBenchmarkChart from "../components/PortfolioBenchmark";
 import { SpinnerContext } from "../spinner-context";
 import MarketBreadthCard from "../components/MarketBreadthCard";
-import GainersLosersSeriesCard from "../components/GainersLosersSeriesCard";
+import BitcoinPriceCard from "../components/BitcoinPriceCard";
 import {
   useFilteredFuturesRankings,
   useFilteredGainerLosers,
@@ -115,8 +113,8 @@ export const DashboardPage: FC<{}> = () => {
 
   const { data: marketBreadthSeries, isLoading: loadingMarketBreadthSeries } =
     useMarketBreadthSeriesQuery();
-  const { data: gainersLosersSeries, isLoading: loadingGainersLosersSeries } =
-    useGainersLosersSeriesQuery();
+  const { data: btcCloseSeries, isLoading: loadingBtcCloseSeries } =
+    useBtcCloseSeriesQuery();
 
   const { data: algoRanking, isLoading: loadingAlgoRanking } =
     useGetAlgoRankingQuery();
@@ -259,7 +257,7 @@ export const DashboardPage: FC<{}> = () => {
       !loadingCombined &&
       !loadingFuturesRankings &&
       !loadingMarketBreadthSeries &&
-      !loadingGainersLosersSeries &&
+      !loadingBtcCloseSeries &&
       !loadingAlgoRanking &&
       !loadingSignals
     ) {
@@ -282,7 +280,7 @@ export const DashboardPage: FC<{}> = () => {
     loadingErrorBots,
     loadingCombined,
     loadingMarketBreadthSeries,
-    loadingGainersLosersSeries,
+    loadingBtcCloseSeries,
     loadingFuturesRankings,
     loadingAlgoRanking,
     loadingSignals,
@@ -602,8 +600,11 @@ export const DashboardPage: FC<{}> = () => {
           )}
         </Col>
         <Col lg="6" md="12">
-          {gainersLosersSeries && gainersLosersSeries.length > 0 && (
-            <GainersLosersSeriesCard snapshots={gainersLosersSeries} />
+          {btcCloseSeries && marketBreadthSeries?.timestamp && (
+            <BitcoinPriceCard
+              btcCloseSeries={btcCloseSeries}
+              marketBreadthTimestamps={marketBreadthSeries.timestamp}
+            />
           )}
         </Col>
       </Row>
