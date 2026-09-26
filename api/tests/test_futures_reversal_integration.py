@@ -344,16 +344,26 @@ def test_reverse_position_closes_source_with_reduce_only_and_creates_pending_bot
     assert completed[0].deal.closing_price > 0
 
 
-def test_reverse_position_short_closes_with_buy():
+def test_source_short_recovery_closes_with_buy_and_creates_pending_long():
     bot = make_long_bot()
     bot.position = Position.short
+    enable_source_recovery(bot)
     futures_api = DummyFuturesApi(current_qty=-68)
     position_deal, controller = make_position_deal(bot, futures_api)
+    position_deal.klines = recovery_klines(
+        high=1.30,
+        low=1.24,
+        close=1.267,
+        closed_count=4,
+    )
 
     reversed_bot = Lifecycle.reverse_position(position_deal)
 
     assert reversed_bot.position == Position.long
     assert reversed_bot.status == Status.pending
+    assert reversed_bot.margin_short_reversal is False
+    assert reversed_bot.recovery_params is not None
+    assert reversed_bot.recovery_params.reversal_path == "recovery"
     assert len(futures_api.buy_calls) == 1
     assert futures_api.buy_calls[0]["reduce_only"] is True
     assert futures_api.buy_calls[0]["qty"] == 68

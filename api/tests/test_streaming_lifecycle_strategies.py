@@ -8,6 +8,7 @@ from pandas import DataFrame
 from pybinbot import (
     BotModel,
     DealModel,
+    MarketBreadthSeries,
     MarketType,
     Position,
     RecoveryBotModel,
@@ -35,12 +36,21 @@ from streaming.strategies.mean_reversion_fade import (
 from streaming.strategies.relative_strength_impulse_rider import (
     RelativeStrengthImpulseRiderLifecycleStrategy,
 )
+from streaming.strategies.top_gainer_breadth import TopGainerBreadthLifecycleStrategy
 from streaming.strategies.top_gainer_early_momentum import (
     TopGainerEarlyMomentumLifecycleStrategy,
 )
 
-
 INTERVAL_MS = 15 * 60 * 1000
+
+
+def _btc_df(*, uptrend: bool = True, rows: int = 20) -> DataFrame:
+    closes = (
+        [100.0 + i for i in range(rows)]
+        if uptrend
+        else [100.0 - i for i in range(rows)]
+    )
+    return DataFrame({"close": closes})
 
 
 class FakeApexFlowClose:
@@ -86,6 +96,9 @@ def _context(
     current_price: float = 100.0,
     bb_metrics: tuple[float, float] | None = (2.0, 1.5),
     bot_profit: float = 0.0,
+    btc_df: DataFrame | None = None,
+    market_breadth: MarketBreadthSeries | None = None,
+    now_ms: int | None = None,
 ) -> LifecycleContext:
     bot = BotModel(
         pair="BEATUSDTM",
@@ -108,13 +121,14 @@ def _context(
         bot=bot,
         current_price=current_price,
         interval_ms=INTERVAL_MS,
-        now_ms=int(time() * 1000),
+        now_ms=now_ms if now_ms is not None else int(time() * 1000),
         klines=rows,
         completed_candles=completed_candles or rows,
         df=DataFrame([{"high": 102.0, "low": 98.0}]),
-        btc_df=DataFrame(),
+        btc_df=btc_df if btc_df is not None else DataFrame(),
         bb_metrics=bb_metrics,
         bot_profit=bot_profit,
+        market_breadth=market_breadth,
     )
 
 
@@ -129,6 +143,7 @@ def _context(
         ),
         ("top_gainer_early_momentum", TopGainerEarlyMomentumLifecycleStrategy),
         ("top_loser_early_momentum", TopGainerEarlyMomentumLifecycleStrategy),
+        ("top_gainer_breadth", TopGainerBreadthLifecycleStrategy),
         ("coinrule_price_tracker", PriceTrackerLifecycleStrategy),
         ("coinrule_buy_the_dip", DefaultLifecycleStrategy),
         ("bb_extreme_reversion", BBExtremeReversionLifecycleStrategy),
@@ -307,6 +322,26 @@ def test_default_runtime_strategy_preserves_pullback_adjustment(monkeypatch) -> 
     assert update is not None
     assert update.trailing_profit == 2.25
     assert update.trailing_deviation == 1.55
+
+
+def test_default_dynamic_signal_uses_short_pullback_direction(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "streaming.strategies.default.ApexFlowClose",
+        FakeApexFlowCloseDowntrend,
+    )
+    entry_timestamp = 1_800_000_000_000
+    context = _context(
+        position=Position.short,
+        dynamic_trailing=True,
+        opening_timestamp=entry_timestamp,
+        current_price=95.0,
+        klines=[[entry_timestamp, 100.0, 105.0, 94.0, 95.0, 1.0, entry_timestamp + 1]],
+    )
+
+    update = DefaultLifecycleStrategy().signal(context).parameter_update
+
+    assert update is not None
+    assert update.trailing_profit == 1.5
 
 
 @pytest.mark.parametrize(
@@ -552,6 +587,35 @@ def test_mean_reversion_rsi_is_100_for_window_without_losses() -> None:
 
     assert rsi is not None
     assert float(rsi.iloc[-1]) == 100.0
+
+
+def test_top_gainer_breadth_short_only_applies_default_protection(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "streaming.strategies.default.ApexFlowClose",
+        FakeApexFlowClose,
+    )
+    context = _context(
+        name="top_gainer_breadth",
+        position=Position.short,
+        dynamic_trailing=True,
+    )
+    context.bot.recovery_params = RecoveryBotModel(
+        id=uuid4(),
+        reversal_path="source",
+        created_at=1,
+        updated_at=1,
+    )
+
+    signal = TopGainerBreadthLifecycleStrategy().signal(context)
+
+    assert signal.exit_intent is None
+    assert signal.parameter_update is not None
+    assert signal.parameter_update.stop_loss <= 4.0
+    assert signal.parameter_update.trailing_profit <= 3.5
+    assert signal.parameter_update.trailing_deviation <= 2.5
+    assert TopGainerBreadthLifecycleStrategy.policy.low_price_stop_floor_pct is None
+    assert TopGainerBreadthLifecycleStrategy.policy.reversal_enabled is False
+    assert TopGainerBreadthLifecycleStrategy.policy.recovery_enabled is False
 
 
 def test_position_market_generic_helpers_remain_strategy_agnostic() -> None:

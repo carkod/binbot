@@ -1908,7 +1908,11 @@ class TestPositionManager:
 
     @pytest.mark.parametrize(
         "algorithm_name",
-        ["coinrule_buy_the_dip", "top_gainer_early_momentum"],
+        [
+            "coinrule_buy_the_dip",
+            "top_gainer_early_momentum",
+            "top_gainer_breadth",
+        ],
     )
     def test_futures_order_updates_backfills_missing_stop_loss_for_active_position(
         self, monkeypatch, algorithm_name

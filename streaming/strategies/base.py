@@ -3,7 +3,7 @@ from enum import Enum
 from typing import ClassVar, Protocol
 
 from pandas import DataFrame
-from pybinbot import BotModel, Position
+from pybinbot import BotModel, MarketBreadthSeries, Position
 
 
 @dataclass(frozen=True)
@@ -19,6 +19,9 @@ class LifecyclePolicy:
         default_factory=EmergencyStopBounds
     )
     block_reversal_after_loss: bool = False
+    reversal_enabled: bool = True
+    recovery_enabled: bool = True
+    stale_position_close_enabled: bool = True
 
 
 class LifecycleExitKind(str, Enum):
@@ -61,6 +64,7 @@ class LifecycleContext:
     btc_df: DataFrame
     bb_metrics: tuple[float, float] | None
     bot_profit: float
+    market_breadth: MarketBreadthSeries | None = None
 
 
 class LifecycleStrategy(Protocol):

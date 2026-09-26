@@ -43,11 +43,11 @@ from api.exchange_apis.kucoin.futures.models import LiquiditySnapshot
 from api.tools.constants import (
     RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO,
     RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES,
+    TOP_GAINER_BREADTH_ALGO,
     TOP_GAINER_EARLY_MOMENTUM_ALGO,
     TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES,
     TOP_GAINER_FAILURE_REVERSAL_ALGO,
     TOP_GAINER_FAILURE_REVERSAL_PENDING_ENTRY_TTL_MS,
-    TOP_MOVER_EARLY_MOMENTUM_ALGOS,
 )
 
 
@@ -224,6 +224,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
         - recovery bots (margin_short_reversal=False, reversal_path="recovery")
         - plain margin-short bots (margin_short_reversal=True, no recovery_params)
         """
+        if self.active_bot.name == TOP_GAINER_BREADTH_ALGO:
+            return False
         return (
             self.active_bot.margin_short_reversal
             or self.active_bot.recovery_params is not None
@@ -233,11 +235,11 @@ class KucoinPositionDeal(KucoinBaseBalance):
         """Whether an exchange stop would bypass required reversal logic."""
         return self._reversal_eligible()
 
-    def _cancel_top_mover_native_backstop(self) -> None:
-        """Disarm the hybrid backstop before a top-mover bot-side close."""
+    def _cancel_native_protection_before_close(self) -> None:
+        """Disarm exchange-native protection before a bot-side close."""
         if (
             isinstance(self.controller, PaperTradingTableCrud)
-            or self.active_bot.name not in TOP_MOVER_EARLY_MOMENTUM_ALGOS
+            or self._blocks_native_stop_loss()
         ):
             return
 
@@ -247,7 +249,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             # A reduce-only close remains safe if cancellation races a trigger.
             # Do not let an exchange cancellation failure defer the hard exit.
             self.active_bot.add_log(
-                "Could not cancel the top-mover native stop before the bot-side "
+                "Could not cancel exchange-native protection before the bot-side "
                 f"close ({exc}); proceeding with the reduce-only exit."
             )
 
@@ -2193,7 +2195,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 status=OrderStatus.FILLED,
             )
         else:
-            self._cancel_top_mover_native_backstop()
+            self._cancel_native_protection_before_close()
             # Real futures: close current LONG position via reduce-only SELL
             position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
             if not position or float(position.current_qty) == 0:
@@ -2286,7 +2288,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 status=OrderStatus.FILLED,
             )
         else:
-            self._cancel_top_mover_native_backstop()
+            self._cancel_native_protection_before_close()
             qty = self.current_position_quantity()
             if qty <= 0:
                 self.active_bot = self.backfill_position_from_fills()
@@ -2698,7 +2700,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         deal_type = (
             DealType.algorithmic_close if algorithmic_close else DealType.panic_close
         )
-        self._cancel_top_mover_native_backstop()
+        self._cancel_native_protection_before_close()
         position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
 
         if position and float(position.current_qty) != 0:

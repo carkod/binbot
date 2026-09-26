@@ -113,6 +113,7 @@ class Lifecycle:
             btc_df=self.btc_df,
             bb_metrics=self.bb_metrics,
             bot_profit=bot_profit,
+            market_breadth=None,
         )
         return self.context_evaluator.evaluate(context)
 
@@ -600,7 +601,11 @@ class Lifecycle:
             >= 1.5 * 24 * 60 * 60 * 1000
         )
         # Panic close stale low-conviction positions after 1.5 days.
-        if -1 <= bot_profit < 1 and is_1_5_days:
+        if (
+            evaluation.policy.stale_position_close_enabled
+            and -1 <= bot_profit < 1
+            and is_1_5_days
+        ):
             self.execution.controller.update_logs(
                 f"Panic close triggered for stale {position_name} position after 1.5 days with profit {bot_profit}. Closing position immediately.",
                 self.execution.active_bot,
@@ -608,9 +613,15 @@ class Lifecycle:
             self.execution.close_all()
             return self.execution.active_bot
 
-        recovery_params = self.execution.active_bot.recovery_params
+        recovery_params = (
+            self.execution.active_bot.recovery_params
+            if evaluation.policy.recovery_enabled
+            else None
+        )
         sl_pct = self.execution.active_bot.stop_loss
-        is_recovery_bot = self.execution._is_recovery_bot()
+        is_recovery_bot = (
+            evaluation.policy.recovery_enabled and self.execution._is_recovery_bot()
+        )
         if (
             is_recovery_bot
             and recovery_params is not None
@@ -656,7 +667,17 @@ class Lifecycle:
             )
             reversal_requires_confirmation = recovery_params is not None
 
-            if reversal_requires_confirmation:
+            if not evaluation.policy.reversal_enabled:
+                self.execution.controller.update_logs(
+                    f"Executing futures {position_name} stop_loss after hitting "
+                    f"{self.execution.active_bot.deal.stop_loss_price}; "
+                    "strategy policy disables reversal and recovery.",
+                    self.execution.active_bot,
+                )
+                self.execution.active_bot = self.execution.execute_stop_loss(
+                    reference_price=exit_reference_price
+                )
+            elif reversal_requires_confirmation:
                 stop_loss_price = self.execution.active_bot.deal.stop_loss_price
                 emergency_price, emergency_pct = self.recovery_emergency_stop_price(
                     stop_loss_price=stop_loss_price,
@@ -904,7 +925,6 @@ class Lifecycle:
         self.df = cls.df
         self.btc_df = cls.btc_df
         self.bb_metrics = cls.build_bb_metrics()
-
         self.execution.active_bot = cls.order_updates()
 
         # Fetch position AFTER order_updates so any fill-promotion is already

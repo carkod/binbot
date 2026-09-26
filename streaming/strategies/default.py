@@ -44,27 +44,48 @@ class DefaultLifecycleStrategy(BaseLifecycleStrategy):
         if entry_index is None:
             return None
 
-        peak_price_since_entry = max(
-            [
-                float(candle[2])
-                for candle in context.klines[entry_index:]
-                if len(candle) >= 3
-            ]
-            + [context.current_price]
-        )
+        if context.bot.position == Position.short:
+            peak_price_since_entry = min(
+                [
+                    float(candle[3])
+                    for candle in context.klines[entry_index:]
+                    if len(candle) >= 4
+                ]
+                + [context.current_price]
+            )
+        else:
+            peak_price_since_entry = max(
+                [
+                    float(candle[2])
+                    for candle in context.klines[entry_index:]
+                    if len(candle) >= 3
+                ]
+                + [context.current_price]
+            )
+
         if peak_price_since_entry <= 0:
             return None
 
-        return {
-            "peak_profit_pct": (
-                (peak_price_since_entry - entry_price) / entry_price * 100
-            ),
-            "pullback_pct": max(
+        if context.bot.position == Position.short:
+            peak_profit_pct = (entry_price - peak_price_since_entry) / entry_price * 100
+            pullback_pct = max(
+                0.0,
+                (context.current_price - peak_price_since_entry)
+                / peak_price_since_entry
+                * 100,
+            )
+        else:
+            peak_profit_pct = (peak_price_since_entry - entry_price) / entry_price * 100
+            pullback_pct = max(
                 0.0,
                 (peak_price_since_entry - context.current_price)
                 / peak_price_since_entry
                 * 100,
-            ),
+            )
+
+        return {
+            "peak_profit_pct": peak_profit_pct,
+            "pullback_pct": pullback_pct,
         }
 
     def _initial_stop_loss(
@@ -80,7 +101,7 @@ class DefaultLifecycleStrategy(BaseLifecycleStrategy):
         bot = context.bot
         if (
             not bot.dynamic_trailing
-            or self.is_recovery_bot(bot)
+            or (self.policy.recovery_enabled and self.is_recovery_bot(bot))
             or bot.market_type != MarketType.FUTURES
             or bot.position not in {Position.long, Position.short}
             or bot.deal.opening_price <= 0

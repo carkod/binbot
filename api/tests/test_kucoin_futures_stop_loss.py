@@ -1013,14 +1013,19 @@ def test_reconcile_exchange_sl_skips_for_recovery_bot():
 
 
 @pytest.mark.parametrize(
-    "algorithm_name",
-    ["top_gainer_early_momentum", "top_loser_early_momentum"],
+    ("algorithm_name", "position"),
+    [
+        ("top_gainer_early_momentum", Position.long),
+        ("top_loser_early_momentum", Position.short),
+        ("top_gainer_breadth", Position.short),
+    ],
 )
-def test_reconcile_exchange_sl_places_native_backstop_for_top_mover(
+def test_reconcile_exchange_sl_places_native_backstop_for_strategy(
     algorithm_name: str,
+    position: Position,
 ):
     calls: list[str] = []
-    deal = _make_deal()
+    deal = _make_deal(position=position)
     deal.active_bot.name = algorithm_name
     deal.cancel_current_sl = lambda: calls.append("cancel")
     deal.place_stop_loss = lambda: calls.append("place")
@@ -1028,6 +1033,94 @@ def test_reconcile_exchange_sl_places_native_backstop_for_top_mover(
     KucoinPositionDeal.reconcile_exchange_sl(deal)
 
     assert calls == ["cancel", "place"]
+
+
+@pytest.mark.parametrize("recovery_enabled", [False, True])
+def test_top_gainer_breadth_ignores_recovery_configuration_for_native_stop(
+    recovery_enabled: bool,
+):
+    calls: list[str] = []
+    deal = _make_deal(
+        margin_short_reversal=not recovery_enabled,
+        position=Position.short,
+    )
+    deal.active_bot.name = "top_gainer_breadth"
+    if recovery_enabled:
+        recovery_id = uuid4()
+        deal.active_bot.recovery_mode_id = recovery_id
+        deal.active_bot.recovery_params = RecoveryBotModel(
+            id=recovery_id,
+            reversal_path="recovery",
+            source_contracts=1,
+            source_loss_fiat=1.0,
+            stop_loss_pct=2.0,
+            created_at=1,
+            updated_at=1,
+        )
+    deal.cancel_current_sl = lambda: calls.append("cancel")
+    deal.place_stop_loss = lambda: calls.append("place")
+
+    KucoinPositionDeal.reconcile_exchange_sl(deal)
+
+    assert calls == ["cancel", "place"]
+
+
+def test_top_gainer_breadth_stop_breach_closes_without_recovery():
+    deal = _make_lifecycle(
+        stop_loss=2.0,
+        stop_loss_price=102.0,
+        margin_short_reversal=True,
+        position=Position.short,
+    )
+    deal.execution.active_bot.name = "top_gainer_breadth"
+    deal.execution.active_bot.trailing = False
+    recovery_id = uuid4()
+    deal.execution.active_bot.recovery_mode_id = recovery_id
+    deal.execution.active_bot.recovery_params = RecoveryBotModel(
+        id=recovery_id,
+        reversal_path="source",
+        source_contracts=0,
+        source_loss_fiat=0,
+        stop_loss_pct=0,
+        created_at=1,
+        updated_at=1,
+    )
+    deal.klines = None
+    stop_calls: list[float | None] = []
+    reverse_calls: list[float | None] = []
+
+    def execute_stop_loss(reference_price: float | None = None) -> BotModel:
+        stop_calls.append(reference_price)
+        return deal.execution.active_bot
+
+    def reverse_position(reference_price: float | None = None) -> BotModel:
+        reverse_calls.append(reference_price)
+        return deal.execution.active_bot
+
+    cast(Any, deal.execution).execute_stop_loss = execute_stop_loss
+    cast(Any, deal).reverse_position = reverse_position
+
+    Lifecycle.exit(deal, 103.0)
+
+    assert stop_calls == [None]
+    assert reverse_calls == []
+
+
+def test_top_gainer_breadth_low_price_stop_is_not_widened():
+    deal = _make_lifecycle(
+        stop_loss=2.0,
+        stop_loss_price=0.0,
+        position=Position.short,
+    )
+    deal.execution.active_bot.name = "top_gainer_breadth"
+    deal.execution.active_bot.trailing = False
+    deal.execution.active_bot.deal.opening_price = 0.04
+    deal.execution.price_precision = 5
+    deal.klines = None
+
+    Lifecycle.exit(deal, 0.04)
+
+    assert deal.execution.active_bot.deal.stop_loss_price == 0.0408
 
 
 def test_top_gainer_hard_stop_executes_without_liquidity_precheck():
@@ -1157,6 +1250,30 @@ def test_exit_panic_closes_stale_mild_loser_after_three_days(monkeypatch):
     Lifecycle.exit(deal, 99.5)
 
     assert closed == [True]
+
+
+def test_top_gainer_breadth_short_is_not_closed_by_stale_position_rule(monkeypatch):
+    deal = _make_lifecycle(stop_loss=0, position=Position.short)
+    deal.klines = None
+    deal.execution.active_bot.name = "top_gainer_breadth"
+    deal.execution.active_bot.trailing = False
+    deal.execution.active_bot.deal.opening_price = 100.0
+    deal.execution.active_bot.deal.opening_timestamp = 1_000
+    cast(Any, deal.execution).controller = types.SimpleNamespace(
+        save=lambda bot: None,
+        update_logs=lambda *args, **kwargs: None,
+    )
+    closed: list[bool] = []
+    cast(Any, deal.execution).close_all = lambda: closed.append(True)
+
+    monkeypatch.setattr(
+        "streaming.lifecycle.time",
+        lambda: (1_000 + (4 * 24 * 60 * 60 * 1000)) / 1000,
+    )
+
+    Lifecycle.exit(deal, 100.5)
+
+    assert closed == []
 
 
 def test_exit_keeps_stale_loser_below_panic_close_band(monkeypatch):
