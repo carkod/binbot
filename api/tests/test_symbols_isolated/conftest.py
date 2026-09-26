@@ -9,6 +9,7 @@ from api.main import app
 
 # The import below is required to register all models for SQLModel metadata. Do not remove!
 import api.databases.tables  # noqa: F401
+from pybinbot import BinanceKlineIntervals, CloseConditions, ExchangeId
 
 from api.tests.fixtures.symbol_fixtures import (
     get_test_symbols,
@@ -63,21 +64,20 @@ def create_symbol_test_tables():
         mock_autotrade = AutotradeTable(
             id="autotrade_settings",
             base_order_size=15.0,
-            test_autotrade=False,
             trailing_deviation=0.63,
             stop_loss=0.0,
             fiat="USDC",
             telegram_signals=True,
-            close_condition="dynamic_trailing",
+            close_condition=CloseConditions.dynamic_trailing,
             autotrade=True,
-            candlestick_interval="15m",
+            candlestick_interval=BinanceKlineIntervals.fifteen_minutes,
             updated_at=1732388868477.8518,
             trailing=True,
             trailing_profit=2.3,
             take_profit=2.3,
             max_request=500,
             max_active_autotrade_bots=1,
-            exchange_id="binance",  # Fixed to binance for symbol tests
+            exchange_id=ExchangeId.BINANCE,
         )
         session.add(mock_autotrade)
 

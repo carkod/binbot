@@ -145,11 +145,11 @@ def test_get_active_pairs_includes_pending_and_active(monkeypatch):
 
     with session_for(engine) as session:
         for pair, status in [
-            ("ACTIVEUSDT", "active"),
-            ("PENDINGUSDT", "pending"),
-            ("INACTIVEUSDT", "inactive"),
-            ("COMPLETEDUSDT", "completed"),
-            ("ERRORUSDT", "error"),
+            ("ACTIVEUSDT", Status.active),
+            ("PENDINGUSDT", Status.pending),
+            ("INACTIVEUSDT", Status.inactive),
+            ("COMPLETEDUSDT", Status.completed),
+            ("ERRORUSDT", Status.error),
         ]:
             session.add(BotTable(pair=pair, status=status))
 
@@ -170,10 +170,10 @@ def test_paper_trading_active_pairs_only_includes_active(monkeypatch):
 
     with session_for(engine) as session:
         for pair, status in [
-            ("ACTIVEUSDT", "active"),
-            ("INACTIVEUSDT", "inactive"),
-            ("COMPLETEDUSDT", "completed"),
-            ("ERRORUSDT", "error"),
+            ("ACTIVEUSDT", Status.active),
+            ("INACTIVEUSDT", Status.inactive),
+            ("COMPLETEDUSDT", Status.completed),
+            ("ERRORUSDT", Status.error),
         ]:
             session.add(PaperTradingTable(pair=pair, status=status))
 

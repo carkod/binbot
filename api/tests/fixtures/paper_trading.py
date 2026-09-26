@@ -107,29 +107,7 @@ def build_paper_trading_rows() -> List[PaperTradingTable]:
         id = UUID(str(row["id"]))
         deal_id = UUID(str(row["deal_id"]))
         bots.append(
-            PaperTradingTable(
-                id=id,
-                pair=row["pair"],
-                fiat=row["fiat"],
-                fiat_order_size=row["fiat_order_size"],
-                candlestick_interval=row["candlestick_interval"],
-                close_condition=row["close_condition"],
-                cooldown=row["cooldown"],
-                created_at=row["created_at"],
-                updated_at=row["updated_at"],
-                dynamic_trailing=row["dynamic_trailing"],
-                mode=row["mode"],
-                name=row["name"],
-                status=row["status"],
-                stop_loss=row["stop_loss"],
-                take_profit=row["take_profit"],
-                trailing=row["trailing"],
-                trailing_deviation=row["trailing_deviation"],
-                trailing_profit=row["trailing_profit"],
-                margin_short_reversal=row["margin_short_reversal"],
-                position=row["position"],
-                deal_id=deal_id,
-            )
+            PaperTradingTable.model_validate({**row, "id": id, "deal_id": deal_id})
         )
     return bots
 

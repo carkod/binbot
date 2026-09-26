@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 from typing import Generator
 from unittest.mock import MagicMock
 
-from pybinbot import UserRoles
+from pybinbot import BinanceKlineIntervals, CloseConditions, UserRoles
 from pytest import fixture
 from api.user.models.user import UserTokenData
 from api.user.services.auth import get_current_user
@@ -15,14 +15,13 @@ from pybinbot import AutotradeSettingsSchema
 mocked_db_data = AutotradeTable(
     id="autotrade_settings",
     base_order_size=15.0,
-    test_autotrade=False,
     trailing_deviation=0.63,
     stop_loss=0.0,
     fiat="USDC",
     telegram_signals=True,
-    close_condition="dynamic_trailing",
+    close_condition=CloseConditions.dynamic_trailing,
     autotrade=True,
-    candlestick_interval="15m",
+    candlestick_interval=BinanceKlineIntervals.fifteen_minutes,
     updated_at=1732388868477.8518,
     trailing=True,
     trailing_profit=2.3,
@@ -72,7 +71,6 @@ def test_edit_autotrade_settings(client: TestClient) -> None:
         "/autotrade-settings/bots",
         json={
             "base_order_size": 15.0,
-            "test_autotrade": False,
             "trailing_deviation": 0.63,
             "stop_loss": 0.0,
             "fiat": "USDC",

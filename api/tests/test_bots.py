@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from unittest.mock import patch
 from fastapi.testclient import TestClient
 from pytest import fixture, raises
-from pybinbot import ExchangeId, GridLadderStatus, MarketType, Status
+from pybinbot import ExchangeId, GridLadderStatus, MarketType, QuoteAssets, Status
 from sqlmodel import Session, select
 from sqlalchemy.exc import IntegrityError
 from tests.fixtures.mock_bot_table import (
@@ -119,7 +119,7 @@ def test_get_bots_lists_active_bots_before_newer_inactive_bots(
                 id=active_id,
                 pair="VISIBLEACTIVEUSDC",
                 fiat="USDC",
-                quote_asset="USDC",
+                quote_asset=QuoteAssets.USDC,
                 status=Status.active,
                 created_at=1000,
                 deal=DealTable(),
@@ -130,7 +130,7 @@ def test_get_bots_lists_active_bots_before_newer_inactive_bots(
                 id=inactive_id,
                 pair="NEWERINACTIVEUSDC",
                 fiat="USDC",
-                quote_asset="USDC",
+                quote_asset=QuoteAssets.USDC,
                 status=Status.inactive,
                 created_at=2000,
                 deal=DealTable(),

@@ -1,7 +1,15 @@
 from api.databases.tables.bot_table import BotTable
 from api.databases.tables.deal_table import DealTable
 from api.databases.tables.order_table import ExchangeOrderTable
-from pybinbot import DealType, OrderType
+from pybinbot import (
+    BinanceKlineIntervals,
+    CloseConditions,
+    DealType,
+    OrderStatus,
+    OrderType,
+    Position,
+    Status,
+)
 from uuid import UUID
 
 ts = 1733973560249.0
@@ -9,32 +17,30 @@ id = "02031768-fbb9-4cc7-b549-642f15ab787b"
 
 orders = [
     ExchangeOrderTable(
-        id=id,
-        order_id=123,
+        id=UUID(id),
+        order_id="123",
         order_type=OrderType.market,
         time_in_force="GTC",
         timestamp=0,
         order_side="buy",
         pair="BTCUSDC",
         qty=0.000123,
-        status="filled",
+        status=OrderStatus.FILLED,
         price=1.222,
         deal_type=DealType.base_order,
-        total_commission=0,
     ),
     ExchangeOrderTable(
-        id=id,
-        order_id=321,
+        id=UUID(id),
+        order_id="321",
         order_type=OrderType.limit,
         time_in_force="GTC",
         timestamp=0,
         order_side="sell",
         pair="BTCUSDC",
         qty=0.000123,
-        status="filled",
+        status=OrderStatus.FILLED,
         price=1.222,
         deal_type=DealType.take_profit,
-        total_commission=0,
     ),
 ]
 
@@ -44,17 +50,13 @@ deal_table = DealTable(
     opening_qty=0,
     opening_timestamp=0,
     current_price=0,
-    sd=0,
-    avg_opening_price=0,
     take_profit_price=0,
-    sell_timestamp=0,
-    sell_price=0,
-    sell_qty=0,
+    closing_timestamp=0,
+    closing_price=0,
+    closing_qty=0,
     trailing_stop_loss_price=0,
     trailing_profit_price=0,
     stop_loss_price=0,
-    trailing_profit=0,
-    short_sell_price=0,
     margin_loan_id=0,
 )
 
@@ -63,10 +65,9 @@ mocked_db_data = BotTable(
     id=UUID(id),
     pair="ADXUSDC",
     fiat="USDC",
-    base_order_size=15,
-    opening_price=1.222,
-    candlestick_interval="15m",
-    close_condition="dynamic_trailing",
+    fiat_order_size=15,
+    candlestick_interval=BinanceKlineIntervals.fifteen_minutes,
+    close_condition=CloseConditions.dynamic_trailing,
     dynamic_trailing=False,
     cooldown=360,
     created_at=ts,
@@ -78,9 +79,9 @@ mocked_db_data = BotTable(
     trailing=True,
     trailing_deviation=3.0,
     trailing_profit=0.0,
-    position="long",
+    position=Position.long,
     updated_at=ts,
-    status="inactive",
+    status=Status.inactive,
     margin_short_reversal=False,
     deal=deal_table,
     orders=orders,

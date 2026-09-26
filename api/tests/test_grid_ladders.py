@@ -18,6 +18,7 @@ from pybinbot import (
     OrderBase,
     OrderStatus,
     OrderType,
+    Status,
 )
 from sqlmodel import Session, delete
 
@@ -746,7 +747,7 @@ def test_post_grid_ladder_rejects_active_bot_for_same_symbol_and_logs(
             fiat="USDC",
             market_type=MarketType.FUTURES,
             name="active_futures_bot",
-            status="active",
+            status=Status.active,
             deal=DealTable(),
         )
         session.add(bot)
@@ -776,7 +777,7 @@ def test_post_grid_ladder_rejects_pending_bot_for_same_symbol_and_logs(
             fiat="USDC",
             market_type=MarketType.FUTURES,
             name="pending_reversal_bot",
-            status="pending",
+            status=Status.pending,
             deal=DealTable(),
         )
         session.add(bot)

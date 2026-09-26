@@ -52,12 +52,10 @@ class SymbolsCrudUtils:
         self,
         session: Session,
         symbol: str,
-        exchange_id: str,
+        exchange_id: ExchangeId,
         min_notional: float,
         price_precision: int,
         qty_precision: int,
-        quote_asset: str,
-        base_asset: str,
         is_margin_trading_allowed: bool,
         multiplier: float | None = None,
     ):
@@ -88,8 +86,6 @@ class SymbolsCrudUtils:
                 min_notional=min_notional,
                 price_precision=price_precision,
                 qty_precision=qty_precision,
-                quote_asset=quote_asset,
-                base_asset=base_asset,
                 is_margin_trading_allowed=is_margin_trading_allowed,
                 multiplier=1.0 if multiplier is None else multiplier,
             )

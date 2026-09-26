@@ -17,6 +17,7 @@ from pybinbot import (
     BinbotErrors,
     Position,
     DealType,
+    UserRoles,
 )
 from pybinbot.shared.enums import AutotradeSettingsDocument
 from alembic import command
@@ -46,6 +47,7 @@ class ApiDb:
         try:
             self.run_migrations()
             self.init_users()
+            self.init_autotrade_settings()
             self.init_test_autotrade_settings()
             self.create_dummy_bot()
             self.init_symbols()
@@ -185,6 +187,17 @@ class ApiDb:
         self.session.commit()
         pass
 
+    def init_autotrade_settings(self) -> None:
+        """Create the production settings document on a fresh database."""
+        statement = select(AutotradeTable).where(
+            AutotradeTable.id == AutotradeSettingsDocument.settings
+        )
+        if self.session.exec(statement).first():
+            return
+
+        self.session.add(AutotradeTable())
+        self.session.commit()
+
     def init_users(self):
         """
         Dummy data for testing users table
@@ -201,7 +214,7 @@ class ApiDb:
                 username=username,
                 password=password,
                 email=email,
-                role=role,
+                role=UserRoles(role),
                 full_name="Admin",
             )
             self.session.add(user_data)
@@ -219,7 +232,7 @@ class ApiDb:
                 username=service_username,
                 password=service_password,
                 email=service_email,
-                role=service_role,
+                role=UserRoles(service_role),
                 full_name="Service User",
             )
             self.session.add(service_user_data)
@@ -248,7 +261,6 @@ class ApiDb:
             status=OrderStatus.FILLED,
             price=1.222,
             deal_type=DealType.base_order,
-            total_commission=0,
         )
         take_profit_order = ExchangeOrderTable(
             order_id="456",
@@ -261,15 +273,12 @@ class ApiDb:
             status=OrderStatus.FILLED,
             price=1.222,
             deal_type=DealType.take_profit,
-            total_commission=0,
         )
         deal = DealTable(
             opening_price=1.7777,
             opening_qty=12,
             opening_timestamp=0,
             current_price=0,
-            sd=0,
-            avg_opening_price=0,
             take_profit_price=0.02333,
             trailing_stop_loss_price=0,
             trailing_profit_price=0,
@@ -282,9 +291,8 @@ class ApiDb:
         )
         bot = BotTable(
             pair="BTCUSDC",
-            balance_size_to_use="1",
             fiat="USDC",
-            base_order_size=15,
+            fiat_order_size=15,
             deal=deal,
             cooldown=0,
             logs=["Bot created"],
@@ -298,9 +306,6 @@ class ApiDb:
             trailing_deviation=0.63,
             trailing_profit=2.3,
             position=Position.long,
-            short_opening_price=0,
-            short_sell_price=0,
-            total_commission=0,
         )
 
         statement = select(PaperTradingTable)
@@ -320,7 +325,6 @@ class ApiDb:
             status=OrderStatus.FILLED,
             price=1.222,
             deal_type=DealType.base_order,
-            total_commission=0,
         )
         fake_take_profit_order = FakeOrderTable(
             order_id="990",
@@ -333,14 +337,12 @@ class ApiDb:
             status=OrderStatus.FILLED,
             price=1.222,
             deal_type=DealType.take_profit,
-            total_commission=0,
         )
 
         paper_trading_bot = PaperTradingTable(
             pair="BTCUSDC",
-            balance_size_to_use=1,
-            fiat=1,
-            base_order_size=15,
+            fiat="USDC",
+            fiat_order_size=15,
             deal=deal,
             cooldown=0,
             logs=["Paper trading bot created"],
@@ -354,9 +356,6 @@ class ApiDb:
             trailing_deviation=0.63,
             trailing_profit=2.3,
             position=Position.long,
-            short_opening_price=0,
-            short_sell_price=0,
-            total_commission=0,
         )
         self.session.add(bot)
         self.session.add(paper_trading_bot)

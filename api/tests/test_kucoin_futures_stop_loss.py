@@ -4,6 +4,7 @@ from typing import Any, cast
 from uuid import uuid4
 
 import pytest
+from kucoin_universal_sdk.model.common import RestError
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import (
     AddOrderReq,
 )
@@ -1160,7 +1161,7 @@ def test_top_gainer_hard_stop_executes_without_liquidity_precheck():
     assert stop_calls == [99.0]
 
 
-def test_top_mover_hard_stop_cancels_native_backstop_before_reduce_only_close():
+def test_top_mover_hard_stop_cleans_native_backstop_after_reduce_only_close():
     events: list[str] = []
     deal = _make_deal()
     deal.active_bot.name = "top_gainer_early_momentum"
@@ -1186,9 +1187,46 @@ def test_top_mover_hard_stop_cancels_native_backstop_before_reduce_only_close():
 
     result = deal.execute_stop_loss(reference_price=99.0)
 
-    assert events == ["cancel_backstop", "sell"]
+    assert events == ["sell", "cancel_backstop"]
     assert result.status == Status.completed
     assert result.deal.closing_price == 97.9
+
+
+def test_top_mover_hard_stop_keeps_native_backstop_when_position_lookup_fails():
+    events: list[str] = []
+    deal = _make_deal()
+    deal.active_bot.name = "top_gainer_early_momentum"
+    deal.cancel_current_sl = lambda: events.append("cancel_backstop")
+    deal.current_position_quantity = lambda: (_ for _ in ()).throw(
+        RuntimeError("position lookup failed")
+    )
+
+    with pytest.raises(RuntimeError, match="position lookup failed"):
+        deal.execute_stop_loss(reference_price=99.0)
+
+    assert events == []
+
+
+def test_top_mover_hard_stop_keeps_native_backstop_when_close_fails():
+    events: list[str] = []
+    deal = _make_deal()
+    deal.active_bot.name = "top_gainer_early_momentum"
+    deal.current_position_quantity = lambda: 1
+    deal.cancel_current_sl = lambda: events.append("cancel_backstop")
+
+    def sell(**kwargs):
+        events.append("sell")
+        raise RestError(
+            msg="close failed",
+            response=types.SimpleNamespace(code=400100, message="close failed"),
+        )
+
+    deal.kucoin_futures_api = types.SimpleNamespace(sell=sell)
+
+    result = deal.execute_stop_loss(reference_price=99.0)
+
+    assert events == ["sell"]
+    assert result.status == Status.error
 
 
 def test_reconcile_exchange_sl_places_when_exchange_missing():
