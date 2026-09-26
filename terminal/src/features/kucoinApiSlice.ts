@@ -21,6 +21,45 @@ export interface KucoinFuturesContract {
   multiplier: number;
 }
 
+type KucoinFuturesKline = [
+  timestamp: number,
+  open: number | string,
+  high: number | string,
+  low: number | string,
+  close: number | string,
+  volume: number | string,
+  turnover: number | string,
+];
+
+type KucoinFuturesKlineResponse = {
+  code: string;
+  data: KucoinFuturesKline[];
+};
+
+export interface BtcCloseSeries {
+  symbol: "XBTUSDTM";
+  interval: "15m";
+  timestamp: string[];
+  close: number[];
+}
+
+export const transformBtcCloseSeries = ({
+  data,
+}: KucoinFuturesKlineResponse): BtcCloseSeries => {
+  const chronologicalCandles = [...data].sort(
+    (left, right) => left[0] - right[0],
+  );
+
+  return {
+    symbol: "XBTUSDTM",
+    interval: "15m",
+    timestamp: chronologicalCandles.map(([timestamp]) =>
+      new Date(timestamp).toISOString(),
+    ),
+    close: chronologicalCandles.map((candle) => Number(candle[4])),
+  };
+};
+
 /**
  * Kucoin Futures API slice
  *
@@ -33,6 +72,16 @@ export const kucoinApiSlice = createApi({
   }),
   reducerPath: "kucoinApi",
   endpoints: (build) => ({
+    btcCloseSeries: build.query<BtcCloseSeries, void>({
+      query: () => ({
+        url: import.meta.env.VITE_KUCOIN_BTC_KLINES || "/kline/query",
+        params: {
+          symbol: "XBTUSDTM",
+          granularity: 15,
+        },
+      }),
+      transformResponse: transformBtcCloseSeries,
+    }),
     futuresRankings: build.query<any, void>({
       query: () => ({
         url: `${import.meta.env.VITE_KUCOIN_TICKER_24}`,
@@ -72,5 +121,8 @@ export const kucoinApiSlice = createApi({
   }),
 });
 
-export const { useFuturesRankingsQuery, useFuturesContractQuery } =
-  kucoinApiSlice;
+export const {
+  useBtcCloseSeriesQuery,
+  useFuturesRankingsQuery,
+  useFuturesContractQuery,
+} = kucoinApiSlice;

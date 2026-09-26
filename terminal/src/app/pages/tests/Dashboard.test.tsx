@@ -65,15 +65,17 @@ vi.mock("../../../features/marketApiSlice", () => ({
     },
     isLoading: false,
   })),
-  useGainersLosersSeriesQuery: vi.fn(() => ({
-    data: [
-      {
-        source: "kucoin_futures",
-        recorded_at: "2026-08-10T10:00:00Z",
-        top_gainers: [],
-        top_losers: [],
-      },
-    ],
+}));
+
+vi.mock("../../../features/kucoinApiSlice", async (importOriginal) => ({
+  ...(await importOriginal()),
+  useBtcCloseSeriesQuery: vi.fn(() => ({
+    data: {
+      symbol: "XBTUSDTM",
+      interval: "15m",
+      timestamp: ["2026-08-10T10:00:00Z"],
+      close: [65000],
+    },
     isLoading: false,
   })),
 }));
@@ -108,8 +110,8 @@ vi.mock("../../components/MarketBreadthCard", () => ({
   default: () => <div>MarketBreadthCard</div>,
 }));
 
-vi.mock("../../components/GainersLosersSeriesCard", () => ({
-  default: () => <div>GainersLosersSeriesCard</div>,
+vi.mock("../../components/BitcoinPriceCard", () => ({
+  default: () => <div>BitcoinPriceCard</div>,
 }));
 
 describe("Dashboard page", () => {
@@ -141,7 +143,7 @@ describe("Dashboard page", () => {
       rtlScreen.getByText("MarketBreadthCard").closest(".col-lg-6"),
     ).toBeInTheDocument();
     expect(
-      rtlScreen.getByText("GainersLosersSeriesCard").closest(".col-lg-6"),
+      rtlScreen.getByText("BitcoinPriceCard").closest(".col-lg-6"),
     ).toBeInTheDocument();
   });
 
