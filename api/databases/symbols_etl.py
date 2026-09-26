@@ -119,8 +119,6 @@ class SymbolDataEtl(SymbolsCrud):
                             min_notional=min_notional,
                             price_precision=price_precision,
                             qty_precision=qty_precision,
-                            quote_asset=item.quote_currency,
-                            base_asset=item.base_currency,
                             is_margin_trading_allowed=False,
                             multiplier=multiplier,
                         )
@@ -144,8 +142,6 @@ class SymbolDataEtl(SymbolsCrud):
                             min_notional=min_notional,
                             price_precision=price_precision,
                             qty_precision=qty_precision,
-                            quote_asset=item.quote_currency,
-                            base_asset=item.base_currency,
                             is_margin_trading_allowed=False,
                             multiplier=multiplier,
                         )
@@ -185,8 +181,6 @@ class SymbolDataEtl(SymbolsCrud):
                                 min_notional=min_notional,
                                 price_precision=price_precision,
                                 qty_precision=qty_precision,
-                                quote_asset=item.quote_currency,
-                                base_asset=item.base_currency,
                                 is_margin_trading_allowed=item.is_margin_enabled,
                             )
                     continue
@@ -211,8 +205,6 @@ class SymbolDataEtl(SymbolsCrud):
                             min_notional=min_notional,
                             price_precision=price_precision,
                             qty_precision=qty_precision,
-                            quote_asset=item.quote_currency,
-                            base_asset=item.base_currency,
                             is_margin_trading_allowed=item.is_margin_enabled,
                         )
                     else:
@@ -234,8 +226,6 @@ class SymbolDataEtl(SymbolsCrud):
                             min_notional=min_notional,
                             price_precision=price_precision,
                             qty_precision=qty_precision,
-                            quote_asset=item.quote_currency,
-                            base_asset=item.base_currency,
                             is_margin_trading_allowed=item.is_margin_enabled,
                         )
 

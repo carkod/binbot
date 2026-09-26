@@ -3,9 +3,11 @@ from uuid import uuid4
 from urllib.parse import quote
 
 import pytest
+from pybinbot import UserRoles
 from api.databases.tables.user_table import UserTable
 from api.databases.utils import get_session
 from api.main import app
+from api.user.models.user import UserDetails
 from api.user.services.auth import decode_access_token
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
@@ -49,7 +51,7 @@ def add_user(session: Session, password: str = "secret123") -> UserTable:
     user = UserTable(
         email=f"user-{uuid4()}@example.com",
         password=password,
-        role="user",
+        role=UserRoles.user,
         full_name="Test User",
         username=f"user-{uuid4()}",
         description="Test description",
@@ -58,6 +60,19 @@ def add_user(session: Session, password: str = "secret123") -> UserTable:
     session.commit()
     session.refresh(user)
     return user
+
+
+def test_user_details_defaults_match_user_table() -> None:
+    details = UserDetails(email="defaults@example.com", password="secret123")
+    table = UserTable(email="defaults@example.com", password="secret123")
+
+    assert details.is_active == table.is_active
+    assert details.role == table.role
+    assert details.full_name == table.full_name
+    assert details.username == table.username
+    assert details.description == table.description
+    assert type(details.created_at) is type(table.created_at)
+    assert type(details.updated_at) is type(table.updated_at)
 
 
 def test_get_users_does_not_return_password(client: TestClient, test_engine) -> None:

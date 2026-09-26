@@ -8,6 +8,7 @@ from sqlmodel import Session, select
 from api.databases.symbols_etl import SymbolDataEtl
 from api.databases.tables.symbol_exchange_table import SymbolExchangeTable
 from api.databases.tables.symbol_table import SymbolTable
+from pybinbot import ExchangeId
 
 
 @pytest.fixture(autouse=True)
@@ -144,7 +145,7 @@ def test_upsert_exchange_link_refreshes_stale_multiplier(create_symbol_test_tabl
         session.add(
             SymbolExchangeTable(
                 symbol_id="DASHUSDTM",
-                exchange_id="kucoin",
+                exchange_id=ExchangeId.KUCOIN,
                 min_notional=5,
                 price_precision=3,
                 qty_precision=1,
@@ -157,12 +158,10 @@ def test_upsert_exchange_link_refreshes_stale_multiplier(create_symbol_test_tabl
         SymbolDataEtl().upsert_exchange_link(
             session,
             symbol="DASHUSDTM",
-            exchange_id="kucoin",
+            exchange_id=ExchangeId.KUCOIN,
             min_notional=99,
             price_precision=8,
             qty_precision=8,
-            quote_asset="USDT",
-            base_asset="DASH",
             is_margin_trading_allowed=True,
             multiplier=0.01,
         )
@@ -194,7 +193,7 @@ def test_upsert_exchange_link_without_multiplier_keeps_stored_value(
         session.add(
             SymbolExchangeTable(
                 symbol_id="ZENUSDTM",
-                exchange_id="kucoin",
+                exchange_id=ExchangeId.KUCOIN,
                 min_notional=5,
                 price_precision=3,
                 qty_precision=1,
@@ -207,12 +206,10 @@ def test_upsert_exchange_link_without_multiplier_keeps_stored_value(
         SymbolDataEtl().upsert_exchange_link(
             session,
             symbol="ZENUSDTM",
-            exchange_id="kucoin",
+            exchange_id=ExchangeId.KUCOIN,
             min_notional=5,
             price_precision=3,
             qty_precision=1,
-            quote_asset="USDT",
-            base_asset="ZEN",
             is_margin_trading_allowed=True,
         )
         session.commit()

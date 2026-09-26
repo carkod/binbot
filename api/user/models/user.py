@@ -9,23 +9,21 @@ from pybinbot import StandardResponse
 
 class UserDetails(BaseModel):
     email: EmailStr = Field(unique=True, index=True, max_length=255)
-    is_active: Optional[bool] = True
-    role: Optional[UserRoles] = Field(default=UserRoles.admin)
-    full_name: Optional[str] = Field(default="")
-    password: Optional[str] = Field(
-        min_length=8,
-        max_length=40,
-        description="Not using SecretStr because not supported by SQLModel",
+    is_active: bool = Field(default=True)
+    role: UserRoles = Field(default=UserRoles.user)
+    full_name: str = Field(
+        default="", description="For full name, use internal functions to compose"
     )
+    password: str = Field(min_length=8, max_length=40)
     # Email is the main identifier
     username: Optional[str] = Field(default="")
     description: Optional[str] = Field(default="")
-    created_at: Optional[int] = Field(default_factory=timestamp)
-    updated_at: Optional[int] = Field(default=timestamp())
+    created_at: str = Field(default_factory=timestamp)
+    updated_at: str = Field(default=timestamp())
 
     @field_validator("role")
     @classmethod
-    def validate_role(cls, v: str):
+    def validate_role(cls, v: UserRoles):
         if v not in UserRoles.__members__:
             raise ValueError(f"User role {v} must be one of {UserRoles.__members__}")
         return v
@@ -47,13 +45,19 @@ class CreateUser(UserDetails):
     # )
 
 
-class EditUserDetails(UserDetails):
+class EditUserDetails(BaseModel):
+    email: EmailStr
+    is_active: Optional[bool] = None
+    role: Optional[UserRoles] = None
+    full_name: Optional[str] = None
     password: Optional[str] = Field(
         default=None,
         min_length=8,
         max_length=40,
         description="Only supplied when changing the user's password",
     )
+    username: Optional[str] = None
+    description: Optional[str] = None
 
 
 class LoginRequest(BaseModel):

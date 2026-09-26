@@ -86,7 +86,7 @@ class BotTableCrud:
             return bot
 
         # Step 1: Copy BotModel fields (except relationships)
-        bot_table = BotTable()
+        bot_table = BotTable(pair=bot.pair)
         for field_name in BotTable.model_fields.keys():
             if field_name in {
                 "deal",

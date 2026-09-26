@@ -8,7 +8,9 @@ from api.databases.tables.symbol_table import SymbolTable
 class SymbolExchangeTable(SQLModel, table=True):
     __tablename__ = "symbol_exchange"
 
-    id: int = Field(primary_key=True, sa_column_kwargs={"autoincrement": True})
+    id: int | None = Field(
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
+    )
     exchange_id: ExchangeId = Field(
         sa_column=Column(Enum(ExchangeId, name="exchange_id_enum"))
     )
