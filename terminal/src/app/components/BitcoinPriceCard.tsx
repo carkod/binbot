@@ -2,6 +2,7 @@ import moment from "moment";
 import { type FC } from "react";
 import { Badge, Card, Col, Row } from "react-bootstrap";
 import type { BtcCloseSeries } from "../../features/kucoinApiSlice";
+import { timestampBucket } from "../../utils/math";
 import PlotlyChart from "./PlotlyChart";
 
 type BitcoinPriceCardProps = {
@@ -11,22 +12,21 @@ type BitcoinPriceCardProps = {
 
 const FIFTEEN_MINUTES_MS = 15 * 60 * 1000;
 
-const timestampBucket = (timestamp: string) =>
-  Math.floor(new Date(timestamp).getTime() / FIFTEEN_MINUTES_MS);
-
 const BitcoinPriceCard: FC<BitcoinPriceCardProps> = ({
   btcCloseSeries,
   marketBreadthTimestamps,
 }) => {
   const closeByTimestamp = new Map(
     btcCloseSeries.timestamp.map((timestamp, index) => [
-      timestampBucket(timestamp),
+      timestampBucket(timestamp, FIFTEEN_MINUTES_MS),
       btcCloseSeries.close[index],
     ]),
   );
   const timestamps = [...marketBreadthTimestamps].reverse();
   const closePrices = timestamps.map(
-    (timestamp) => closeByTimestamp.get(timestampBucket(timestamp)) ?? null,
+    (timestamp) =>
+      closeByTimestamp.get(timestampBucket(timestamp, FIFTEEN_MINUTES_MS)) ??
+      null,
   );
   const latestClose = [...closePrices]
     .reverse()
