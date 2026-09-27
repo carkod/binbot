@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo, useState, type FC } from "react";
+import { useMemo, type FC } from "react";
 import { Card, Col, Row, Table } from "react-bootstrap";
 import {
   useGetBalanceQuery,
@@ -8,10 +8,8 @@ import {
   useGetBotsQuery,
   useGetAlgoRankingQuery,
 } from "../../features/bots/botsApiSlice";
-import {
-  useGainersLosersSeriesQuery,
-  useMarketBreadthSeriesQuery,
-} from "../../features/marketApiSlice";
+import { useMarketBreadthSeriesQuery } from "../../features/marketApiSlice";
+import { useBtcCloseSeriesQuery } from "../../features/kucoinApiSlice";
 import { useGetSignalsQuery } from "../../features/signalsApiSlice";
 import type {
   BalanceData,
@@ -20,29 +18,21 @@ import type {
 import { BotStatus, MarketType } from "../../utils/enums";
 import { roundDecimals } from "../../utils/math";
 import { formatTimestamp } from "../../utils/time";
-import { getNetProfit } from "../../features/bots/profits";
 import GainersLosers from "../components/GainersLosers";
 import PortfolioBenchmarkChart from "../components/PortfolioBenchmark";
-import { SpinnerContext } from "../spinner-context";
 import MarketBreadthCard from "../components/MarketBreadthCard";
-import GainersLosersSeriesCard from "../components/GainersLosersSeriesCard";
+import BitcoinPriceCard from "../components/BitcoinPriceCard";
+import CardLoadingSpinner from "../components/CardLoadingSpinner";
 import {
   useFilteredFuturesRankings,
   useFilteredGainerLosers,
 } from "../filter-gainers-losers";
+import { useBinquantStrategyNames } from "../hooks/useBinquantStrategyNames";
 
 type PortfolioPnlDetails = {
   portfolioPnlValue: number | undefined;
   portfolioPnlPercentage: number | undefined;
   portfolioPnlClass: string;
-};
-
-type SymbolConcentrationDetails = {
-  top_1_symbol_pnl_share: number | undefined;
-  top_3_symbol_pnl_share: number | undefined;
-  symbol_hhi: number | undefined;
-  effective_symbol_count: number | undefined;
-  symbol_count: number;
 };
 
 const usePortfolioPnlDetails = (
@@ -95,13 +85,6 @@ export const DashboardPage: FC<{}> = () => {
     useGetBotsQuery({
       status: BotStatus.ACTIVE,
     });
-  const { data: errorBotEntities, isLoading: loadingErrorBots } =
-    useGetBotsQuery({
-      status: BotStatus.ACTIVE,
-    });
-  const { data: allBotEntities, isLoading: loadingAllBots } = useGetBotsQuery({
-    status: BotStatus.ALL,
-  });
   const { data: benchmark, isLoading: loadingBenchmark } =
     useGetBenchmarkQuery();
 
@@ -115,92 +98,39 @@ export const DashboardPage: FC<{}> = () => {
 
   const { data: marketBreadthSeries, isLoading: loadingMarketBreadthSeries } =
     useMarketBreadthSeriesQuery();
-  const { data: gainersLosersSeries, isLoading: loadingGainersLosersSeries } =
-    useGainersLosersSeriesQuery();
+  const { data: btcCloseSeries, isLoading: loadingBtcCloseSeries } =
+    useBtcCloseSeriesQuery();
 
   const { data: algoRanking, isLoading: loadingAlgoRanking } =
     useGetAlgoRankingQuery();
+  const {
+    strategyNames,
+    isLoading: loadingStrategyNames,
+    error: strategyNamesError,
+  } = useBinquantStrategyNames();
   const { data: signals, isLoading: loadingSignals } = useGetSignalsQuery({
     limit: 1000,
   });
 
-  const [activeBotsCount, setActiveBotsCount] = useState(0);
-  const [errorBotsCount, setErrorBotsCount] = useState(0);
-
-  const { spinner, setSpinner } = useContext(SpinnerContext);
+  const activeBotsCount = activeBotEntities?.bots.ids.length ?? 0;
   const { portfolioPnlValue, portfolioPnlPercentage, portfolioPnlClass } =
     usePortfolioPnlDetails(benchmark, accountData);
   const portfolioSharpe = benchmark?.portfolioStats?.sharpe;
   const netTotalBalance = accountData?.estimated_total_fiat ?? 0;
   const btcSharpe = benchmark?.portfolioStats?.btc_sharpe;
-  const topAlgoCounts = new Set(
-    algoRanking
-      ?.map(({ count }) => count)
-      .sort((a, b) => b - a)
-      .slice(0, 3) ?? [],
+  const filteredAlgoRanking = useMemo(
+    () =>
+      algoRanking?.filter(({ name }) =>
+        strategyNames.has(name.toLowerCase()),
+      ) ?? [],
+    [algoRanking, strategyNames],
   );
-  const symbolConcentration = useMemo<SymbolConcentrationDetails>(() => {
-    const symbolPnl = new Map<string, number>();
-
-    Object.values(allBotEntities?.bots.entities ?? {}).forEach((bot) => {
-      if (!bot?.pair) return;
-
-      symbolPnl.set(
-        bot.pair,
-        (symbolPnl.get(bot.pair) ?? 0) + getNetProfit(bot),
-      );
-    });
-
-    const absolutePnlBySymbol = [...symbolPnl.values()]
-      .map((pnl) => Math.abs(pnl))
-      .filter((pnl) => pnl > 0);
-    const totalAbsolutePnl = absolutePnlBySymbol.reduce(
-      (total, pnl) => total + pnl,
-      0,
-    );
-
-    if (totalAbsolutePnl <= 0) {
-      return {
-        top_1_symbol_pnl_share: undefined,
-        top_3_symbol_pnl_share: undefined,
-        symbol_hhi: undefined,
-        effective_symbol_count: undefined,
-        symbol_count: symbolPnl.size,
-      };
-    }
-
-    const pnlShares = absolutePnlBySymbol
-      .map((pnl) => pnl / totalAbsolutePnl)
-      .sort((left, right) => right - left);
-    const symbol_hhi = pnlShares.reduce(
-      (total, share) => total + share * share,
-      0,
-    );
-
-    return {
-      top_1_symbol_pnl_share: (pnlShares[0] ?? 0) * 100,
-      top_3_symbol_pnl_share:
-        pnlShares.slice(0, 3).reduce((total, share) => total + share, 0) * 100,
-      symbol_hhi,
-      effective_symbol_count: symbol_hhi > 0 ? 1 / symbol_hhi : undefined,
-      symbol_count: pnlShares.length,
-    };
-  }, [allBotEntities]);
-  const {
-    top_1_symbol_pnl_share,
-    top_3_symbol_pnl_share,
-    symbol_hhi,
-    effective_symbol_count,
-    symbol_count,
-  } = symbolConcentration;
-  const symbolConcentrationClass =
-    top_1_symbol_pnl_share === undefined
-      ? ""
-      : top_1_symbol_pnl_share < 50
-        ? "text-success"
-        : top_1_symbol_pnl_share < 75
-          ? "text-warning"
-          : "text-danger";
+  const topAlgoCounts = new Set(
+    filteredAlgoRanking
+      .map(({ count }) => count)
+      .sort((a, b) => b - a)
+      .slice(0, 3),
+  );
   const rankedSignalAlgorithms = useMemo(() => {
     const algorithms = new Map<
       string,
@@ -244,55 +174,59 @@ export const DashboardPage: FC<{}> = () => {
     });
   }, [signals]);
 
-  useEffect(() => {
-    if (activeBotEntities) {
-      setActiveBotsCount(activeBotEntities.bots.ids.length);
-      setErrorBotsCount(0);
-    }
-
-    if (
-      !loadingActiveBots &&
-      !loadingAllBots &&
-      !loadingBenchmark &&
-      !loadingEstimates &&
-      !loadingErrorBots &&
-      !loadingCombined &&
-      !loadingFuturesRankings &&
-      !loadingMarketBreadthSeries &&
-      !loadingGainersLosersSeries &&
-      !loadingAlgoRanking &&
-      !loadingSignals
-    ) {
-      setSpinner(false);
-    } else {
-      setSpinner(true);
-    }
-  }, [
-    accountData,
-    activeBotEntities,
-    allBotEntities,
-    errorBotEntities,
-    benchmark,
-    combinedGainersLosers,
-    combinedFuturesRankings,
-    loadingActiveBots,
-    loadingAllBots,
-    loadingBenchmark,
-    loadingEstimates,
-    loadingErrorBots,
-    loadingCombined,
-    loadingMarketBreadthSeries,
-    loadingGainersLosersSeries,
-    loadingFuturesRankings,
-    loadingAlgoRanking,
-    loadingSignals,
-  ]);
-
   return (
     <div className="content">
       <Row>
         <Col lg="3" xs="12">
-          {accountData && (
+          {loadingEstimates ? (
+            <CardLoadingSpinner label="total balance" />
+          ) : (
+            accountData && (
+              <Card>
+                <Card.Body>
+                  <Row>
+                    <Col
+                      md="4"
+                      xs="5"
+                      className="d-flex justify-content-center align-items-center"
+                    >
+                      <div className="fs-1">
+                        <i className="fa-solid fa-money-bill" />
+                      </div>
+                    </Col>
+                    <Col md="8" xs="7">
+                      <p className="text-body-secondary text-end">
+                        Total Balance
+                      </p>
+                      <Card.Title as="h3" className="fs-4 text-end text-info">
+                        {roundDecimals(netTotalBalance, 2)}{" "}
+                        {accountData.fiat_currency}
+                      </Card.Title>
+                    </Col>
+                  </Row>
+                </Card.Body>
+                <Card.Footer className="pt-0">
+                  <hr className="mt-0" />
+                  <Row>
+                    <Col>
+                      <p className="text-body-secondary fs-7 lh-1">
+                        Left to allocate:
+                      </p>
+                    </Col>
+                    <Col>
+                      <p className="text-body-secondary text-end">
+                        {roundDecimals(accountData.fiat_available)}{" "}
+                        {accountData.fiat_currency}
+                      </p>
+                    </Col>
+                  </Row>
+                </Card.Footer>
+              </Card>
+            )
+          )}
+          {loadingEstimates || loadingBenchmark ? (
+            <CardLoadingSpinner label="profit and loss" />
+          ) : (
             <Card>
               <Card.Body>
                 <Row>
@@ -301,18 +235,34 @@ export const DashboardPage: FC<{}> = () => {
                     xs="5"
                     className="d-flex justify-content-center align-items-center"
                   >
-                    <div className="fs-1">
-                      <i className="fa-solid fa-money-bill" />
+                    <div className="text-center fs-1">
+                      <i
+                        className={`${portfolioPnlClass} fa-solid fa-building-columns`}
+                      />
                     </div>
                   </Col>
                   <Col md="8" xs="7">
-                    <p className="text-body-secondary text-end">
-                      Total Balance
-                    </p>
-                    <Card.Title as="h3" className="fs-4 text-end text-info">
-                      {roundDecimals(netTotalBalance, 2)}{" "}
-                      {accountData.fiat_currency}
+                    <div>
+                      <p className="text-end text-body-secondary">
+                        <span
+                          className={`u-live-dot me-2 ${
+                            portfolioPnlClass || "text-body-secondary"
+                          }`}
+                          aria-label="Live balance indicator"
+                          role="img"
+                          title="Current real-time value compared to the last balance snapshot"
+                        />
+                        Profit &amp; Loss
+                      </p>
+                    </div>
+                    <Card.Title
+                      as="h3"
+                      className={`${portfolioPnlClass} fs-4 text-end`}
+                    >
+                      {portfolioPnlPercentage !== undefined &&
+                        `${roundDecimals(portfolioPnlPercentage)}%`}
                     </Card.Title>
+                    <p />
                   </Col>
                 </Row>
               </Card.Body>
@@ -320,391 +270,301 @@ export const DashboardPage: FC<{}> = () => {
                 <hr className="mt-0" />
                 <Row>
                   <Col>
-                    <p className="text-body-secondary fs-7 lh-1">
-                      Left to allocate:
-                    </p>
+                    <p>(Last balance - Current real time)</p>
                   </Col>
                   <Col>
-                    <p className="text-body-secondary text-end">
-                      {roundDecimals(accountData.fiat_available)}{" "}
-                      {accountData.fiat_currency}
+                    <p className="text-end">
+                      {portfolioPnlValue !== undefined &&
+                        `${roundDecimals(portfolioPnlValue)} USDC`}
                     </p>
                   </Col>
                 </Row>
               </Card.Footer>
             </Card>
           )}
-          <Card>
-            <Card.Body>
-              <Row>
-                <Col
-                  md="4"
-                  xs="5"
-                  className="d-flex justify-content-center align-items-center"
-                >
-                  <div className="text-center fs-1">
-                    <i
-                      className={`${portfolioPnlClass} fa-solid fa-building-columns`}
-                    />
-                  </div>
-                </Col>
-                <Col md="8" xs="7">
-                  <div>
-                    <p className="text-end text-body-secondary">
-                      <span
-                        className={`u-live-dot me-2 ${
-                          portfolioPnlClass || "text-body-secondary"
-                        }`}
-                        aria-label="Live balance indicator"
-                        role="img"
-                        title="Current real-time value compared to the last balance snapshot"
-                      />
-                      Profit &amp; Loss
-                    </p>
-                  </div>
-                  <Card.Title
-                    as="h3"
-                    className={`${portfolioPnlClass} fs-4 text-end`}
+          {loadingBenchmark ? (
+            <CardLoadingSpinner label="Sharpe ratio" />
+          ) : (
+            <Card>
+              <Card.Body>
+                <Row>
+                  <Col
+                    md="4"
+                    xs="5"
+                    className="d-flex justify-content-center align-items-center"
                   >
-                    {portfolioPnlPercentage !== undefined &&
-                      `${roundDecimals(portfolioPnlPercentage)}%`}
-                  </Card.Title>
-                  <p />
-                </Col>
-              </Row>
-            </Card.Body>
-            <Card.Footer className="pt-0">
-              <hr className="mt-0" />
-              <Row>
-                <Col>
-                  <p>(Last balance - Current real time)</p>
-                </Col>
-                <Col>
-                  <p className="text-end">
-                    {portfolioPnlValue !== undefined &&
-                      `${roundDecimals(portfolioPnlValue)} USDC`}
-                  </p>
-                </Col>
-              </Row>
-            </Card.Footer>
-          </Card>
-          <Card>
-            <Card.Body>
-              <Row>
-                <Col
-                  md="4"
-                  xs="5"
-                  className="d-flex justify-content-center align-items-center"
-                >
-                  <div className="text-center fs-1">
-                    <i
+                    <div className="text-center fs-1">
+                      <i
+                        className={`${
+                          (portfolioSharpe ?? 0) > 0
+                            ? "text-success"
+                            : "text-danger"
+                        } fa-solid fa-chart-line`}
+                      />
+                    </div>
+                  </Col>
+                  <Col md="8" xs="7">
+                    <div>
+                      <p className="text-end text-body-secondary">
+                        Sharpe ratio
+                      </p>
+                    </div>
+                    <Card.Title
+                      as="h3"
                       className={`${
                         (portfolioSharpe ?? 0) > 0
                           ? "text-success"
                           : "text-danger"
-                      } fa-solid fa-chart-line`}
-                    />
-                  </div>
-                </Col>
-                <Col md="8" xs="7">
-                  <div>
-                    <p className="text-end text-body-secondary">Sharpe ratio</p>
-                  </div>
-                  <Card.Title
-                    as="h3"
-                    className={`${
-                      (portfolioSharpe ?? 0) > 0
-                        ? "text-success"
-                        : "text-danger"
-                    } fs-4 text-end`}
-                  >
-                    {portfolioSharpe !== undefined
-                      ? roundDecimals(portfolioSharpe)
-                      : ""}
-                  </Card.Title>
-                  <p />
-                </Col>
-              </Row>
-            </Card.Body>
-            <Card.Footer className="pt-0">
-              <hr className="mt-0" />
-              <Row>
-                <Col>
-                  <p>(How efficient are we with risk?)</p>
-                </Col>
-                <Col>
-                  <p className="text-end">
-                    {btcSharpe !== undefined
-                      ? `${roundDecimals(btcSharpe)} BTC`
-                      : ""}
-                  </p>
-                </Col>
-              </Row>
-            </Card.Footer>
-          </Card>
-          <Card>
-            <Card.Body>
-              <Row>
-                <Col
-                  md="4"
-                  xs="5"
-                  className="d-flex justify-content-center align-items-center"
-                >
-                  <div className="text-center fs-1">
-                    <i
-                      className={`${symbolConcentrationClass || "text-body-secondary"} fa-solid fa-chart-pie`}
-                    />
-                  </div>
-                </Col>
-                <Col md="8" xs="7">
-                  <div>
-                    <p className="text-end text-body-secondary">
-                      Symbol concentration
-                    </p>
-                  </div>
-                  <Card.Title
-                    as="h3"
-                    className={`${symbolConcentrationClass} fs-4 text-end`}
-                  >
-                    {top_1_symbol_pnl_share !== undefined
-                      ? `${roundDecimals(top_1_symbol_pnl_share, 2)}%`
-                      : ""}
-                  </Card.Title>
-                  <p />
-                </Col>
-              </Row>
-            </Card.Body>
-            <Card.Footer className="pt-0">
-              <hr className="mt-0" />
-              <Row>
-                <Col>
-                  <p>top_1_symbol_pnl_share</p>
-                </Col>
-                <Col>
-                  <p className="text-end">bot PnL</p>
-                </Col>
-              </Row>
-              <Row>
-                <Col>
-                  <p>top_3_symbol_pnl_share</p>
-                </Col>
-                <Col>
-                  <p className="text-end">
-                    {top_3_symbol_pnl_share !== undefined
-                      ? `${roundDecimals(top_3_symbol_pnl_share, 2)}%`
-                      : ""}
-                  </p>
-                </Col>
-              </Row>
-              <Row>
-                <Col>
-                  <p>effective_symbol_count</p>
-                </Col>
-                <Col>
-                  <p className="text-end">
-                    {effective_symbol_count !== undefined
-                      ? `${roundDecimals(effective_symbol_count, 2)} / ${symbol_count}`
-                      : ""}
-                  </p>
-                </Col>
-              </Row>
-              <Row>
-                <Col>
-                  <p>symbol_hhi</p>
-                </Col>
-                <Col>
-                  <p className="text-end">
-                    {symbol_hhi !== undefined
-                      ? roundDecimals(symbol_hhi, 4)
-                      : ""}
-                  </p>
-                </Col>
-              </Row>
-            </Card.Footer>
-          </Card>
-          {activeBotsCount > 0 && (
-            <Card>
-              <Card.Body>
-                <Row>
-                  <Col md="12">
-                    <div className="stats">
-                      <Row>
-                        <Col
-                          md="4"
-                          xs="5"
-                          className="d-flex justify-content-center align-items-center"
-                        >
-                          <div>
-                            <i className="fa-solid fa-laptop-code text-success fs-1" />
-                          </div>
-                        </Col>
-                        <Col md="8" xs="7">
-                          <p className="text-end">Active bots</p>
-                          <Card.Title as="h3" className="text-end">
-                            {activeBotsCount}
-                          </Card.Title>
-                        </Col>
-                      </Row>
-                    </div>
+                      } fs-4 text-end`}
+                    >
+                      {portfolioSharpe !== undefined
+                        ? roundDecimals(portfolioSharpe)
+                        : ""}
+                    </Card.Title>
+                    <p />
                   </Col>
                 </Row>
               </Card.Body>
               <Card.Footer className="pt-0">
                 <hr className="mt-0" />
-                {errorBotsCount > 0 && (
-                  <Row>
-                    <Col>
-                      <p className="">Errors:</p>
-                    </Col>
-                    <Col>
-                      <p
-                        className={`${errorBotsCount > 0 && "text-danger"} text-end`}
-                      >
-                        {errorBotsCount}{" "}
-                      </p>
-                    </Col>
-                  </Row>
-                )}
+                <Row>
+                  <Col>
+                    <p>(How efficient are we with risk?)</p>
+                  </Col>
+                  <Col>
+                    <p className="text-end">
+                      {btcSharpe !== undefined
+                        ? `${roundDecimals(btcSharpe)} BTC`
+                        : ""}
+                    </p>
+                  </Col>
+                </Row>
               </Card.Footer>
             </Card>
           )}
+          {loadingActiveBots ? (
+            <CardLoadingSpinner label="active bots" />
+          ) : (
+            activeBotsCount > 0 && (
+              <Card>
+                <Card.Body>
+                  <Row>
+                    <Col md="12">
+                      <div className="stats">
+                        <Row>
+                          <Col
+                            md="4"
+                            xs="5"
+                            className="d-flex justify-content-center align-items-center"
+                          >
+                            <div>
+                              <i className="fa-solid fa-laptop-code text-success fs-1" />
+                            </div>
+                          </Col>
+                          <Col md="8" xs="7">
+                            <p className="text-end">Active bots</p>
+                            <Card.Title as="h3" className="text-end">
+                              {activeBotsCount}
+                            </Card.Title>
+                          </Col>
+                        </Row>
+                      </div>
+                    </Col>
+                  </Row>
+                </Card.Body>
+                <Card.Footer className="pt-0">
+                  <hr className="mt-0" />
+                </Card.Footer>
+              </Card>
+            )
+          )}
         </Col>
         <Col lg="9" xs="12" sm="12">
-          {benchmark?.percentageSeries.datesSeries && (
-            <PortfolioBenchmarkChart chartData={benchmark.percentageSeries} />
+          {loadingBenchmark ? (
+            <CardLoadingSpinner label="portfolio benchmark" />
+          ) : (
+            benchmark?.percentageSeries.datesSeries && (
+              <PortfolioBenchmarkChart chartData={benchmark.percentageSeries} />
+            )
           )}
         </Col>
       </Row>
       <Row>
         <Col lg="6" md="12">
-          {combinedGainersLosers?.length > 0 && (
-            <GainersLosers data={combinedGainersLosers} />
+          {loadingCombined ? (
+            <CardLoadingSpinner label="spot gainers and losers" />
+          ) : (
+            combinedGainersLosers?.length > 0 && (
+              <GainersLosers data={combinedGainersLosers} />
+            )
           )}
         </Col>
         <Col lg="6" md="12">
-          {combinedFuturesRankings?.length > 0 && (
-            <GainersLosers
-              data={combinedFuturesRankings}
-              market_type={MarketType.FUTURES}
-            />
+          {loadingFuturesRankings ? (
+            <CardLoadingSpinner label="futures gainers and losers" />
+          ) : (
+            combinedFuturesRankings?.length > 0 && (
+              <GainersLosers
+                data={combinedFuturesRankings}
+                market_type={MarketType.FUTURES}
+              />
+            )
           )}
         </Col>
       </Row>
       <Row>
         <Col lg="6" md="12">
-          {marketBreadthSeries?.market_breadth && (
-            <MarketBreadthCard
-              marketBreadth={marketBreadthSeries.market_breadth}
-              marketBreadthMa={marketBreadthSeries.market_breadth_ma}
-              strengthIndex={marketBreadthSeries.strength_index}
-              timestamps={marketBreadthSeries.timestamp}
-            />
+          {loadingMarketBreadthSeries ? (
+            <CardLoadingSpinner label="market breadth trend" />
+          ) : (
+            marketBreadthSeries?.market_breadth && (
+              <MarketBreadthCard
+                marketBreadth={marketBreadthSeries.market_breadth}
+                marketBreadthMa={marketBreadthSeries.market_breadth_ma}
+                strengthIndex={marketBreadthSeries.strength_index}
+                timestamps={marketBreadthSeries.timestamp}
+              />
+            )
           )}
         </Col>
         <Col lg="6" md="12">
-          {gainersLosersSeries && gainersLosersSeries.length > 0 && (
-            <GainersLosersSeriesCard snapshots={gainersLosersSeries} />
+          {loadingBtcCloseSeries || loadingMarketBreadthSeries ? (
+            <CardLoadingSpinner label="Bitcoin price trend" />
+          ) : (
+            btcCloseSeries &&
+            marketBreadthSeries?.timestamp && (
+              <BitcoinPriceCard
+                btcCloseSeries={btcCloseSeries}
+                marketBreadthTimestamps={marketBreadthSeries.timestamp}
+              />
+            )
           )}
         </Col>
       </Row>
       <Row>
-        {algoRanking && algoRanking.length > 0 && (
+        {(loadingAlgoRanking ||
+          loadingStrategyNames ||
+          strategyNamesError ||
+          filteredAlgoRanking.length > 0) && (
           <Col lg="6" md="12">
-            <Card>
-              <Card.Header>
-                <Card.Title as="h5" className="d-flex align-items-center gap-2">
-                  <i className="fa-solid fa-trophy text-warning" />
-                  <span>Algorithm Ranking</span>
-                </Card.Title>
-                <Card.Text className="text-body-secondary">
-                  These are the algorithms executed by Binquant through
-                  autotrade
-                </Card.Text>
-              </Card.Header>
-              <Card.Body>
-                <Table hover responsive size="sm">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Name</th>
-                      <th className="text-end">Count</th>
-                      <th className="text-end">
-                        Profit ({accountData?.fiat_currency})
-                      </th>
-                      <th className="text-end">Performance</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {algoRanking.map(({ name, count, bot_profit }, index) => (
-                      <tr
-                        key={name}
-                        className={
-                          topAlgoCounts.has(count)
-                            ? "table-secondary text-white"
-                            : ""
-                        }
-                      >
-                        <td>{index + 1}</td>
-                        <td>{name}</td>
-                        <td className="text-end">{count}</td>
-                        <td className="text-end">
-                          {roundDecimals(bot_profit, 2)}%
-                        </td>
-                        <td className="text-end">
-                          {count > 0
-                            ? ((bot_profit / count) * 100).toFixed(2) + "%"
-                            : ""}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              </Card.Body>
-            </Card>
+            {loadingAlgoRanking || loadingStrategyNames ? (
+              <CardLoadingSpinner label="algorithm ranking" />
+            ) : (
+              <Card>
+                <Card.Header>
+                  <Card.Title
+                    as="h5"
+                    className="d-flex align-items-center gap-2"
+                  >
+                    <i className="fa-solid fa-trophy text-warning" />
+                    <span>Algorithm Ranking</span>
+                  </Card.Title>
+                  <Card.Text className="text-body-secondary">
+                    These are the algorithms executed by Binquant through
+                    autotrade
+                  </Card.Text>
+                </Card.Header>
+                <Card.Body>
+                  {strategyNamesError ? (
+                    <p className="text-danger" role="alert">
+                      {strategyNamesError}
+                    </p>
+                  ) : (
+                    <Table hover responsive size="sm">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Name</th>
+                          <th className="text-end">Count</th>
+                          <th className="text-end">
+                            Profit ({accountData?.fiat_currency})
+                          </th>
+                          <th className="text-end">Performance</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredAlgoRanking.map(
+                          ({ name, count, bot_profit }, index) => (
+                            <tr
+                              key={name}
+                              className={
+                                topAlgoCounts.has(count)
+                                  ? "table-secondary text-white"
+                                  : ""
+                              }
+                            >
+                              <td>{index + 1}</td>
+                              <td>{name}</td>
+                              <td className="text-end">{count}</td>
+                              <td className="text-end">
+                                {roundDecimals(bot_profit, 2)}%
+                              </td>
+                              <td className="text-end">
+                                {count > 0
+                                  ? ((bot_profit / count) * 100).toFixed(2) +
+                                    "%"
+                                  : ""}
+                              </td>
+                            </tr>
+                          ),
+                        )}
+                      </tbody>
+                    </Table>
+                  )}
+                </Card.Body>
+              </Card>
+            )}
           </Col>
         )}
-        {rankedSignalAlgorithms.length > 0 && (
+        {(loadingSignals || rankedSignalAlgorithms.length > 0) && (
           <Col lg="6" md="12">
-            <Card>
-              <Card.Header>
-                <Card.Title as="h5" className="d-flex align-items-center gap-2">
-                  <i className="fa-solid fa-signal text-info" />
-                  <span>Signal Ranking</span>
-                </Card.Title>
-                <Card.Text className="text-body-secondary">
-                  Latest strategy signals ranked by algorithm frequency
-                </Card.Text>
-              </Card.Header>
-              <Card.Body>
-                <Table hover responsive size="sm">
-                  <thead>
-                    <tr>
-                      <th>Algorithm</th>
-                      <th>Generated</th>
-                      <th>Regime</th>
-                      <th className="text-end">Count</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rankedSignalAlgorithms.map(
-                      ({
-                        algorithm_name,
-                        generated_at,
-                        current_regime,
-                        count,
-                      }) => (
-                        <tr key={algorithm_name}>
-                          <td>{algorithm_name}</td>
-                          <td>{formatTimestamp(generated_at)}</td>
-                          <td>{current_regime || "-"}</td>
-                          <td className="text-end">{count}</td>
-                        </tr>
-                      ),
-                    )}
-                  </tbody>
-                </Table>
-              </Card.Body>
-            </Card>
+            {loadingSignals ? (
+              <CardLoadingSpinner label="signal ranking" />
+            ) : (
+              <Card>
+                <Card.Header>
+                  <Card.Title
+                    as="h5"
+                    className="d-flex align-items-center gap-2"
+                  >
+                    <i className="fa-solid fa-signal text-info" />
+                    <span>Signal Ranking</span>
+                  </Card.Title>
+                  <Card.Text className="text-body-secondary">
+                    Latest strategy signals ranked by algorithm frequency
+                  </Card.Text>
+                </Card.Header>
+                <Card.Body>
+                  <Table hover responsive size="sm">
+                    <thead>
+                      <tr>
+                        <th>Algorithm</th>
+                        <th>Generated</th>
+                        <th>Regime</th>
+                        <th className="text-end">Count</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rankedSignalAlgorithms.map(
+                        ({
+                          algorithm_name,
+                          generated_at,
+                          current_regime,
+                          count,
+                        }) => (
+                          <tr key={algorithm_name}>
+                            <td>{algorithm_name}</td>
+                            <td>{formatTimestamp(generated_at)}</td>
+                            <td>{current_regime || "-"}</td>
+                            <td className="text-end">{count}</td>
+                          </tr>
+                        ),
+                      )}
+                    </tbody>
+                  </Table>
+                </Card.Body>
+              </Card>
+            )}
           </Col>
         )}
       </Row>

@@ -3,9 +3,23 @@ import { screen as rtlScreen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 import DashboardPage from "../Dashboard";
-import { SpinnerContext } from "../../spinner-context";
 import { renderWithProviders } from "../../../utils/test-utils";
 import { useGetSignalsQuery } from "../../../features/signalsApiSlice";
+import {
+  useGetBalanceQuery,
+  useGetBenchmarkQuery,
+} from "../../../features/balanceApiSlice";
+import {
+  useGetAlgoRankingQuery,
+  useGetBotsQuery,
+} from "../../../features/bots/botsApiSlice";
+import { useMarketBreadthSeriesQuery } from "../../../features/marketApiSlice";
+import { useBtcCloseSeriesQuery } from "../../../features/kucoinApiSlice";
+import {
+  useFilteredFuturesRankings,
+  useFilteredGainerLosers,
+} from "../../filter-gainers-losers";
+import { useBinquantStrategyNames } from "../../hooks/useBinquantStrategyNames";
 
 vi.mock("../../../features/balanceApiSlice", () => ({
   useGetBalanceQuery: vi.fn(() => ({
@@ -65,15 +79,17 @@ vi.mock("../../../features/marketApiSlice", () => ({
     },
     isLoading: false,
   })),
-  useGainersLosersSeriesQuery: vi.fn(() => ({
-    data: [
-      {
-        source: "kucoin_futures",
-        recorded_at: "2026-08-10T10:00:00Z",
-        top_gainers: [],
-        top_losers: [],
-      },
-    ],
+}));
+
+vi.mock("../../../features/kucoinApiSlice", async (importOriginal) => ({
+  ...(await importOriginal()),
+  useBtcCloseSeriesQuery: vi.fn(() => ({
+    data: {
+      symbol: "XBTUSDTM",
+      interval: "15m",
+      timestamp: ["2026-08-10T10:00:00Z"],
+      close: [65000],
+    },
     isLoading: false,
   })),
 }));
@@ -96,6 +112,14 @@ vi.mock("../../filter-gainers-losers", () => ({
   })),
 }));
 
+vi.mock("../../hooks/useBinquantStrategyNames", () => ({
+  useBinquantStrategyNames: vi.fn(() => ({
+    strategyNames: new Set<string>(),
+    isLoading: false,
+    error: undefined,
+  })),
+}));
+
 vi.mock("../../components/GainersLosers", () => ({
   default: () => <div>GainersLosers</div>,
 }));
@@ -108,19 +132,15 @@ vi.mock("../../components/MarketBreadthCard", () => ({
   default: () => <div>MarketBreadthCard</div>,
 }));
 
-vi.mock("../../components/GainersLosersSeriesCard", () => ({
-  default: () => <div>GainersLosersSeriesCard</div>,
+vi.mock("../../components/BitcoinPriceCard", () => ({
+  default: () => <div>BitcoinPriceCard</div>,
 }));
 
 describe("Dashboard page", () => {
   const renderDashboard = () =>
     renderWithProviders(
       <MemoryRouter>
-        <SpinnerContext.Provider
-          value={{ spinner: false, setSpinner: vi.fn() }}
-        >
-          <DashboardPage />
-        </SpinnerContext.Provider>
+        <DashboardPage />
       </MemoryRouter>,
     );
 
@@ -141,8 +161,101 @@ describe("Dashboard page", () => {
       rtlScreen.getByText("MarketBreadthCard").closest(".col-lg-6"),
     ).toBeInTheDocument();
     expect(
-      rtlScreen.getByText("GainersLosersSeriesCard").closest(".col-lg-6"),
+      rtlScreen.getByText("BitcoinPriceCard").closest(".col-lg-6"),
     ).toBeInTheDocument();
+  });
+
+  it("renders loading spinners inside each card without a page overlay", () => {
+    vi.mocked(useGetBalanceQuery).mockReturnValueOnce({
+      isLoading: true,
+    } as unknown as ReturnType<typeof useGetBalanceQuery>);
+    vi.mocked(useGetBenchmarkQuery).mockReturnValueOnce({
+      isLoading: true,
+    } as unknown as ReturnType<typeof useGetBenchmarkQuery>);
+    vi.mocked(useGetBotsQuery).mockReturnValueOnce({
+      isLoading: true,
+    } as unknown as ReturnType<typeof useGetBotsQuery>);
+    vi.mocked(useGetAlgoRankingQuery).mockReturnValueOnce({
+      isLoading: true,
+    } as unknown as ReturnType<typeof useGetAlgoRankingQuery>);
+    vi.mocked(useFilteredGainerLosers).mockReturnValueOnce({
+      combined: [],
+      isLoading: true,
+      futuresRankings: [],
+      loadingFutures: true,
+    });
+    vi.mocked(useFilteredFuturesRankings).mockReturnValueOnce({
+      combined: [],
+      isLoading: true,
+    });
+    vi.mocked(useMarketBreadthSeriesQuery).mockReturnValueOnce({
+      isLoading: true,
+    } as unknown as ReturnType<typeof useMarketBreadthSeriesQuery>);
+    vi.mocked(useBtcCloseSeriesQuery).mockReturnValueOnce({
+      isLoading: true,
+    } as unknown as ReturnType<typeof useBtcCloseSeriesQuery>);
+    vi.mocked(useGetSignalsQuery).mockReturnValueOnce({
+      isLoading: true,
+    } as unknown as ReturnType<typeof useGetSignalsQuery>);
+    vi.mocked(useBinquantStrategyNames).mockReturnValueOnce({
+      strategyNames: new Set(),
+      isLoading: true,
+      error: undefined,
+    });
+
+    renderDashboard();
+
+    const spinners = rtlScreen.getAllByRole("status");
+
+    expect(spinners).toHaveLength(11);
+    spinners.forEach((spinner) => {
+      expect(spinner.closest(".card")).toBeInTheDocument();
+    });
+    expect(
+      rtlScreen.getByRole("status", { name: "Loading total balance..." }),
+    ).toBeInTheDocument();
+    expect(
+      rtlScreen.getByRole("status", { name: "Loading algorithm ranking..." }),
+    ).toBeInTheDocument();
+    expect(document.querySelector('[style*="position: absolute"]')).toBeNull();
+  });
+
+  it("removes symbol concentration from the dashboard", () => {
+    renderDashboard();
+
+    expect(
+      rtlScreen.queryByText("Symbol concentration"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("filters algorithm ranking to strategies currently in Binquant", () => {
+    vi.mocked(useGetAlgoRankingQuery).mockReturnValueOnce({
+      data: [
+        { name: "top_gainer_early_momentum", count: 3, bot_profit: 9 },
+        { name: "retired_strategy", count: 10, bot_profit: 20 },
+      ],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useGetAlgoRankingQuery>);
+    vi.mocked(useBinquantStrategyNames).mockReturnValueOnce({
+      strategyNames: new Set(["top_gainer_early_momentum"]),
+      isLoading: false,
+      error: undefined,
+    });
+
+    renderDashboard();
+
+    const algorithmCard = rtlScreen
+      .getByText("Algorithm Ranking")
+      .closest(".card");
+
+    expect(
+      within(algorithmCard as HTMLElement).getByText(
+        "top_gainer_early_momentum",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(algorithmCard as HTMLElement).queryByText("retired_strategy"),
+    ).not.toBeInTheDocument();
   });
 
   it("renders signals collapsed and ranked by algorithm count", () => {
