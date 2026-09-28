@@ -2,13 +2,13 @@ import { act, render, waitFor } from "@testing-library/react";
 import { useEffect } from "react";
 import { vi } from "vitest";
 
-import type { ISymbol } from "../features/symbolsApiSlice";
-import { useSymbolDataProvider } from "./hooks";
+import type { ISymbol } from "../../features/symbolsApiSlice";
+import { useSymbolDataProvider } from "./useSymbolData";
 
 const mockTriggerGetOneSymbol = vi.hoisted(() => vi.fn());
 
-vi.mock("../features/symbolsApiSlice", async () => {
-  const actual = await vi.importActual("../features/symbolsApiSlice");
+vi.mock("../../features/symbolsApiSlice", async () => {
+  const actual = await vi.importActual("../../features/symbolsApiSlice");
 
   return {
     ...actual,

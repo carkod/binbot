@@ -15,11 +15,9 @@ import {
 } from "../../../features/bots/botsApiSlice";
 import { useMarketBreadthSeriesQuery } from "../../../features/marketApiSlice";
 import { useBtcCloseSeriesQuery } from "../../../features/kucoinApiSlice";
-import {
-  useFilteredFuturesRankings,
-  useFilteredGainerLosers,
-} from "../../filter-gainers-losers";
 import { useBinquantStrategyNames } from "../../hooks/useBinquantStrategyNames";
+import { useFilteredFuturesRankings } from "../../hooks/useFilteredFuturesRankings";
+import { useFilteredGainerLosers } from "../../hooks/useFilteredGainerLosers";
 
 vi.mock("../../../features/balanceApiSlice", () => ({
   useGetBalanceQuery: vi.fn(() => ({
@@ -101,11 +99,14 @@ vi.mock("../../../features/signalsApiSlice", () => ({
   })),
 }));
 
-vi.mock("../../filter-gainers-losers", () => ({
+vi.mock("../../hooks/useFilteredGainerLosers", () => ({
   useFilteredGainerLosers: vi.fn(() => ({
     combined: [],
     isLoading: false,
   })),
+}));
+
+vi.mock("../../hooks/useFilteredFuturesRankings", () => ({
   useFilteredFuturesRankings: vi.fn(() => ({
     combined: [],
     isLoading: false,

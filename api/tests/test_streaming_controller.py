@@ -1917,6 +1917,12 @@ class TestPositionManager:
     def test_futures_order_updates_backfills_missing_stop_loss_for_active_position(
         self, monkeypatch, algorithm_name
     ):
+        # The retry cache intentionally survives FuturesPosition instances in
+        # production. Isolate each parametrized case so CPython object-id reuse
+        # in _make_bot() cannot make a new test bot inherit another case's
+        # cooldown.
+        monkeypatch.setattr(FuturesPosition, "_missing_stop_retry_after_ms", {})
+
         base = self._make_base_streaming(monkeypatch, active_pairs=["BTCUSDT"])
         base.exchange = ExchangeId.KUCOIN
         base.interval = types.SimpleNamespace(get_ms=lambda: 15 * 60 * 1000)

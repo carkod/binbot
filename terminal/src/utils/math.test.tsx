@@ -1,4 +1,4 @@
-import { roundDecimals, toPercentage } from "./math";
+import { roundDecimals, timestampBucket, toPercentage } from "./math";
 
 describe("roundDecimals", () => {
   it("should round to 2 decimals by default", () => {
@@ -25,6 +25,22 @@ describe("roundDecimals", () => {
     expect(roundDecimals(56.0000000000001, 2)).toBe(56);
     expect(roundDecimals(56.1000000000001, 2)).toBe(56.1);
     expect(roundDecimals(56.1200000000001, 2)).toBe(56.12);
+  });
+});
+
+describe("timestampBucket", () => {
+  const fifteenMinutesMs = 15 * 60 * 1000;
+
+  it("places timestamps from the same interval in the same bucket", () => {
+    expect(timestampBucket("2026-09-27T10:00:00Z", fifteenMinutesMs)).toBe(
+      timestampBucket("2026-09-27T10:14:59Z", fifteenMinutesMs),
+    );
+  });
+
+  it("starts a new bucket at the interval boundary", () => {
+    expect(timestampBucket("2026-09-27T10:15:00Z", fifteenMinutesMs)).toBe(
+      timestampBucket("2026-09-27T10:00:00Z", fifteenMinutesMs) + 1,
+    );
   });
 });
 
