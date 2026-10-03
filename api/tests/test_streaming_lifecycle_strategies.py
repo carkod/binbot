@@ -6,8 +6,11 @@ from uuid import uuid4
 import pytest
 from pandas import DataFrame
 from pybinbot import (
+    BinanceKlineIntervals,
     BotModel,
     DealModel,
+    ExchangeId,
+    KucoinKlineIntervals,
     MarketBreadthSeries,
     MarketType,
     Position,
@@ -616,6 +619,23 @@ def test_top_gainer_short_only_applies_default_protection(monkeypatch) -> None:
     assert TopGainerShortLifecycleStrategy.policy.low_price_stop_floor_pct is None
     assert TopGainerShortLifecycleStrategy.policy.reversal_enabled is False
     assert TopGainerShortLifecycleStrategy.policy.recovery_enabled is False
+
+
+def test_top_gainer_short_lifecycle_uses_15m_candles_when_default_is_5m() -> None:
+    lifecycle = cast(Any, Lifecycle.__new__(Lifecycle))
+    lifecycle.execution = types.SimpleNamespace(
+        active_bot=_context(name="top_gainer_short").bot
+    )
+    lifecycle.base_streaming = types.SimpleNamespace(
+        binance_interval=BinanceKlineIntervals.five_minutes,
+        exchange=ExchangeId.KUCOIN,
+    )
+    lifecycle.context_evaluator = LifecycleContextEvaluator()
+
+    market_interval, benchmark_interval = lifecycle.lifecycle_candle_intervals()
+
+    assert market_interval == KucoinKlineIntervals.FIFTEEN_MINUTES
+    assert benchmark_interval == BinanceKlineIntervals.fifteen_minutes
 
 
 def test_position_market_generic_helpers_remain_strategy_agnostic() -> None:

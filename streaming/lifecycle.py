@@ -5,11 +5,14 @@ from typing import Union
 from kucoin_universal_sdk.model.common import RestError
 from pandas import DataFrame
 from pybinbot import (
+    BinanceKlineIntervals,
     BotBase,
     BotModel,
     Candles,
+    ExchangeId,
     KucoinApi,
     KucoinFutures,
+    KucoinKlineIntervals,
     MarketType,
     Position,
     RecoveryParams,
@@ -92,7 +95,26 @@ class Lifecycle:
         self.df = DataFrame()
         self.btc_df = DataFrame()
         self.bb_metrics: tuple[float, float] | None = None
+        self.interval_ms = self.base_streaming.interval.get_ms()
         self.context_evaluator = LifecycleContextEvaluator()
+
+    def lifecycle_candle_intervals(
+        self,
+    ) -> tuple[
+        BinanceKlineIntervals | KucoinKlineIntervals,
+        BinanceKlineIntervals,
+    ]:
+        strategy = self.context_evaluator.resolve(self.execution.active_bot.name)
+        benchmark_interval = (
+            strategy.candlestick_interval or self.base_streaming.binance_interval
+        )
+        if self.base_streaming.exchange == ExchangeId.KUCOIN:
+            market_interval: BinanceKlineIntervals | KucoinKlineIntervals = (
+                KucoinKlineIntervals(benchmark_interval.to_kucoin_interval())
+            )
+        else:
+            market_interval = benchmark_interval
+        return market_interval, benchmark_interval
 
     def _evaluate_strategy(
         self,
@@ -105,7 +127,7 @@ class Lifecycle:
         context = LifecycleContext(
             bot=self.execution.active_bot,
             current_price=current_price,
-            interval_ms=self.base_streaming.interval.get_ms(),
+            interval_ms=self.interval_ms,
             now_ms=now_ms,
             klines=self.klines or [],
             completed_candles=completed_candles,
@@ -918,7 +940,12 @@ class Lifecycle:
                 self.execution.active_bot.pair
             )
 
-        klines, btc_klines = cls.dataframe_ops()
+        market_interval, benchmark_interval = self.lifecycle_candle_intervals()
+        self.interval_ms = market_interval.get_ms()
+        klines, btc_klines = cls.dataframe_ops(
+            interval=market_interval,
+            benchmark_interval=benchmark_interval,
+        )
         # returns raw klines
         self.klines = klines
         self.btc_klines = btc_klines

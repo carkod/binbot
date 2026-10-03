@@ -3,7 +3,7 @@ from enum import Enum
 from typing import ClassVar, Protocol
 
 from pandas import DataFrame
-from pybinbot import BotModel, MarketBreadthSeries, Position
+from pybinbot import BinanceKlineIntervals, BotModel, MarketBreadthSeries, Position
 
 
 @dataclass(frozen=True)
@@ -69,6 +69,7 @@ class LifecycleContext:
 
 class LifecycleStrategy(Protocol):
     algorithm_names: ClassVar[frozenset[str]]
+    candlestick_interval: ClassVar[BinanceKlineIntervals | None]
     policy: ClassVar[LifecyclePolicy]
 
     def signal(self, context: LifecycleContext) -> LifecycleSignal: ...
@@ -76,6 +77,7 @@ class LifecycleStrategy(Protocol):
 
 class BaseLifecycleStrategy:
     algorithm_names: ClassVar[frozenset[str]] = frozenset()
+    candlestick_interval: ClassVar[BinanceKlineIntervals | None] = None
     policy: ClassVar[LifecyclePolicy] = LifecyclePolicy()
 
     @staticmethod
