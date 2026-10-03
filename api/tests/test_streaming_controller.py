@@ -1911,7 +1911,7 @@ class TestPositionManager:
         [
             "coinrule_buy_the_dip",
             "top_gainer_early_momentum",
-            "top_gainer_breadth",
+            "top_gainer_short",
         ],
     )
     def test_futures_order_updates_backfills_missing_stop_loss_for_active_position(
