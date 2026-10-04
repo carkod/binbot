@@ -19,6 +19,7 @@ class TopGainersLosersSeriesCrud:
     """
 
     SOURCE = "kucoin_futures"
+    HISTORY_RETENTION_DAYS = 365
 
     def __init__(self, session: Session | None = None):
         self._external_session = session
@@ -80,6 +81,8 @@ class TopGainersLosersSeriesCrud:
                 rank=rank,
                 symbol=contract.symbol,
                 price_change_percent=float(contract.price_chg_pct) * 100,
+                last_price=float(contract.last_trade_price),
+                turnover_24h=float(contract.turnover_of24h),
             )
             for rank, contract in enumerate(ranked[:top], start=1)
         ]
@@ -91,6 +94,8 @@ class TopGainersLosersSeriesCrud:
                 rank=rank,
                 symbol=contract.symbol,
                 price_change_percent=float(contract.price_chg_pct) * 100,
+                last_price=float(contract.last_trade_price),
+                turnover_24h=float(contract.turnover_of24h),
             )
             for rank, contract in enumerate(reversed(ranked[-top:]), start=1)
         ]
@@ -150,6 +155,8 @@ class TopGainersLosersSeriesCrud:
             entry = {
                 "symbol": row.symbol,
                 "price_change_percent": row.price_change_percent,
+                "last_price": row.last_price,
+                "turnover_24h": row.turnover_24h,
             }
             if row.side == "gainer":
                 snapshot["top_gainers"].append(entry)
@@ -158,12 +165,14 @@ class TopGainersLosersSeriesCrud:
 
         return sorted(snapshots.values(), key=lambda s: s["recorded_at"], reverse=True)
 
-    def delete_entries_older_than_90_days(self) -> int:
+    def delete_entries_older_than_one_year(self) -> int:
         """
-        Keep roughly 43,200 rows at the default top-10 hourly ingestion rate.
+        Keep roughly 175,200 rows at the default top-10 hourly ingestion rate.
         """
 
-        cutoff = datetime.now(timezone.utc) - timedelta(days=90)
+        cutoff = datetime.now(timezone.utc) - timedelta(
+            days=self.HISTORY_RETENTION_DAYS
+        )
         stmt = delete(TopGainersLosersSeriesTable).where(
             col(TopGainersLosersSeriesTable.recorded_at) < cutoff
         )

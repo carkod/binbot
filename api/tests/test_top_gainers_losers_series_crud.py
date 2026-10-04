@@ -95,6 +95,10 @@ def test_ingest_ranks_gainers_and_losers_by_percent_change():
         (2, "DUSDCM", -3.0),
     ]
     assert {row.source for row in rows} == {"kucoin_futures"}
+    assert [(g.last_price, g.turnover_24h) for g in gainers] == [
+        (1.0, 1_000.0),
+        (1.0, 1_000.0),
+    ]
 
 
 def test_ingest_excludes_closed_or_inactive_futures_contracts():
@@ -205,10 +209,20 @@ def test_query_series_groups_by_snapshot_newest_first():
     # SQLite (test DB) drops tzinfo on round-trip, unlike Postgres.
     assert result[0]["recorded_at"] == newer.replace(tzinfo=None)
     assert result[0]["top_gainers"] == [
-        {"symbol": "CUSDC", "price_change_percent": 20.0}
+        {
+            "symbol": "CUSDC",
+            "price_change_percent": 20.0,
+            "last_price": None,
+            "turnover_24h": None,
+        }
     ]
     assert result[0]["top_losers"] == [
-        {"symbol": "DUSDC", "price_change_percent": -20.0}
+        {
+            "symbol": "DUSDC",
+            "price_change_percent": -20.0,
+            "last_price": None,
+            "turnover_24h": None,
+        }
     ]
     assert result[1]["recorded_at"] == older.replace(tzinfo=None)
 
@@ -218,20 +232,20 @@ def test_query_series_returns_empty_list_when_no_data():
     assert TopGainersLosersSeriesCrud(session=session).query_series() == []
 
 
-def test_delete_entries_older_than_90_days_removes_only_stale_rows():
+def test_delete_entries_older_than_one_year_removes_only_stale_rows():
     session = _make_session()
     now = datetime.now(timezone.utc)
     session.add_all(
         [
             TopGainersLosersSeriesTable(
-                recorded_at=now - timedelta(days=91),
+                recorded_at=now - timedelta(days=366),
                 side="gainer",
                 rank=1,
                 symbol="STALEUSDC",
                 price_change_percent=10.0,
             ),
             TopGainersLosersSeriesTable(
-                recorded_at=now - timedelta(days=89),
+                recorded_at=now - timedelta(days=364),
                 side="gainer",
                 rank=1,
                 symbol="RECENTUSDC",
@@ -241,7 +255,7 @@ def test_delete_entries_older_than_90_days_removes_only_stale_rows():
     )
     session.commit()
 
-    deleted_count = TopGainersLosersSeriesCrud().delete_entries_older_than_90_days()
+    deleted_count = TopGainersLosersSeriesCrud().delete_entries_older_than_one_year()
 
     assert deleted_count == 1
     rows = session.exec(select(TopGainersLosersSeriesTable)).all()
@@ -277,8 +291,22 @@ def test_get_gainers_losers_series_endpoint(client):
     body = response.json()["data"]
     assert len(body) == 1
     assert body[0]["source"] == "kucoin_futures"
-    assert body[0]["top_gainers"] == [{"symbol": "AUSDC", "price_change_percent": 10.0}]
-    assert body[0]["top_losers"] == [{"symbol": "BUSDC", "price_change_percent": -10.0}]
+    assert body[0]["top_gainers"] == [
+        {
+            "symbol": "AUSDC",
+            "price_change_percent": 10.0,
+            "last_price": None,
+            "turnover_24h": None,
+        }
+    ]
+    assert body[0]["top_losers"] == [
+        {
+            "symbol": "BUSDC",
+            "price_change_percent": -10.0,
+            "last_price": None,
+            "turnover_24h": None,
+        }
+    ]
 
 
 def test_get_gainers_losers_series_defaults_to_seven_days_of_hourly_snapshots(client):

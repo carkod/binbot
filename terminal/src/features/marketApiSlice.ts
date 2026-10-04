@@ -27,6 +27,8 @@ export interface MarketBreadthData {
 export interface TopMover {
   symbol: string;
   price_change_percent: number;
+  last_price: number | null;
+  turnover_24h: number | null;
 }
 
 export interface GainersLosersSnapshot {
