@@ -176,7 +176,7 @@ class PaperTradingTableCrud:
             for order in data.orders:
                 statement = select(FakeOrderTable).where(
                     FakeOrderTable.paper_trading_id == UUID(str(data.id)),
-                    FakeOrderTable.deal_type == order.deal_type,
+                    FakeOrderTable.order_id == str(order.order_id),
                 )
                 get_order = s.exec(statement).first()
                 if not get_order:

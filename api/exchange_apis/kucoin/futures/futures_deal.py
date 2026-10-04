@@ -232,8 +232,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
         )
 
     def _blocks_native_stop_loss(self) -> bool:
-        """Whether an exchange stop would bypass required reversal logic."""
-        return self._reversal_eligible()
+        """Whether a full exchange stop would bypass bot-side sizing or reversal."""
+        return self.active_bot.dynamic_position_sizing or self._reversal_eligible()
 
     def _cleanup_native_protection_after_close(self) -> None:
         """Remove exchange-native protection after a confirmed bot-side close."""
@@ -1543,6 +1543,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
             the broad emergency stop has been replaced by the exchange-native
             trailing stop and its dedicated reconciler owns further updates.
         """
+        if isinstance(self.controller, PaperTradingTableCrud):
+            return
         if self.active_bot.stop_loss <= 0:
             return
         if self._blocks_native_stop_loss():
@@ -1631,6 +1633,37 @@ class KucoinPositionDeal(KucoinBaseBalance):
         """
         if self.active_bot.fiat_order_size <= 0:
             raise BinbotErrors("Fiat order size must be set.")
+
+        if isinstance(self.controller, PaperTradingTableCrud):
+            price = self.kucoin_futures_api.get_mark_price(self.kucoin_symbol)
+            contracts = self.calculate_contracts(self.active_bot.fiat_order_size, price)
+            if contracts <= 0:
+                raise BinbotErrors("Paper position is smaller than one contract lot.")
+            filled_at = int(time() * 1000)
+            self.active_bot.orders.append(
+                OrderModel(
+                    order_id=f"paper-entry-{self.active_bot.id}-{filled_at}",
+                    pair=self.kucoin_symbol,
+                    order_side=OrderSide.buy
+                    if self.active_bot.position == Position.long
+                    else OrderSide.sell,
+                    order_type="MARKET",
+                    time_in_force="GTC",
+                    timestamp=filled_at,
+                    price=price,
+                    qty=contracts,
+                    status=OrderStatus.FILLED,
+                    deal_type=DealType.base_order,
+                )
+            )
+            self.active_bot.deal.opening_price = price
+            self.active_bot.deal.opening_qty = contracts
+            self.active_bot.deal.current_position_qty = contracts
+            self.active_bot.deal.base_order_size = contracts
+            self.active_bot.deal.opening_timestamp = filled_at
+            self.active_bot.status = Status.pending
+            self.controller.save(self.active_bot)
+            return self.active_bot
 
         available_balance = self.compute_available_balance()
         candidate_limit_price = self.body_capped_entry_limit_price()
@@ -1879,6 +1912,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
         return self.active_bot.deal.opening_qty
 
     def place_stop_loss(self, position_qty: float | None = None) -> None:
+        if isinstance(self.controller, PaperTradingTableCrud):
+            return
         if self.active_bot.stop_loss <= 0 or self._blocks_native_stop_loss():
             return
 
@@ -2160,7 +2195,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
           (SELL for longs, BUY for shorts).
         """
         deal_buy_price = self.active_bot.deal.opening_price
-        buy_total_qty = self.active_bot.deal.opening_qty
+        buy_total_qty = self.current_position_quantity()
         take_profit_pct = self.active_bot.take_profit / 100
         take_profit_multiplier = (
             1 - take_profit_pct
@@ -2364,26 +2399,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
         """
 
         if isinstance(self.controller, PaperTradingTableCrud):
-            # all qty simulated
-            qty = self.active_bot.deal.opening_qty or 1.0
-            price = self.active_bot.deal.current_price
-            close_side = (
-                OrderSide.buy
-                if self.active_bot.position == Position.short
-                else OrderSide.sell
-            )
-            order_data = OrderModel(
-                timestamp=int(time() * 1000),
-                order_id="paper-futures-trail",
-                deal_type=DealType.trailing_profit,
-                pair=self.kucoin_symbol,
-                order_side=close_side,
-                order_type="MARKET",
-                price=price,
-                qty=float(qty),
-                time_in_force="GTC",
-                status=OrderStatus.FILLED,
-            )
+            # Arming a simulated stop is not a fill. The lifecycle executes it
+            # when a later price crosses the persisted trailing stop.
+            self.controller.save(self.active_bot)
+            return self.active_bot
         else:
             position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
             if not position or float(position.current_qty) == 0:
@@ -2485,6 +2504,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
         a stop order. The bot-side trailing price is the intended exit once
         trailing has armed.
         """
+        if isinstance(self.controller, PaperTradingTableCrud):
+            return
         intended_price = self.active_bot.deal.trailing_stop_loss_price
         if intended_price <= 0:
             return
@@ -2702,6 +2723,12 @@ class KucoinPositionDeal(KucoinBaseBalance):
         deal_type = (
             DealType.algorithmic_close if algorithmic_close else DealType.panic_close
         )
+        if isinstance(self.controller, PaperTradingTableCrud):
+            self.active_bot = self.execute_stop_loss()
+            if self.active_bot.status == Status.completed:
+                self.active_bot.orders[-1].deal_type = deal_type
+                self.controller.save(self.active_bot)
+            return self.active_bot
         position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
 
         if position and float(position.current_qty) != 0:

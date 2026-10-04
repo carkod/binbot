@@ -54,6 +54,7 @@ class BotTable(SQLModel, table=True):
     created_at: float = Field(default_factory=timestamp)
     updated_at: float = Field(default_factory=timestamp)
     dynamic_trailing: bool = Field(default=False)
+    dynamic_position_sizing: bool = Field(default=False)
     logs: list = Field(default_factory=list, sa_column=Column(JSON))
     mode: str = Field(default="manual")
     market_type: MarketType = Field(
@@ -184,6 +185,7 @@ class PaperTradingTable(SQLModel, table=True):
     created_at: float = Field(default_factory=timestamp)
     updated_at: float = Field(default_factory=timestamp)
     dynamic_trailing: bool = Field(default=False)
+    dynamic_position_sizing: bool = Field(default=False)
     logs: list = Field(default_factory=list, sa_column=Column(JSON))
     mode: str = Field(default="manual")
     market_type: MarketType = Field(

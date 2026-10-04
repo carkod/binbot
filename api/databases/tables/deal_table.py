@@ -1,7 +1,7 @@
 from uuid import uuid4, UUID
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, TYPE_CHECKING
-from sqlalchemy import Column, BigInteger, Float
+from sqlalchemy import Column, BigInteger, Float, JSON
 from pydantic import field_validator
 
 # avoids circular imports
@@ -15,6 +15,10 @@ class DealBase(SQLModel):
 
     It should match DealModel
     """
+
+    position_size_pct: float = Field(default=25, gt=0, le=100)
+    position_size_reference_price: float = Field(default=0, ge=0)
+    position_size_order: dict | None = Field(default=None, sa_column=Column(JSON))
 
     base_order_size: float = Field(default=0, gt=-1, sa_column=Column(Float()))
     current_price: float = Field(default=0)

@@ -184,6 +184,7 @@ class TestPositionManager:
         bot.fiat = "USDC"
         bot.position = position
         bot.dynamic_trailing = True
+        bot.dynamic_position_sizing = False
         bot.trailing = False
         bot.trailing_profit = 0.0
         bot.trailing_deviation = 0.0
