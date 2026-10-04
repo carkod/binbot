@@ -6,8 +6,11 @@ from uuid import uuid4
 import pytest
 from pandas import DataFrame
 from pybinbot import (
+    BinanceKlineIntervals,
     BotModel,
     DealModel,
+    ExchangeId,
+    KucoinKlineIntervals,
     MarketBreadthSeries,
     MarketType,
     Position,
@@ -36,7 +39,7 @@ from streaming.strategies.mean_reversion_fade import (
 from streaming.strategies.relative_strength_impulse_rider import (
     RelativeStrengthImpulseRiderLifecycleStrategy,
 )
-from streaming.strategies.top_gainer_breadth import TopGainerBreadthLifecycleStrategy
+from streaming.strategies.top_gainer_short import TopGainerShortLifecycleStrategy
 from streaming.strategies.top_gainer_early_momentum import (
     TopGainerEarlyMomentumLifecycleStrategy,
 )
@@ -143,7 +146,7 @@ def _context(
         ),
         ("top_gainer_early_momentum", TopGainerEarlyMomentumLifecycleStrategy),
         ("top_loser_early_momentum", TopGainerEarlyMomentumLifecycleStrategy),
-        ("top_gainer_breadth", TopGainerBreadthLifecycleStrategy),
+        ("top_gainer_short", TopGainerShortLifecycleStrategy),
         ("coinrule_price_tracker", PriceTrackerLifecycleStrategy),
         ("coinrule_buy_the_dip", DefaultLifecycleStrategy),
         ("bb_extreme_reversion", BBExtremeReversionLifecycleStrategy),
@@ -589,13 +592,13 @@ def test_mean_reversion_rsi_is_100_for_window_without_losses() -> None:
     assert float(rsi.iloc[-1]) == 100.0
 
 
-def test_top_gainer_breadth_short_only_applies_default_protection(monkeypatch) -> None:
+def test_top_gainer_short_only_applies_default_protection(monkeypatch) -> None:
     monkeypatch.setattr(
         "streaming.strategies.default.ApexFlowClose",
         FakeApexFlowClose,
     )
     context = _context(
-        name="top_gainer_breadth",
+        name="top_gainer_short",
         position=Position.short,
         dynamic_trailing=True,
     )
@@ -606,16 +609,33 @@ def test_top_gainer_breadth_short_only_applies_default_protection(monkeypatch) -
         updated_at=1,
     )
 
-    signal = TopGainerBreadthLifecycleStrategy().signal(context)
+    signal = TopGainerShortLifecycleStrategy().signal(context)
 
     assert signal.exit_intent is None
     assert signal.parameter_update is not None
     assert signal.parameter_update.stop_loss <= 4.0
     assert signal.parameter_update.trailing_profit <= 3.5
     assert signal.parameter_update.trailing_deviation <= 2.5
-    assert TopGainerBreadthLifecycleStrategy.policy.low_price_stop_floor_pct is None
-    assert TopGainerBreadthLifecycleStrategy.policy.reversal_enabled is False
-    assert TopGainerBreadthLifecycleStrategy.policy.recovery_enabled is False
+    assert TopGainerShortLifecycleStrategy.policy.low_price_stop_floor_pct is None
+    assert TopGainerShortLifecycleStrategy.policy.reversal_enabled is False
+    assert TopGainerShortLifecycleStrategy.policy.recovery_enabled is False
+
+
+def test_top_gainer_short_lifecycle_uses_15m_candles_when_default_is_5m() -> None:
+    lifecycle = cast(Any, Lifecycle.__new__(Lifecycle))
+    lifecycle.execution = types.SimpleNamespace(
+        active_bot=_context(name="top_gainer_short").bot
+    )
+    lifecycle.base_streaming = types.SimpleNamespace(
+        binance_interval=BinanceKlineIntervals.five_minutes,
+        exchange=ExchangeId.KUCOIN,
+    )
+    lifecycle.context_evaluator = LifecycleContextEvaluator()
+
+    market_interval, benchmark_interval = lifecycle.lifecycle_candle_intervals()
+
+    assert market_interval == KucoinKlineIntervals.FIFTEEN_MINUTES
+    assert benchmark_interval == BinanceKlineIntervals.fifteen_minutes
 
 
 def test_position_market_generic_helpers_remain_strategy_agnostic() -> None:

@@ -6,6 +6,7 @@ from kucoin_universal_sdk.generate.futures.positions.model_get_position_details_
 )
 from pybinbot import (
     BinanceApi,
+    BinanceKlineIntervals,
     BotModel,
     Candles,
     ExchangeId,
@@ -13,6 +14,7 @@ from pybinbot import (
     Indicators,
     KucoinApi,
     KucoinFutures,
+    KucoinKlineIntervals,
     Status,
     convert_to_kucoin_symbol,
     round_numbers,
@@ -239,18 +241,24 @@ class PositionMarket:
             round_numbers(trailing_deviation, 2),
         )
 
-    def dataframe_ops(self) -> tuple[list, list]:
+    def dataframe_ops(
+        self,
+        interval: BinanceKlineIntervals | KucoinKlineIntervals | None = None,
+        benchmark_interval: BinanceKlineIntervals | None = None,
+    ) -> tuple[list, list]:
         """
         Converts raw klines to DataFrames for indicator calculations.
         """
+        market_interval = interval or self.base_streaming.interval
+        btc_interval = benchmark_interval or self.base_streaming.binance_interval
         # Get klines from the appropriate exchange
         self.klines = self.api.get_ui_klines(
             symbol=self.symbol,
-            interval=str(self.base_streaming.interval.value),
+            interval=str(market_interval.value),
         )
         self.btc_klines = self.base_streaming.binance_api.get_ui_klines(
             symbol="BTCUSDT",
-            interval=self.base_streaming.binance_interval.value,
+            interval=btc_interval.value,
         )
 
         raw_candles = Candles(

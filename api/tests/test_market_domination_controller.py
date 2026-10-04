@@ -87,37 +87,50 @@ def test_ingest_market_breadth_uses_binance_ticker_payload():
     assert rows[0].source == ExchangeId.BINANCE.value
 
 
-def test_ingest_market_breadth_uses_kucoin_all_tickers_payload():
+def test_ingest_market_breadth_uses_kucoin_futures_contracts():
     session = _make_session()
-    controller = _make_controller(ExchangeId.KUCOIN, session)
-    controller.kucoin_api = SimpleNamespace(  # type: ignore[assignment]
-        spot_api=SimpleNamespace(
-            get_all_tickers=lambda: SimpleNamespace(
-                common_response=SimpleNamespace(
-                    data={
-                        "time": 1710000000000,
-                        "ticker": [
-                            {
-                                "symbol": "BTC-USDC",
-                                "last": "100",
-                                "changeRate": "0.1",
-                                "vol": "500",
-                            },
-                            {
-                                "symbol": "ETH-USDC",
-                                "last": "200",
-                                "changeRate": "-0.05",
-                                "vol": "200",
-                            },
-                            {
-                                "symbol": "XRP-BTC",
-                                "last": "1",
-                                "changeRate": "0.25",
-                                "vol": "999",
-                            },
-                        ],
-                    }
-                )
+    controller = _make_controller(ExchangeId.KUCOIN, session, fiat="USDT")
+    controller.kucoin_futures_api = SimpleNamespace(  # type: ignore[assignment]
+        futures_market_api=SimpleNamespace(
+            get_all_symbols=lambda: SimpleNamespace(
+                data=[
+                    SimpleNamespace(
+                        symbol="BTCUSDTM",
+                        status="Open",
+                        settle_currency="USDT",
+                        is_inverse=False,
+                        last_trade_price="100",
+                        price_chg_pct="0.1",
+                        turnover_of24h="500",
+                    ),
+                    SimpleNamespace(
+                        symbol="ETHUSDTM",
+                        status="Open",
+                        settle_currency="USDT",
+                        is_inverse=False,
+                        last_trade_price="200",
+                        price_chg_pct="-0.05",
+                        turnover_of24h="200",
+                    ),
+                    SimpleNamespace(
+                        symbol="XBTUSDM",
+                        status="Open",
+                        settle_currency="USD",
+                        is_inverse=False,
+                        last_trade_price="1",
+                        price_chg_pct="0.25",
+                        turnover_of24h="999",
+                    ),
+                    SimpleNamespace(
+                        symbol="CLOSEDUSDTM",
+                        status="Closed",
+                        settle_currency="USDT",
+                        is_inverse=False,
+                        last_trade_price="1",
+                        price_chg_pct="0.25",
+                        turnover_of24h="999",
+                    ),
+                ]
             )
         )
     )
