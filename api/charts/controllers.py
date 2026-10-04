@@ -10,10 +10,7 @@ from api.databases.crud.autotrade_crud import AutotradeCrud
 from api.databases.crud.symbols_crud import SymbolsCrud
 from api.databases.tables.market_breadth_table import MarketBreadthTable
 from api.databases.utils import independent_session
-from kucoin_universal_sdk.generate.spot.market.model_get_symbol_resp import (
-    GetSymbolResp,
-)
-from pybinbot import BinanceApi, ExchangeId, KucoinApi
+from pybinbot import BinanceApi, ExchangeId, KucoinFutures
 from api.tools.config import Config
 from api.tools.utils import utc_now
 
@@ -33,26 +30,37 @@ class MarketDominationController:
         self.binance_api = BinanceApi(
             key=self.config.binance_key, secret=self.config.binance_secret
         )
-        self.kucoin_api = KucoinApi(
+        self.kucoin_futures_api = KucoinFutures(
             key=self.config.kucoin_key,
             secret=self.config.kucoin_secret,
             passphrase=self.config.kucoin_passphrase,
         )
 
     def _normalize_market_breadth_ticker(
-        self, item: GetSymbolResp, fallback_timestamp: datetime | None = None
+        self, item: Any, fallback_timestamp: datetime | None = None
     ) -> dict[str, Any] | None:
         if self.exchange == ExchangeId.KUCOIN:
-            close_time = fallback_timestamp
-            if item["last"] is None:
-                # auction coin
+            try:
+                status = getattr(item.status, "value", item.status)
+                is_active_usdt_perpetual = (
+                    status == "Open"
+                    and item.settle_currency == self.autotrade_settings.fiat
+                    and not bool(item.is_inverse)
+                    and item.price_chg_pct is not None
+                    and float(item.last_trade_price) > 0
+                    and float(item.turnover_of24h) > 0
+                )
+            except (AttributeError, TypeError, ValueError):
+                return None
+            if not is_active_usdt_perpetual:
                 return None
             return {
-                "symbol": item["symbol"],
-                "last_price": float(item["last"]),
-                "price_change_percent": float(item.get("changeRate", 0)) * 100,
-                "volume": float(item["vol"]),
-                "close_time": close_time,
+                "symbol": item.symbol,
+                "last_price": float(item.last_trade_price),
+                "price_change_percent": float(item.price_chg_pct) * 100,
+                "volume": float(item.turnover_of24h),
+                "close_time": fallback_timestamp,
+                "matches_fiat": True,
             }
 
         return {
@@ -63,6 +71,7 @@ class MarketDominationController:
             "close_time": datetime.fromtimestamp(
                 float(item["closeTime"]) / 1000, tz=timezone.utc
             ),
+            "matches_fiat": item["symbol"].endswith(self.autotrade_settings.fiat),
         }
 
     def _calculate_market_breadth_sample(
@@ -80,10 +89,7 @@ class MarketDominationController:
             if not item:
                 continue
 
-            if (
-                item["symbol"].endswith(self.autotrade_settings.fiat)
-                and float(item["last_price"]) > 0
-            ):
+            if item["matches_fiat"] and float(item["last_price"]) > 0:
                 price_change_percent = item["price_change_percent"]
 
                 if price_change_percent > 0:
@@ -131,11 +137,9 @@ class MarketDominationController:
         Capture one market-breadth sample. Called every 15 min by the cron.
         """
         if self.exchange == ExchangeId.KUCOIN:
-            response = self.kucoin_api.spot_api.get_all_tickers()
-            ticker = response.common_response.data["ticker"]
-            time_ms = response.common_response.data["time"]
-            fallback_timestamp = datetime.fromtimestamp(time_ms / 1000, tz=timezone.utc)
-            market_tickers = ticker or []
+            response = self.kucoin_futures_api.futures_market_api.get_all_symbols()
+            market_tickers = response.data or []
+            fallback_timestamp = utc_now()
         else:
             ticker_data = self.binance_api.ticker_24()
             market_tickers = ticker_data or []
