@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, DateTime, UniqueConstraint
+from sqlalchemy import Column, DateTime, Index, UniqueConstraint
 from sqlmodel import SQLModel, Field
 
 
@@ -18,6 +18,12 @@ class TopGainersLosersSeriesTable(SQLModel, table=True):
             "side",
             "rank",
             name="uq_top_gainers_losers_series_source_recorded_at_side_rank",
+        ),
+        Index(
+            "ix_top_gainers_losers_series_source_symbol_recorded_at",
+            "source",
+            "symbol",
+            "recorded_at",
         ),
     )
 
@@ -38,3 +44,5 @@ class TopGainersLosersSeriesTable(SQLModel, table=True):
     rank: int = Field(nullable=False, description="1 = biggest gain/loss")
     symbol: str = Field(nullable=False, max_length=64, index=True)
     price_change_percent: float = Field(nullable=False)
+    last_price: float | None = Field(default=None)
+    turnover_24h: float | None = Field(default=None)

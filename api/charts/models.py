@@ -95,6 +95,8 @@ class CandlestickResponse(StandardResponse):
 class TopMoverEntry(BaseModel):
     symbol: str
     price_change_percent: float
+    last_price: float | None = None
+    turnover_24h: float | None = None
 
 
 class GainersLosersSnapshot(BaseModel):

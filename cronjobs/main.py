@@ -60,7 +60,7 @@ def main():
         id="delete_old_signals",
     )
     scheduler.add_job(
-        func=top_gainers_losers_series_crud.delete_entries_older_than_90_days,
+        func=top_gainers_losers_series_crud.delete_entries_older_than_one_year,
         trigger="cron",
         timezone=config.timezone,
         day_of_week=6,

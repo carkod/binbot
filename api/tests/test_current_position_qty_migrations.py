@@ -6,6 +6,7 @@ from sqlalchemy import create_engine, inspect, text
 
 from api.alembic.versions import (
     b8c9d0e1f2a3_repair_current_position_qty,
+    c1d2e3f4a5b6_add_top_mover_market_data,
     e6f7a8b9c0d1_add_gainers_losers_series_source,
 )
 from api.databases import api_db
@@ -104,6 +105,53 @@ def test_gainers_losers_source_migration_can_replay_completed_schema(monkeypatch
     operations.create_index.assert_not_called()
     operations.drop_constraint.assert_not_called()
     operations.create_unique_constraint.assert_not_called()
+
+
+def test_top_mover_market_data_migration_is_reversible_and_idempotent(monkeypatch):
+    engine = create_engine("sqlite://")
+
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                CREATE TABLE top_gainers_losers_series (
+                    id INTEGER PRIMARY KEY,
+                    source VARCHAR(32) NOT NULL,
+                    recorded_at DATETIME NOT NULL,
+                    side VARCHAR(8) NOT NULL,
+                    rank INTEGER NOT NULL,
+                    symbol VARCHAR(64) NOT NULL,
+                    price_change_percent FLOAT NOT NULL
+                )
+                """
+            )
+        )
+        operations = Operations(MigrationContext.configure(connection))
+        monkeypatch.setattr(c1d2e3f4a5b6_add_top_mover_market_data, "op", operations)
+
+        c1d2e3f4a5b6_add_top_mover_market_data.upgrade()
+        c1d2e3f4a5b6_add_top_mover_market_data.upgrade()
+
+        columns = {
+            column["name"]
+            for column in inspect(connection).get_columns("top_gainers_losers_series")
+        }
+        assert {"last_price", "turnover_24h"} <= columns
+        indexes = {
+            index["name"]
+            for index in inspect(connection).get_indexes("top_gainers_losers_series")
+        }
+        assert "ix_top_gainers_losers_series_source_symbol_recorded_at" in indexes
+
+        c1d2e3f4a5b6_add_top_mover_market_data.downgrade()
+        c1d2e3f4a5b6_add_top_mover_market_data.downgrade()
+
+        columns = {
+            column["name"]
+            for column in inspect(connection).get_columns("top_gainers_losers_series")
+        }
+        assert "last_price" not in columns
+        assert "turnover_24h" not in columns
 
 
 def test_run_migrations_preserves_legitimate_branch_revisions(monkeypatch):
