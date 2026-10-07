@@ -1,5 +1,44 @@
 @use "variables" as *;
 
+.dashboard {
+  // Share the card dimensions between loading and populated states.
+  --dashboard-card-height: 190px;
+
+  .dashboard-balance {
+    --dashboard-card-height: 160px;
+  }
+
+  .dashboard-active-bots {
+    --dashboard-card-height: 130px;
+  }
+
+  .dashboard-benchmark {
+    --dashboard-card-height: 640px;
+  }
+
+  .dashboard-movers {
+    --dashboard-card-height: 550px;
+  }
+
+  .dashboard-trend {
+    --dashboard-card-height: 600px;
+  }
+
+  .dashboard-ranking {
+    --dashboard-card-height: 400px;
+  }
+
+  .card {
+    height: var(--dashboard-card-height);
+    overflow: auto;
+
+    > .card-header,
+    > .card-footer {
+      flex-shrink: 0;
+    }
+  }
+}
+
 .card {
   border-radius: $border-radius-extreme;
   box-shadow: 0 6px 10px -4px rgba(0, 0, 0, 0.15);
