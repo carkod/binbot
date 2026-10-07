@@ -138,16 +138,23 @@ continues through the ordinary lifecycle in the same tick, using the configured
 `trailing_profit` and `trailing_deviation`. Normal strategy updates also resume.
 
 The deal stores `position_size_reference_price` and a pending
-`position_size_order`. The pending client ID is saved **before** order submission;
-after a timeout or restart, reconciliation looks up that same order rather than
-submitting another adjustment. Active orders block further sizing, and terminal
+`position_size_order`. The pending client ID and `prepared` phase are saved
+**before** order submission, then `submitting` is committed before the API call.
+A restart safely abandons a `prepared` intent and restores normal exits. An
+uncertain submission is looked up by its original ID; after three explicit
+missing-order responses over at least 60 seconds, recovery retries that same ID
+without creating a new adjustment. Duplicate-ID responses preserve the pending
+intent for reconciliation. Retry counters survive restarts, and increases
+recheck available margin. An unaffordable retry restores normal exits while
+retaining the uncertain ID for reconciliation without further submission.
+Active orders block further sizing, and terminal
 partial fills change quantity only by the actual fill. All confirmed adjustments
 are retained in order history. Paper futures simulate this flow without reading
 live position quantities or submitting exchange orders; simulated trailing stops
 fill only after the price crosses them.
 
 The models also change in the shared `pybinbot` project. Install that updated
-package and apply Alembic revision `d2e3f4a5b6c7` before starting workers. The
+package and apply Alembic revision `a7b4e9c261f0` before starting workers. The
 migration is replay-safe and leaves existing bots opted out. See
 [dynamic position sizing](./bots/dynamic-position-sizing.md) for configuration,
 worked examples, pending-order recovery, and local validation commands.

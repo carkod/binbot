@@ -22,12 +22,15 @@ class DynamicPositionSizing:
     """Own SL/TP thresholds until sizing falls back to the normal lifecycle.
 
     Persist an intent before submitting. After an ambiguous response, look up
-    that same client ID on subsequent ticks; never submit another adjustment
-    while its outcome is unknown. Quantities change only after terminal fills.
+    that same client ID on subsequent ticks. Recovery reuses the original ID
+    so exchange deduplication prevents a second adjustment.
     """
 
     def __init__(self, execution: KucoinPositionDeal) -> None:
         self.execution = execution
+
+    NOT_FOUND_RETRY_COUNT = 3
+    NOT_FOUND_GRACE_MS = 60_000
 
     @staticmethod
     def adjustment_quantity(quantity: float, percentage: float, lot_size: int) -> int:
@@ -70,9 +73,44 @@ class DynamicPositionSizing:
                 .set_client_oid(pending.client_oid)
                 .build()
             )
-            order = self.execution.kucoin_futures_api.futures_order_api.get_order_by_client_oid(
-                request
-            )
+            try:
+                order = self.execution.kucoin_futures_api.futures_order_api.get_order_by_client_oid(
+                    request
+                )
+            except RestError as exc:
+                # 100001 is also used for invalid parameters. Only an explicit
+                # missing-order response is evidence for submission recovery.
+                message = str(exc.response.message).lower()
+                if str(exc.response.code) != "100001" or not any(
+                    phrase in message
+                    for phrase in (
+                        "order not found",
+                        "order does not exist",
+                        "order not exist",
+                        "order does not exist.",
+                    )
+                ):
+                    raise
+                now_ms = int(time() * 1000)
+                if pending.not_found_count == 0:
+                    pending.not_found_since_ms = now_ms
+                pending.not_found_count += 1
+                self.execution.controller.save(bot)
+                if (
+                    bot.dynamic_position_sizing
+                    and pending.not_found_count >= self.NOT_FOUND_RETRY_COUNT
+                    and now_ms - pending.not_found_since_ms >= self.NOT_FOUND_GRACE_MS
+                ):
+                    bot.add_log(
+                        f"Recovering missing dynamic sizing order {pending.client_oid} "
+                        "by resubmitting the same client ID."
+                    )
+                    self.submit(pending, deal.current_price)
+                return
+            if pending.not_found_count:
+                pending.not_found_count = 0
+                pending.not_found_since_ms = 0
+                self.execution.controller.save(bot)
             if order.is_active:
                 return
             quantity = float(order.filled_size or 0)
@@ -137,9 +175,28 @@ class DynamicPositionSizing:
         """Return True when sizing owns this tick; False to run normal exits."""
         bot = self.execution.active_bot
         deal = bot.deal
+        if current_price > 0:
+            deal.current_price = current_price
         if deal.position_size_order is not None:
-            self.reconcile()
-            return True
+            if deal.position_size_order.submission_phase == "prepared":
+                # No API call is allowed before the submitting phase is saved.
+                # This intent can therefore be discarded without guessing
+                # whether an exchange order exists or replaying a stale signal.
+                deal.position_size_order = None
+                self.fallback("recovered an intent interrupted before order submission")
+                return False
+            try:
+                self.reconcile()
+            except RestError:
+                if bot.dynamic_position_sizing:
+                    raise
+                # A disabled sizing mode must not hold normal exits hostage
+                # to an unresolved lookup retained for bookkeeping.
+                bot.add_log(
+                    "Pending sizing order lookup failed; continuing normal exits."
+                )
+                self.execution.controller.save(bot)
+            return bot.dynamic_position_sizing
         if not bot.dynamic_position_sizing or bot.status != Status.active:
             return False
         # Validate again because table hydration and model_construct bypass
@@ -216,6 +273,7 @@ class DynamicPositionSizing:
 
         pending = PositionSizeOrder(
             client_oid=str(uuid4()),
+            submission_phase="prepared",
             reducing=reducing,
             quantity_before=quantity,
             entry_price_before=deal.opening_price,
@@ -226,35 +284,68 @@ class DynamicPositionSizing:
         # Commit before any exchange side effect, including a possible timeout.
         self.execution.controller.save(bot)
         if not paper:
-            side = (
-                AddOrderReq.SideEnum.SELL
-                if (bot.position == Position.long) == reducing
-                else AddOrderReq.SideEnum.BUY
-            )
-            request = (
-                AddOrderReqBuilder()
-                .set_client_oid(pending.client_oid)
-                .set_symbol(self.execution.kucoin_symbol)
-                .set_side(side)
-                .set_type(AddOrderReq.TypeEnum.MARKET)
-                .set_size(adjustment)
-                .set_leverage(str(self.execution.symbol_info.futures_leverage))
-                .set_reduce_only(reducing)
-                .build()
-            )
-            try:
-                self.execution.kucoin_futures_api.futures_order_api.add_order(request)
-            except RestError as exc:
-                code = str(exc.response.code)
-                message = str(exc.response.message).lower()
-                if increasing and (
-                    code == "300003"
-                    or (code == "400100" and "account.available.amount" in message)
-                ):
-                    deal.position_size_order = None
-                    self.fallback("exchange rejected increase for insufficient funds")
-                    return False
-                # Keep the intent for lookup after any uncertain submission.
-                raise
+            if not self.submit(pending, current_price):
+                return False
         self.reconcile()
+        return True
+
+    def submit(self, pending: PositionSizeOrder, current_price: float) -> bool:
+        """Submit or replay one persisted intent using its original client ID."""
+        bot = self.execution.active_bot
+        retrying = pending.submission_phase == "submitting"
+        if retrying and not pending.reducing:
+            # A retry must not rely on the wallet snapshot before the crash.
+            request = GetFuturesAccountReqBuilder().set_currency(bot.fiat).build()
+            account = self.execution.kucoin_futures_api.futures_account_api.get_futures_account(
+                request
+            )
+            available = float(account.available_balance or 0)
+            required = self.execution.required_margin_for_contracts(
+                pending.requested_qty, current_price
+            )
+            if current_price <= 0 or required > available:
+                # Preserve the uncertain identity for reconciliation, restore
+                # normal protection, and never replay after falling back.
+                self.fallback("missing order recovery has insufficient futures funds")
+                return False
+
+        pending.submission_phase = "submitting"
+        pending.not_found_count = 0
+        pending.not_found_since_ms = 0
+        # A crash on either side of add_order now leaves a recoverable intent.
+        self.execution.controller.save(bot)
+        side = (
+            AddOrderReq.SideEnum.SELL
+            if (bot.position == Position.long) == pending.reducing
+            else AddOrderReq.SideEnum.BUY
+        )
+        request = (
+            AddOrderReqBuilder()
+            .set_client_oid(pending.client_oid)
+            .set_symbol(self.execution.kucoin_symbol)
+            .set_side(side)
+            .set_type(AddOrderReq.TypeEnum.MARKET)
+            .set_size(int(pending.requested_qty))
+            .set_leverage(str(self.execution.symbol_info.futures_leverage))
+            .set_reduce_only(pending.reducing)
+            .build()
+        )
+        try:
+            self.execution.kucoin_futures_api.futures_order_api.add_order(request)
+        except RestError as exc:
+            code = str(exc.response.code)
+            message = str(exc.response.message).lower()
+            if code == "300018":
+                # An accepted order can lag the lookup endpoint. Never replace
+                # its ID or infer that this duplicate response is a fill.
+                return True
+            if not pending.reducing and (
+                code == "300003"
+                or (code == "400100" and "account.available.amount" in message)
+            ):
+                if not retrying:
+                    bot.deal.position_size_order = None
+                self.fallback("exchange rejected increase for insufficient funds")
+                return False
+            raise
         return True

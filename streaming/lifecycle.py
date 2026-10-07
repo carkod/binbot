@@ -9,6 +9,7 @@ from pybinbot import (
     BotBase,
     BotModel,
     Candles,
+    DealType,
     ExchangeId,
     KucoinApi,
     KucoinFutures,

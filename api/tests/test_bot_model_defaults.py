@@ -4,6 +4,7 @@ from typing import Any, cast
 from uuid import UUID
 
 from pybinbot import (
+    BinanceKlineIntervals,
     BotListResponse,
     BotModel,
     BotPairsList,
@@ -216,7 +217,9 @@ def test_exit_pending_calls_open_deal_and_returns_early():
     execution.open_deal = lambda: stub_open_deal(execution)
     position_deal = Lifecycle(
         execution=cast(Any, execution),
-        base_streaming=types.SimpleNamespace(),
+        base_streaming=types.SimpleNamespace(
+            interval=BinanceKlineIntervals.fifteen_minutes
+        ),
     )
 
     result = Lifecycle.exit(position_deal, close_price=100.0)
@@ -254,7 +257,9 @@ def test_exit_pending_retries_deferred_liquidity_entry_on_next_tick():
     )
     position_deal = Lifecycle(
         execution=cast(Any, execution),
-        base_streaming=types.SimpleNamespace(),
+        base_streaming=types.SimpleNamespace(
+            interval=BinanceKlineIntervals.fifteen_minutes
+        ),
     )
 
     first_tick = Lifecycle.exit(position_deal, close_price=100.0)
@@ -279,7 +284,9 @@ def test_exit_completed_bot_does_not_submit_another_close():
     )
     position_deal = Lifecycle(
         execution=cast(Any, execution),
-        base_streaming=types.SimpleNamespace(),
+        base_streaming=types.SimpleNamespace(
+            interval=BinanceKlineIntervals.fifteen_minutes
+        ),
     )
 
     result = Lifecycle.exit(position_deal, close_price=0.0103)
@@ -311,7 +318,9 @@ def test_exit_pending_returns_persisted_liquidity_rejection_without_crashing():
     )
     position_deal = Lifecycle(
         execution=cast(Any, execution),
-        base_streaming=types.SimpleNamespace(),
+        base_streaming=types.SimpleNamespace(
+            interval=BinanceKlineIntervals.fifteen_minutes
+        ),
     )
 
     result = Lifecycle.exit(position_deal, close_price=100.0)

@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from pybinbot import BinanceKlineIntervals
 
 from streaming.strategies.base import LifecyclePolicy
@@ -13,7 +15,9 @@ class TopGainerShortLifecycleStrategy(DefaultLifecycleStrategy):
     """
 
     algorithm_names = frozenset({"top_gainer_short"})
-    candlestick_interval = BinanceKlineIntervals.fifteen_minutes
+    candlestick_interval: ClassVar[BinanceKlineIntervals | None] = (
+        BinanceKlineIntervals.fifteen_minutes
+    )
     policy = LifecyclePolicy(
         low_price_stop_floor_pct=None,
         reversal_enabled=False,

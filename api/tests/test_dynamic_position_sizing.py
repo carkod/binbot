@@ -1,14 +1,18 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock
+from pathlib import Path
+import warnings
 
 import pytest
 from kucoin_universal_sdk.model.common import RestError
-from pybinbot import BotModel, MarketType, Position, Status
+from pybinbot import BinanceKlineIntervals, BotModel, MarketType, Position, Status
 from sqlalchemy import create_engine, inspect, text
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
+from alembic.script import ScriptDirectory
+from pybinbot.models.deal import PositionSizeOrder
 
-from api.alembic.versions import d2e3f4a5b6c7_dynamic_position_sizing as migration
+from api.alembic.versions import a7b4e9c261f0_dynamic_position_sizing as migration
 from api.databases.crud.bot_crud import BotTableCrud
 from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
 from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
@@ -139,6 +143,183 @@ def test_balance_rejection_falls_back_but_network_error_keeps_pending_intent():
     assert engine.active_bot.deal.current_position_qty == 100
 
 
+def test_pre_submission_crash_restores_normal_exits_without_an_exchange_order():
+    engine = execution()
+    snapshot = None
+
+    def crash_after_intent_save(bot):
+        nonlocal snapshot
+        if bot.deal.position_size_order is not None:
+            snapshot = bot.model_dump()
+            raise RuntimeError("worker stopped after commit")
+
+    engine.controller.save.side_effect = crash_after_intent_save
+    with pytest.raises(RuntimeError):
+        DynamicPositionSizing(engine).process(95)
+    engine.active_bot = BotModel.model_validate(snapshot)
+    assert engine.active_bot.deal.position_size_order.submission_phase == "prepared"
+    engine.controller.save.side_effect = None
+    assert DynamicPositionSizing(engine).process(94) is False
+    assert engine.active_bot.deal.position_size_order is None
+    assert not engine.active_bot.dynamic_position_sizing
+    engine.reconcile_exchange_sl.assert_called_once()
+    engine.kucoin_futures_api.futures_order_api.add_order.assert_not_called()
+    engine.kucoin_futures_api.futures_order_api.get_order_by_client_oid.assert_not_called()
+
+
+def pending_order(*, reducing=True):
+    return PositionSizeOrder(
+        client_oid="persisted-before-crash",
+        reducing=reducing,
+        quantity_before=100,
+        entry_price_before=100,
+        requested_qty=25,
+        signal_price=95 if reducing else 110,
+    )
+
+
+def missing_order_error():
+    return RestError(
+        msg="missing",
+        response=SimpleNamespace(code="100001", message="Order does not exist"),
+    )
+
+
+def test_restarted_unknown_intent_replays_same_id_after_bounded_not_found(monkeypatch):
+    engine = execution()
+    engine.active_bot.deal.position_size_order = pending_order()
+    api = engine.kucoin_futures_api.futures_order_api
+    api.get_order_by_client_oid.side_effect = missing_order_error()
+    for now in (100, 130, 160):
+        monkeypatch.setattr(
+            "api.exchange_apis.kucoin.futures.position_sizing.time", lambda: now
+        )
+        DynamicPositionSizing(engine).process(95)
+        # Every tick hydrates from saved state as a new worker would.
+        engine.active_bot = BotModel.model_validate(engine.active_bot.model_dump())
+        if now < 160:
+            api.add_order.assert_not_called()
+    api.add_order.assert_called_once()
+    assert api.add_order.call_args.args[0].client_oid == "persisted-before-crash"
+    assert engine.active_bot.deal.current_position_qty == 100
+    api.get_order_by_client_oid.side_effect = None
+    DynamicPositionSizing(engine).process(95)
+    assert engine.active_bot.deal.current_position_qty == 75
+    assert engine.active_bot.deal.position_size_order is None
+    assert len(engine.active_bot.orders) == 1
+
+
+def test_duplicate_replay_response_preserves_pending_until_fill_is_visible(monkeypatch):
+    engine = execution()
+    engine.active_bot.deal.position_size_order = pending_order()
+    engine.active_bot.deal.position_size_order.not_found_since_ms = 100_000
+    engine.active_bot.deal.position_size_order.not_found_count = 2
+    monkeypatch.setattr(
+        "api.exchange_apis.kucoin.futures.position_sizing.time", lambda: 160
+    )
+    api = engine.kucoin_futures_api.futures_order_api
+    api.get_order_by_client_oid.side_effect = missing_order_error()
+    api.add_order.side_effect = RestError(
+        msg="duplicate",
+        response=SimpleNamespace(code="300018", message="clientOid parameter repeated"),
+    )
+    DynamicPositionSizing(engine).process(95)
+    assert (
+        engine.active_bot.deal.position_size_order.client_oid
+        == "persisted-before-crash"
+    )
+    assert not engine.active_bot.orders
+    api.get_order_by_client_oid.side_effect = None
+    DynamicPositionSizing(engine).process(95)
+    assert engine.active_bot.deal.current_position_qty == 75
+    api.add_order.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "code,message",
+    [
+        ("100001", "Invalid parameter"),
+        ("429000", "Too many requests"),
+        ("500000", "Internal server error"),
+    ],
+)
+def test_lookup_errors_are_not_treated_as_missing_orders(code, message):
+    engine = execution()
+    engine.active_bot.deal.position_size_order = pending_order()
+    api = engine.kucoin_futures_api.futures_order_api
+    api.get_order_by_client_oid.side_effect = RestError(
+        msg=message, response=SimpleNamespace(code=code, message=message)
+    )
+    with pytest.raises(RestError):
+        DynamicPositionSizing(engine).process(95)
+    assert engine.active_bot.deal.position_size_order.not_found_count == 0
+    api.add_order.assert_not_called()
+
+
+def test_missing_increase_rechecks_margin_and_keeps_normal_exits_after_fallback(
+    monkeypatch,
+):
+    engine = execution()
+    engine.active_bot.deal.position_size_order = pending_order(reducing=False)
+    engine.active_bot.deal.position_size_order.not_found_since_ms = 100_000
+    engine.active_bot.deal.position_size_order.not_found_count = 2
+    monkeypatch.setattr(
+        "api.exchange_apis.kucoin.futures.position_sizing.time", lambda: 160
+    )
+    api = engine.kucoin_futures_api.futures_order_api
+    api.get_order_by_client_oid.side_effect = missing_order_error()
+    engine.kucoin_futures_api.futures_account_api.get_futures_account.return_value.available_balance = 0
+    assert DynamicPositionSizing(engine).process(111) is False
+    engine.required_margin_for_contracts.assert_called_once_with(25, 111)
+    assert (
+        engine.active_bot.deal.position_size_order.client_oid
+        == "persisted-before-crash"
+    )
+    engine.reconcile_exchange_sl.assert_called_once()
+    # Retain the identity without blocking exits or retrying when funds recover.
+    engine.kucoin_futures_api.futures_account_api.get_futures_account.return_value.available_balance = 100
+    assert DynamicPositionSizing(engine).process(112) is False
+    api.get_order_by_client_oid.side_effect = RestError(
+        msg="rate limit",
+        response=SimpleNamespace(code="429000", message="Too many requests"),
+    )
+    assert DynamicPositionSizing(engine).process(112) is False
+    api.add_order.assert_not_called()
+
+
+def test_missing_count_resets_on_visible_order_and_requires_time_grace(monkeypatch):
+    engine = execution()
+    engine.active_bot.deal.position_size_order = pending_order()
+    api = engine.kucoin_futures_api.futures_order_api
+    api.get_order_by_client_oid.side_effect = missing_order_error()
+    monkeypatch.setattr(
+        "api.exchange_apis.kucoin.futures.position_sizing.time", lambda: 100
+    )
+    for _ in range(4):
+        DynamicPositionSizing(engine).process(95)
+    api.add_order.assert_not_called()
+    api.get_order_by_client_oid.side_effect = None
+    api.get_order_by_client_oid.return_value.is_active = True
+    DynamicPositionSizing(engine).process(95)
+    assert engine.active_bot.deal.position_size_order.not_found_count == 0
+    assert engine.active_bot.deal.position_size_order.not_found_since_ms == 0
+
+
+def test_migration_graph_keeps_grid_revision_and_has_unique_ids():
+    directory = ScriptDirectory(str(Path(__file__).resolve().parents[1] / "alembic"))
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        revisions = list(directory.walk_revisions())
+    assert len({item.revision for item in revisions}) == len(revisions)
+    assert directory.get_revision("d2e3f4a5b6c7").path.endswith(
+        "add_grid_signal_payload_fields.py"
+    )
+    assert directory.get_revision("a0e265d5cb35").down_revision == "d2e3f4a5b6c7"
+    assert directory.get_revision(migration.revision).path.endswith(
+        "dynamic_position_sizing.py"
+    )
+
+
 def test_active_partial_order_waits_until_terminal_and_counts_actual_fill_once():
     engine = execution()
     api = engine.kucoin_futures_api.futures_order_api
@@ -179,7 +360,9 @@ def test_lifecycle_sizing_replaces_full_close_and_strategy_parameter_updates(
     monkeypatch,
 ):
     engine = execution(paper=True)
-    lifecycle = Lifecycle(engine, SimpleNamespace())
+    lifecycle = Lifecycle(
+        engine, SimpleNamespace(interval=BinanceKlineIntervals.fifteen_minutes)
+    )
     evaluation = MagicMock()
     monkeypatch.setattr(lifecycle, "_evaluate_strategy", evaluation)
     assert lifecycle.exit(95).deal.current_position_qty == 75
@@ -207,7 +390,9 @@ def test_fallback_runs_normal_trailing_in_the_same_tick(monkeypatch):
     engine._direction_multiplier.return_value = 1
     engine._is_recovery_bot.return_value = False
     engine.kucoin_futures_api.futures_account_api.get_futures_account.return_value.available_balance = 0
-    lifecycle = Lifecycle(engine, SimpleNamespace())
+    lifecycle = Lifecycle(
+        engine, SimpleNamespace(interval=BinanceKlineIntervals.fifteen_minutes)
+    )
     lifecycle.klines = []
     monkeypatch.setattr(
         lifecycle,
@@ -251,7 +436,9 @@ def test_paper_trailing_arms_without_fill_and_closes_only_when_crossed(monkeypat
     engine.execute_stop_loss.side_effect = lambda **kwargs: (
         KucoinPositionDeal.execute_stop_loss(engine, **kwargs)
     )
-    lifecycle = Lifecycle(engine, SimpleNamespace())
+    lifecycle = Lifecycle(
+        engine, SimpleNamespace(interval=BinanceKlineIntervals.fifteen_minutes)
+    )
     lifecycle.klines = []
     monkeypatch.setattr(
         lifecycle,

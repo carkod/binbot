@@ -44,11 +44,21 @@ streaming service running. Normal strategy management resumes after fallback.
 
 `position_size_reference_price` persists the threshold anchor.
 `position_size_order` persists an adjustment's client ID and pre-order state
-before submission. A restart looks up that client ID; active or uncertain orders
-block further adjustments. Terminal partial fills use only their actual filled
-quantity. If a submission remains unresolvable, inspect its client ID at KuCoin
-before clearing the pending state; the system deliberately does not resubmit an
-order with an unknown outcome. This follows KuCoin's
+before submission. New intents start in `prepared`; `submitting` is committed
+before calling the exchange. A restart discards a `prepared` intent and restores
+normal trailing/stop protection, because no submission could have occurred.
+Legacy intents default to `submitting`, preserving their uncertain outcome.
+
+For uncertain submissions, lookup remains authoritative. After at least three
+explicit missing-order responses spanning 60 seconds, the worker retries using
+the **same client ID**. The counter and first-missing time survive restarts.
+Duplicate-ID rejections keep the intent pending for reconciliation; they never
+count as fills. A successful lookup resets the missing counter. Invalid
+parameters, rate limits, and server failures do not count as missing orders.
+Increases recheck margin at the latest price before retrying. If funds are no
+longer sufficient, normal protection resumes while the uncertain ID is retained
+for reconciliation, with further submissions disabled. Terminal partial fills
+use only their actual filled quantity. This follows KuCoin's
 [client order ID contract](https://www.kucoin.com/docs-new/rest/futures-trading/orders/add-order).
 
 `opening_qty` preserves the original fill; `current_position_qty` and
@@ -61,7 +71,7 @@ across these partial exits.
 
 This change spans `binbot` and the shared `pybinbot` package. Install or release
 the updated shared models before starting API/streaming workers, and apply
-Alembic revision `d2e3f4a5b6c7`. The migration adds missing fields, backfills null
+Alembic revision `a7b4e9c261f0`. The migration adds missing fields, backfills null
 defaults even when columns already exist, and can be replayed. No existing bot
 is opted in by the migration.
 
