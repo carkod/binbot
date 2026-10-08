@@ -657,6 +657,7 @@ class FuturesPosition(PositionMarket):
             self.execution.active_bot.status != Status.active
             or self.execution.active_bot.stop_loss <= 0
             or self.execution.active_bot.deal.opening_price <= 0
+            or self.execution.active_bot.dynamic_position_sizing
             or self.execution._reversal_eligible()
             or self.execution.active_bot.deal.trailing_stop_loss_price != 0
         ):

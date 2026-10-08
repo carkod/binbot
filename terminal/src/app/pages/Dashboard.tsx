@@ -121,14 +121,17 @@ export const DashboardPage: FC<{}> = () => {
   }, [signals]);
 
   return (
-    <div className="content">
+    <div className="content dashboard">
       <Row>
         <Col lg="3" xs="12">
           {loadingEstimates ? (
-            <CardLoadingSpinner label="total balance" />
+            <CardLoadingSpinner
+              label="total balance"
+              className="dashboard-balance"
+            />
           ) : (
             accountData && (
-              <Card>
+              <Card className="dashboard-balance">
                 <Card.Body>
                   <Row>
                     <Col
@@ -289,10 +292,13 @@ export const DashboardPage: FC<{}> = () => {
             </Card>
           )}
           {loadingActiveBots ? (
-            <CardLoadingSpinner label="active bots" />
+            <CardLoadingSpinner
+              label="active bots"
+              className="dashboard-active-bots"
+            />
           ) : (
             activeBotsCount > 0 && (
-              <Card>
+              <Card className="dashboard-active-bots">
                 <Card.Body>
                   <Row>
                     <Col md="12">
@@ -325,7 +331,7 @@ export const DashboardPage: FC<{}> = () => {
             )
           )}
         </Col>
-        <Col lg="9" xs="12" sm="12">
+        <Col lg="9" xs="12" sm="12" className="dashboard-benchmark">
           {loadingBenchmark ? (
             <CardLoadingSpinner label="portfolio benchmark" />
           ) : (
@@ -336,7 +342,7 @@ export const DashboardPage: FC<{}> = () => {
         </Col>
       </Row>
       <Row>
-        <Col lg="6" md="12">
+        <Col lg="6" md="12" className="dashboard-movers">
           {loadingCombined ? (
             <CardLoadingSpinner label="spot gainers and losers" />
           ) : (
@@ -345,7 +351,7 @@ export const DashboardPage: FC<{}> = () => {
             )
           )}
         </Col>
-        <Col lg="6" md="12">
+        <Col lg="6" md="12" className="dashboard-movers">
           {loadingFuturesRankings ? (
             <CardLoadingSpinner label="futures gainers and losers" />
           ) : (
@@ -359,7 +365,7 @@ export const DashboardPage: FC<{}> = () => {
         </Col>
       </Row>
       <Row>
-        <Col lg="6" md="12">
+        <Col lg="6" md="12" className="dashboard-trend">
           {loadingMarketBreadthSeries ? (
             <CardLoadingSpinner label="market breadth trend" />
           ) : (
@@ -373,7 +379,7 @@ export const DashboardPage: FC<{}> = () => {
             )
           )}
         </Col>
-        <Col lg="6" md="12">
+        <Col lg="6" md="12" className="dashboard-trend">
           {loadingBtcCloseSeries || loadingMarketBreadthSeries ? (
             <CardLoadingSpinner label="Bitcoin price trend" />
           ) : (
@@ -392,7 +398,7 @@ export const DashboardPage: FC<{}> = () => {
           loadingStrategyNames ||
           strategyNamesError ||
           filteredAlgoRanking.length > 0) && (
-          <Col lg="6" md="12">
+          <Col lg="6" md="12" className="dashboard-ranking">
             {loadingAlgoRanking || loadingStrategyNames ? (
               <CardLoadingSpinner label="algorithm ranking" />
             ) : (
@@ -463,7 +469,7 @@ export const DashboardPage: FC<{}> = () => {
           </Col>
         )}
         {(loadingSignals || rankedSignalAlgorithms.length > 0) && (
-          <Col lg="6" md="12">
+          <Col lg="6" md="12" className="dashboard-ranking">
             {loadingSignals ? (
               <CardLoadingSpinner label="signal ranking" />
             ) : (

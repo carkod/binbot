@@ -101,9 +101,10 @@ class BotTableCrud:
         # Step 2: Copy DealTable fields
         bot_table.deal = DealTable()
         if bot.deal:
+            deal_payload = bot.deal.model_dump()
             for field_name in DealTable.model_fields.keys():
-                if hasattr(bot.deal, field_name):
-                    setattr(bot_table.deal, field_name, getattr(bot.deal, field_name))
+                if field_name in deal_payload:
+                    setattr(bot_table.deal, field_name, deal_payload[field_name])
 
         # Step 3: Copy Orders
         bot_table.orders = []
