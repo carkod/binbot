@@ -5,10 +5,8 @@ from api.user.services.auth import get_current_user
 from api.databases.crud.autotrade_crud import AutotradeCrud
 from api.databases.utils import get_session
 from pybinbot import (
-    AutotradeSettingsDocument,
     AutotradeSettingsResponse,
     AutotradeSettingsSchema,
-    TestAutotradeSettingsSchema,
 )
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import ValidationError
@@ -53,51 +51,3 @@ def get_settings(session: Session = Depends(get_session)):
         }
     except Exception as error:
         return json_response_error(f"Error getting settings: {error}")
-
-
-@autotrade_settings_blueprint.get(
-    "/paper-trading",
-    response_model=TestAutotradeSettingsSchema,
-    tags=["autotrade settings"],
-)
-def get_test_autotrade_settings(
-    session: Session = Depends(get_session),
-):
-    try:
-        deserialized_data = AutotradeCrud(
-            document_id=AutotradeSettingsDocument.test_autotrade_settings,
-            session=session,
-        ).get_settings()
-        return json_response(
-            {
-                "message": "Successfully retrieved settings",
-                "data": deserialized_data.model_dump(),
-            }
-        )
-    except Exception as error:
-        return json_response_error(f"Error getting settings: {error}")
-
-
-@autotrade_settings_blueprint.put("/paper-trading", tags=["autotrade settings"])
-def edit_test_autotrade_settings(
-    item: TestAutotradeSettingsSchema,
-    session: Session = Depends(get_session),
-    _: dict = Depends(get_current_user),
-):
-    try:
-        data = AutotradeCrud(
-            document_id=AutotradeSettingsDocument.test_autotrade_settings,
-            session=session,
-        ).edit_settings(item)
-        if not data:
-            raise HTTPException(status_code=404, detail="Autotrade settings not found")
-        else:
-            return json_response(
-                {"message": "Successfully updated settings", "data": data.model_dump()}
-            )
-    except ValidationError as error:
-        msg = ""
-        for field, desc in error.args[0].items():
-            msg += field + desc[0]
-        resp = json_response_error(f"{msg}")
-        return resp

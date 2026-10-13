@@ -9,9 +9,9 @@ import { Tab } from "react-bootstrap";
 
 import { makeStore } from "../../store";
 import StopLossTab from "../StopLossTab";
-import { BotType, TabsKeys } from "../../../utils/enums";
+import { TabsKeys } from "../../../utils/enums";
 
-const renderStopLossTab = (botType: BotType = BotType.BOTS) => {
+const renderStopLossTab = () => {
   const store = makeStore();
   const user = userEvent.setup();
 
@@ -19,7 +19,7 @@ const renderStopLossTab = (botType: BotType = BotType.BOTS) => {
     <Provider store={store}>
       <Tab.Container activeKey={TabsKeys.STOPLOSS}>
         <Tab.Content>
-          <StopLossTab botType={botType} />
+          <StopLossTab />
         </Tab.Content>
       </Tab.Container>
     </Provider>,
@@ -70,9 +70,4 @@ describe("StopLossTab recovery params", () => {
     expect(testingScreen.queryByLabelText("Reversal path")).toBeNull();
   });
 
-  it("does not show recovery controls for paper trading", () => {
-    renderStopLossTab(BotType.PAPER_TRADING);
-
-    expect(testingScreen.queryByText("Recovery mode")).toBeNull();
-  });
 });

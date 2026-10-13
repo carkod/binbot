@@ -33,7 +33,6 @@ from pybinbot import (
 )
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
-from api.tests.fixtures.paper_trading import seed_paper_trading_defaults
 from api.tests.fixtures.symbol_fixtures import (
     get_test_symbols,
 )
@@ -355,9 +354,6 @@ def create_test_tables():
         for bot in test_bots:
             session.add(bot)
 
-        # Add paper trading bots via shared fixture helper
-        seed_paper_trading_defaults(session, commit=False)
-
         # Add symbols with their exchange values
         for symbol_data in get_test_symbols():
             session.add(symbol_data["symbol"])
@@ -464,19 +460,6 @@ def create_test_tables():
     patcher13.stop()
     app.dependency_overrides.clear()
     SQLModel.metadata.drop_all(test_engine)
-
-
-@pytest.fixture()
-def paper_trading_table_fixture(create_test_tables):
-    if _test_engine is not None:
-        with Session(_test_engine) as session:
-            seed_paper_trading_defaults(session)
-    try:
-        yield
-    finally:
-        if _test_engine is not None:
-            with Session(_test_engine) as session:
-                seed_paper_trading_defaults(session)
 
 
 @pytest.fixture(scope="session")

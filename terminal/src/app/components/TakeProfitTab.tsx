@@ -13,21 +13,11 @@ import InputGroupText from "react-bootstrap/esm/InputGroupText";
 import { useForm } from "react-hook-form";
 import { selectBot, setField, setToggle } from "../../features/bots/botSlice";
 import { useAppDispatch, useAppSelector } from "../hooks";
-import { BotType, TabsKeys } from "../../utils/enums";
-import {
-  selectTestBot,
-  setTestBotField,
-  setTestBotToggle,
-} from "../../features/bots/paperTradingSlice";
+import { TabsKeys } from "../../utils/enums";
 
-const TakeProfit: FC<{ botType?: BotType }> = ({ botType = BotType.BOTS }) => {
+const TakeProfit: FC = () => {
   const dispatch = useAppDispatch();
-  let { bot } = useAppSelector(selectBot);
-
-  if (botType === BotType.PAPER_TRADING) {
-    const testBot = useAppSelector(selectTestBot);
-    bot = testBot.paperTrading;
-  }
+  const { bot } = useAppSelector(selectBot);
 
   const {
     register,
@@ -50,19 +40,9 @@ const TakeProfit: FC<{ botType?: BotType }> = ({ botType = BotType.BOTS }) => {
     const { unsubscribe } = watch((v, { name, type }) => {
       if (v && v?.[name]) {
         if (typeof v === "boolean") {
-          if (botType === BotType.PAPER_TRADING) {
-            dispatch(setTestBotToggle({ name, value: v[name] }));
-          } else {
-            dispatch(setToggle({ name, value: v[name] }));
-          }
+          dispatch(setToggle({ name, value: v[name] }));
         } else {
-          if (botType === BotType.PAPER_TRADING) {
-            dispatch(
-              setTestBotField({ name, value: v[name] as number | string }),
-            );
-          } else {
-            dispatch(setField({ name, value: v[name] as number | string }));
-          }
+          dispatch(setField({ name, value: v[name] as number | string }));
         }
       }
     });
@@ -82,15 +62,7 @@ const TakeProfit: FC<{ botType?: BotType }> = ({ botType = BotType.BOTS }) => {
 
   const handleBlur = (e) => {
     if (e.target.value) {
-      if (botType === BotType.PAPER_TRADING) {
-        dispatch(
-          setTestBotField({ name: e.target.name, value: watch(e.target.name) }),
-        );
-      } else {
-        dispatch(
-          setField({ name: e.target.name, value: watch(e.target.name) }),
-        );
-      }
+      dispatch(setField({ name: e.target.name, value: watch(e.target.name) }));
     }
   };
 
@@ -169,18 +141,9 @@ const TakeProfit: FC<{ botType?: BotType }> = ({ botType = BotType.BOTS }) => {
                   value={1}
                   variant={bot.trailing ? "primary" : "secondary"}
                   onClick={(e) => {
-                    if (botType === BotType.PAPER_TRADING) {
-                      dispatch(
-                        setTestBotToggle({
-                          name: "trailing",
-                          value: !bot.trailing,
-                        }),
-                      );
-                    } else {
-                      dispatch(
-                        setToggle({ name: "trailing", value: !bot.trailing }),
-                      );
-                    }
+                    dispatch(
+                      setToggle({ name: "trailing", value: !bot.trailing }),
+                    );
                   }}
                 >
                   {bot.trailing ? "On" : "Off"}
@@ -206,21 +169,12 @@ const TakeProfit: FC<{ botType?: BotType }> = ({ botType = BotType.BOTS }) => {
                   value={1}
                   variant={bot.dynamic_trailing ? "primary" : "secondary"}
                   onClick={(e) => {
-                    if (botType === BotType.PAPER_TRADING) {
-                      dispatch(
-                        setTestBotToggle({
-                          name: "dynamic_trailing",
-                          value: !bot.dynamic_trailing,
-                        }),
-                      );
-                    } else {
-                      dispatch(
-                        setToggle({
-                          name: "dynamic_trailing",
-                          value: !bot.dynamic_trailing,
-                        }),
-                      );
-                    }
+                    dispatch(
+                      setToggle({
+                        name: "dynamic_trailing",
+                        value: !bot.dynamic_trailing,
+                      }),
+                    );
                   }}
                 >
                   {bot.dynamic_trailing ? "On" : "Off"}

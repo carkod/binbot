@@ -1,14 +1,11 @@
 from api.databases.tables.autotrade_table import (
     AutotradeTable,
-    TestAutotradeTable,
     SettingsDocument,
 )
 from api.databases.utils import get_db_session
 from sqlmodel import Session, select
-from sqlmodel.sql._expression_select_cls import SelectOfScalar
 from pybinbot import (
     AutotradeSettingsSchema,
-    TestAutotradeSettingsSchema,
     AutotradeSettingsDocument,
 )
 
@@ -28,20 +25,8 @@ class AutotradeCrud:
         self.document_id = document_id
         self._external_session = session
 
-    def get_settings(self) -> AutotradeTable | TestAutotradeTable:
-        """
-        Mypy check ignored: Incompatible types in assignment
-        should not affect execution of statement.
-        This is to avoid dup code
-        """
-        statement: (
-            SelectOfScalar[AutotradeTable] | SelectOfScalar[TestAutotradeTable]
-        ) = select(AutotradeTable).where(AutotradeTable.id == self.document_id)
-
-        if self.document_id == AutotradeSettingsDocument.test_autotrade_settings:
-            statement = select(TestAutotradeTable).where(
-                TestAutotradeTable.id == self.document_id
-            )
+    def get_settings(self) -> AutotradeTable:
+        statement = select(AutotradeTable).where(AutotradeTable.id == self.document_id)
 
         with get_db_session(self._external_session) as s:
             results = s.exec(statement)
@@ -53,21 +38,14 @@ class AutotradeCrud:
             s.expunge(settings)
             return settings
 
-    def edit_settings(
-        self, data: AutotradeSettingsSchema | TestAutotradeSettingsSchema
-    ) -> SettingsDocument:
+    def edit_settings(self, data: AutotradeSettingsSchema) -> SettingsDocument:
         """
         Edit autotrade settings based on document_id.
         """
-        if self.document_id == AutotradeSettingsDocument.test_autotrade_settings:
-            table_class: type[TestAutotradeTable | AutotradeTable] = TestAutotradeTable
-        else:
-            table_class = AutotradeTable
-
-        settings_data = table_class.model_validate(data)
+        settings_data = AutotradeTable.model_validate(data)
         update_data = data.model_dump(include=data.model_fields_set)
         with get_db_session(self._external_session) as s:
-            settings = s.get(table_class, settings_data.id)
+            settings = s.get(AutotradeTable, settings_data.id)
 
             assert settings is not None, (
                 f"No autotrade settings found for id {self.document_id}"

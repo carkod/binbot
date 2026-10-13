@@ -1,12 +1,9 @@
 import logging
 from time import sleep
-from typing import Tuple, Type, Union
+from typing import Tuple, Type
 
 from kucoin_universal_sdk.generate.account.account.model_get_isolated_margin_account_resp import (
     GetIsolatedMarginAccountAssets,
-)
-from kucoin_universal_sdk.generate.margin.order.model_add_order_req import (
-    AddOrderReq,
 )
 from kucoin_universal_sdk.generate.spot.order.model_get_order_by_order_id_resp import (
     GetOrderByOrderIdResp,
@@ -27,9 +24,8 @@ from pybinbot import (
 )
 
 from api.databases.crud.bot_crud import BotTableCrud
-from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
 from api.databases.crud.symbols_crud import SymbolsCrud
-from api.databases.tables.bot_table import BotTable, PaperTradingTable
+from api.databases.tables.bot_table import BotTable
 from api.exchange_apis.kucoin.deals.base import KucoinBaseBalance
 
 
@@ -42,18 +38,15 @@ class KucoinMarginDeal(KucoinBaseBalance):
     def __init__(
         self,
         bot: BotModel,
-        db_table: Type[BotTable] | Type[PaperTradingTable] = BotTable,
+        db_table: Type[BotTable] = BotTable,
     ) -> None:
         super().__init__()
         self.active_bot = bot
         self.db_table = db_table
         self.symbols_crud = SymbolsCrud()
         # Provide controller attribute for parity with Binance implementations
-        self.controller: Union[PaperTradingTableCrud, BotTableCrud]
-        if db_table == PaperTradingTable:
-            self.controller = PaperTradingTableCrud()
-        else:
-            self.controller = BotTableCrud()
+        self.controller: BotTableCrud
+        self.controller = BotTableCrud()
         self.symbol_info = SymbolsCrud().get_symbol(bot.pair)
         self.price_precision = self.symbol_info.price_precision
         self.qty_precision = self.symbol_info.qty_precision
@@ -249,18 +242,12 @@ class KucoinMarginDeal(KucoinBaseBalance):
                 self.qty_precision,
             )
 
-        if isinstance(self.controller, PaperTradingTableCrud):
-            system_order = self.kucoin_api.simulate_margin_order(
-                symbol=self.symbol, side=AddOrderReq.SideEnum.SELL, qty=qty
-            )
-
-        else:
-            self.init_margin_short(last_ticker_price)
-            # init_margin_short will set opening_qty
-            system_order = self.kucoin_api.sell_margin_order(
-                symbol=self.symbol,
-                qty=(qty * repurchase_multiplier),
-            )
+        self.init_margin_short(last_ticker_price)
+        # init_margin_short will set opening_qty
+        system_order = self.kucoin_api.sell_margin_order(
+            symbol=self.symbol,
+            qty=(qty * repurchase_multiplier),
+        )
 
         self.controller.update_logs(
             bot=self.active_bot, log_message="Base order executed."
@@ -398,7 +385,6 @@ class KucoinMarginDeal(KucoinBaseBalance):
     def init_margin_short(self, initial_price: float) -> BotModel:
         """
         Pre-tasks for bots that use margin_short strategy
-        These tasks are not necessary for paper_trading
 
         1. transfer funds
         2. create loan with qty given by market

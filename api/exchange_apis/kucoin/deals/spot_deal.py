@@ -1,6 +1,6 @@
 import logging
 from time import sleep
-from typing import Type, Union
+from typing import Type
 
 from kucoin_universal_sdk.generate.margin.order.model_add_order_req import (
     AddOrderReq,
@@ -24,9 +24,8 @@ from pybinbot import (
 )
 
 from api.databases.crud.bot_crud import BotTableCrud
-from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
 from api.databases.crud.symbols_crud import SymbolsCrud
-from api.databases.tables.bot_table import BotTable, PaperTradingTable
+from api.databases.tables.bot_table import BotTable
 from api.exchange_apis.kucoin.deals.base import KucoinBaseBalance
 
 
@@ -41,16 +40,13 @@ class KucoinSpotDeal(KucoinBaseBalance):
     def __init__(
         self,
         bot: BotModel,
-        db_table: Type[BotTable] | Type[PaperTradingTable] = BotTable,
+        db_table: Type[BotTable] = BotTable,
     ) -> None:
         super().__init__()
         self.active_bot = bot
         self.db_table = db_table
-        self.controller: Union[PaperTradingTableCrud, BotTableCrud]
-        if db_table == PaperTradingTable:
-            self.controller = PaperTradingTableCrud()
-        else:
-            self.controller = BotTableCrud()
+        self.controller: BotTableCrud
+        self.controller = BotTableCrud()
 
         # Provide a controller attribute for polymorphic access
         self.symbol_info = SymbolsCrud().get_symbol(bot.pair)
@@ -279,31 +275,22 @@ class KucoinSpotDeal(KucoinBaseBalance):
             )
 
         else:
-            # if paper_trading we don't need balance checks
-            if isinstance(self.controller, PaperTradingTableCrud):
-                system_order = self.kucoin_api.simulate_order(
-                    symbol=self.symbol,
-                    side=AddOrderReq.SideEnum.BUY,
-                )
-                qty = 1
+            is_balance = self.check_trading_balance_and_update()
+            if not is_balance:
+                # This should raise an error because we don't want to activate bot if there are no funds
+                msg = "Base order failed due to insufficient balance."
+                self.active_bot.add_log(msg)
+                self.active_bot.status = Status.inactive
+                self.controller.save(self.active_bot)
+                raise BinbotErrors(msg)
 
-            else:
-                is_balance = self.check_trading_balance_and_update()
-                if not is_balance:
-                    # This should raise an error because we don't want to activate bot if there are no funds
-                    msg = "Base order failed due to insufficient balance."
-                    self.active_bot.add_log(msg)
-                    self.active_bot.status = Status.inactive
-                    self.controller.save(self.active_bot)
-                    raise BinbotErrors(msg)
+            self.active_bot.deal.base_order_size = self.active_bot.fiat_order_size
+            last_ticker_price = self.kucoin_api.get_ticker_price(self.symbol)
 
-                self.active_bot.deal.base_order_size = self.active_bot.fiat_order_size
-                last_ticker_price = self.kucoin_api.get_ticker_price(self.symbol)
-
-                qty = round_numbers_ceiling(
-                    (self.active_bot.fiat_order_size / last_ticker_price),
-                    self.qty_precision,
-                )
+            qty = round_numbers_ceiling(
+                (self.active_bot.fiat_order_size / last_ticker_price),
+                self.qty_precision,
+            )
 
         system_order = None
 
@@ -413,16 +400,10 @@ class KucoinSpotDeal(KucoinBaseBalance):
             DealType.algorithmic_close if algorithmic_close else DealType.panic_close
         )
         if self.active_bot.deal.opening_qty > 0:
-            if isinstance(self.controller, PaperTradingTableCrud):
-                system_order = self.kucoin_api.simulate_order(
-                    symbol=self.symbol,
-                    side=AddOrderReq.SideEnum.SELL,
-                )
-            else:
-                system_order = self.kucoin_api.sell_order(
-                    symbol=self.symbol,
-                    qty=self.active_bot.deal.opening_qty,
-                )
+            system_order = self.kucoin_api.sell_order(
+                symbol=self.symbol,
+                qty=self.active_bot.deal.opening_qty,
+            )
 
             if system_order:
                 order = OrderModel(

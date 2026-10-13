@@ -4,7 +4,6 @@ from typing import Union
 from pybinbot import (
     BinanceApi,
     BinanceKlineIntervals,
-    BinbotErrors,
     BotModel,
     ExchangeId,
     KucoinApi,
@@ -12,14 +11,12 @@ from pybinbot import (
     KucoinKlineIntervals,
     MarketType,
     Position,
-    Status,
     round_numbers,
 )
 
 from api.databases.crud.autotrade_crud import AutotradeCrud
 from api.databases.crud.bot_crud import BotTableCrud
 from api.databases.crud.grid_ladder_crud import GridLadderCrud
-from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
 from api.databases.crud.symbols_crud import SymbolsCrud
 from api.databases.utils import get_db_session
 from api.tools.config import Config
@@ -46,7 +43,6 @@ class BaseStreaming:
             passphrase=self.config.kucoin_passphrase,
         )
         self.bot_controller = BotTableCrud()
-        self.paper_trading_controller = PaperTradingTableCrud()
         self.symbols_crud = SymbolsCrud()
         with get_db_session() as session:
             self.active_grid_ladder_pairs = GridLadderCrud(session).get_active_symbols()
@@ -83,17 +79,10 @@ class BaseStreaming:
         so it needs to be reassigned to self.active_bot_pairs
         """
         bot_active_pairs = list(self.bot_controller.get_active_pairs())
-        paper_trading_active_pairs = list(
-            self.paper_trading_controller.get_active_pairs()
-        )
         with get_db_session() as session:
             grid_ladder_active_pairs = GridLadderCrud(session).get_active_symbols()
         self.active_grid_ladder_pairs = grid_ladder_active_pairs
-        active_pairs = list(
-            set(
-                bot_active_pairs + paper_trading_active_pairs + grid_ladder_active_pairs
-            )
-        )
+        active_pairs = list(set(bot_active_pairs + grid_ladder_active_pairs))
         active_pairs.extend(["BTCUSDC", "ETHUSDC"])
         self.active_bot_pairs = active_pairs
         return active_pairs
@@ -103,17 +92,6 @@ class BaseStreaming:
         if current_bot is None:
             return None
         return BotModel.dump_from_table(current_bot)
-
-    def get_current_test_bot(self, symbol: str) -> BotModel | None:
-        try:
-            current_test_bot = self.paper_trading_controller.get_one(
-                symbol=symbol, status=Status.active
-            )
-            bot = BotModel.dump_from_table(current_test_bot)
-            return bot
-        except BinbotErrors:
-            bot = None
-            return bot
 
     def get_interests_short_margin(self, bot: BotModel) -> tuple[float, float, float]:
         close_timestamp = bot.deal.closing_timestamp

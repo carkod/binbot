@@ -52,7 +52,3 @@ export interface BotDetailsFormFieldBoolean {
 export interface BotDetailsState {
   bot: Bot;
 }
-
-export interface PaperTradingDetailsState {
-  paperTrading: Bot;
-}

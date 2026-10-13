@@ -17,7 +17,7 @@ from api.databases.crud.bot_crud import BotTableCrud
 from api.databases.crud.grid_ladder_crud import GridLadderCrud
 from api.databases.utils import get_session
 from api.deals.gateway import DealGateway
-from api.databases.tables.bot_table import BotTable, PaperTradingTable
+from api.databases.tables.bot_table import BotTable
 from api.exchange_apis.kucoin.futures.futures_deal import (
     EntryLiquidityError,
     KucoinPositionDeal,
@@ -283,7 +283,7 @@ def deactivate_bot(
     """
     crud = BotTableCrud(session)
     bot_row = crud.get_one(bot_id=bot_id)
-    if not isinstance(bot_row, (BotTable, PaperTradingTable)):
+    if not isinstance(bot_row, BotTable):
         return BotResponse(message="Invalid bot data.", error=1)
 
     bot_model = BotModel.dump_from_table(bot_row)

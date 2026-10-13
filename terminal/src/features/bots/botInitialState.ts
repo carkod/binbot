@@ -76,7 +76,6 @@ export interface BotEntity {
 /**
  * This file contains redux state
  * that is shared between bots views
- * at the time of writing: bots and paper trading (test bots)
  */
 
 // The initial state of the App

@@ -12,7 +12,6 @@ from pybinbot import (
     DealType,
     MarginShortError,
     OrderModel,
-    OrderSide,
     Position,
     QuoteAssets,
     Status,
@@ -23,9 +22,8 @@ from pybinbot import (
 )
 
 from api.databases.crud.bot_crud import BotTableCrud
-from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
 from api.databases.crud.symbols_crud import SymbolsCrud
-from api.databases.tables.bot_table import BotTable, PaperTradingTable
+from api.databases.tables.bot_table import BotTable
 from api.exchange_apis.binance.deals.factory import BinanceDeal
 from api.tools.config import Config
 
@@ -46,7 +44,7 @@ class BinanceMarginDeal(BinanceDeal):
     def __init__(
         self,
         bot: BotModel,
-        db_table: Type[BotTable] | Type[PaperTradingTable] = BotTable,
+        db_table: Type[BotTable] = BotTable,
     ):
         super().__init__(bot, db_table)
         self.active_bot = bot
@@ -168,30 +166,24 @@ class BinanceMarginDeal(BinanceDeal):
                 self.qty_precision,
             )
 
-        if isinstance(self.controller, PaperTradingTableCrud):
-            order_res = self.simulate_margin_order(
-                pair=self.active_bot.pair, side=OrderSide.sell
+        self.init_margin_short(last_ticker_price)
+        try:
+            # init_margin_short will set opening_qty
+            order_res = self.sell_margin_order(
+                symbol=self.active_bot.pair,
+                qty=(qty * repurchase_multiplier),
             )
-
-        else:
-            self.init_margin_short(last_ticker_price)
-            try:
-                # init_margin_short will set opening_qty
-                order_res = self.sell_margin_order(
-                    symbol=self.active_bot.pair,
-                    qty=(qty * repurchase_multiplier),
+        except BinanceErrors as error:
+            if error.code == -2010:
+                self.controller.update_logs(
+                    bot=self.active_bot,
+                    log_message="Base asset purchase failed! Not enough funds.",
                 )
-            except BinanceErrors as error:
-                if error.code == -2010:
-                    self.controller.update_logs(
-                        bot=self.active_bot,
-                        log_message="Base asset purchase failed! Not enough funds.",
+                if repurchase_multiplier > 0.80:
+                    self.margin_short_base_order(
+                        repurchase_multiplier=repurchase_multiplier - 0.05
                     )
-                    if repurchase_multiplier > 0.80:
-                        self.margin_short_base_order(
-                            repurchase_multiplier=repurchase_multiplier - 0.05
-                        )
-                    return self.active_bot
+                return self.active_bot
 
         self.controller.update_logs(
             bot=self.active_bot, log_message="Base order executed."
@@ -335,7 +327,6 @@ class BinanceMarginDeal(BinanceDeal):
     def init_margin_short(self, initial_price: float) -> BotModel:
         """
         Pre-tasks for bots that use margin_short strategy
-        These tasks are not necessary for paper_trading
 
         1. transfer funds
         2. create loan with qty given by market
@@ -368,7 +359,6 @@ class BinanceMarginDeal(BinanceDeal):
                     amount=1,
                 )
                 self.enable_isolated_margin_account(symbol=self.active_bot.pair)
-                pass
 
         # Given USDC amount we want to buy,
         # how much can we buy?
@@ -424,10 +414,7 @@ class BinanceMarginDeal(BinanceDeal):
         This is used during streaming updates
         """
         # Margin buy (buy back)
-        if isinstance(self.controller, PaperTradingTableCrud):
-            res = self.simulate_margin_order(self.active_bot.pair, OrderSide.buy)
-        else:
-            res = self.margin_liquidation(self.active_bot.pair)
+        res = self.margin_liquidation(self.active_bot.pair)
 
         price = float(res["price"])
         if price == 0:
@@ -490,17 +477,14 @@ class BinanceMarginDeal(BinanceDeal):
                 pass
 
         # Margin buy (buy back)
-        if isinstance(self.controller, PaperTradingTableCrud):
-            res = self.simulate_margin_order(self.active_bot.pair, OrderSide.buy)
-        else:
-            self.controller.update_logs("Attempting to liquidate loan", self.active_bot)
-            try:
-                res = self.margin_liquidation(self.active_bot.pair)
-            except BinanceErrors as error:
-                self.active_bot.add_log(error.message)
-                self.active_bot.status = Status.error
-                self.controller.save(self.active_bot)
-                return self.active_bot
+        self.controller.update_logs("Attempting to liquidate loan", self.active_bot)
+        try:
+            res = self.margin_liquidation(self.active_bot.pair)
+        except BinanceErrors as error:
+            self.active_bot.add_log(error.message)
+            self.active_bot.status = Status.error
+            self.controller.save(self.active_bot)
+            return self.active_bot
 
         if res:
             price = float(res["price"])
@@ -571,8 +555,6 @@ class BinanceMarginDeal(BinanceDeal):
         created_bot = self.controller.create(new_bot)
 
         url = self.binbot_api.bb_activate_bot_url
-        if isinstance(self.controller, PaperTradingTableCrud):
-            url = self.binbot_api.bb_paper_trading_activate_url
 
         # to avoid circular imports make network request
         # This class is already imported for switch_to_margin_short
@@ -664,5 +646,3 @@ class BinanceMarginDeal(BinanceDeal):
                     self.active_bot,
                 )
                 self.execute_stop_loss()
-
-        pass

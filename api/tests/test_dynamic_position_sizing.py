@@ -14,18 +14,17 @@ from pybinbot.models.deal import PositionSizeOrder
 
 from api.alembic.versions import a7b4e9c261f0_dynamic_position_sizing as migration
 from api.databases.crud.bot_crud import BotTableCrud
-from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
 from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from api.exchange_apis.kucoin.futures.position_sizing import DynamicPositionSizing
 from streaming.lifecycle import Lifecycle
 from streaming.context_evaluator import LifecycleEvaluation
 from streaming.strategies.base import LifecyclePolicy, LifecycleSignal
 from sqlmodel import SQLModel, Session
-from api.databases.tables.bot_table import BotTable, PaperTradingTable
+from api.databases.tables.bot_table import BotTable
 from api.databases.tables.deal_table import DealTable
 
 
-def execution(*, short=False, paper=False):
+def execution(*, short=False):
     bot = BotModel(
         pair="XBTUSDTM",
         fiat="USDT",
@@ -41,7 +40,7 @@ def execution(*, short=False, paper=False):
     )
     result = MagicMock(spec=KucoinPositionDeal)
     result.active_bot = bot
-    result.controller = MagicMock(spec=PaperTradingTableCrud) if paper else MagicMock()
+    result.controller = MagicMock(spec=BotTableCrud)
     result.kucoin_symbol = bot.pair
     result.kucoin_symbol_data = SimpleNamespace(lot_size=1)
     result.symbol_info = SimpleNamespace(futures_leverage=3)
@@ -343,23 +342,10 @@ def test_adjustment_rounds_down_to_exchange_lot(qty, pct, lot, expected):
     assert DynamicPositionSizing.adjustment_quantity(qty, pct, lot) == expected
 
 
-def test_paper_reductions_use_remaining_quantity_and_close_final_lot():
-    engine = execution(paper=True)
-    DynamicPositionSizing(engine).process(95)
-    DynamicPositionSizing(engine).process(90)
-    assert [order.qty for order in engine.active_bot.orders] == [25, 18]
-    assert engine.active_bot.deal.current_position_qty == 57
-    engine.active_bot.deal.current_position_qty = 1
-    DynamicPositionSizing(engine).process(80)
-    assert engine.active_bot.status == Status.completed
-    assert engine.active_bot.deal.current_position_qty == 0
-    engine.kucoin_futures_api.futures_order_api.add_order.assert_not_called()
-
-
 def test_lifecycle_sizing_replaces_full_close_and_strategy_parameter_updates(
     monkeypatch,
 ):
-    engine = execution(paper=True)
+    engine = execution()
     lifecycle = Lifecycle(
         engine, SimpleNamespace(interval=BinanceKlineIntervals.fifteen_minutes)
     )
@@ -405,101 +391,24 @@ def test_fallback_runs_normal_trailing_in_the_same_tick(monkeypatch):
     assert engine.active_bot.deal.trailing_stop_loss_price == 107.8
 
 
-def test_paper_tick_does_not_replace_simulated_quantity_with_live_position(monkeypatch):
-    engine = execution(paper=True)
-    base = MagicMock()
-    base.kucoin_futures_api.get_mark_price.return_value = 95
-    position = MagicMock()
-    position.dataframe_ops.return_value = ([], [])
-    monkeypatch.setattr(
-        "streaming.lifecycle.FuturesPosition", lambda **kwargs: position
-    )
-    assert Lifecycle(engine, base).process_tick().deal.current_position_qty == 75
-    position.order_updates.assert_not_called()
-    position.position_updates.assert_not_called()
-    base.kucoin_futures_api.get_futures_position.assert_not_called()
-
-
-def test_paper_trailing_arms_without_fill_and_closes_only_when_crossed(monkeypatch):
-    engine = execution(paper=True)
-    engine.active_bot.dynamic_position_sizing = False
-    engine.active_bot.trailing = True
-    engine.active_bot.take_profit = 0
-    engine.active_bot.deal.current_position_qty = 75
-    engine.active_bot.deal.trailing_stop_loss_price = 108
-    KucoinPositionDeal.place_trailing_stop_loss(engine)
-    assert not engine.active_bot.orders
-    engine.price_precision = 2
-    engine._direction_multiplier.return_value = 1
-    engine._is_recovery_bot.return_value = False
-    engine.current_position_quantity.return_value = 75
-    engine.execute_stop_loss.side_effect = lambda **kwargs: (
-        KucoinPositionDeal.execute_stop_loss(engine, **kwargs)
-    )
-    lifecycle = Lifecycle(
-        engine, SimpleNamespace(interval=BinanceKlineIntervals.fifteen_minutes)
-    )
-    lifecycle.klines = []
-    monkeypatch.setattr(
-        lifecycle,
-        "_evaluate_strategy",
-        lambda **kwargs: LifecycleEvaluation(LifecyclePolicy(), LifecycleSignal()),
-    )
-    lifecycle.exit(109)
-    engine.execute_stop_loss.assert_not_called()
-    lifecycle.exit(107)
-    assert engine.active_bot.status == Status.completed
-    assert engine.active_bot.orders[-1].qty == 75
-    assert engine.active_bot.orders[-1].deal_type == "trailing_profit"
-    engine.kucoin_futures_api.futures_order_api.add_order.assert_not_called()
-
-
-def test_paper_entry_and_protection_never_submit_live_orders():
-    engine = execution(paper=True)
-    engine.active_bot.fiat_order_size = 100
-    engine.kucoin_futures_api.get_mark_price.return_value = 100
-    engine.calculate_contracts.return_value = 3
-    KucoinPositionDeal.base_order(engine)
-    KucoinPositionDeal.place_stop_loss(engine)
-    KucoinPositionDeal.reconcile_exchange_sl(engine)
-    engine.active_bot.deal.trailing_stop_loss_price = 105
-    KucoinPositionDeal.reconcile_trailing_stop_loss(engine)
-    assert engine.active_bot.deal.current_position_qty == 3
-    assert engine.active_bot.orders[-1].qty == 3
-    engine.compute_available_balance.assert_not_called()
-    engine.kucoin_futures_api.futures_order_api.add_order.assert_not_called()
-    engine.kucoin_futures_api.get_futures_position.assert_not_called()
-
-
-@pytest.mark.parametrize("paper", [False, True])
-def test_adjustments_and_pending_intent_survive_database_roundtrip(paper):
-    engine = execution(paper=paper)
+def test_adjustments_and_pending_intent_survive_database_roundtrip():
+    engine = execution()
     db = create_engine("sqlite://")
     SQLModel.metadata.create_all(db)
-    table_type = PaperTradingTable if paper else BotTable
+    table_type = BotTable
     with Session(db) as session:
         row = table_type(id=engine.active_bot.id, pair="XBTUSDTM", deal=DealTable())
         session.add(row)
         session.commit()
-        engine.controller = (
-            PaperTradingTableCrud(session) if paper else BotTableCrud(session)
+        engine.controller = BotTableCrud(session)
+        engine.kucoin_futures_api.futures_order_api.get_order_by_client_oid.return_value.is_active = True
+        DynamicPositionSizing(engine).process(95)
+        saved = session.get(table_type, engine.active_bot.id)
+        hydrated = BotModel.dump_from_table(saved)
+        assert (
+            hydrated.deal.position_size_order
+            == engine.active_bot.deal.position_size_order
         )
-        if paper:
-            DynamicPositionSizing(engine).process(95)
-            DynamicPositionSizing(engine).process(90)
-            saved = session.get(table_type, engine.active_bot.id)
-            hydrated = BotModel.dump_from_table(saved)
-            assert len(hydrated.orders) == 2
-            assert hydrated.deal.current_position_qty == 57
-        else:
-            engine.kucoin_futures_api.futures_order_api.get_order_by_client_oid.return_value.is_active = True
-            DynamicPositionSizing(engine).process(95)
-            saved = session.get(table_type, engine.active_bot.id)
-            hydrated = BotModel.dump_from_table(saved)
-            assert (
-                hydrated.deal.position_size_order
-                == engine.active_bot.deal.position_size_order
-            )
         assert hydrated.dynamic_position_sizing
 
 

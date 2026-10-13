@@ -42,7 +42,6 @@ const intervalOptions = [
 const matchNewRoutes = (pathname: string) => {
   const pathnames = [
     "/bots/futures/new/:symbol?",
-    "/paper-trading/new/:symbol?",
     "/bots/new/:symbol?",
   ];
   return pathnames.some((path) =>

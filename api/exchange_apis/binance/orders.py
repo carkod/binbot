@@ -34,7 +34,6 @@ class BinanceOrderController(BinanceAccount):
         self.symbols_crud = SymbolsCrud()
         self.autotrade_settings = AutotradeCrud().get_settings()
         self.exchange_id: ExchangeId = self.autotrade_settings.exchange_id
-        pass
 
     def generate_id(self):
         return uuid4()
@@ -64,82 +63,6 @@ class BinanceOrderController(BinanceAccount):
         """
         symbol_info = self.symbols_crud.get_symbol(symbol)
         return symbol_info.qty_precision
-
-    def simulate_order(self, pair: str, side: OrderSide, qty=1):
-        """
-        Price is determined by market
-        to help trigger the order immediately
-        """
-        price = self.matching_engine(pair, True, 0)
-        order = {
-            "symbol": pair,
-            "orderId": self.generate_short_id(),
-            "orderListId": -1,
-            "clientOrderId": self.generate_id().hex,
-            "transactTime": self.get_ts(),
-            "price": price,
-            "origQty": qty,
-            "executedQty": qty,
-            "cummulativeQuoteQty": qty,
-            "status": "FILLED",
-            "timeInForce": "GTC",
-            "type": "LIMIT",
-            "side": side,
-            "fills": [],
-        }
-        return order
-
-    def simulate_response_order(self, pair: str, side: OrderSide, qty=1):
-        price = self.matching_engine(pair, True, qty)
-        response_order = {
-            "symbol": pair,
-            "orderId": self.generate_short_id(),
-            "orderListId": -1,
-            "clientOrderId": self.generate_id().hex,
-            "transactTime": self.get_ts(),
-            "price": price,
-            "origQty": qty,
-            "executedQty": qty,
-            "cummulativeQuoteQty": qty,
-            "status": "FILLED",
-            "timeInForce": "GTC",
-            "type": "LIMIT",
-            "side": side,
-            "fills": [],
-        }
-        return response_order
-
-    def simulate_margin_order(self, pair, side: OrderSide):
-        """
-        Quantity doesn't matter, as it is not a real order that needs
-        to be process by the exchange
-
-        Args:
-        - symbol and pair are used interchangably
-        - side: buy or sell
-        """
-        qty = 1
-        price = self.matching_engine(pair, False, qty)
-        order = {
-            "symbol": pair,
-            "orderId": self.generate_short_id(),
-            "orderListId": -1,
-            "clientOrderId": self.generate_id().hex,
-            "transactTime": self.get_ts(),
-            "price": price,
-            "origQty": qty,
-            "executedQty": qty,
-            "cummulativeQuoteQty": qty,
-            "status": "FILLED",
-            "timeInForce": "GTC",
-            "type": "LIMIT",
-            "side": side,
-            "marginBuyBorrowAmount": 5,
-            "marginBuyBorrowAsset": "BTC",
-            "isIsolated": "true",
-            "fills": [],
-        }
-        return order
 
     def sell_order(
         self, symbol: str, qty: float, price_precision: int = 0, qty_precision: int = 0

@@ -6,7 +6,6 @@ from pybinbot import (
     BotModel,
     DealType,
     OrderModel,
-    OrderSide,
     Position,
     QuoteAssets,
     Status,
@@ -16,9 +15,8 @@ from pybinbot import (
     round_timestamp,
 )
 
-from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
 from api.databases.crud.symbols_crud import SymbolsCrud
-from api.databases.tables.bot_table import BotTable, PaperTradingTable
+from api.databases.tables.bot_table import BotTable
 from api.exchange_apis.binance.deals.base_deal import BaseDeal
 from api.tools.exceptions import TakeProfitError
 
@@ -33,16 +31,13 @@ class BinanceDeal(BaseDeal):
     2. Open deal (deal controller)
     3. Update deals (deal update controller)
 
-    - db_collection = ["bots", "paper_trading"].
-    paper_trading uses simulated orders and bot uses real binance orders.
-    PaperTradingTable is implemented, PaperTradingController with the db operations is not.
     - bot: BotModel (at some point to refactor into BotTable as they are both pydantic models)
     """
 
     def __init__(
         self,
         bot: BotModel,
-        db_table: Type[BotTable] | Type[PaperTradingTable] = BotTable,
+        db_table: Type[BotTable] = BotTable,
     ):
         super().__init__(bot, db_table)
         self.active_bot = bot
@@ -132,9 +127,6 @@ class BinanceDeal(BaseDeal):
         """
         symbol = self.active_bot.fiat + self.active_bot.quote_asset.value
 
-        if isinstance(self.controller, PaperTradingTableCrud):
-            return self.simulate_order(symbol, OrderSide.buy)
-
         price = self.get_book_order_deep(symbol=symbol, order_side=False)
 
         # Get current quote asset balance
@@ -201,10 +193,6 @@ class BinanceDeal(BaseDeal):
 
         if self.active_bot.quote_asset.is_fiat():
             return self.check_available_balance_fiat(balances)
-
-        # we don't need to continue if it's a fake bot
-        if isinstance(self.controller, PaperTradingTableCrud):
-            return self.simulate_order(symbol, OrderSide.buy)
 
         is_quote_balance = next(
             (
@@ -378,20 +366,14 @@ class BinanceDeal(BaseDeal):
         buy_total_qty = self.active_bot.deal.opening_qty
         price = (1 + (float(self.active_bot.take_profit) / 100)) * float(deal_buy_price)
 
-        if self.db_table == PaperTradingTable:
-            qty = self.active_bot.deal.opening_qty
-        else:
-            qty = self.compute_qty(self.active_bot.pair)
+        qty = self.compute_qty(self.active_bot.pair)
 
         qty = round_numbers(buy_total_qty, self.qty_precision)
         price = round_numbers(price, self.price_precision)
 
-        if self.db_table == PaperTradingTable:
-            res = self.simulate_order(self.active_bot.pair, OrderSide.sell)
-        else:
-            qty = round_numbers(qty, self.qty_precision)
-            price = round_numbers(price, self.price_precision)
-            res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
+        qty = round_numbers(qty, self.qty_precision)
+        price = round_numbers(price, self.price_precision)
+        res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
 
         # If error pass it up to parent function, can't continue
         if "error" in res:
@@ -500,34 +482,23 @@ class BinanceDeal(BaseDeal):
                 self.qty_precision,
             )
 
-        if isinstance(self.controller, PaperTradingTableCrud):
-            res = self.simulate_order(
-                self.active_bot.pair,
-                OrderSide.buy,
+        try:
+            res = self.buy_order(
+                symbol=self.active_bot.pair,
+                qty=(qty * repurchase_multiplier),
             )
-        else:
-            try:
-                res = self.buy_order(
-                    symbol=self.active_bot.pair,
-                    qty=(qty * repurchase_multiplier),
+        except BinanceErrors as error:
+            if error.code == -2010:
+                self.controller.update_logs(
+                    bot=self.active_bot,
+                    log_message=error.message,
                 )
-            except BinanceErrors as error:
-                if error.code == -2010:
-                    self.controller.update_logs(
-                        bot=self.active_bot,
-                        log_message=error.message,
-                    )
-                    if (
-                        error.message
-                        == "This symbol is not permitted for this account."
-                    ):
-                        return self.active_bot
-
-                    if repurchase_multiplier > 0.80:
-                        self.base_order(
-                            repurchase_multiplier=repurchase_multiplier - 0.05
-                        )
+                if error.message == "This symbol is not permitted for this account.":
                     return self.active_bot
+
+                if repurchase_multiplier > 0.80:
+                    self.base_order(repurchase_multiplier=repurchase_multiplier - 0.05)
+                return self.active_bot
 
         self.controller.update_logs(
             bot=self.active_bot, log_message="Base order executed."

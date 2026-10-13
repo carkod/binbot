@@ -6,7 +6,7 @@ from pydantic import field_validator
 
 # avoids circular imports
 if TYPE_CHECKING:
-    from api.databases.tables.bot_table import BotTable, PaperTradingTable
+    from api.databases.tables.bot_table import BotTable
 
 
 class DealBase(SQLModel):
@@ -97,11 +97,6 @@ class DealTable(DealBase, table=True):
 
     # Relationships
     bot: Optional["BotTable"] = Relationship(back_populates="deal", cascade_delete=True)
-    paper_trading: Optional["PaperTradingTable"] = Relationship(
-        back_populates="deal",
-        cascade_delete=True,
-        sa_relationship_kwargs={"viewonly": True},
-    )
 
     @field_validator("margin_loan_id", mode="before")
     @classmethod

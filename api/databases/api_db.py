@@ -2,15 +2,14 @@ import logging
 from datetime import timedelta
 from api.databases.tables.inquiry_table import InquiryTable
 from api.databases.symbols_etl import SymbolDataEtl
-from api.databases.tables.autotrade_table import AutotradeTable, TestAutotradeTable
+from api.databases.tables.autotrade_table import AutotradeTable
 from api.databases.tables.deal_table import DealTable
 from api.databases.tables.market_breadth_table import MarketBreadthTable
-from api.databases.tables.order_table import ExchangeOrderTable, FakeOrderTable
+from api.databases.tables.order_table import ExchangeOrderTable
 from api.databases.tables.user_table import UserTable
-from api.databases.tables.bot_table import BotTable, PaperTradingTable
+from api.databases.tables.bot_table import BotTable
 from sqlmodel import SQLModel, Session, select, text
 from pybinbot import (
-    BinanceKlineIntervals,
     ExchangeId,
     Status,
     OrderStatus,
@@ -48,7 +47,6 @@ class ApiDb:
             self.run_migrations()
             self.init_users()
             self.init_autotrade_settings()
-            self.init_test_autotrade_settings()
             self.create_dummy_bot()
             self.init_symbols()
             # Depends on autotrade settings
@@ -155,37 +153,6 @@ class ApiDb:
             conn.execute(text(f"DROP TABLE IF EXISTS {table_name} CASCADE"))
             conn.commit()
             SQLModel.metadata.create_all(engine)
-
-    def init_test_autotrade_settings(self, delete_existing: bool = False):
-        if delete_existing:
-            self.delete_autotrade_settings_table("test_autotrade")
-
-        statement = select(TestAutotradeTable).where(
-            TestAutotradeTable.id == AutotradeSettingsDocument.test_autotrade_settings
-        )
-        results = self.session.exec(statement)
-        if results.first():
-            return
-
-        test_autotrade_data = TestAutotradeTable(
-            id=AutotradeSettingsDocument.test_autotrade_settings,
-            fiat="USDC",
-            base_order_size=20,
-            candlestick_interval=BinanceKlineIntervals.fifteen_minutes,
-            max_active_autotrade_bots=3,
-            max_request=500,
-            stop_loss=3,
-            take_profit=2.3,
-            telegram_signals=True,
-            trailing=True,
-            trailing_deviation=1.63,
-            trailing_profit=2.3,
-            autotrade=False,
-            exchange_id=ExchangeId.BINANCE,
-        )
-        self.session.add(test_autotrade_data)
-        self.session.commit()
-        pass
 
     def init_autotrade_settings(self) -> None:
         """Create the production settings document on a fresh database."""
@@ -308,60 +275,9 @@ class ApiDb:
             position=Position.long,
         )
 
-        statement = select(PaperTradingTable)
-        results = self.session.exec(statement)
-        if results.first():
-            return
-
-        # Create separate fake orders for paper trading bot
-        fake_base_order = FakeOrderTable(
-            order_id="789",
-            order_type="market",
-            time_in_force="GTC",
-            timestamp=0,
-            order_side="buy",
-            pair="BTCUSDC",
-            qty=0.000123,
-            status=OrderStatus.FILLED,
-            price=1.222,
-            deal_type=DealType.base_order,
-        )
-        fake_take_profit_order = FakeOrderTable(
-            order_id="990",
-            order_type="limit",
-            time_in_force="GTC",
-            timestamp=0,
-            order_side="sell",
-            pair="BTCUSDC",
-            qty=0.000123,
-            status=OrderStatus.FILLED,
-            price=1.222,
-            deal_type=DealType.take_profit,
-        )
-
-        paper_trading_bot = PaperTradingTable(
-            pair="BTCUSDC",
-            fiat="USDC",
-            fiat_order_size=15,
-            deal=deal,
-            cooldown=0,
-            logs=["Paper trading bot created"],
-            mode="manual",
-            name="Dummy bot",
-            orders=[fake_base_order, fake_take_profit_order],
-            status=Status.inactive,
-            stop_loss=0,
-            take_profit=2.3,
-            trailing=True,
-            trailing_deviation=0.63,
-            trailing_profit=2.3,
-            position=Position.long,
-        )
         self.session.add(bot)
-        self.session.add(paper_trading_bot)
         self.session.commit()
         self.session.refresh(bot)
-        self.session.refresh(paper_trading_bot)
         return bot
 
     def select_bot(self, pair):

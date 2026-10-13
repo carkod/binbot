@@ -21,7 +21,6 @@ This separation gives us the flexibility to release API changes independently of
 | Users                | Postgres   | Migrated                                          |
 | Deals                | Postgres   | Migrated (part of Bots)                           |
 | Charts               | MongoDB    | Not to be migrated                                |
-| Paper trading        | MongoDB    | To be migrated to Postgres                        |
 | Autotrade            | MongoDB    | To be migrated to Postgres (settings data)        |
 | Research             | MongoDB    | To be migrated to Postgres (renamed to Blacklist) |
 | Account              | MongoDB    | To be migrated to Postgres (new table Balances)   |

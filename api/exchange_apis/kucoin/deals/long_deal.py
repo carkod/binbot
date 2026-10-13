@@ -6,7 +6,6 @@ from pybinbot import (
     BotModel,
     DealType,
     OrderModel,
-    OrderSide,
     OrderStatus,
     Position,
     Status,
@@ -14,8 +13,7 @@ from pybinbot import (
     round_timestamp,
 )
 
-from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
-from api.databases.tables.bot_table import BotTable, PaperTradingTable
+from api.databases.tables.bot_table import BotTable
 from api.exchange_apis.kucoin.deals.margin_deal import KucoinMarginDeal
 from api.exchange_apis.kucoin.deals.spot_deal import KucoinSpotDeal
 
@@ -29,9 +27,7 @@ class KucoinLongDeal(KucoinSpotDeal):
     these operations are triggered by websockets
     """
 
-    def __init__(
-        self, bot: BotModel, db_table: Type[BotTable] | Type[PaperTradingTable]
-    ) -> None:
+    def __init__(self, bot: BotModel, db_table: Type[BotTable]) -> None:
         super().__init__(bot=bot, db_table=db_table)
         self.active_bot: BotModel = bot
         self.symbol = self.get_symbol(bot.pair, bot.quote_asset)
@@ -41,8 +37,6 @@ class KucoinLongDeal(KucoinSpotDeal):
         Once deal is completed, executes this function to clean up any remaining fiat currency
         from trade account back to main account.
         """
-        if self.db_table == PaperTradingTable:
-            return self.active_bot
 
         self.controller.update_logs(
             "Transferring remaining fiat currency to main account...", self.active_bot
@@ -67,18 +61,12 @@ class KucoinLongDeal(KucoinSpotDeal):
             1 + (float(self.active_bot.take_profit) / 100)
         ) * float(deal_buy_price)
 
-        if self.db_table == PaperTradingTable:
-            qty = self.active_bot.deal.opening_qty
-        else:
-            qty = self.kucoin_api.get_single_spot_balance(self.symbol_info.base_asset)
+        qty = self.kucoin_api.get_single_spot_balance(self.symbol_info.base_asset)
 
         qty = round_numbers(buy_total_qty, self.qty_precision)
 
-        if self.db_table == PaperTradingTable:
-            system_order = self.kucoin_api.simulate_order(self.symbol, OrderSide.sell)
-        else:
-            qty = round_numbers(qty, self.qty_precision)
-            system_order = self.kucoin_api.sell_order(symbol=self.symbol, qty=qty)
+        qty = round_numbers(qty, self.qty_precision)
+        system_order = self.kucoin_api.sell_order(symbol=self.symbol, qty=qty)
 
         price = float(system_order.price)
 
@@ -163,26 +151,16 @@ class KucoinLongDeal(KucoinSpotDeal):
         - Deactivate bot
         """
         self.controller.update_logs("Executing stop loss...", self.active_bot)
-        if isinstance(self.controller, PaperTradingTableCrud):
-            qty = self.active_bot.deal.opening_qty
-        else:
-            qty = self.kucoin_api.get_single_spot_balance(self.symbol_info.base_asset)
+        qty = self.kucoin_api.get_single_spot_balance(self.symbol_info.base_asset)
 
         system_order = None
         if qty > 0:
-            # Dispatch fake order
-            if isinstance(self.controller, PaperTradingTableCrud):
-                system_order = self.kucoin_api.simulate_order(
-                    symbol=self.symbol, side=OrderSide.sell
-                )
-
-            else:
-                self.controller.update_logs(
-                    "Dispatching sell order for trailing profit...",
-                    self.active_bot,
-                )
-                # Dispatch real order
-                system_order = self.kucoin_api.sell_order(symbol=self.symbol, qty=qty)
+            self.controller.update_logs(
+                "Dispatching sell order for trailing profit...",
+                self.active_bot,
+            )
+            # Dispatch real order
+            system_order = self.kucoin_api.sell_order(symbol=self.symbol, qty=qty)
 
             if system_order:
                 price = float(system_order.price)
@@ -224,52 +202,38 @@ class KucoinLongDeal(KucoinSpotDeal):
         Sell at take_profit price, because prices will not reach trailing
         """
 
-        if isinstance(self.controller, PaperTradingTableCrud):
-            # all qty simulated
-            qty = 1.0
-        else:
-            qty = self.kucoin_api.get_single_spot_balance(self.symbol_info.base_asset)
-            # Already sold?
-            if qty == 0:
-                self.controller.update_logs(
-                    "qty=0, unable to execute trailing_profit",
-                    self.active_bot,
-                )
-                self.active_bot.status = Status.error
-                self.controller.save(self.active_bot)
-                return self.active_bot
-
-        # Dispatch fake order
-        if isinstance(self.controller, PaperTradingTableCrud):
-            system_order = self.kucoin_api.simulate_order(
-                self.symbol,
-                OrderSide.sell,
-            )
-
-        else:
+        qty = self.kucoin_api.get_single_spot_balance(self.symbol_info.base_asset)
+        # Already sold?
+        if qty == 0:
             self.controller.update_logs(
-                "Dispatching sell order for trailing profit...",
+                "qty=0, unable to execute trailing_profit",
                 self.active_bot,
             )
-            try:
-                # Dispatch real order
-                # No price means market order
-                system_order = self.kucoin_api.sell_order(
-                    symbol=self.symbol,
-                    qty=round_numbers(qty * repurchase_multiplier, self.qty_precision),
-                )
-            except RestError as e:
-                code = float(e.response.code)
-                if code == 200004:
-                    if repurchase_multiplier - 0.2 <= 0:
-                        self.controller.update_logs(
-                            bot=self.active_bot,
-                            log_message="Base order failed due to insufficient balance after retries.",
-                        )
-                        return self.active_bot
-                    self.trailing_profit(
-                        repurchase_multiplier=repurchase_multiplier - 0.2
+            self.active_bot.status = Status.error
+            self.controller.save(self.active_bot)
+            return self.active_bot
+
+        self.controller.update_logs(
+            "Dispatching sell order for trailing profit...",
+            self.active_bot,
+        )
+        try:
+            # Dispatch real order
+            # No price means market order
+            system_order = self.kucoin_api.sell_order(
+                symbol=self.symbol,
+                qty=round_numbers(qty * repurchase_multiplier, self.qty_precision),
+            )
+        except RestError as e:
+            code = float(e.response.code)
+            if code == 200004:
+                if repurchase_multiplier - 0.2 <= 0:
+                    self.controller.update_logs(
+                        bot=self.active_bot,
+                        log_message="Base order failed due to insufficient balance after retries.",
                     )
+                    return self.active_bot
+                self.trailing_profit(repurchase_multiplier=repurchase_multiplier - 0.2)
 
         price = float(system_order.price)
 

@@ -65,11 +65,6 @@ export enum CloseConditions {
   MARKET_REVERSAL = "market_reversal",
 }
 
-export enum BotType {
-  BOTS = "bots",
-  PAPER_TRADING = "paper-trading",
-}
-
 export enum QuoteAsset {
   USDT = "USDT",
   USDC = "USDC",

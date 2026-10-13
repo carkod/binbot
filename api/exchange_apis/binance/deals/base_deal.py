@@ -1,4 +1,4 @@
-from typing import Tuple, Type, Union
+from typing import Tuple, Type
 
 from pybinbot import (
     BinanceErrors,
@@ -15,9 +15,8 @@ from pybinbot import (
 )
 
 from api.databases.crud.bot_crud import BotTableCrud
-from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
 from api.databases.crud.symbols_crud import SymbolsCrud
-from api.databases.tables.bot_table import BotTable, PaperTradingTable
+from api.databases.tables.bot_table import BotTable
 from api.exchange_apis.binance.orders import BinanceOrderController
 
 # To be removed one day en commission endpoint found that provides this value
@@ -38,14 +37,11 @@ class BaseDeal(BinanceOrderController):
     def __init__(
         self,
         bot: BotModel,
-        db_table: Type[BotTable] | Type[PaperTradingTable] = BotTable,
+        db_table: Type[BotTable] = BotTable,
     ):
         super().__init__()
-        self.controller: Union[PaperTradingTableCrud, BotTableCrud]
-        if db_table == PaperTradingTable:
-            self.controller = PaperTradingTableCrud()
-        else:
-            self.controller = BotTableCrud()
+        self.controller: BotTableCrud
+        self.controller = BotTableCrud()
         self.active_bot = bot
         self.symbols_crud = SymbolsCrud()
         self.market_domination_reversal: bool | None = None
@@ -233,7 +229,6 @@ class BaseDeal(BinanceOrderController):
                             round_numbers(transfer_diff_qty, self.qty_precision),
                         )
                         repay_amount, free = self.compute_margin_buy_back()
-                        pass
                     if error.code == -2010 or error.code == -1013:
                         # There is already money in the base asset
                         qty = round_numbers_ceiling(
@@ -250,7 +245,6 @@ class BaseDeal(BinanceOrderController):
                             pair, round_numbers(qty, self.qty_precision)
                         )
                         repay_amount, free = self.compute_margin_buy_back()
-                        pass
             else:
                 msg = "Unable to match isolated balance with repay amount"
                 self.controller.update_logs(msg, self.active_bot)

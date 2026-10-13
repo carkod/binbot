@@ -13,11 +13,9 @@ import { type FieldValues, useForm } from "react-hook-form";
 import { useImmer } from "use-immer";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 import { selectBot, setField, setToggle } from "../../features/bots/botSlice";
-import { singleBot } from "../../features/bots/botInitialState";
 import {
   BotStatus,
   BotPosition,
-  BotType,
   MarketType,
   TabsKeys,
 } from "../../utils/enums";
@@ -27,12 +25,6 @@ import { InputTooltip } from "./InputTooltip";
 import SymbolSearch from "./SymbolSearch";
 import { useLocation, useParams } from "react-router-dom";
 import { SpinnerContext } from "../spinner-context";
-import {
-  selectTestBot,
-  setTestBot,
-  setTestBotField,
-  setTestBotToggle,
-} from "../../features/bots/paperTradingSlice";
 import InputGroupText from "react-bootstrap/esm/InputGroupText";
 import { matchNewRoutes } from "../../utils/validations";
 
@@ -41,9 +33,8 @@ interface ErrorsState {
 }
 
 const BaseOrderTab: FC<{
-  botType?: BotType;
   fiatAvailable?: number | undefined;
-}> = ({ botType = BotType.BOTS, fiatAvailable = undefined }) => {
+}> = ({ fiatAvailable = undefined }) => {
   const { symbol, id } = useParams();
   const { pathname } = useLocation();
   const isNewRoute = matchNewRoutes(pathname);
@@ -55,11 +46,7 @@ const BaseOrderTab: FC<{
     futuresLeverage,
     updateQuoteBaseState,
   } = useSymbolData();
-  let { bot } = useAppSelector(selectBot);
-  if (botType === BotType.PAPER_TRADING) {
-    const testBot = useAppSelector(selectTestBot);
-    bot = testBot.paperTrading;
-  }
+  const { bot } = useAppSelector(selectBot);
 
   const isBusyBot =
     bot.status === BotStatus.ACTIVE || bot.status === BotStatus.COMPLETED;
@@ -93,11 +80,9 @@ const BaseOrderTab: FC<{
     // this way we avoid any errors
     if (e.target.value) {
       const pair = e.target.value;
-      if (botType === BotType.PAPER_TRADING) {
-        dispatch(setTestBotField({ name: "pair", value: pair }));
-      } else {
-        dispatch(setField({ name: "pair", value: pair }));
-      }
+
+      dispatch(setField({ name: "pair", value: pair }));
+
       setErrorsState((draft) => {
         delete draft["pair"];
       });
@@ -111,13 +96,7 @@ const BaseOrderTab: FC<{
 
   const addAvailableFiat = () => {
     if (fiatAvailable) {
-      if (botType === BotType.PAPER_TRADING) {
-        dispatch(
-          setTestBotField({ name: "fiat_order_size", value: fiatAvailable }),
-        );
-      } else {
-        dispatch(setField({ name: "fiat_order_size", value: fiatAvailable }));
-      }
+      dispatch(setField({ name: "fiat_order_size", value: fiatAvailable }));
     }
   };
 
@@ -125,23 +104,15 @@ const BaseOrderTab: FC<{
     const { unsubscribe } = watch((v, { name }) => {
       if (v && v?.[name]) {
         if (typeof v === "boolean") {
-          if (botType === BotType.PAPER_TRADING) {
-            dispatch(setTestBotToggle({ name, value: v[name] }));
-          } else {
-            dispatch(setToggle({ name, value: v[name] }));
-          }
+          dispatch(setToggle({ name, value: v[name] }));
         } else {
-          if (botType === BotType.PAPER_TRADING) {
-            dispatch(setTestBotField({ name, value: v[name] }));
-          } else {
-            dispatch(setField({ name, value: v[name] }));
-          }
+          dispatch(setField({ name, value: v[name] }));
         }
       }
     });
 
     return () => unsubscribe();
-  }, [botType, dispatch, watch]);
+  }, [dispatch, watch]);
 
   useEffect(() => {
     if (!touchedFields.fiat_order_size) {
@@ -166,18 +137,10 @@ const BaseOrderTab: FC<{
       pair: symbol,
     });
 
-    if (botType === BotType.PAPER_TRADING) {
-      dispatch(
-        setTestBot({
-          bot: { ...singleBot, pair: symbol },
-        }),
-      );
-    } else {
-      dispatch(setField({ name: "pair", value: symbol }));
-    }
+    dispatch(setField({ name: "pair", value: symbol }));
 
     updateQuoteBaseState(symbol);
-  }, [bot, botType, dispatch, id, reset, symbol, updateQuoteBaseState]);
+  }, [bot, dispatch, id, reset, symbol, updateQuoteBaseState]);
 
   useEffect(() => {
     if (
@@ -192,11 +155,7 @@ const BaseOrderTab: FC<{
     }
 
     if (quoteAsset && bot.quote_asset !== quoteAsset) {
-      if (botType === BotType.PAPER_TRADING) {
-        dispatch(setTestBotField({ name: "quote_asset", value: quoteAsset }));
-      } else {
-        dispatch(setField({ name: "quote_asset", value: quoteAsset }));
-      }
+      dispatch(setField({ name: "quote_asset", value: quoteAsset }));
     }
 
     if (
@@ -214,35 +173,19 @@ const BaseOrderTab: FC<{
         return;
       }
 
-      if (botType === BotType.PAPER_TRADING) {
-        dispatch(
-          setTestBotField({
-            name: "fiat_order_size",
-            value: defaultFiatOrderSize,
-          }),
-        );
-      } else {
-        dispatch(
-          setField({
-            name: "fiat_order_size",
-            value: defaultFiatOrderSize,
-          }),
-        );
-      }
+      dispatch(
+        setField({
+          name: "fiat_order_size",
+          value: defaultFiatOrderSize,
+        }),
+      );
     }
 
     if (autotradeSettings?.fiat && bot.fiat !== autotradeSettings.fiat) {
-      if (botType === BotType.PAPER_TRADING) {
-        dispatch(
-          setTestBotField({ name: "fiat", value: autotradeSettings.fiat }),
-        );
-      } else {
-        dispatch(setField({ name: "fiat", value: autotradeSettings.fiat }));
-      }
+      dispatch(setField({ name: "fiat", value: autotradeSettings.fiat }));
     }
   }, [
     autotradeSettings,
-    botType,
     bot.deal?.closing_price,
     bot.deal?.current_price,
     bot.fiat,

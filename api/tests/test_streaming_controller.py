@@ -45,9 +45,6 @@ class TestPositionManager:
             def save(self, bot):
                 self.saved.append(bot)
 
-        class DummyPaperCrud(DummyBotCrud):
-            pass
-
         class DummySymbolsCrud:
             def __init__(self):
                 self.saved = []
@@ -136,7 +133,6 @@ class TestPositionManager:
                 return DummySymbolInfo()
 
         monkeypatch.setattr("streaming.base.BotTableCrud", DummyBotCrud)
-        monkeypatch.setattr("streaming.base.PaperTradingTableCrud", DummyPaperCrud)
         monkeypatch.setattr("streaming.base.SymbolsCrud", DummySymbolsCrud)
         monkeypatch.setattr("streaming.base.BinanceApi", DummyBinanceApi)
         monkeypatch.setattr("streaming.base.KucoinApi", DummyKucoinApi)
@@ -307,11 +303,6 @@ class TestPositionManager:
             "get_current_bot",
             lambda self, symbol: live_bot,
         )
-        monkeypatch.setattr(
-            BaseStreaming,
-            "get_current_test_bot",
-            lambda self, symbol: None,
-        )
 
         class FakeDealGateway:
             exit_calls: list[tuple[float, float]] = []
@@ -359,12 +350,6 @@ class TestPositionManager:
             BaseStreaming,
             "get_current_bot",
             lambda self, symbol: bot,
-        )
-        # Ensure paper trading path does not hit DB
-        monkeypatch.setattr(
-            BaseStreaming,
-            "get_current_test_bot",
-            lambda self, symbol: None,
         )
 
         # Track that deal_exit_orchestration is called
@@ -418,12 +403,6 @@ class TestPositionManager:
             BaseStreaming,
             "get_current_bot",
             lambda self, symbol: bot,
-        )
-        # Ensure paper trading path does not hit DB
-        monkeypatch.setattr(
-            BaseStreaming,
-            "get_current_test_bot",
-            lambda self, symbol: None,
         )
 
         class ErrorDealGateway:
@@ -586,11 +565,6 @@ class TestPositionManager:
             lambda self, symbol: bot,
         )
         monkeypatch.setattr(
-            BaseStreaming,
-            "get_current_test_bot",
-            lambda self, symbol: None,
-        )
-        monkeypatch.setattr(
             OrderStatus,
             "map_from_kucoin_status",
             staticmethod(lambda _: OrderStatus.FILLED),
@@ -684,11 +658,6 @@ class TestPositionManager:
             BaseStreaming,
             "get_current_bot",
             lambda self, symbol: bot,
-        )
-        monkeypatch.setattr(
-            BaseStreaming,
-            "get_current_test_bot",
-            lambda self, symbol: None,
         )
         monkeypatch.setattr(
             OrderStatus,
