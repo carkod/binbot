@@ -46,7 +46,7 @@ export default function GainersLosers({
           </div>
         </div>
 
-        <Row>
+        <Row className="g-0">
           <Col>
             <GainersLosersCard
               data={gainersData}
