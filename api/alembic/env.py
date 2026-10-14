@@ -18,11 +18,11 @@ config = context.config
 # target_metadata = mymodel.Base.metadata
 
 # Import all models to populate SQLModel metadata
-from api.databases.tables.autotrade_table import AutotradeTable, TestAutotradeTable  # noqa
+from api.databases.tables.autotrade_table import AutotradeTable  # noqa
 from api.databases.tables.deal_table import DealTable  # noqa
-from api.databases.tables.order_table import ExchangeOrderTable, FakeOrderTable  # noqa
+from api.databases.tables.order_table import ExchangeOrderTable  # noqa
 from api.databases.tables.user_table import UserTable  # noqa
-from api.databases.tables.bot_table import BotTable, PaperTradingTable  # noqa
+from api.databases.tables.bot_table import BotTable  # noqa
 from api.databases.web3_candidates import Web3CandidateTable  # noqa
 from api.databases.tables.account_balances import (  # noqa
     BalancesTable,

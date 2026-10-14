@@ -16,9 +16,8 @@ from pybinbot import (
     round_timestamp,
 )
 
-from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
 from api.databases.crud.symbols_crud import SymbolsCrud
-from api.databases.tables.bot_table import BotTable, PaperTradingTable
+from api.databases.tables.bot_table import BotTable
 from api.exchange_apis.binance.deals.factory import BinanceDeal
 from api.exchange_apis.binance.deals.margin_deal import BinanceMarginDeal
 
@@ -36,9 +35,7 @@ class BinanceSpotDeal(BinanceDeal):
     if it's a reused utility function
     """
 
-    def __init__(
-        self, bot, db_table: Type[BotTable] | Type[PaperTradingTable] = BotTable
-    ) -> None:
+    def __init__(self, bot, db_table: Type[BotTable] = BotTable) -> None:
         super().__init__(bot, db_table=db_table)
         self.active_bot: BotModel = bot
         self.db_table = db_table
@@ -62,7 +59,6 @@ class BinanceSpotDeal(BinanceDeal):
                     self.controller.update_logs(
                         f"Can't find order {order.order_id}", self.active_bot
                     )
-                    pass
 
                 if order.order_side == OrderSide.buy:
                     res = self.buy_order(symbol=self.active_bot.pair, qty=order.qty)
@@ -136,22 +132,14 @@ class BinanceSpotDeal(BinanceDeal):
         - Deactivate bot
         """
         self.controller.update_logs("Executing stop loss...", self.active_bot)
-        if isinstance(self.controller, PaperTradingTableCrud):
-            qty = self.active_bot.deal.opening_qty
-        else:
-            qty = self.compute_qty(self.active_bot.pair)
+        qty = self.compute_qty(self.active_bot.pair)
 
-        # Dispatch fake order
-        if isinstance(self.controller, PaperTradingTableCrud):
-            res = self.simulate_order(pair=self.active_bot.pair, side=OrderSide.sell)
-
-        else:
-            self.controller.update_logs(
-                "Dispatching sell order for trailing profit...",
-                self.active_bot,
-            )
-            # Dispatch real order
-            res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
+        self.controller.update_logs(
+            "Dispatching sell order for trailing profit...",
+            self.active_bot,
+        )
+        # Dispatch real order
+        res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
 
         price = float(res["price"])
         if price == 0:
@@ -195,47 +183,36 @@ class BinanceSpotDeal(BinanceDeal):
         Sell at take_profit price, because prices will not reach trailing
         """
 
-        if isinstance(self.controller, PaperTradingTableCrud):
-            qty = self.active_bot.deal.opening_qty
-        else:
-            qty = self.compute_qty(self.active_bot.pair)
-            # Already sold?
-            if qty == 0:
-                closed_orders = self.close_open_orders(self.active_bot.pair)
-                if not closed_orders:
-                    order = self.verify_deal_close_order()
-                    if order:
-                        self.active_bot.add_log(
-                            "Execute trailing profit previous order found! Appending..."
-                        )
-                        self.active_bot.orders.append(order)
-                        self.controller.save(self.active_bot)
-                    else:
-                        self.active_bot.add_log(
-                            "No quantity in balance, no closed orders. Cannot execute update trailing profit."
-                        )
-                        self.active_bot.status = Status.error
-                        self.controller.save(self.active_bot)
-                    return self.active_bot
+        qty = self.compute_qty(self.active_bot.pair)
+        # Already sold?
+        if qty == 0:
+            closed_orders = self.close_open_orders(self.active_bot.pair)
+            if not closed_orders:
+                order = self.verify_deal_close_order()
+                if order:
+                    self.active_bot.add_log(
+                        "Execute trailing profit previous order found! Appending..."
+                    )
+                    self.active_bot.orders.append(order)
+                    self.controller.save(self.active_bot)
+                else:
+                    self.active_bot.add_log(
+                        "No quantity in balance, no closed orders. Cannot execute update trailing profit."
+                    )
+                    self.active_bot.status = Status.error
+                    self.controller.save(self.active_bot)
+                return self.active_bot
 
-        # Dispatch fake order
-        if isinstance(self.controller, PaperTradingTableCrud):
-            res = self.simulate_order(
-                self.active_bot.pair,
-                OrderSide.sell,
-            )
-
-        else:
-            self.controller.update_logs(
-                "Dispatching sell order for trailing profit...",
-                self.active_bot,
-            )
-            # Dispatch real order
-            # No price means market order
-            res = self.sell_order(
-                symbol=self.active_bot.pair,
-                qty=round_numbers(qty, self.qty_precision),
-            )
+        self.controller.update_logs(
+            "Dispatching sell order for trailing profit...",
+            self.active_bot,
+        )
+        # Dispatch real order
+        # No price means market order
+        res = self.sell_order(
+            symbol=self.active_bot.pair,
+            qty=round_numbers(qty, self.qty_precision),
+        )
 
         price = float(res["price"])
         if price == 0:
@@ -293,8 +270,6 @@ class BinanceSpotDeal(BinanceDeal):
                 and current_price < self.active_bot.deal.opening_price
             ):
                 self.execute_stop_loss()
-
-        pass
 
     def long_open_deal_trailing_parameters(self) -> BotModel:
         """

@@ -6,8 +6,6 @@ import { userApiSlice } from "../features/userApiSlice";
 import { botSlice } from "../features/bots/botSlice";
 import { binanceApiSlice } from "../features/binanceApiSlice";
 import { autotradeSettingsSlice } from "../features/autotradeSlice";
-import { testAutotradeSettingsSlice } from "../features/testAutotradeSlice";
-import { paperTradingSlice } from "../features/bots/paperTradingSlice";
 import { kucoinApiSlice } from "../features/kucoinApiSlice";
 
 export const rootReducer = combineSlices(
@@ -17,8 +15,6 @@ export const rootReducer = combineSlices(
   binanceApiSlice,
   kucoinApiSlice,
   autotradeSettingsSlice,
-  testAutotradeSettingsSlice,
-  paperTradingSlice,
 );
 
 export type RootState = ReturnType<typeof rootReducer>;

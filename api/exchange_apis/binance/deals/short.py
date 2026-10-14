@@ -5,14 +5,12 @@ from pybinbot import (
     BotModel,
     DealType,
     OrderModel,
-    OrderSide,
     OrderStatus,
     Status,
     round_timestamp,
 )
 
-from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
-from api.databases.tables.bot_table import BotTable, PaperTradingTable
+from api.databases.tables.bot_table import BotTable
 from api.exchange_apis.binance.deals.margin_deal import BinanceMarginDeal
 
 
@@ -30,7 +28,7 @@ class BinanceShortDeal(BinanceMarginDeal):
     def __init__(
         self,
         bot: BotModel,
-        db_table: Type[BotTable] | Type[PaperTradingTable] = BotTable,
+        db_table: Type[BotTable] = BotTable,
     ):
         super().__init__(bot, db_table=db_table)
         self.active_bot = bot
@@ -157,10 +155,7 @@ class BinanceShortDeal(BinanceMarginDeal):
         base_asset = self.symbols_crud.base_asset(self.active_bot.pair)
         balance = self.get_single_raw_balance(base_asset)
         if balance > 0:
-            if isinstance(self.controller, PaperTradingTableCrud):
-                res = self.simulate_margin_order(self.active_bot.pair, OrderSide.buy)
-            else:
-                res = self.margin_liquidation(self.active_bot.pair)
+            res = self.margin_liquidation(self.active_bot.pair)
 
             price = float(res["price"])
             if price == 0:

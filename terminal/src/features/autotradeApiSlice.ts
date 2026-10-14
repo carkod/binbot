@@ -7,7 +7,7 @@ import {
 import { userApiSlice } from "./userApiSlice";
 
 export interface AutotradeSettings {
-  id: "autotrade_settings" | "test_autotrade_settings";
+  id: "autotrade_settings";
   candlestick_interval: BinanceKlineintervals;
   autotrade: boolean;
   trailing: boolean;

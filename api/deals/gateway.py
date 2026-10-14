@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Type, Union
 from pybinbot import BotModel, ExchangeId, MarketType, Position
 
 from api.databases.crud.autotrade_crud import AutotradeCrud
-from api.databases.tables.bot_table import BotTable, PaperTradingTable
+from api.databases.tables.bot_table import BotTable
 from api.exchange_apis.binance.deals.long import BinanceLongDeal
 from api.exchange_apis.binance.deals.short import BinanceShortDeal
 from api.exchange_apis.kucoin.deals.long_deal import KucoinLongDeal
@@ -25,7 +25,7 @@ class DealGateway:
     def __init__(
         self,
         bot: BotModel,
-        db_table: Type[BotTable] | Type[PaperTradingTable],
+        db_table: Type[BotTable],
         base_streaming: "BaseStreaming | None" = None,
     ) -> None:
         self.autotrade_settings = AutotradeCrud().get_settings()
@@ -62,7 +62,7 @@ class DealGateway:
         """
         return self.deal.open_deal()
 
-    def update_logs(self, message: str | list[str]) -> BotTable | PaperTradingTable:
+    def update_logs(self, message: str | list[str]) -> BotTable:
         """
         Abstract method for updating logs during bot runtime
         """
@@ -88,7 +88,7 @@ class DealGateway:
             close_price=close_price, open_price=open_price
         )
 
-    def save(self, bot: BotModel) -> Union[BotTable, PaperTradingTable]:
+    def save(self, bot: BotModel) -> BotTable:
         """
         Abstract method for saving bot state
         """

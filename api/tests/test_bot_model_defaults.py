@@ -18,8 +18,7 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
 from api.databases.crud.bot_crud import BotTableCrud
-from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
-from api.databases.tables.bot_table import BotTable, PaperTradingTable
+from api.databases.tables.bot_table import BotTable
 from api.databases.tables.deal_table import DealTable
 from api.exchange_apis.kucoin.futures.futures_deal import EntryLiquidityError
 from streaming.lifecycle import Lifecycle
@@ -56,15 +55,6 @@ def test_bot_model_orders_are_isolated():
 def test_bot_table_logs_are_isolated():
     first = BotTable(pair="BTCUSDC")
     second = BotTable(pair="ETHUSDC")
-
-    first.logs.append("first")
-
-    assert second.logs == []
-
-
-def test_paper_trading_logs_are_isolated():
-    first = PaperTradingTable(pair="BTCUSDC")
-    second = PaperTradingTable(pair="ETHUSDC")
 
     first.logs.append("first")
 
@@ -164,32 +154,6 @@ def test_get_active_pairs_includes_pending_and_active(monkeypatch):
     pairs = BotTableCrud().get_active_pairs()
 
     assert set(pairs) == {"ACTIVEUSDT", "PENDINGUSDT"}
-
-
-def test_paper_trading_active_pairs_only_includes_active(monkeypatch):
-    engine = make_in_memory_db()
-
-    with session_for(engine) as session:
-        for pair, status in [
-            ("ACTIVEUSDT", Status.active),
-            ("INACTIVEUSDT", Status.inactive),
-            ("COMPLETEDUSDT", Status.completed),
-            ("ERRORUSDT", Status.error),
-        ]:
-            session.add(PaperTradingTable(pair=pair, status=status))
-
-    @contextmanager
-    def patched_session(s=None):
-        with session_for(engine) as sess:
-            yield sess
-
-    monkeypatch.setattr(
-        "api.databases.crud.paper_trading_crud.get_db_session", patched_session
-    )
-
-    pairs = PaperTradingTableCrud().get_active_pairs()
-
-    assert pairs == ["ACTIVEUSDT"]
 
 
 def test_exit_pending_calls_open_deal_and_returns_early():

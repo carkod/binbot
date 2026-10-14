@@ -1,4 +1,4 @@
-from typing import Type, Union
+from typing import Union
 
 from pandas import DataFrame
 from pybinbot import (
@@ -11,7 +11,7 @@ from pybinbot import (
 )
 
 from api.databases.crud.autotrade_crud import AutotradeCrud
-from api.databases.tables.bot_table import BotTable, PaperTradingTable
+from api.databases.tables.bot_table import BotTable
 from api.deals.gateway import DealGateway
 from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from streaming.apex_flow_closing import ApexFlowClose
@@ -33,7 +33,6 @@ class PositionManager:
         self.api: Union[BinanceApi, KucoinApi, KucoinFutures] = self._default_api()
 
         self.current_bot: BotModel | None = None
-        self.current_test_bot: BotModel | None = None
         self.klines: list[list[float]] = []
         self.btc_klines: list[list[float]] = []
         self.df = DataFrame()
@@ -44,10 +43,6 @@ class PositionManager:
         current_bot_payload = self.base_streaming.get_current_bot(self.symbol)
         if current_bot_payload:
             self.current_bot = BotModel.model_validate(current_bot_payload)
-
-        current_test_bot_payload = self.base_streaming.get_current_test_bot(self.symbol)
-        if current_test_bot_payload:
-            self.current_test_bot = BotModel.model_validate(current_test_bot_payload)
 
     def _default_api(self) -> Union[BinanceApi, KucoinApi, KucoinFutures]:
         if self.base_streaming.exchange == ExchangeId.KUCOIN:
@@ -73,19 +68,8 @@ class PositionManager:
             return
 
         self.current_bot = self.base_streaming.get_current_bot(converted_symbol)
-        self.current_test_bot = self.base_streaming.get_current_test_bot(
-            converted_symbol
-        )
-
-        db_table: Type[BotTable] | Type[PaperTradingTable]
-        bot: BotModel | None
-
-        if self.current_test_bot:
-            bot = self.current_test_bot
-            db_table = PaperTradingTable
-        else:
-            bot = self.current_bot
-            db_table = BotTable
+        bot = self.current_bot
+        db_table = BotTable
 
         if bot is None:
             return
@@ -94,11 +78,7 @@ class PositionManager:
             raise NotImplementedError("Order updates only implemented for Kucoin")
 
         if bot.market_type == MarketType.FUTURES:
-            controller = (
-                self.base_streaming.paper_trading_controller
-                if db_table == PaperTradingTable
-                else self.base_streaming.bot_controller
-            )
+            controller = self.base_streaming.bot_controller
             execution = KucoinPositionDeal(
                 bot=bot,
                 db_table=db_table,

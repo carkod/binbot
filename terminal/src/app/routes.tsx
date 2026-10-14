@@ -8,10 +8,7 @@ import DashboardPage from "./pages/Dashboard";
 import GridLaddersPage from "./pages/GridLadders";
 import GridLadderDetail from "./pages/GridLadderDetail";
 import NotFound from "./pages/NotFound";
-import PaperTradingPage from "./pages/PaperTradingPage";
-import PaperTradingDetail from "./pages/PaperTradingDetail";
 import SymbolsPage from "./pages/Symbols";
-import TestAutotradePage from "./pages/TestAutotrade";
 import UserFormPage from "./pages/UserForm";
 import UsersPage from "./pages/Users";
 
@@ -107,41 +104,6 @@ export const routes: AppRoute[] = [
     name: "Autotrade",
     element: <AutotradePage />,
     id: "autotrade",
-    nav: true,
-  },
-  {
-    path: "paper-trading",
-    link: "/paper-trading",
-    name: "Paper Trading",
-    icon: "fas fa-pencil-ruler",
-    element: <PaperTradingPage />,
-    id: "paper-trading",
-    nav: true,
-  },
-  {
-    path: "paper-trading/new/:symbol?",
-    link: "/paper-trading/new",
-    icon: undefined,
-    name: "New Test Bot",
-    element: <PaperTradingDetail />,
-    id: "new-test-bot",
-    nav: true,
-  },
-  {
-    path: "paper-trading/edit/:id",
-    icon: undefined,
-    name: "Edit Test Bot",
-    element: <PaperTradingDetail />,
-    id: "edit-test-bot",
-    nav: false,
-  },
-  {
-    path: "test-autotrade",
-    link: "/test-autotrade",
-    icon: "fas fa-chart-simple",
-    name: "Test Autotrade",
-    element: <TestAutotradePage />,
-    id: "test-autotrade",
     nav: true,
   },
   {

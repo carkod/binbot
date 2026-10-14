@@ -5,16 +5,13 @@ from pybinbot import (
     BotModel,
     DealType,
     OrderModel,
-    OrderSide,
-    OrderStatus,
     Status,
     round_numbers,
     round_timestamp,
 )
 
 from api.databases.crud.autotrade_crud import AutotradeCrud
-from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
-from api.databases.tables.bot_table import BotTable, PaperTradingTable
+from api.databases.tables.bot_table import BotTable
 from api.exchange_apis.binance.deals.spot_deal import BinanceSpotDeal
 
 
@@ -25,9 +22,7 @@ class LongDeal(BinanceSpotDeal):
     They use the Exchange's SPOT market, so it would be using the spot adaptation of Binance APIs, thus inheriting from BinanceSpotDeal.
     """
 
-    def __init__(
-        self, bot, db_table: Type[BotTable] | Type[PaperTradingTable] = BotTable
-    ) -> None:
+    def __init__(self, bot, db_table: Type[BotTable] = BotTable) -> None:
         super().__init__(bot, db_table=db_table)
         self.autotrade_settings = AutotradeCrud().get_settings()
         self.active_bot: BotModel = bot
@@ -171,23 +166,11 @@ class LongDeal(BinanceSpotDeal):
         2. Sell Coins
         3. Delete bot
         """
-        orders = self.active_bot.orders
         deal_type = (
             DealType.algorithmic_close if algorithmic_close else DealType.panic_close
         )
 
         # Close all active orders
-        if isinstance(self.controller, PaperTradingTableCrud) and len(orders) > 0:
-            for d in orders:
-                if (
-                    d.status == OrderStatus.NEW
-                    or d.status == OrderStatus.PARTIALLY_FILLED
-                ):
-                    self.controller.update_logs(
-                        "Failed to close all active orders (status NEW), retrying...",
-                        self.active_bot,
-                    )
-                    self.replace_order(d.order_id)
 
         # Sell everything
         pair = self.active_bot.pair
@@ -199,49 +182,41 @@ class LongDeal(BinanceSpotDeal):
             self.active_bot.status = Status.error
             self.active_bot.add_log("No balance found. Skipping panic sell")
 
-        if isinstance(self.controller, PaperTradingTableCrud):
-            res = self.simulate_order(
-                pair=self.active_bot.pair,
-                side=OrderSide.sell,
+        try:
+            res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
+            price = float(res["price"])
+            if price == 0:
+                price = self.calculate_avg_price(res["fills"])
+
+            order_data = OrderModel(
+                timestamp=int(res["transactTime"]),
+                order_id=res["orderId"],
+                deal_type=deal_type,
+                pair=res["symbol"],
+                order_side=res["side"],
+                order_type=res["type"],
+                price=price,
+                qty=float(res["origQty"]),
+                time_in_force=res["timeInForce"],
+                status=res["status"],
             )
-        else:
-            try:
-                res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
-                price = float(res["price"])
-                if price == 0:
-                    price = self.calculate_avg_price(res["fills"])
 
-                order_data = OrderModel(
-                    timestamp=int(res["transactTime"]),
-                    order_id=res["orderId"],
-                    deal_type=deal_type,
-                    pair=res["symbol"],
-                    order_side=res["side"],
-                    order_type=res["type"],
-                    price=price,
-                    qty=float(res["origQty"]),
-                    time_in_force=res["timeInForce"],
-                    status=res["status"],
-                )
+            self.active_bot.orders.append(order_data)
+            self.active_bot.deal.closing_price = price
+            self.active_bot.deal.closing_qty = float(res["origQty"])
+            self.active_bot.deal.closing_timestamp = round_timestamp(
+                res["transactTime"]
+            )
+            self.active_bot.add_log("Panic sell triggered. All active orders closed")
+            self.active_bot.status = Status.completed
+            self.controller.save(self.active_bot)
 
-                self.active_bot.orders.append(order_data)
-                self.active_bot.deal.closing_price = price
-                self.active_bot.deal.closing_qty = float(res["origQty"])
-                self.active_bot.deal.closing_timestamp = round_timestamp(
-                    res["transactTime"]
-                )
-                self.active_bot.add_log(
-                    "Panic sell triggered. All active orders closed"
-                )
-                self.active_bot.status = Status.completed
-                self.controller.save(self.active_bot)
-
-            except BinanceErrors as error:
-                if error.code == -1013:
-                    # This probs means qty is too low to sell_order
-                    # we can ignore because the cronjob will clean dust
-                    # continue execution to clean quote asset
-                    pass
+        except BinanceErrors as error:
+            if error.code == -1013:
+                # This probs means qty is too low to sell_order
+                # we can ignore because the cronjob will clean dust
+                # continue execution to clean quote asset
+                pass
 
         self.active_bot = self.sell_quote_asset()
 

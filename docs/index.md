@@ -22,7 +22,6 @@ permalink: /
 - [Account](account/)
   - [Bot](account/bot.md)
   - [Bot Status](account/bot-status.md)
-  - [Paper Trading](account/paper-trading.md)
   - [Margin](account/margin.md)
   - [Hedging](account/hedging.md)
   - [Bot Strategies](account/bot-strategies.md)

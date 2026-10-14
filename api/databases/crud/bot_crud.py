@@ -304,7 +304,7 @@ class BotTableCrud:
 
             # Update deal fields (preserve existing deal.id)
             for field_name in DealTable.model_fields.keys():
-                if field_name in {"id", "bot", "paper_trading"}:
+                if field_name in {"id", "bot"}:
                     continue
                 if hasattr(data_table.deal, field_name):
                     setattr(

@@ -114,7 +114,7 @@ and persistence model rather than the standard bot lifecycle.
 ## Dynamic position sizing
 
 `BotBase.dynamic_position_sizing` is an opt-in flag, persisted on both `BotTable`
-and `PaperTradingTable`. It defaults to `false`. When enabled for an active
+only. It defaults to `false`. When enabled for an active
 KuCoin futures bot, `Lifecycle.exit()` delegates to `DynamicPositionSizing`
 before strategy evaluation and the usual full-position SL/TP branches.
 

@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import Column, BigInteger
 
 if TYPE_CHECKING:
-    from api.databases.tables.bot_table import BotTable, PaperTradingTable
+    from api.databases.tables.bot_table import BotTable
 
 
 class OrderTableBase(SQLModel):
@@ -14,7 +14,7 @@ class OrderTableBase(SQLModel):
         description="Because every exchange has different naming, we should keep it as a str rather than OrderType enum"
     )
     time_in_force: str
-    order_id: str = Field(nullable=False, description="For fake orders use -1")
+    order_id: str = Field(nullable=False, description="Exchange order identifier")
     order_side: str = Field(
         description="Because every exchange has different naming, we should keep it as a str rather than OrderType enum"
     )
@@ -93,23 +93,3 @@ class ExchangeOrderTable(OrderTableBase, table=True):
             return str(v)
         else:
             raise ValueError(f"{info.field_name} must be str or int")
-
-
-class FakeOrderTable(OrderTableBase, table=True):
-    """
-    Fake orders for paper trading
-    """
-
-    __tablename__ = "fake_order"
-
-    id: UUID = Field(
-        primary_key=True, default_factory=uuid4, nullable=False, unique=True, index=True
-    )
-
-    timestamp: int = Field(sa_column=Column(BigInteger()))
-
-    # Relationships
-    paper_trading_id: Optional[UUID] = Field(
-        default=None, foreign_key="paper_trading.id", ondelete="CASCADE", index=True
-    )
-    paper_trading: Optional["PaperTradingTable"] = Relationship(back_populates="orders")

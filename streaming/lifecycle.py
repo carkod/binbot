@@ -9,7 +9,6 @@ from pybinbot import (
     BotBase,
     BotModel,
     Candles,
-    DealType,
     ExchangeId,
     KucoinApi,
     KucoinFutures,
@@ -22,7 +21,6 @@ from pybinbot import (
 )
 
 from api.databases.crud.autotrade_crud import AutotradeCrud
-from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
 from api.exchange_apis.kucoin.futures.futures_deal import (
     EntryLiquidityError,
     KucoinPositionDeal,
@@ -805,24 +803,6 @@ class Lifecycle:
             self.execution.active_bot.trailing
             and self.execution.active_bot.deal.opening_price > 0
         ):
-            if (
-                isinstance(self.execution.controller, PaperTradingTableCrud)
-                and self.execution.active_bot.deal.trailing_stop_loss_price > 0
-                and (
-                    current_price
-                    - self.execution.active_bot.deal.trailing_stop_loss_price
-                )
-                * direction
-                <= 0
-            ):
-                self.execution.active_bot = self.execution.execute_stop_loss(
-                    reference_price=current_price
-                )
-                self.execution.active_bot.orders[
-                    -1
-                ].deal_type = DealType.trailing_profit
-                self.execution.controller.save(self.execution.active_bot)
-                return self.execution.active_bot
             if self.execution.active_bot.deal.trailing_stop_loss_price != 0:
                 self.execution.reconcile_trailing_stop_loss()
 
@@ -979,27 +959,20 @@ class Lifecycle:
         self.df = cls.df
         self.btc_df = cls.btc_df
         self.bb_metrics = cls.build_bb_metrics()
-        paper_futures = (
-            self.execution.active_bot.market_type == MarketType.FUTURES
-            and isinstance(self.execution.controller, PaperTradingTableCrud)
-        )
-        if not paper_futures:
-            self.execution.active_bot = cls.order_updates()
+        self.execution.active_bot = cls.order_updates()
 
         # Fetch position AFTER order_updates so any fill-promotion is already
         # reflected. Same single call as before; close_price stays mark-price.
         position = None
         if self.execution.active_bot.market_type == MarketType.FUTURES:
-            if not paper_futures:
-                position = self.base_streaming.kucoin_futures_api.get_futures_position(
-                    self.execution.active_bot.pair
-                )
+            position = self.base_streaming.kucoin_futures_api.get_futures_position(
+                self.execution.active_bot.pair
+            )
             close_price = self.base_streaming.kucoin_futures_api.get_mark_price(
                 self.execution.active_bot.pair
             )
 
-        if not paper_futures:
-            self.execution.active_bot = cls.position_updates(position=position)
+        self.execution.active_bot = cls.position_updates(position=position)
 
         if not close_price or close_price == 0:
             close_price = self.klines[-1][4]

@@ -7,7 +7,7 @@ import { vi } from "vitest";
 import { makeStore } from "../../store";
 import { SymbolContext } from "../../hooks";
 import BaseOrderTab from "../BaseOrderTab";
-import { BotType, QuoteAsset, TabsKeys } from "../../../utils/enums";
+import { QuoteAsset, TabsKeys } from "../../../utils/enums";
 import { setBot } from "../../../features/bots/botSlice";
 import { singleBot } from "../../../features/bots/botInitialState";
 
@@ -35,7 +35,7 @@ const symbolContextValue = {
 };
 
 describe("BaseOrderTab", () => {
-  it("applies default fiat order size to paper trading without mutating the live bot", async () => {
+  it("applies the configured default fiat order size to a new bot", async () => {
     const store = makeStore();
 
     store.dispatch(
@@ -43,7 +43,7 @@ describe("BaseOrderTab", () => {
         bot: {
           ...singleBot,
           fiat: "USDC",
-          fiat_order_size: 777,
+          fiat_order_size: 0,
           quote_asset: QuoteAsset.USDC,
         },
       }),
@@ -52,10 +52,10 @@ describe("BaseOrderTab", () => {
     render(
       <Provider store={store}>
         <SymbolContext.Provider value={symbolContextValue}>
-          <MemoryRouter initialEntries={["/paper-trading/new"]}>
+          <MemoryRouter initialEntries={["/bots/new"]}>
             <Tab.Container activeKey={TabsKeys.MAIN}>
               <Tab.Content>
-                <BaseOrderTab botType={BotType.PAPER_TRADING} />
+                <BaseOrderTab />
               </Tab.Content>
             </Tab.Container>
           </MemoryRouter>
@@ -64,15 +64,12 @@ describe("BaseOrderTab", () => {
     );
 
     await waitFor(() => {
-      expect(store.getState().paperTrading.paperTrading.fiat_order_size).toBe(
+      expect(store.getState().bot.bot.fiat_order_size).toBe(
         123,
       );
     });
 
-    expect(store.getState().paperTrading.paperTrading.fiat).toBe("USDT");
-    expect(store.getState().paperTrading.paperTrading.quote_asset).toBe("USDT");
-    expect(store.getState().bot.bot.fiat_order_size).toBe(777);
-    expect(store.getState().bot.bot.fiat).toBe("USDC");
-    expect(store.getState().bot.bot.quote_asset).toBe("USDC");
+    expect(store.getState().bot.bot.fiat).toBe("USDT");
+    expect(store.getState().bot.bot.quote_asset).toBe("USDT");
   });
 });

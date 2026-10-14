@@ -19,22 +19,15 @@ import {
 } from "../../features/bots/botSlice";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { type AppDispatch } from "../store";
-import { BotType, TabsKeys } from "../../utils/enums";
-import {
-  selectTestBot,
-  setTestBotField,
-  setTestBotToggle,
-} from "../../features/bots/paperTradingSlice";
+import { TabsKeys } from "../../utils/enums";
 import type { RecoveryParams } from "../../features/bots/botInitialState";
 import { defaultRecoveryParams } from "../../features/bots/botInitialState";
 
-const StopLossTab: FC<{ botType?: BotType }> = ({ botType = "bots" }) => {
+const StopLossTab: FC = () => {
   const dispatch: AppDispatch = useAppDispatch();
   const { bot: liveBot } = useAppSelector(selectBot);
-  const { paperTrading } = useAppSelector(selectTestBot);
-  const bot = botType === BotType.PAPER_TRADING ? paperTrading : liveBot;
-  const recoveryEnabled =
-    botType !== BotType.PAPER_TRADING && bot.recovery_params != null;
+  const bot = liveBot;
+  const recoveryEnabled = bot.recovery_params != null;
 
   const {
     watch,
@@ -55,19 +48,9 @@ const StopLossTab: FC<{ botType?: BotType }> = ({ botType = "bots" }) => {
       const value = name ? values[name] : undefined;
       if (name && value !== undefined) {
         if (typeof value === "boolean") {
-          if (botType === BotType.PAPER_TRADING) {
-            dispatch(setTestBotToggle({ name, value }));
-          } else {
-            dispatch(setToggle({ name, value }));
-          }
+          dispatch(setToggle({ name, value }));
         } else {
-          if (botType === BotType.PAPER_TRADING) {
-            dispatch(
-              setTestBotField({ name, value: value as number | string }),
-            );
-          } else {
-            dispatch(setField({ name, value: value as number | string }));
-          }
+          dispatch(setField({ name, value: value as number | string }));
         }
       }
     });
@@ -80,19 +63,11 @@ const StopLossTab: FC<{ botType?: BotType }> = ({ botType = "bots" }) => {
     }
 
     return () => unsubscribe();
-  }, [watch, dispatch, bot, reset, botType]);
+  }, [watch, dispatch, bot, reset]);
 
   const handleBlur = (e) => {
     if (e.target.value) {
-      if (botType === BotType.PAPER_TRADING) {
-        dispatch(
-          setTestBotField({ name: e.target.name, value: watch(e.target.name) }),
-        );
-      } else {
-        dispatch(
-          setField({ name: e.target.name, value: watch(e.target.name) }),
-        );
-      }
+      dispatch(setField({ name: e.target.name, value: watch(e.target.name) }));
     }
   };
 
@@ -123,7 +98,7 @@ const StopLossTab: FC<{ botType?: BotType }> = ({ botType = "bots" }) => {
     >
       <Container>
         <Row className="my-3">
-          <Col md={botType === BotType.PAPER_TRADING ? 6 : 4} sm="12">
+          <Col md={4} sm="12">
             <Form.Label htmlFor="stop_loss">
               Stop loss <span className="u-required">*</span>
             </Form.Label>
@@ -154,7 +129,7 @@ const StopLossTab: FC<{ botType?: BotType }> = ({ botType = "bots" }) => {
               )}
             </InputGroup>
           </Col>
-          <Col md={botType === BotType.PAPER_TRADING ? 6 : 4} sm="12">
+          <Col md={4} sm="12">
             <Form.Group className="position-relative">
               <Form.Label htmlFor="margin_short_reversal">
                 Autoswitch (reversal)
@@ -169,21 +144,12 @@ const StopLossTab: FC<{ botType?: BotType }> = ({ botType = "bots" }) => {
                   value={1}
                   checked={bot.margin_short_reversal}
                   onClick={() => {
-                    if (botType === BotType.PAPER_TRADING) {
-                      dispatch(
-                        setTestBotToggle({
-                          name: "margin_short_reversal",
-                          value: !bot.margin_short_reversal,
-                        }),
-                      );
-                    } else {
-                      dispatch(
-                        setToggle({
-                          name: "margin_short_reversal",
-                          value: !bot.margin_short_reversal,
-                        }),
-                      );
-                    }
+                    dispatch(
+                      setToggle({
+                        name: "margin_short_reversal",
+                        value: !bot.margin_short_reversal,
+                      }),
+                    );
                   }}
                 >
                   {bot.margin_short_reversal ? "On" : "Off"}
@@ -194,7 +160,7 @@ const StopLossTab: FC<{ botType?: BotType }> = ({ botType = "bots" }) => {
               </Form.Control.Feedback>
             </Form.Group>
           </Col>
-          {botType !== BotType.PAPER_TRADING && (
+          {
             <Col md="4" sm="12">
               <Form.Group className="position-relative">
                 <Form.Label htmlFor="recovery_mode">Recovery mode</Form.Label>
@@ -214,7 +180,7 @@ const StopLossTab: FC<{ botType?: BotType }> = ({ botType = "bots" }) => {
                 </ButtonGroup>
               </Form.Group>
             </Col>
-          )}
+          }
         </Row>
         {recoveryEnabled && (
           <Row className="my-3">

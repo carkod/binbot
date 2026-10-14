@@ -14,7 +14,6 @@ from kucoin_universal_sdk.model.common import RestError
 from pybinbot import DealType, MarketType, OrderModel, OrderStatus, Position, Status
 from pybinbot.models.deal import PositionSizeOrder
 
-from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
 from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 
 
@@ -61,65 +60,56 @@ class DynamicPositionSizing:
         pending = deal.position_size_order
         if pending is None:
             return
-        paper = isinstance(self.execution.controller, PaperTradingTableCrud)
-        if paper:
-            quantity = pending.requested_qty
-            price = pending.signal_price
-            order_id = pending.client_oid
-            timestamp = int(time() * 1000)
-        else:
-            request = (
-                GetOrderByClientOidReqBuilder()
-                .set_client_oid(pending.client_oid)
-                .build()
+        request = (
+            GetOrderByClientOidReqBuilder().set_client_oid(pending.client_oid).build()
+        )
+        try:
+            order = self.execution.kucoin_futures_api.futures_order_api.get_order_by_client_oid(
+                request
             )
-            try:
-                order = self.execution.kucoin_futures_api.futures_order_api.get_order_by_client_oid(
-                    request
+        except RestError as exc:
+            # 100001 is also used for invalid parameters. Only an explicit
+            # missing-order response is evidence for submission recovery.
+            message = str(exc.response.message).lower()
+            if str(exc.response.code) != "100001" or not any(
+                phrase in message
+                for phrase in (
+                    "order not found",
+                    "order does not exist",
+                    "order not exist",
+                    "order does not exist.",
                 )
-            except RestError as exc:
-                # 100001 is also used for invalid parameters. Only an explicit
-                # missing-order response is evidence for submission recovery.
-                message = str(exc.response.message).lower()
-                if str(exc.response.code) != "100001" or not any(
-                    phrase in message
-                    for phrase in (
-                        "order not found",
-                        "order does not exist",
-                        "order not exist",
-                        "order does not exist.",
-                    )
-                ):
-                    raise
-                now_ms = int(time() * 1000)
-                if pending.not_found_count == 0:
-                    pending.not_found_since_ms = now_ms
-                pending.not_found_count += 1
-                self.execution.controller.save(bot)
-                if (
-                    bot.dynamic_position_sizing
-                    and pending.not_found_count >= self.NOT_FOUND_RETRY_COUNT
-                    and now_ms - pending.not_found_since_ms >= self.NOT_FOUND_GRACE_MS
-                ):
-                    bot.add_log(
-                        f"Recovering missing dynamic sizing order {pending.client_oid} "
-                        "by resubmitting the same client ID."
-                    )
-                    self.submit(pending, deal.current_price)
-                return
-            if pending.not_found_count:
-                pending.not_found_count = 0
-                pending.not_found_since_ms = 0
-                self.execution.controller.save(bot)
-            if order.is_active:
-                return
-            quantity = float(order.filled_size or 0)
-            price = float(order.avg_deal_price or 0)
-            order_id = order.id
-            timestamp = int(order.end_at or order.updated_at or order.created_at)
-            if quantity > 0 and price <= 0:
-                # Do not discard a fill whose execution price is still missing.
-                return
+            ):
+                raise
+            now_ms = int(time() * 1000)
+            if pending.not_found_count == 0:
+                pending.not_found_since_ms = now_ms
+            pending.not_found_count += 1
+            self.execution.controller.save(bot)
+            if (
+                bot.dynamic_position_sizing
+                and pending.not_found_count >= self.NOT_FOUND_RETRY_COUNT
+                and now_ms - pending.not_found_since_ms >= self.NOT_FOUND_GRACE_MS
+            ):
+                bot.add_log(
+                    f"Recovering missing dynamic sizing order {pending.client_oid} "
+                    "by resubmitting the same client ID."
+                )
+                self.submit(pending, deal.current_price)
+            return
+        if pending.not_found_count:
+            pending.not_found_count = 0
+            pending.not_found_since_ms = 0
+            self.execution.controller.save(bot)
+        if order.is_active:
+            return
+        quantity = float(order.filled_size or 0)
+        price = float(order.avg_deal_price or 0)
+        order_id = order.id
+        timestamp = int(order.end_at or order.updated_at or order.created_at)
+        if quantity > 0 and price <= 0:
+            # Do not discard a fill whose execution price is still missing.
+            return
 
         if quantity > 0:
             signed_quantity = -quantity if pending.reducing else quantity
@@ -213,10 +203,8 @@ class DynamicPositionSizing:
         if current_price <= 0 or deal.opening_price <= 0:
             return True
         deal.current_price = current_price
-        paper = isinstance(self.execution.controller, PaperTradingTableCrud)
         if deal.position_size_reference_price == 0:
-            if not paper:
-                self.execution.cancel_current_sl()
+            self.execution.cancel_current_sl()
             deal.trailing_stop_loss_price = 0
             deal.position_size_reference_price = deal.opening_price
             self.execution.controller.save(bot)
@@ -232,16 +220,13 @@ class DynamicPositionSizing:
         if not reducing and not increasing:
             return True
 
-        if paper:
-            quantity = deal.current_position_qty
-        else:
-            position = self.execution.kucoin_futures_api.get_futures_position(
-                self.execution.kucoin_symbol
-            )
-            signed_quantity = float(position.current_qty)
-            if signed_quantity * direction <= 0:
-                return True
-            quantity = abs(signed_quantity)
+        position = self.execution.kucoin_futures_api.get_futures_position(
+            self.execution.kucoin_symbol
+        )
+        signed_quantity = float(position.current_qty)
+        if signed_quantity * direction <= 0:
+            return True
+        quantity = abs(signed_quantity)
         if quantity <= 0:
             return True
         lot_size = self.execution.kucoin_symbol_data.lot_size or 1
@@ -256,7 +241,7 @@ class DynamicPositionSizing:
                 self.fallback("increase is smaller than the exchange lot size")
                 return False
 
-        if increasing and not paper:
+        if increasing:
             request = GetFuturesAccountReqBuilder().set_currency(bot.fiat).build()
             account = self.execution.kucoin_futures_api.futures_account_api.get_futures_account(
                 request
@@ -283,9 +268,8 @@ class DynamicPositionSizing:
         deal.position_size_order = pending
         # Commit before any exchange side effect, including a possible timeout.
         self.execution.controller.save(bot)
-        if not paper:
-            if not self.submit(pending, current_price):
-                return False
+        if not self.submit(pending, current_price):
+            return False
         self.reconcile()
         return True
 

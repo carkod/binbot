@@ -16,7 +16,6 @@ from api.grid_ladders.routes import grid_ladder_blueprint
 from api.inquiries.routes import inquiries_router
 from api.orders.routes.binance import binance_order_blueprint
 from api.orders.routes.kucoin import kucoin_order_blueprint
-from api.paper_trading.routes import paper_trading_blueprint
 from api.portfolio.routes import portfolio_blueprint
 from pybinbot import configure_logging
 from api.signals.routes import signals_blueprint
@@ -62,7 +61,6 @@ async def root():
 app.include_router(user_blueprint)
 app.include_router(account_blueprint, prefix="/account")
 app.include_router(bot_blueprint)
-app.include_router(paper_trading_blueprint)
 app.include_router(binance_order_blueprint, prefix="/order")
 app.include_router(kucoin_order_blueprint, prefix="/order/kucoin")
 app.include_router(charts_blueprint, prefix="/charts")

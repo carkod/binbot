@@ -220,41 +220,6 @@ def test_canceled_exit_stop_does_not_replace_confirmed_closing_values():
     assert deal.execution.active_bot.orders[-1].status == OrderStatus.CANCELED
 
 
-def test_paper_trading_execute_stop_loss_uses_reference_price_as_fill():
-    """
-    Paper-trading branch: when reference_price is provided the simulated fill
-    price should be reference_price, not the current mark price.
-    """
-    from api.databases.crud.paper_trading_crud import PaperTradingTableCrud
-    from api.databases.tables.bot_table import PaperTradingTable
-
-    saved: list[BotModel] = []
-
-    # Subclass PaperTradingTableCrud so isinstance() checks pass, but override
-    # the DB-touching methods to avoid any real database calls.
-    class PaperCtrlStub(PaperTradingTableCrud):
-        def __init__(self) -> None:
-            pass  # skip real __init__ that opens a DB session
-
-        def save(self, bot: BotModel) -> PaperTradingTable:
-            saved.append(bot)
-            return cast(PaperTradingTable, None)
-
-        def update_logs(self, *args: Any, **kwargs: Any) -> PaperTradingTable:
-            return cast(PaperTradingTable, None)
-
-    deal = _make_fheusdtm_deal()
-    deal.execution.controller = PaperCtrlStub()
-    deal.execution.active_bot.deal.current_price = 0.0224  # the wick low
-
-    deal.execution.execute_stop_loss(reference_price=0.02252)
-
-    assert len(saved) > 0
-    closing_price = saved[-1].deal.closing_price
-    # Should use reference_price (0.02252) not the wick mark (0.0224)
-    assert closing_price == pytest.approx(0.02252, abs=1e-5)
-
-
 def test_reverse_position_passes_reference_price_to_close_leg():
     """
     Phase 1: reverse_position(reference_price=X) must pass reference_price
