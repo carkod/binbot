@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from unittest.mock import patch
 from fastapi.testclient import TestClient
-from pytest import fixture, raises
+from pytest import fixture, mark, raises
 from pybinbot import ExchangeId, GridLadderStatus, MarketType, QuoteAssets, Status
 from sqlmodel import Session, select
 from sqlalchemy.exc import IntegrityError
@@ -18,6 +18,7 @@ from api.databases.tables.deal_table import DealTable
 from api.databases.tables.grid_ladder_table import GridLadderTable
 from api.databases.tables.recovery_bot_table import RecoveryBotTable
 from api.databases.tables.signals_table import SignalsTable
+from api.databases.tables.symbol_table import SymbolTable
 from uuid import UUID, uuid4
 
 
@@ -220,6 +221,40 @@ def test_create_bot_persists_signal_id(client: TestClient, create_test_tables):
         content["data"]["fiat_order_size"] == mock_bot_data_superusdt["fiat_order_size"]
     )
     assert content["data"]["signal_id"] == signal_id
+
+
+@mark.parametrize("submitted,expected", [(None, 3), (1, 1), (4, 4), (5, 5)])
+def test_bot_futures_leverage_uses_explicit_value_or_symbol_default(
+    client: TestClient,
+    create_test_tables,
+    submitted,
+    expected,
+):
+    pair = f"LEVERAGE{submitted}USDTM"
+    with Session(create_test_tables) as session:
+        session.add(SymbolTable(id=pair, futures_leverage=3))
+        session.commit()
+    payload = {"pair": pair, "fiat": "USDT", "market_type": "FUTURES"}
+    if submitted is not None:
+        payload["futures_leverage"] = submitted
+    response = client.post("/bot", json=payload)
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["futures_leverage"] == expected
+    bot_id = data["id"]
+    with Session(create_test_tables) as session:
+        row = session.get(BotTable, UUID(bot_id))
+        assert row is not None
+        assert row.futures_leverage == expected
+
+    # Older clients omitting the new field must not reset a saved bot to 1x.
+    payload.pop("futures_leverage", None)
+    edited = client.put(f"/bot/{bot_id}", json=payload)
+    assert edited.status_code == 200
+    assert edited.json()["data"]["futures_leverage"] == expected
+    edited = client.put(f"/bot/{bot_id}", json={**payload, "futures_leverage": 2})
+    assert edited.status_code == 200
+    assert client.get(f"/bot/{bot_id}").json()["data"]["futures_leverage"] == 2
 
 
 def test_create_bot_without_recovery_params_creates_no_recovery_row(

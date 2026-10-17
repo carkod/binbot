@@ -439,6 +439,7 @@ class FuturesPosition(PositionMarket):
             replacement = self.base_streaming.kucoin_futures_api.buy(
                 symbol=kucoin_symbol,
                 qty=bot.deal.base_order_size,
+                leverage=bot.futures_leverage,
                 entry_limit_price=target_price,
                 post_only=True,
             )

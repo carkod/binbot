@@ -18,7 +18,7 @@ percentages greater than zero through 100.
   `position_size_pct` percent, using a reduce-only market order.
 - A favorable move of `take_profit` percent adds the same percentage of the
   current contracts. It checks the futures wallet and
-  `required_margin_for_contracts` first, using the symbol's configured leverage.
+  `required_margin_for_contracts` first, using the bot's saved `futures_leverage`.
 - Thresholds initially use the entry price, then reset around each adjustment's
   confirmed average fill price. There is at most one adjustment per tick;
   a price gap does not submit a batch of catch-up orders.

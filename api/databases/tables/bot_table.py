@@ -11,7 +11,7 @@ from pybinbot import (
     timestamp,
 )
 from pydantic import field_validator
-from sqlalchemy import JSON, Column, Enum
+from sqlalchemy import JSON, CheckConstraint, Column, Enum
 from sqlmodel import Field, Relationship, SQLModel
 
 from api.databases.tables.deal_table import DealTable
@@ -26,6 +26,12 @@ if TYPE_CHECKING:
 
 class BotTable(SQLModel, table=True):
     __tablename__ = "bot"
+    __table_args__ = (
+        CheckConstraint(
+            "futures_leverage >= 1 AND futures_leverage <= 5",
+            name="ck_bot_futures_leverage_range",
+        ),
+    )
 
     id: Optional[UUID] = Field(
         default_factory=uuid4, primary_key=True, index=True, nullable=False, unique=True
@@ -38,6 +44,13 @@ class BotTable(SQLModel, table=True):
     quote_asset: QuoteAssets = Field(default=QuoteAssets.USDC)
     fiat_order_size: float = Field(
         default=15, ge=0, description="Min Binance 0.0001 BNB approx 15USD"
+    )
+    futures_leverage: int = Field(
+        default=1,
+        ge=1,
+        le=5,
+        nullable=False,
+        description="Leverage for this futures bot (1x–5x)",
     )
     candlestick_interval: BinanceKlineIntervals = Field(
         default=BinanceKlineIntervals.fifteen_minutes,

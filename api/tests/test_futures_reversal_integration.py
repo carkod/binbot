@@ -321,6 +321,7 @@ def set_lifecycle_time(monkeypatch, when: datetime) -> None:
 
 def test_reverse_position_closes_source_with_reduce_only_and_creates_pending_bot():
     bot = make_long_bot()
+    bot.futures_leverage = 4
     futures_api = DummyFuturesApi(current_qty=68)
     position_deal, controller = make_position_deal(bot, futures_api)
 
@@ -331,6 +332,7 @@ def test_reverse_position_closes_source_with_reduce_only_and_creates_pending_bot
     assert reversed_bot.status == Status.pending
     assert reversed_bot.orders == []
     assert reversed_bot.deal.opening_price == 0
+    assert reversed_bot.futures_leverage == 4
 
     # Exactly one reduce_only sell was placed to close the long position
     assert len(futures_api.sell_calls) == 1

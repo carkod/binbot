@@ -532,6 +532,7 @@ class Lifecycle:
             pair=source_bot.pair,
             fiat=source_bot.fiat,
             fiat_order_size=recovery_fiat_order_size,
+            futures_leverage=source_bot.futures_leverage,
             quote_asset=source_bot.quote_asset,
             candlestick_interval=source_bot.candlestick_interval,
             market_type=source_bot.market_type,

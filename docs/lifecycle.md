@@ -131,7 +131,7 @@ stops are suppressed. An existing protective stop is cancelled when sizing
 starts. Streaming therefore must remain running to execute reductions.
 
 Before an increase, the class checks the futures wallet against
-`required_margin_for_contracts`, including the configured per-symbol leverage
+`required_margin_for_contracts`, including the bot's saved `futures_leverage`
 and fee allowance. Insufficient funds cause a persisted log entry, disable
 dynamic sizing, enable trailing, and clear fixed take profit. Execution then
 continues through the ordinary lifecycle in the same tick, using the configured
