@@ -168,7 +168,7 @@ def test_execute_stop_loss_passes_reference_price_to_buy_for_short():
     """
     captured: dict = {}
 
-    def fake_buy(symbol, qty, reduce_only, reference_price=None):
+    def fake_buy(symbol, qty, reduce_only, reference_price=None, leverage=None):
         captured["reference_price"] = reference_price
         return OrderBase(
             order_id="sl-test",

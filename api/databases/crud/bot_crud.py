@@ -7,6 +7,7 @@ from pybinbot import (
     BinbotErrors,
     BotBase,
     BotModel,
+    MarketType,
     OrderModel,
     Position,
     RecoveryParams,
@@ -23,6 +24,7 @@ from api.databases.tables.bot_table import BotTable
 from api.databases.tables.deal_table import DealTable
 from api.databases.tables.order_table import ExchangeOrderTable
 from api.databases.tables.recovery_bot_table import RecoveryBotTable
+from api.databases.tables.symbol_table import SymbolTable
 from api.databases.utils import detach_bot_graph, get_db_session
 
 # Deal with SQLModel vs mypy issues
@@ -242,6 +244,13 @@ class BotTableCrud:
             )
 
         with get_db_session(self._external_session) as s:
+            if (
+                data.market_type == MarketType.FUTURES
+                and "futures_leverage" not in data.model_fields_set
+            ):
+                symbol = s.get(SymbolTable, data.pair)
+                if symbol is not None:
+                    new_bot.futures_leverage = symbol.futures_leverage
             s.add(new_bot)
             s.commit()
             s.refresh(new_bot)

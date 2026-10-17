@@ -209,7 +209,10 @@ def edit_bot(
 ):
     crud = BotTableCrud(session)
     bot_row = crud.get_one(bot_id=bot_id)
-    bot_row.sqlmodel_update(bot_item.model_dump(exclude={"recovery_params"}))
+    excluded_fields = {"recovery_params"}
+    if "futures_leverage" not in bot_item.model_fields_set:
+        excluded_fields.add("futures_leverage")
+    bot_row.sqlmodel_update(bot_item.model_dump(exclude=excluded_fields))
     updated_row = crud.save(
         bot_row,
         recovery_params_submitted="recovery_params" in bot_item.model_fields_set,

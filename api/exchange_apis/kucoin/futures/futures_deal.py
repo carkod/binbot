@@ -140,7 +140,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             interval_ms or BinanceKlineIntervals(bot.candlestick_interval).get_ms()
         )
         self.symbol_info = self.symbols_crud.get_symbol(bot.pair)
-        self.kucoin_futures_api.DEFAULT_LEVERAGE = self.symbol_info.futures_leverage
+        self.kucoin_futures_api.DEFAULT_LEVERAGE = self.active_bot.futures_leverage
         self.kucoin_symbol = convert_to_kucoin_symbol(bot)
         self.kucoin_symbol_data = self.kucoin_futures_api.get_symbol_info(
             self.kucoin_symbol
@@ -650,9 +650,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
         Size futures positions from initial margin (margin-spend interpretation).
 
         ``fiat_order_size`` is the initial margin the bot commits, not the
-        risk-at-stop. ``notional = balance * symbol_info.futures_leverage`` and
-        ``contracts = notional / (price * multiplier)``. Per-symbol leverage is
-        sourced from the symbol table, capped at ``le=3``.
+        risk-at-stop. ``notional = balance * active_bot.futures_leverage`` and
+        ``contracts = notional / (price * multiplier)``. Leverage is saved on
+        each bot and bounded to 1x–5x.
         """
         if balance <= 0 or price <= 0:
             return 0
@@ -662,7 +662,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             symbol_data.multiplier or self.kucoin_futures_api.DEFAULT_MULTIPLIER or 1
         )
 
-        contracts = balance * self.symbol_info.futures_leverage / (price * multiplier)
+        contracts = balance * self.active_bot.futures_leverage / (price * multiplier)
         return int(round_numbers(contracts, self.symbol_info.qty_precision))
 
     def _is_reversal_possible(
@@ -738,7 +738,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         )
 
         return round_numbers(
-            contracts * price * multiplier / self.symbol_info.futures_leverage,
+            contracts * price * multiplier / self.active_bot.futures_leverage,
             8,
         )
 
@@ -797,7 +797,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             return 0.0
 
         notional = self.notional_for_contracts(contracts, price)
-        initial_margin = notional / self.symbol_info.futures_leverage
+        initial_margin = notional / self.active_bot.futures_leverage
         fees = 2 * notional * (self.kucoin_symbol_data.taker_fee_rate or 0)
         return round_numbers(initial_margin + fees, 8)
 
@@ -1698,7 +1698,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         self.active_bot.add_log(
             f"Futures activation sizing: contracts={contracts}, notional={notional} {self.fiat}, "
-            f"leverage={self.symbol_info.futures_leverage}x, required_margin={required_margin} {self.fiat}, "
+            f"leverage={self.active_bot.futures_leverage}x, required_margin={required_margin} {self.fiat}, "
             f"available_balance={available_balance} {self.fiat}, planned_margin={self.active_bot.fiat_order_size} {self.fiat}."
         )
 
@@ -1706,7 +1706,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             order: OrderBase = self.kucoin_futures_api.sell(
                 symbol=self.kucoin_symbol,
                 qty=contracts,
-                leverage=self.symbol_info.futures_leverage,
+                leverage=self.active_bot.futures_leverage,
                 entry_limit_price=entry_limit_price,
             )
         else:
@@ -1714,6 +1714,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 order = self.kucoin_futures_api.buy(
                     symbol=self.kucoin_symbol,
                     qty=contracts,
+                    leverage=self.active_bot.futures_leverage,
                     entry_limit_price=entry_limit_price,
                     post_only=True,
                 )
@@ -1721,6 +1722,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 order = self.kucoin_futures_api.buy(
                     symbol=self.kucoin_symbol,
                     qty=contracts,
+                    leverage=self.active_bot.futures_leverage,
                     entry_limit_price=entry_limit_price,
                 )
 
@@ -1975,7 +1977,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             stop_price_type=AddOrderReq.StopPriceTypeEnum.MARK_PRICE,
             reduce_only=True,
             size=qty,
-            leverage=self.symbol_info.futures_leverage,
+            leverage=self.active_bot.futures_leverage,
             allow_market_fallback=True,
         )
 
@@ -2172,6 +2174,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             order_base = self.kucoin_futures_api.buy(
                 symbol=self.kucoin_symbol,
                 qty=qty,
+                leverage=self.active_bot.futures_leverage,
                 reduce_only=True,
             )
         else:
@@ -2185,7 +2188,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 size=qty,
                 order_type=OrderType.market,
                 reduce_only=True,
-                leverage=self.symbol_info.futures_leverage,
+                leverage=self.active_bot.futures_leverage,
             )
 
         order_base.deal_type = DealType.take_profit
@@ -2231,6 +2234,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 order_base = self.kucoin_futures_api.buy(
                     symbol=self.kucoin_symbol,
                     qty=qty,
+                    leverage=self.active_bot.futures_leverage,
                     reduce_only=True,
                     reference_price=reference_price,
                 )
@@ -2239,7 +2243,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                     symbol=self.kucoin_symbol,
                     qty=qty,
                     reduce_only=True,
-                    leverage=self.symbol_info.futures_leverage,
+                    leverage=self.active_bot.futures_leverage,
                     reference_price=reference_price,
                 )
 
@@ -2344,7 +2348,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 stop_price_type=AddOrderReq.StopPriceTypeEnum.MARK_PRICE,
                 stop=AddOrderReq.StopEnum.UP,
                 stop_price=self.active_bot.deal.trailing_stop_loss_price,
-                leverage=self.symbol_info.futures_leverage,
+                leverage=self.active_bot.futures_leverage,
             )
         else:
             order_base = self.kucoin_futures_api.place_futures_order(
@@ -2356,7 +2360,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 stop_price_type=AddOrderReq.StopPriceTypeEnum.MARK_PRICE,
                 stop=AddOrderReq.StopEnum.DOWN,
                 stop_price=self.active_bot.deal.trailing_stop_loss_price,
-                leverage=self.symbol_info.futures_leverage,
+                leverage=self.active_bot.futures_leverage,
             )
 
         order_base.deal_type = DealType.trailing_profit
@@ -2449,13 +2453,14 @@ class KucoinPositionDeal(KucoinBaseBalance):
                     symbol=self.kucoin_symbol,
                     qty=current_contracts,
                     reduce_only=True,
-                    leverage=self.symbol_info.futures_leverage,
+                    leverage=self.active_bot.futures_leverage,
                     reference_price=reference_price,
                 )
             else:
                 close_order = self.kucoin_futures_api.buy(
                     symbol=self.kucoin_symbol,
                     qty=current_contracts,
+                    leverage=self.active_bot.futures_leverage,
                     reduce_only=True,
                     reference_price=reference_price,
                 )
@@ -2552,7 +2557,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 side=side,
                 size=qty,
                 price=limit_price,
-                leverage=self.symbol_info.futures_leverage,
+                leverage=self.active_bot.futures_leverage,
                 order_type=OrderType.limit,
                 reduce_only=True,
                 time_in_force=AddOrderReq.TimeInForceEnum.IMMEDIATE_OR_CANCEL,
@@ -2576,7 +2581,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             symbol=self.kucoin_symbol,
             side=side,
             size=int(round(remaining_qty)),
-            leverage=self.symbol_info.futures_leverage,
+            leverage=self.active_bot.futures_leverage,
             order_type=OrderType.market,
             reduce_only=True,
         )

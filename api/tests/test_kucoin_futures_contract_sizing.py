@@ -37,6 +37,7 @@ def make_sizing_deal(
     multiplier: float = 10.0,
     qty_precision: int = 0,
     lot_size: float = 1,
+    futures_leverage: int = 1,
 ) -> Any:
     deal = cast(Any, KucoinPositionDeal.__new__(KucoinPositionDeal))
     deal.active_bot = BotModel(
@@ -44,6 +45,7 @@ def make_sizing_deal(
         position=Position.short,
         fiat_order_size=fiat_order_size,
         stop_loss=stop_loss,
+        futures_leverage=futures_leverage,
     )
     deal.symbol_info = types.SimpleNamespace(
         qty_precision=qty_precision,
@@ -78,15 +80,25 @@ def test_calculate_contracts_treats_fiat_order_size_as_initial_margin():
     assert deal.calculate_contracts(balance=15, price=0.93269) == 1
 
 
-def test_calculate_contracts_scales_with_per_symbol_leverage():
+@pytest.mark.parametrize("futures_leverage", [1, 2, 3, 4, 5])
+def test_contract_sizing_and_margin_use_bot_leverage_over_symbol(futures_leverage):
     """
-    Bumping the per-symbol leverage column from 1 to 3 produces a 3x larger
-    contract count for the same margin (and thus a 3x larger notional).
+    Bot leverage controls notional and initial margin, even when the symbol
+    has a different setting. Conversion to margin inverts contract sizing.
     """
-    deal = make_sizing_deal()
-    deal.symbol_info.futures_leverage = 3
+    deal = make_sizing_deal(multiplier=1, futures_leverage=futures_leverage)
+    deal.symbol_info.futures_leverage = 2
 
-    assert deal.calculate_contracts(balance=15, price=0.93269) == 4
+    contracts = deal.calculate_contracts(balance=20, price=10)
+    assert contracts == 2 * futures_leverage
+    assert deal.contracts_to_fiat_order_size(contracts, price=10) == 20
+    notional = contracts * 10
+    assert deal.required_margin_for_contracts(contracts, price=10) == pytest.approx(
+        20 + 2 * notional * 0.0006
+    )
+    affordable = deal.max_contracts_for_margin(20, price=10)
+    assert deal.required_margin_for_contracts(affordable, price=10) <= 20
+    assert deal.required_margin_for_contracts(affordable + 1, price=10) > 20
 
 
 def test_constructor_reuses_injected_exchange_dependencies(monkeypatch):
@@ -133,7 +145,7 @@ def test_constructor_reuses_injected_exchange_dependencies(monkeypatch):
         "api.exchange_apis.kucoin.futures.futures_deal.BotTableCrud",
         DummyBotCrud,
     )
-    bot = BotModel(pair="SIRENUSDTM", position=Position.short)
+    bot = BotModel(pair="SIRENUSDTM", position=Position.short, futures_leverage=5)
     futures_api = DummyFuturesApi()
     symbols_crud = DummySymbolsCrud()
     controller = DummyBotCrud()
@@ -150,6 +162,7 @@ def test_constructor_reuses_injected_exchange_dependencies(monkeypatch):
     assert deal.symbols_crud is symbols_crud
     assert deal.controller is controller
     assert deal.interval_ms == 900_000
+    assert futures_api.DEFAULT_LEVERAGE == 5
 
 
 def test_contracts_to_fiat_order_size_inverts_margin_sizing():
@@ -168,12 +181,12 @@ def test_calculate_contracts_returns_zero_when_margin_is_below_one_contract():
 def test_notional_stays_within_thirty_at_autotrade_default_and_two_x_leverage():
     """
     Product invariant: with the autotrade default fiat_order_size of 15 USDT
-    and a per-symbol futures_leverage of 2x, notional must not exceed 30 USDT.
+    and a per-bot futures_leverage of 2x, notional must not exceed 30 USDT.
     Guards against accidental drift back to a risk-budget interpretation or
-    silently raising the model's `le=3` leverage cap.
+    silently multiplying leverage twice.
     """
     deal = make_sizing_deal(fiat_order_size=15.0, multiplier=1.0)
-    deal.symbol_info.futures_leverage = 2
+    deal.active_bot.futures_leverage = 2
 
     contracts = deal.calculate_contracts(balance=15.0, price=1.0)
     notional = deal.notional_for_contracts(contracts, price=1.0)
@@ -612,6 +625,7 @@ def test_liquidity_downsized_entry_is_revalidated_with_required_margin():
     futures_api.buy.assert_called_once_with(
         symbol="TESTUSDTM",
         qty=4,
+        leverage=1,
         entry_limit_price=10,
     )
     assert opened_bot.deal.base_order_size == 4
@@ -663,6 +677,7 @@ def test_sustained_top_gainer_base_order_is_submitted_post_only():
     futures_api.buy.assert_called_once_with(
         symbol="TESTUSDTM",
         qty=1,
+        leverage=1,
         entry_limit_price=10,
         post_only=True,
     )
@@ -929,7 +944,7 @@ def test_unfilled_base_order_logs_pending_wait_queue():
         def __init__(self):
             self.buy_calls: list[dict[str, float]] = []
 
-        def buy(self, symbol, qty, entry_limit_price=None):
+        def buy(self, symbol, qty, entry_limit_price=None, leverage=None):
             self.buy_calls.append(
                 {
                     "qty": qty,
