@@ -20,6 +20,7 @@ from api.databases.crud.grid_ladder_crud import GridLadderCrud
 from api.databases.crud.symbols_crud import SymbolsCrud
 from api.databases.utils import get_db_session
 from api.tools.config import Config
+from streaming.kucoin_rate_limiter import KucoinRateLimiter
 
 
 class BaseStreaming:
@@ -42,6 +43,11 @@ class BaseStreaming:
             secret=self.config.kucoin_secret,
             passphrase=self.config.kucoin_passphrase,
         )
+        self.kucoin_rate_limiter = KucoinRateLimiter()
+        for api in (self.kucoin_api, self.kucoin_futures_api):
+            transport_option = getattr(api, "http_transport_option", None)
+            if transport_option is not None:
+                transport_option.interceptors.append(self.kucoin_rate_limiter)
         self.bot_controller = BotTableCrud()
         self.symbols_crud = SymbolsCrud()
         with get_db_session() as session:
@@ -83,7 +89,7 @@ class BaseStreaming:
             grid_ladder_active_pairs = GridLadderCrud(session).get_active_symbols()
         self.active_grid_ladder_pairs = grid_ladder_active_pairs
         active_pairs = list(set(bot_active_pairs + grid_ladder_active_pairs))
-        active_pairs.extend(["BTCUSDC", "ETHUSDC"])
+        active_pairs.extend(["BTCUSDT", "ETHUSDT"])
         self.active_bot_pairs = active_pairs
         return active_pairs
 
