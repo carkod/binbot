@@ -9,6 +9,7 @@ from pybinbot import (
     BotBase,
     BotModel,
     Candles,
+    DealType,
     ExchangeId,
     KucoinApi,
     KucoinFutures,
@@ -565,13 +566,17 @@ class Lifecycle:
         """
         Exit logic for futures positions.
         """
-        if (
-            self.execution.active_bot.dynamic_position_sizing
-            or self.execution.active_bot.deal.position_size_order is not None
-        ) and DynamicPositionSizing(self.execution).process(close_price):
-            return self.execution.active_bot
-
         if self.execution.active_bot.status == Status.completed:
+            if self.execution.active_bot.deal.position_size_order is not None:
+                # A native stop can fill while an increase is still settling.
+                # Cancel it and flatten any residual before retiring the bot.
+                return self.execution.close_all(
+                    deal_type=(
+                        DealType.trailing_profit
+                        if self.execution.active_bot.deal.trailing_stop_loss_price > 0
+                        else DealType.stop_loss
+                    )
+                )
             return self.execution.active_bot
 
         current_price = round_numbers(close_price, self.execution.price_precision)
@@ -589,6 +594,26 @@ class Lifecycle:
             return self.execution.active_bot
 
         direction = self.execution._direction_multiplier()
+        trailing_stop = self.execution.active_bot.deal.trailing_stop_loss_price
+        if trailing_stop > 0 and (current_price - trailing_stop) * direction <= 0:
+            self.execution.controller.update_logs(
+                f"Trailing deviation reached at {trailing_stop}; closing the full position.",
+                self.execution.active_bot,
+            )
+            return self.execution.close_all(deal_type=DealType.trailing_profit)
+
+        if self.execution.active_bot.deal.position_size_order is not None:
+            try:
+                DynamicPositionSizing(self.execution).process(current_price)
+            except RestError as exc:
+                self.execution.controller.update_logs(
+                    f"Pending sizing order lookup failed ({exc.response.message}); "
+                    "continuing protective exits.",
+                    self.execution.active_bot,
+                )
+            if self.execution.active_bot.status == Status.completed:
+                return self.execution.active_bot
+
         position_name = getattr(
             self.execution.active_bot.position,
             "value",
@@ -697,6 +722,8 @@ class Lifecycle:
             )
             reversal_requires_confirmation = recovery_params is not None
 
+            if self.execution.active_bot.dynamic_position_sizing:
+                return self.execution.close_all(deal_type=DealType.stop_loss)
             if not evaluation.policy.reversal_enabled:
                 self.execution.controller.update_logs(
                     f"Executing futures {position_name} stop_loss after hitting "
@@ -808,7 +835,12 @@ class Lifecycle:
                 self.execution.reconcile_trailing_stop_loss()
 
             # First activation: derive the next trailing trigger from entry or the last trailing stop.
-            if self.execution.active_bot.deal.trailing_stop_loss_price == 0:
+            if (
+                self.execution.active_bot.dynamic_position_sizing
+                and self.execution.active_bot.deal.trailing_profit_price > 0
+            ):
+                trailing_price = self.execution.active_bot.deal.trailing_profit_price
+            elif self.execution.active_bot.deal.trailing_stop_loss_price == 0:
                 trailing_price = self.execution.active_bot.deal.opening_price * (
                     1 + direction * (self.execution.active_bot.trailing_profit / 100)
                 )
@@ -902,9 +934,19 @@ class Lifecycle:
                     )
 
                 self.execution.controller.save(self.execution.active_bot)
+                if self.execution.active_bot.status == Status.completed:
+                    return self.execution.active_bot
+                if self.execution.active_bot.dynamic_position_sizing:
+                    DynamicPositionSizing(self.execution).process(
+                        current_price, trailing_profit_reached=True
+                    )
 
         if (
-            self.execution.active_bot.take_profit > 0
+            (
+                not self.execution.active_bot.dynamic_position_sizing
+                or not self.execution.active_bot.trailing
+            )
+            and self.execution.active_bot.take_profit > 0
             and self.execution.active_bot.deal.take_profit_price
             and self.execution.active_bot.deal.opening_price > 0
         ):
