@@ -310,7 +310,7 @@ class DynamicPositionSizing:
             .set_side(side)
             .set_type(AddOrderReq.TypeEnum.MARKET)
             .set_size(int(pending.requested_qty))
-            .set_leverage(str(self.execution.symbol_info.futures_leverage))
+            .set_leverage(str(self.execution.active_bot.futures_leverage))
             .set_reduce_only(pending.reducing)
             .build()
         )

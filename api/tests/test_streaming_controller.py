@@ -173,6 +173,7 @@ class TestPositionManager:
     ):
         # Lightweight BotModel-like object for tests
         bot = types.SimpleNamespace()
+        bot.futures_leverage = 1
         bot.id = f"test-bot-{id(bot)}"
         bot.signal_id = 123
         bot.name = "apex_aggressive_momo"
@@ -1058,7 +1059,7 @@ class TestPositionManager:
         base.kucoin_futures_api.get_futures_position = lambda symbol: None
         submitted: list[tuple[str, float, float, bool]] = []
 
-        def buy(symbol, qty, entry_limit_price, post_only):
+        def buy(symbol, qty, entry_limit_price, post_only, leverage):
             submitted.append((symbol, qty, entry_limit_price, post_only))
             return OrderModel(
                 order_id="replacement-entry",
@@ -1273,7 +1274,7 @@ class TestPositionManager:
             get_futures_position=lambda symbol: None,
         )
 
-        def buy(symbol, qty, entry_limit_price, post_only):
+        def buy(symbol, qty, entry_limit_price, post_only, leverage):
             assert post_only
             return OrderModel(
                 order_id="second-reprice",

@@ -29,8 +29,8 @@ These projects are interconnected, and Codex conversations often refer across th
 
 ## Trading Logic
 
-- For KuCoin futures bots, `fiat_order_size` is the **initial margin** the bot commits (margin-spend interpretation), not the risk-at-stop. `KucoinPositionDeal.calculate_contracts(balance, price)` is `balance * symbol_info.futures_leverage / (price * multiplier)`; `contracts_to_fiat_order_size` is its inverse. `notional = fiat_order_size * futures_leverage`.
-- Leverage lives on the symbol row (`SymbolTable.futures_leverage`, bounded `[1, 5]`). It is **per-symbol**, not a global constant. New symbols default to `1x`; dial individual symbols up via the symbols API only as an explicit product decision.
+- For KuCoin futures bots, `fiat_order_size` is the **initial margin** the bot commits (margin-spend interpretation), not the risk-at-stop. `KucoinPositionDeal.calculate_contracts(balance, price)` is `balance * active_bot.futures_leverage / (price * multiplier)`; `contracts_to_fiat_order_size` is its inverse. `notional = fiat_order_size * futures_leverage`.
+- Futures bot leverage lives on `BotBase.futures_leverage` / `BotTable.futures_leverage`, bounded `[1, 5]`. An explicit signal value overrides the symbol; when omitted, resolve `symbol.futures_leverage` and persist it on creation. Use the bot's persisted leverage for sizing, affordability, orders, and recovery bots. Symbol leverage also remains for grid ladders and legacy migration backfill. Only binquant's `top_gainer_short` chooses leverage from its signal score.
 - `base_order` clamps via `min(margin_sized_contracts, max_contracts_for_margin(available_balance, price))` and re-validates with `required_margin_for_contracts` before sending the order to KuCoin. Anything that places futures orders must keep going through `required_margin_for_contracts` so the affordability check stays exchange-truthful.
 - Percent fields stored as values like `6.5` must be converted to ratios with `/ 100` before arithmetic.
 - Do not apply leverage to PnL or risk-at-stop calculations. Leverage affects margin requirements, not the price move loss for a position.

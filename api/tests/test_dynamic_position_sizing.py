@@ -28,6 +28,7 @@ def execution(*, short=False):
     bot = BotModel(
         pair="XBTUSDTM",
         fiat="USDT",
+        futures_leverage=3,
         market_type=MarketType.FUTURES,
         status=Status.active,
         dynamic_position_sizing=True,
@@ -43,7 +44,7 @@ def execution(*, short=False):
     result.controller = MagicMock(spec=BotTableCrud)
     result.kucoin_symbol = bot.pair
     result.kucoin_symbol_data = SimpleNamespace(lot_size=1)
-    result.symbol_info = SimpleNamespace(futures_leverage=3)
+    result.symbol_info = SimpleNamespace(futures_leverage=1)
     result.kucoin_futures_api = MagicMock()
     result.kucoin_futures_api.get_futures_position.return_value = SimpleNamespace(
         current_qty=-100 if short else 100
@@ -88,9 +89,7 @@ def test_stop_hit_reduces_only_current_position_and_resets_after_fill(
 
 
 @pytest.mark.parametrize("short,price,side", [(False, 110, "buy"), (True, 90, "sell")])
-def test_profit_hit_increases_using_symbol_leverage_and_confirmed_fill(
-    short, price, side
-):
+def test_profit_hit_increases_using_bot_leverage_and_confirmed_fill(short, price, side):
     engine = execution(short=short)
     api = engine.kucoin_futures_api.futures_order_api
     api.get_order_by_client_oid.return_value.avg_deal_price = price
