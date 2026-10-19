@@ -111,6 +111,22 @@ and persistence model rather than the standard bot lifecycle.
 | `api/exchange_apis/kucoin/futures/futures_deal.py` | Performs exchange operations and persists the resulting bot state. |
 | `api/exchange_apis/kucoin/futures/position_sizing.py` | Increases futures quantity at trailing-profit triggers, reconciles fills, and disables increases when unaffordable without bypassing protective exits. |
 
+### Top-gainer short chop exit
+
+`top_gainer_short` counts completed candle closes switching sides of the fixed
+current price over the rolling last six hours, using the shared
+`pybinbot.shared.price_crossings.price_crossings_six_hours` calculation also used
+by binquant. At **three or more crossings**, it closes the full live position
+with a reduce-only **market order**, bypassing the normal IOC limit leg. This
+exit runs before pending sizing recovery, new increases, and strategy parameter
+changes. An already breached trailing stop still takes precedence.
+
+This is a rolling history condition, not a six-hour minimum bot age. Wicks and
+exact touches do not count; incomplete, stale, or invalid candle history does
+not produce a chop exit. Normal protective stops continue to apply. The
+binquant entry gate remains at four crossings; its score penalties are unchanged.
+Release the updated shared `pybinbot` module before deploying these consumers.
+
 ## Dynamic position sizing
 
 `BotBase.dynamic_position_sizing` defaults to `false`. For a KuCoin futures bot

@@ -602,18 +602,6 @@ class Lifecycle:
             )
             return self.execution.close_all(deal_type=DealType.trailing_profit)
 
-        if self.execution.active_bot.deal.position_size_order is not None:
-            try:
-                DynamicPositionSizing(self.execution).process(current_price)
-            except RestError as exc:
-                self.execution.controller.update_logs(
-                    f"Pending sizing order lookup failed ({exc.response.message}); "
-                    "continuing protective exits.",
-                    self.execution.active_bot,
-                )
-            if self.execution.active_bot.status == Status.completed:
-                return self.execution.active_bot
-
         position_name = getattr(
             self.execution.active_bot.position,
             "value",
@@ -648,6 +636,30 @@ class Lifecycle:
             bot_profit=bot_profit,
             now_ms=now_ms,
         )
+        exit_intent = evaluation.signal.exit_intent
+        if (
+            exit_intent is not None
+            and exit_intent.kind == LifecycleExitKind.algorithmic_close
+            and exit_intent.market_only
+        ):
+            self.execution.controller.update_logs(
+                exit_intent.log_message,
+                self.execution.active_bot,
+            )
+            return self.execution.close_all(algorithmic_close=True, market_only=True)
+
+        if self.execution.active_bot.deal.position_size_order is not None:
+            try:
+                DynamicPositionSizing(self.execution).process(current_price)
+            except RestError as exc:
+                self.execution.controller.update_logs(
+                    f"Pending sizing order lookup failed ({exc.response.message}); "
+                    "continuing protective exits.",
+                    self.execution.active_bot,
+                )
+            if self.execution.active_bot.status == Status.completed:
+                return self.execution.active_bot
+
         self._apply_strategy_signal(evaluation)
 
         is_1_5_days = (

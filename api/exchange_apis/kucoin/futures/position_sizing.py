@@ -113,65 +113,71 @@ class DynamicPositionSizing:
             pending.not_found_count = 0
             pending.not_found_since_ms = 0
             self.execution.controller.save(bot)
-        if order.is_active:
-            return
         quantity = float(order.filled_size or 0)
         price = float(order.avg_deal_price or 0)
-        order_id = order.id
-        timestamp = int(order.end_at or order.updated_at or order.created_at)
-        if quantity > 0 and price <= 0:
-            # Do not discard a fill whose execution price is still missing.
-            return
-
+        fill_complete = not order.is_active and (quantity == 0 or price > 0)
+        remaining = deal.current_position_qty
         if quantity > 0:
+            # KuCoin reports cumulative fills. Always derive from the persisted
+            # pre-order snapshot, including after a restart; never add the same
+            # partial fill to an already updated position a second time.
             signed_quantity = -quantity if pending.reducing else quantity
             remaining = max(0, pending.quantity_before + signed_quantity)
-            if not pending.reducing:
+            if not pending.reducing and price > 0:
                 deal.opening_price = (
                     pending.entry_price_before * pending.quantity_before
                     + price * quantity
                 ) / remaining
             deal.current_position_qty = remaining
             deal.base_order_size = remaining
-            # opening_qty remains historical; current_position_qty is live size.
-            # Keep the lifecycle's trailing trigger and protective prices intact.
-            # Legacy reduction intents may still be reconciled after deployment.
-            side = (
-                "sell" if (bot.position == Position.long) == pending.reducing else "buy"
-            )
-            bot.orders.append(
-                OrderModel(
-                    order_id=order_id,
-                    pair=bot.pair,
-                    order_side=side,
-                    order_type="MARKET",
-                    time_in_force="GTC",
-                    timestamp=timestamp,
-                    qty=quantity,
-                    price=price,
-                    status=OrderStatus.FILLED,
-                    deal_type=DealType.stop_loss
-                    if pending.reducing
-                    else DealType.base_order,
+            # Protect observed contracts even when the fill price is delayed.
+            # Keep lifecycle triggers and protective prices intact.
+            if fill_complete:
+                timestamp = int(order.end_at or order.updated_at or order.created_at)
+                side = (
+                    "sell"
+                    if (bot.position == Position.long) == pending.reducing
+                    else "buy"
                 )
-            )
-            if remaining == 0:
-                bot.status = Status.completed
-                deal.closing_qty = quantity
-                deal.closing_price = price
-                deal.closing_timestamp = timestamp
-            bot.add_log(
-                f"Dynamic position {'reduced' if pending.reducing else 'increased'} "
-                f"by {quantity} contracts at {price}; remaining {remaining}."
-            )
-        else:
+                bot.orders.append(
+                    OrderModel(
+                        order_id=order.id,
+                        pair=bot.pair,
+                        order_side=side,
+                        order_type="MARKET",
+                        time_in_force="GTC",
+                        timestamp=timestamp,
+                        qty=quantity,
+                        price=price,
+                        status=OrderStatus.FILLED,
+                        deal_type=DealType.stop_loss
+                        if pending.reducing
+                        else DealType.base_order,
+                    )
+                )
+                if remaining == 0:
+                    bot.status = Status.completed
+                    deal.closing_qty = quantity
+                    deal.closing_price = price
+                    deal.closing_timestamp = timestamp
+                bot.add_log(
+                    f"Dynamic position {'reduced' if pending.reducing else 'increased'} "
+                    f"by {quantity} contracts at {price}; remaining {remaining}."
+                )
+        elif fill_complete:
             bot.add_log(
                 "Dynamic position adjustment ended without a fill; thresholds unchanged."
             )
-        deal.position_size_order = None
+        else:
+            return
+        if fill_complete:
+            deal.position_size_order = None
         self.execution.controller.save(bot)
-        if quantity > 0 and bot.status == Status.active:
-            self.execution.reconcile_exchange_sl()
+        if quantity > 0 and remaining > 0 and bot.status == Status.active:
+            # The position endpoint can lag these confirmed fills. Pass the
+            # observed quantity through to protection instead of shrinking it
+            # back to a stale position response.
+            self.execution.reconcile_exchange_sl(position_qty=remaining)
 
     def process(
         self, current_price: float, *, trailing_profit_reached: bool = False

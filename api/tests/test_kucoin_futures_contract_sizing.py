@@ -1875,9 +1875,58 @@ def test_trailing_exit_cancels_pending_increase_and_closes_all_live_contracts(sh
     )
     result = deal.close_all(deal_type=DealType.trailing_profit)
     assert events[:3] == ["save", "cancel", "position"]
-    deal._close_with_market_fallback.assert_called_once_with(close_side, 37)
+    deal._close_with_market_fallback.assert_called_once_with(
+        close_side, 37, market_only=False
+    )
     assert result.status == Status.completed
     assert result.deal.current_position_qty == 0
     assert result.deal.closing_qty == 37
     assert result.deal.closing_timestamp == order.timestamp
     assert result.orders[-1].deal_type == DealType.trailing_profit
+
+
+@pytest.mark.parametrize("short", [False, True])
+def test_market_only_close_skips_ioc_and_market_closes_whole_live_position(short):
+    deal = make_sizing_deal(multiplier=1)
+    deal.active_bot.status = Status.active
+    deal.active_bot.position = Position.short if short else Position.long
+    deal.kucoin_symbol = deal.active_bot.pair
+    deal.CLOSE_ALL_FILL_CHECK_SLEEP_S = 0
+    side = AddOrderReq.SideEnum.BUY if short else AddOrderReq.SideEnum.SELL
+    order = OrderBase(
+        order_id="chop-market-exit",
+        order_type="market",
+        pair=deal.kucoin_symbol,
+        timestamp=1775008219262,
+        order_side=side.value,
+        qty=37,
+        price=100,
+        status=OrderStatus.FILLED,
+        time_in_force="GTC",
+        deal_type=DealType.algorithmic_close,
+    )
+    place = Mock(return_value=order)
+    matching = Mock(side_effect=AssertionError("Market exit must not use IOC pricing"))
+    deal.kucoin_futures_api = types.SimpleNamespace(
+        get_futures_position=lambda symbol: types.SimpleNamespace(
+            current_qty=-37 if short else 37
+        ),
+        matching_engine=matching,
+        place_futures_order=place,
+    )
+    deal._cleanup_native_protection_after_close = Mock()
+    deal.controller = types.SimpleNamespace(
+        save=lambda bot: bot, update_logs=lambda **kwargs: None
+    )
+    result = deal.close_all(algorithmic_close=True, market_only=True)
+    matching.assert_not_called()
+    place.assert_called_once()
+    request = place.call_args.kwargs
+    assert request["order_type"] == OrderType.market
+    assert request["size"] == 37
+    assert request["reduce_only"] is True
+    assert request["side"] == side
+    assert result.status == Status.completed
+    assert result.deal.current_position_qty == 0
+    assert result.deal.closing_qty == 37
+    assert result.orders[-1].deal_type == DealType.algorithmic_close

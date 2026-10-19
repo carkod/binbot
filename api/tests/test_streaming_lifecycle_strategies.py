@@ -1,3 +1,4 @@
+from dataclasses import replace
 import types
 from time import time
 from typing import Any, cast
@@ -671,3 +672,114 @@ def test_position_market_generic_helpers_remain_strategy_agnostic() -> None:
 
     assert long_params == (1.5, 2.0, 1.5)
     assert short_params == (2.0, 1.5, 1.14)
+
+
+def _crossing_context(crossings: int) -> LifecycleContext:
+    now_ms = 1_800_000_000_000 // INTERVAL_MS * INTERVAL_MS + 30_000
+    start = now_ms // INTERVAL_MS * INTERVAL_MS - 24 * INTERVAL_MS
+    frame = DataFrame(
+        [
+            {
+                "open_time": start + i * INTERVAL_MS,
+                "close_time": start + (i + 1) * INTERVAL_MS - 1,
+                "close": 99.0 if (i * (crossings + 1) // 24) % 2 == 0 else 101.0,
+                "high": 110.0,
+                "low": 90.0,
+            }
+            for i in range(24)
+        ]
+    )
+    context = _context(
+        name="top_gainer_short",
+        position=Position.short,
+        now_ms=now_ms,
+        opening_timestamp=now_ms - 60_000,
+    )
+    return replace(context, df=frame)
+
+
+@pytest.mark.parametrize("crossings", [0, 1, 2, 3, 4, 23])
+def test_top_gainer_short_market_exits_at_three_crossings_in_rolling_six_hours(
+    crossings,
+):
+    context = _crossing_context(crossings)
+    signal = TopGainerShortLifecycleStrategy().signal(context)
+    if crossings < 3:
+        assert signal.exit_intent is None
+    else:
+        assert signal.exit_intent is not None
+        assert signal.exit_intent.kind == LifecycleExitKind.algorithmic_close
+        assert signal.exit_intent.market_only
+        assert f"{crossings} current-price crossings" in signal.exit_intent.log_message
+        assert signal.parameter_update is None
+
+
+@pytest.mark.parametrize("case", ["gap", "stale", "nan", "missing_columns"])
+def test_top_gainer_short_does_not_invent_crossings_from_invalid_history(case):
+    context = _crossing_context(3)
+    frame = context.df
+    if case == "gap":
+        frame = frame.drop(index=10)
+    elif case == "stale":
+        frame = frame.iloc[:-1]
+    elif case == "nan":
+        frame.loc[10, "close"] = float("nan")
+    else:
+        frame = frame.drop(columns=["close_time"])
+    assert (
+        TopGainerShortLifecycleStrategy().signal(replace(context, df=frame)).exit_intent
+        is None
+    )
+
+
+@pytest.mark.parametrize("dynamic_sizing", [False, True])
+def test_chop_market_exit_precedes_pending_sizing_and_trailing_increases(
+    monkeypatch, dynamic_sizing
+):
+    from unittest.mock import Mock
+    from pybinbot import Status
+    from pybinbot.models.deal import PositionSizeOrder
+
+    context = _crossing_context(3)
+    bot = context.bot
+    bot.status = Status.active
+    bot.dynamic_position_sizing = dynamic_sizing
+    bot.take_profit = 4.5
+    bot.deal.stop_loss_price = 105
+    bot.deal.trailing_profit_price = 100
+    bot.deal.position_size_order = PositionSizeOrder(
+        client_oid="pending-before-chop-exit",
+        reducing=False,
+        quantity_before=30,
+        entry_price_before=100,
+        requested_qty=7,
+        signal_price=95,
+    )
+    close = Mock(return_value=bot)
+    native = Mock()
+    api = Mock()
+    execution = types.SimpleNamespace(
+        active_bot=bot,
+        price_precision=2,
+        _direction_multiplier=lambda: -1,
+        controller=types.SimpleNamespace(save=Mock(), update_logs=Mock()),
+        kucoin_futures_api=api,
+        close_all=close,
+        place_trailing_stop_loss=native,
+    )
+    lifecycle = Lifecycle(
+        cast(Any, execution),
+        types.SimpleNamespace(interval=BinanceKlineIntervals.fifteen_minutes),
+    )
+    lifecycle.klines = []
+    lifecycle.df = context.df
+    monkeypatch.setattr(
+        lifecycle,
+        "_evaluate_strategy",
+        lambda **kwargs: LifecycleContextEvaluator().evaluate(context),
+    )
+    assert lifecycle.exit(100) is bot
+    close.assert_called_once_with(algorithmic_close=True, market_only=True)
+    api.futures_order_api.get_order_by_client_oid.assert_not_called()
+    api.futures_order_api.add_order.assert_not_called()
+    native.assert_not_called()
