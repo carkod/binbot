@@ -3,7 +3,6 @@ from datetime import datetime
 from kucoin_universal_sdk.generate.futures.order.model_get_order_by_order_id_resp import (
     GetOrderByOrderIdResp,
 )
-from kucoin_universal_sdk.generate.futures.order import CancelOrderByIdReqBuilder
 from kucoin_universal_sdk.model.common import RestError
 from pybinbot import (
     BotModel,
@@ -145,53 +144,6 @@ class FuturesPosition(PositionMarket):
             return 0
         return abs(float(position.current_qty))
 
-    @staticmethod
-    def _cancel_futures_order_by_id(api, order_id: str) -> bool:
-        cancel_by_id = getattr(api, "cancel_futures_order", None)
-        if callable(cancel_by_id):
-            cancel_by_id(order_id)
-            return True
-
-        futures_order_api = getattr(api, "futures_order_api", None)
-        sdk_cancel_by_id = getattr(futures_order_api, "cancel_order_by_id", None)
-        if callable(sdk_cancel_by_id):
-            request = CancelOrderByIdReqBuilder().set_order_id(order_id).build()
-            sdk_cancel_by_id(request)
-            return True
-
-        return False
-
-    def _cancel_pending_entry_order(
-        self, order: OrderModel, kucoin_symbol: str
-    ) -> None:
-        api = self.base_streaming.kucoin_futures_api
-        order_id = str(order.order_id)
-
-        if self._cancel_futures_order_by_id(api, order_id):
-            return
-
-        batch_cancel = getattr(api, "batch_cancel_stop_loss_orders", None)
-        if callable(batch_cancel):
-            batch_cancel([order_id])
-            return
-
-        position = api.get_futures_position(kucoin_symbol)
-        current_qty = abs(float(getattr(position, "current_qty", 0) or 0))
-        live_base_orders = [
-            active_order
-            for active_order in self.execution.active_bot.orders
-            if active_order.deal_type == DealType.base_order
-            and active_order.status not in self.TERMINAL_ORDER_STATUSES
-        ]
-        if current_qty == 0 and len(live_base_orders) == 1:
-            api.cancel_all_futures_orders(kucoin_symbol)
-            return
-
-        raise RuntimeError(
-            f"Refusing symbol-wide cancel for pending entry {order_id}; "
-            "position or additional live base orders exist."
-        )
-
     def _apply_system_order_update(
         self,
         order: OrderModel,
@@ -233,7 +185,7 @@ class FuturesPosition(PositionMarket):
         kucoin_symbol: str,
         fill_log_message: str,
     ) -> bool:
-        self._cancel_pending_entry_order(order, kucoin_symbol)
+        self.base_streaming.kucoin_futures_api.cancel_futures_order(str(order.order_id))
 
         refreshed_order = self._retrieve_order_or_none(str(order.order_id))
         if refreshed_order is None:
@@ -377,11 +329,7 @@ class FuturesPosition(PositionMarket):
             return False
 
         try:
-            raw_tick_size = getattr(
-                self.execution.kucoin_symbol_data,
-                "tick_size",
-                None,
-            )
+            raw_tick_size = self.execution.kucoin_symbol_data.tick_size
             if raw_tick_size is None:
                 raise ValueError("tick size is missing")
             tick_size = float(raw_tick_size)
@@ -850,7 +798,9 @@ class FuturesPosition(PositionMarket):
                         and filled_size > 0
                     ):
                         if status != OrderStatus.FILLED:
-                            self._cancel_pending_entry_order(order, kucoin_symbol)
+                            self.base_streaming.kucoin_futures_api.cancel_futures_order(
+                                str(order.order_id)
+                            )
                             order.status = OrderStatus.CANCELED
                         self.execution.controller.update_order(order)
                         self.execution.active_bot.add_log(
@@ -921,8 +871,8 @@ class FuturesPosition(PositionMarket):
                             self.execution.matching_exchange_fill_timestamp(
                                 order,
                                 fallback_timestamp=int(
-                                    getattr(system_order, "updated_at", 0)
-                                    or getattr(system_order, "end_at", 0)
+                                    system_order.updated_at
+                                    or system_order.end_at
                                     or now_ms
                                 ),
                             )

@@ -67,6 +67,10 @@ def make_sizing_deal(
     deal.controller = types.SimpleNamespace(save=lambda bot: bot)
     deal._entry_reference_price = 100.0
     deal._entry_allowance_pct = 1.5
+    deal._entry_signal_loaded = False
+    deal._entry_signal_context = None
+    deal._entry_signal_indicators = None
+    deal._entry_post_only = False
     return deal
 
 

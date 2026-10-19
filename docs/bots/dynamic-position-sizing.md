@@ -24,7 +24,13 @@ suppressed while trailing-based sizing is enabled. The persisted deal field
   increase.
 - Each increase checks the futures wallet and `required_margin_for_contracts`,
   using the bot's saved leverage. Quantities round down to exchange lots.
-- Confirmed fills update the weighted entry and current quantity. They do not
+- Cumulative partial fills update the weighted entry and current quantity while
+  the order remains active. Each observation resizes native protection using
+  the confirmed quantity, even if the position endpoint still reports the old
+  size. The pending intent remains until terminal; the pre-order snapshot makes
+  repeated polls and restarts idempotent. A delayed fill price does not delay
+  protecting observed contracts. Terminal history records the cumulative fill
+  once. Fills do not
   reset the trailing trigger, stop loss, or trailing stop around the fill price.
   Exchange protection is reconciled to cover the new full position quantity,
   even during the normal stop-replacement cooldown, without loosening its price.

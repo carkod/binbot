@@ -337,9 +337,7 @@ class Lifecycle:
         return self.execution.active_bot
 
     def _start_recovery_cooldown(self) -> None:
-        configured_symbol_cooldown = int(
-            getattr(self.execution.symbol_info, "cooldown", 0) or 0
-        )
+        configured_symbol_cooldown = self.execution.symbol_info.cooldown
         bot_cooldown_seconds = self.execution.active_bot.cooldown * 60
         cooldown_seconds = max(
             configured_symbol_cooldown,

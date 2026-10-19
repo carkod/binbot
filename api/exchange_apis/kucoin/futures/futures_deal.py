@@ -319,9 +319,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
     def _top_gainer_signal_data(
         self,
     ) -> tuple[dict[str, Any], dict[str, Any]] | None:
-        if getattr(self, "_entry_signal_loaded", False):
-            context = getattr(self, "_entry_signal_context", None)
-            indicators = getattr(self, "_entry_signal_indicators", None)
+        if self._entry_signal_loaded:
+            context = self._entry_signal_context
+            indicators = self._entry_signal_indicators
             if context is None or indicators is None:
                 return None
             return context, indicators
@@ -560,7 +560,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self._top_gainer_volatility_discount_pct = volatility_discount_pct
             self._entry_allowance_pct = volatility_discount_pct
             try:
-                raw_tick_size = getattr(self.kucoin_symbol_data, "tick_size", None)
+                raw_tick_size = self.kucoin_symbol_data.tick_size
                 if raw_tick_size is None:
                     raise ValueError("tick size is missing")
                 tick_size = float(raw_tick_size)
@@ -727,10 +727,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
         if contracts <= 0 or price <= 0:
             return 0.0
 
-        symbol_data = getattr(self, "kucoin_symbol_data", None)
         multiplier = float(
-            getattr(symbol_data, "multiplier", 0)
-            or getattr(self.kucoin_futures_api, "DEFAULT_MULTIPLIER", 1)
+            self.kucoin_symbol_data.multiplier
+            or self.kucoin_futures_api.DEFAULT_MULTIPLIER
         )
 
         return round_numbers(
@@ -905,7 +904,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 )
 
             try:
-                raw_tick_size = getattr(self.kucoin_symbol_data, "tick_size", None)
+                raw_tick_size = self.kucoin_symbol_data.tick_size
                 if raw_tick_size is None:
                     raise ValueError("tick size is missing")
                 tick_size = float(raw_tick_size)
@@ -1356,9 +1355,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self.kucoin_symbol
         )
         stop_order_ids = [
-            order.id
-            for order in stop_orders
-            if str(getattr(order, "id", "")) == trailing_order_id
+            order.id for order in stop_orders if str(order.id) == trailing_order_id
         ]
         if stop_order_ids:
             self.kucoin_futures_api.batch_cancel_stop_loss_orders(stop_order_ids)
@@ -1539,10 +1536,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         if self._reversal_eligible():
             return
         if self.active_bot.deal.trailing_stop_loss_price != 0:
-            if position_qty is not None:
-                self.reconcile_trailing_stop_loss(position_qty=position_qty)
-            else:
-                self.reconcile_trailing_stop_loss()
+            self.reconcile_trailing_stop_loss(position_qty=position_qty)
             return
 
         # Intended price
@@ -1558,7 +1552,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         bot_known_price, last_replace_ts_ms = self._bot_known_stop_loss()
         expected_qty = (
-            position_qty if position_qty is not None else self.current_position_quantity()
+            position_qty
+            if position_qty is not None
+            else self.current_position_quantity()
         )
 
         # Case 1: exchange confirmed no SL exists — re-place.
@@ -1568,17 +1564,21 @@ class KucoinPositionDeal(KucoinBaseBalance):
                     "Exchange SL missing — re-placing emergency stop."
                 )
             self.cancel_current_sl()  # cleans local stale records, no-op on empty
-            if position_qty is not None:
-                self.place_stop_loss(position_qty=position_qty)
-            else:
-                self.place_stop_loss()
+            self.place_stop_loss(position_qty=position_qty)
             return
 
-        if (
-            exchange_qty is not None
-            and expected_qty > 0
-            and exchange_qty != expected_qty
-        ):
+        quantity_changed = (
+            exchange_qty is not None and exchange_qty != expected_qty
+        ) or (
+            position_qty is not None
+            and any(
+                order.deal_type == DealType.stop_loss
+                and order.status not in self.TERMINAL_STOP_ORDER_STATUSES
+                and order.qty != expected_qty
+                for order in self.active_bot.orders
+            )
+        )
+        if expected_qty > 0 and quantity_changed:
             self.active_bot.add_log(
                 f"Exchange SL quantity drift detected: stop={exchange_qty} "
                 f"contracts, current position={expected_qty}; replacing."
@@ -1714,7 +1714,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 entry_limit_price=entry_limit_price,
             )
         else:
-            if getattr(self, "_entry_post_only", False):
+            if self._entry_post_only:
                 order = self.kucoin_futures_api.buy(
                     symbol=self.kucoin_symbol,
                     qty=contracts,
@@ -1926,6 +1926,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 abs(float(raw_exchange_qty)) if raw_exchange_qty is not None else None
             )
             if abs(exchange_price - stop_price) > 10**-self.price_precision:
+                continue
+            # An explicit fill quantity must not adopt a stop whose size the
+            # exchange has omitted; that does not confirm full protection.
+            if exchange_qty is None and position_qty is not None:
                 continue
             if exchange_qty is not None and exchange_qty != qty:
                 continue
@@ -2412,7 +2416,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
         self.controller.save(self.active_bot)
         return self.active_bot
 
-    def reconcile_trailing_stop_loss(self, *, position_qty: float | None = None) -> None:
+    def reconcile_trailing_stop_loss(
+        self, *, position_qty: float | None = None
+    ) -> None:
         """
         Re-place an armed futures trailing stop if the exchange no longer has
         a stop order. The bot-side trailing price is the intended exit once
@@ -2432,7 +2438,11 @@ class KucoinPositionDeal(KucoinBaseBalance):
         quantity_changed = (
             exchange_qty is not None
             and exchange_qty
-            != (position_qty if position_qty is not None else self.current_position_quantity())
+            != (
+                position_qty
+                if position_qty is not None
+                else self.current_position_quantity()
+            )
         ) or (
             position_qty is not None
             and any(
@@ -2444,10 +2454,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self.active_bot.add_log(
                 "Exchange trailing SL quantity changed; resizing full-position protection."
             )
-            if position_qty is not None:
-                self.place_trailing_stop_loss(position_qty=position_qty)
-            else:
-                self.place_trailing_stop_loss()
+            self.place_trailing_stop_loss(position_qty=position_qty)
             return
 
         if exchange_price is None and self.trailing_stop_replace_on_cooldown(
@@ -2471,10 +2478,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         self.active_bot.add_log(
             f"Exchange trailing SL {reason} — re-placing trailing stop."
         )
-        if position_qty is not None:
-            self.place_trailing_stop_loss(position_qty=position_qty)
-        else:
-            self.place_trailing_stop_loss()
+        self.place_trailing_stop_loss(position_qty=position_qty)
 
     # Strategies whose reversal chain has historically compounded losses on chop;
     # for these, a second SL on the same pair within the cooldown closes instead of flipping.

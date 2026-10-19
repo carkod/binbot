@@ -170,6 +170,7 @@ def test_balance_rejection_falls_back_but_network_error_keeps_pending_intent():
         DynamicPositionSizing(engine).process(111, trailing_profit_reached=True)
     pending_id = engine.active_bot.deal.position_size_order.client_oid
     api.get_order_by_client_oid.return_value.is_active = True
+    api.get_order_by_client_oid.return_value.filled_size = 0
     DynamicPositionSizing(engine).process(115)
     assert api.add_order.call_count == 1
     assert api.get_order_by_client_oid.call_args.args[0].client_oid == pending_id
@@ -369,7 +370,9 @@ def test_active_partial_fills_resize_protection_and_count_cumulative_fills_once(
     sizing.process(fill.avg_deal_price, trailing_profit_reached=True)
     assert bot.deal.current_position_qty == 104
     assert bot.deal.base_order_size == 104
-    assert bot.deal.opening_price == pytest.approx((10000 + 4 * fill.avg_deal_price) / 104)
+    assert bot.deal.opening_price == pytest.approx(
+        (10000 + 4 * fill.avg_deal_price) / 104
+    )
     assert bot.deal.position_size_order is not None
     assert not bot.orders  # Record one cumulative order when it becomes terminal.
     engine.reconcile_exchange_sl.assert_called_once_with(position_qty=104)
@@ -382,7 +385,9 @@ def test_active_partial_fills_resize_protection_and_count_cumulative_fills_once(
     fill.avg_deal_price = 88 if short else 112
     sizing.process(fill.avg_deal_price)
     assert bot.deal.current_position_qty == 110
-    assert bot.deal.opening_price == pytest.approx((10000 + 10 * fill.avg_deal_price) / 110)
+    assert bot.deal.opening_price == pytest.approx(
+        (10000 + 10 * fill.avg_deal_price) / 110
+    )
     engine.reconcile_exchange_sl.assert_called_with(position_qty=110)
 
     # A terminal partial fill finalizes the same cumulative quantity, not +10.
@@ -401,7 +406,9 @@ def test_active_partial_fills_resize_protection_and_count_cumulative_fills_once(
 def test_partial_fill_with_delayed_price_still_resizes_protection(active):
     engine = execution()
     engine.active_bot.deal.position_size_order = pending_order()
-    fill = engine.kucoin_futures_api.futures_order_api.get_order_by_client_oid.return_value
+    fill = (
+        engine.kucoin_futures_api.futures_order_api.get_order_by_client_oid.return_value
+    )
     fill.is_active = active
     fill.filled_size = 6
     fill.avg_deal_price = 0
@@ -428,7 +435,9 @@ def test_active_partial_fill_survives_database_restart_without_double_counting(s
         fill.is_active = True
         fill.filled_size = 5
         fill.avg_deal_price = 90 if short else 110
-        DynamicPositionSizing(engine).process(fill.avg_deal_price, trailing_profit_reached=True)
+        DynamicPositionSizing(engine).process(
+            fill.avg_deal_price, trailing_profit_reached=True
+        )
         session.expire_all()
         engine.active_bot = BotModel.dump_from_table(session.get(BotTable, row.id))
         assert engine.active_bot.deal.current_position_qty == 105
@@ -440,7 +449,9 @@ def test_active_partial_fill_survives_database_restart_without_double_counting(s
         fill.avg_deal_price = 88 if short else 112
         DynamicPositionSizing(engine).process(fill.avg_deal_price)
         assert engine.active_bot.deal.current_position_qty == 125
-        assert engine.active_bot.deal.opening_price == pytest.approx((10000 + 25 * fill.avg_deal_price) / 125)
+        assert engine.active_bot.deal.opening_price == pytest.approx(
+            (10000 + 25 * fill.avg_deal_price) / 125
+        )
         assert engine.active_bot.deal.position_size_order is None
         assert len(engine.active_bot.orders) == 1
         assert engine.active_bot.orders[0].qty == 25
