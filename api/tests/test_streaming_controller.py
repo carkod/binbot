@@ -9,6 +9,7 @@ from kucoin_universal_sdk.model.common import RestError
 from pybinbot import (
     BinanceErrors,
     DealType,
+    DealModel,
     ExchangeId,
     HABollinguerSpread,
     MarketType,
@@ -182,6 +183,7 @@ class TestPositionManager:
         bot.position = position
         bot.dynamic_trailing = True
         bot.dynamic_position_sizing = False
+        bot.recovery_params = None
         bot.trailing = False
         bot.trailing_profit = 0.0
         bot.trailing_deviation = 0.0
@@ -194,7 +196,7 @@ class TestPositionManager:
         bot.orders = []
 
         # deal payload used by profit computation
-        deal = types.SimpleNamespace()
+        deal = DealModel()
         deal.base_order_size = 10
         deal.opening_price = 100.0
         deal.opening_timestamp = 0
@@ -588,6 +590,8 @@ class TestPositionManager:
             created_at=int(time.time() * 1000),
             price=1.267,
             remark=None,
+            end_at=None,
+            updated_at=None,
         )
         base.kucoin_futures_api.get_futures_position = lambda symbol: (
             types.SimpleNamespace(current_qty=2)
@@ -734,7 +738,7 @@ class TestPositionManager:
 
         sc.process_deal()
 
-        assert backfill_called["value"] is True
+        assert backfill_called["value"] is False
         assert bot.status == Status.completed
         assert bot.deal.closing_price > 0
         assert bot.deal.closing_qty == 70
@@ -802,7 +806,6 @@ class TestPositionManager:
                 delete_order=lambda order_id, bot_id: deleted.append(order_id)
             ),
             cancel_current_sl=lambda: deleted.append("cancel_current_sl"),
-            _reversal_eligible=lambda: False,
         )
 
         FuturesPosition.order_updates(fp)
@@ -877,7 +880,6 @@ class TestPositionManager:
             bot_crud=types.SimpleNamespace(delete_order=lambda **kwargs: None),
             backfill_position_from_fills=lambda: bot,
             matching_exchange_fill_timestamp=lambda order, **kwargs: filled_at,
-            _reversal_eligible=lambda: False,
         )
 
         FuturesPosition.order_updates(fp)
@@ -973,7 +975,6 @@ class TestPositionManager:
             ),
             cancel_current_sl=lambda: deleted.append("cancel_current_sl"),
             _actual_fill=lambda order: (0, 0),
-            _reversal_eligible=lambda: False,
         )
 
         FuturesPosition.order_updates(fp)
@@ -1099,7 +1100,6 @@ class TestPositionManager:
             _actual_fill=lambda order: (0, 0),
             compute_available_balance=lambda: 10.0,
             required_margin_for_contracts=lambda contracts, price: 3.75,
-            _reversal_eligible=lambda: False,
             kucoin_symbol_data=types.SimpleNamespace(tick_size=0.001),
         )
 
@@ -1199,7 +1199,6 @@ class TestPositionManager:
             active_bot=bot,
             controller=base.bot_controller,
             bot_crud=types.SimpleNamespace(),
-            _reversal_eligible=lambda: False,
         )
 
         FuturesPosition.order_updates(fp)
@@ -1605,7 +1604,6 @@ class TestPositionManager:
             cancel_current_sl=lambda: canceled.append("cancel_current_sl"),
             _actual_fill=lambda order: (1, 0.67318),
             open_deal=open_deal,
-            _reversal_eligible=lambda: False,
         )
 
         FuturesPosition.order_updates(fp)
@@ -1682,7 +1680,6 @@ class TestPositionManager:
             bot_crud=types.SimpleNamespace(),
             cancel_current_sl=lambda: canceled.append("cancel_current_sl"),
             _actual_fill=lambda order: (0, 0),
-            _reversal_eligible=lambda: False,
         )
 
         FuturesPosition.order_updates(fp)
@@ -1759,7 +1756,6 @@ class TestPositionManager:
             active_bot=bot,
             controller=base.bot_controller,
             _actual_fill=lambda order: (0, 0),
-            _reversal_eligible=lambda: False,
         )
 
         FuturesPosition.order_updates(fp)
@@ -1855,6 +1851,7 @@ class TestPositionManager:
                 response=types.SimpleNamespace(code=100001, message="not found"),
             )
         )
+        base.kucoin_futures_api.get_order_execution = lambda order_id: (0, 0, 0)
         base.bot_controller.save = lambda *args, **kwargs: saved.append(
             kwargs.get("data") if "data" in kwargs else args[0]
         )
@@ -1870,13 +1867,12 @@ class TestPositionManager:
                 delete_order=lambda order_id, bot_id: deleted.append(order_id)
             ),
             cancel_current_sl=lambda: deleted.append("cancel_current_sl"),
-            _reversal_eligible=lambda: False,
         )
 
         FuturesPosition.order_updates(fp)
 
-        assert deleted == ["missing-trail-stop"]
-        assert [order.order_id for order in bot.orders] == []
+        assert deleted == []
+        assert [order.order_id for order in bot.orders] == ["missing-trail-stop"]
         assert saved == [bot]
 
     @pytest.mark.parametrize(
@@ -1908,7 +1904,6 @@ class TestPositionManager:
         bot.status = Status.active
         bot.name = algorithm_name
         bot.stop_loss = 2.0
-        bot.margin_short_reversal = False
         bot.recovery_params = None
         bot.deal.trailing_stop_loss_price = 0
         bot.orders = []
@@ -1930,7 +1925,6 @@ class TestPositionManager:
         fp.execution = types.SimpleNamespace(
             active_bot=bot,
             controller=base.bot_controller,
-            _reversal_eligible=lambda: False,
             recompute_derived_prices=lambda: setattr(
                 bot.deal,
                 "stop_loss_price",
@@ -1956,7 +1950,6 @@ class TestPositionManager:
         )
         bot.status = Status.active
         bot.stop_loss = 2.0
-        bot.margin_short_reversal = False
         bot.recovery_params = None
         bot.deal.trailing_stop_loss_price = 0
         bot.orders = [
@@ -1978,7 +1971,6 @@ class TestPositionManager:
         fp.execution = types.SimpleNamespace(
             active_bot=bot,
             controller=base.bot_controller,
-            _reversal_eligible=lambda: False,
             recompute_derived_prices=lambda: None,
             place_stop_loss=lambda: placed.append(1),
         )
@@ -1986,46 +1978,3 @@ class TestPositionManager:
         FuturesPosition.backfill_missing_stop_loss(fp)
 
         assert placed == []
-
-    def test_futures_order_updates_skips_stop_loss_backfill_for_reversal_bot(
-        self, monkeypatch
-    ):
-        base = self._make_base_streaming(monkeypatch, active_pairs=["BTCUSDT"])
-        base.exchange = ExchangeId.KUCOIN
-        base.interval = types.SimpleNamespace(get_ms=lambda: 15 * 60 * 1000)
-
-        bot = self._make_bot(
-            pair="BTCUSDT",
-            position=Position.long,
-            market_type=MarketType.FUTURES,
-        )
-        bot.status = Status.active
-        bot.stop_loss = 2.0
-        bot.margin_short_reversal = True
-        bot.recovery_params = None
-        bot.deal.trailing_stop_loss_price = 0
-        bot.orders = []
-
-        saved: list[Any] = []
-        base.bot_controller.save = lambda *args, **kwargs: saved.append(
-            kwargs.get("data") if "data" in kwargs else args[0]
-        )
-
-        fp = cast(Any, FuturesPosition.__new__(FuturesPosition))
-        fp.base_streaming = base
-        fp.price_precision = 4
-        fp.qty_precision = 4
-
-        placed: list[float] = []
-        fp.execution = types.SimpleNamespace(
-            active_bot=bot,
-            controller=base.bot_controller,
-            _reversal_eligible=lambda: True,
-            recompute_derived_prices=lambda: None,
-            place_stop_loss=lambda: placed.append(bot.deal.stop_loss_price),
-        )
-
-        FuturesPosition.order_updates(fp)
-
-        assert placed == []
-        assert saved == []

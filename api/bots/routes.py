@@ -20,7 +20,6 @@ from api.deals.gateway import DealGateway
 from api.databases.tables.bot_table import BotTable
 from api.exchange_apis.kucoin.futures.futures_deal import (
     EntryLiquidityError,
-    KucoinPositionDeal,
 )
 from kucoin_universal_sdk.model.common import RestError
 from api.user.services.auth import get_current_user
@@ -209,6 +208,14 @@ def edit_bot(
 ):
     crud = BotTableCrud(session)
     bot_row = crud.get_one(bot_id=bot_id)
+    if (
+        bot_item.recovery_params is not None
+        and bot_row.deal.position_size_order is not None
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="Recovery cannot be enabled while a position sizing order is unsettled",
+        )
     excluded_fields = {"recovery_params"}
     if "futures_leverage" not in bot_item.model_fields_set:
         excluded_fields.add("futures_leverage")
@@ -243,14 +250,6 @@ def activate_bot(
     bot_row = crud.get_one(bot_id=bot_id)
     bot_model = BotModel.dump_from_table(bot_row)
     deal_gateway = DealGateway(bot_model, db_table=BotTable)
-    if (
-        isinstance(deal_gateway.deal, KucoinPositionDeal)
-        and bot_model.margin_short_reversal
-    ):
-        can_reverse = deal_gateway.deal.estimate_reversal_possible_for_new_bot()
-        if not can_reverse:
-            bot_model.margin_short_reversal = False
-            deal_gateway.save(bot_model)
     try:
         activated_bot = deal_gateway.open_deal()
         bot_model = activated_bot

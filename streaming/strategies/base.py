@@ -19,7 +19,6 @@ class LifecyclePolicy:
         default_factory=EmergencyStopBounds
     )
     block_reversal_after_loss: bool = False
-    reversal_enabled: bool = True
     recovery_enabled: bool = True
     stale_position_close_enabled: bool = True
 

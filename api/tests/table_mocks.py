@@ -82,7 +82,6 @@ mocked_db_data = BotTable(
     position=Position.long,
     updated_at=ts,
     status=Status.inactive,
-    margin_short_reversal=False,
     deal=deal_table,
     orders=orders,
 )

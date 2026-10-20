@@ -15,6 +15,9 @@ class OrderTableBase(SQLModel):
     )
     time_in_force: str
     order_id: str = Field(nullable=False, description="Exchange order identifier")
+    client_oid: str | None = Field(default=None, index=True)
+    requested_qty: float = Field(default=0)
+    stop_price: float = Field(default=0)
     order_side: str = Field(
         description="Because every exchange has different naming, we should keep it as a str rather than OrderType enum"
     )

@@ -1,3 +1,4 @@
+from unittest.mock import Mock
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
@@ -7,7 +8,7 @@ from sqlmodel import Session, delete, select
 from api.charts.controllers import MarketDominationController
 from api.databases.tables.autotrade_table import AutotradeTable
 from api.databases.tables.market_breadth_table import MarketBreadthTable
-from pybinbot import ExchangeId
+from pybinbot import BinanceApi, ExchangeId, KucoinFutures
 from tests import conftest
 
 
@@ -42,7 +43,8 @@ def _clean_market_breadth():
 def test_ingest_market_breadth_uses_binance_ticker_payload():
     session = _make_session()
     controller = _make_controller(ExchangeId.BINANCE, session)
-    controller.binance_api = SimpleNamespace(  # type: ignore[assignment]
+    controller.binance_api = Mock(
+        spec=BinanceApi,
         ticker_24=lambda: [
             {
                 "symbol": "BTCUSDC",
@@ -65,7 +67,7 @@ def test_ingest_market_breadth_uses_binance_ticker_payload():
                 "volume": "99",
                 "closeTime": 1710000000000,
             },
-        ]
+        ],
     )
 
     inserted = controller.ingest_market_breadth()
@@ -90,7 +92,8 @@ def test_ingest_market_breadth_uses_binance_ticker_payload():
 def test_ingest_market_breadth_uses_kucoin_futures_contracts():
     session = _make_session()
     controller = _make_controller(ExchangeId.KUCOIN, session, fiat="USDT")
-    controller.kucoin_futures_api = SimpleNamespace(  # type: ignore[assignment]
+    controller.kucoin_futures_api = Mock(
+        spec=KucoinFutures,
         futures_market_api=SimpleNamespace(
             get_all_symbols=lambda: SimpleNamespace(
                 data=[
@@ -132,7 +135,7 @@ def test_ingest_market_breadth_uses_kucoin_futures_contracts():
                     ),
                 ]
             )
-        )
+        ),
     )
 
     inserted = controller.ingest_market_breadth()
@@ -161,7 +164,7 @@ def test_ingest_market_breadth_skips_duplicate_timestamp_source():
             }
         ]
 
-    controller.binance_api = SimpleNamespace(ticker_24=payload_factory)  # type: ignore[assignment]
+    controller.binance_api = Mock(spec=BinanceApi, ticker_24=payload_factory)
 
     first = controller.ingest_market_breadth()
     second = controller.ingest_market_breadth()

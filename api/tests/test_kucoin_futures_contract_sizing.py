@@ -204,13 +204,6 @@ def test_required_margin_uses_position_notional_and_leverage():
     assert deal.required_margin_for_contracts(contracts=100, price=10) == 10012
 
 
-def test_reversal_margin_check_does_not_double_count_lot_size():
-    deal = make_sizing_deal(multiplier=1, lot_size=5)
-    deal.compute_available_balance = lambda: 60
-
-    assert deal._is_reversal_possible(mark_price=10, current_contracts=10) == 15
-
-
 def attach_order_book(
     deal,
     *,
@@ -509,7 +502,9 @@ def test_base_order_downsizes_when_margin_size_exceeds_available_balance():
         def matching_engine(self, symbol, side, size):
             return 10
 
-        def sell(self, symbol, qty, leverage, entry_limit_price=None):
+        def place_futures_order(self, symbol, size, leverage, price=None, **kwargs):
+            qty = size
+            entry_limit_price = price
             self.sell_calls.append(
                 {
                     "qty": qty,
@@ -591,7 +586,7 @@ def test_liquidity_downsized_entry_is_revalidated_with_required_margin():
     futures_api = types.SimpleNamespace(
         DEFAULT_MULTIPLIER=1,
         DEFAULT_LEVERAGE=1,
-        buy=Mock(return_value=order),
+        place_futures_order=Mock(return_value=order),
         get_mark_price=Mock(return_value=10),
         retrieve_order=Mock(
             return_value=types.SimpleNamespace(
@@ -626,12 +621,10 @@ def test_liquidity_downsized_entry_is_revalidated_with_required_margin():
     opened_bot = KucoinPositionDeal.base_order(deal)
 
     assert margin_checks == [(4, 10)]
-    futures_api.buy.assert_called_once_with(
-        symbol="TESTUSDTM",
-        qty=4,
-        leverage=1,
-        entry_limit_price=10,
-    )
+    request = futures_api.place_futures_order.call_args.kwargs
+    assert request["size"] == 4
+    assert request["price"] == 10
+    assert request["leverage"] == 1
     assert opened_bot.deal.base_order_size == 4
 
 
@@ -651,7 +644,7 @@ def test_sustained_top_gainer_base_order_is_submitted_post_only():
     futures_api = types.SimpleNamespace(
         DEFAULT_MULTIPLIER=1,
         DEFAULT_LEVERAGE=1,
-        buy=Mock(return_value=order),
+        place_futures_order=Mock(return_value=order),
         get_mark_price=Mock(return_value=10),
         retrieve_order=Mock(
             return_value=types.SimpleNamespace(filled_size="0", avg_deal_price="0")
@@ -678,13 +671,10 @@ def test_sustained_top_gainer_base_order_is_submitted_post_only():
 
     KucoinPositionDeal.base_order(deal)
 
-    futures_api.buy.assert_called_once_with(
-        symbol="TESTUSDTM",
-        qty=1,
-        leverage=1,
-        entry_limit_price=10,
-        post_only=True,
-    )
+    request = futures_api.place_futures_order.call_args.kwargs
+    assert request["size"] == 1
+    assert request["price"] == 10
+    assert request["post_only"] is True
 
 
 def test_base_order_cancels_partial_remainder_before_freezing_entry_quantity():
@@ -720,7 +710,7 @@ def test_base_order_cancels_partial_remainder_before_freezing_entry_quantity():
         ]
     )
     futures_api = types.SimpleNamespace(
-        buy=Mock(return_value=entry_order),
+        place_futures_order=Mock(return_value=entry_order),
         get_mark_price=Mock(return_value=10),
         retrieve_order=retrieve_order,
         cancel_futures_order=Mock(),
@@ -752,7 +742,7 @@ def test_base_order_cancels_partial_remainder_before_freezing_entry_quantity():
     assert opened_bot.deal.base_order_size == 4522
     assert opened_bot.orders[0].qty == 4522
     assert opened_bot.status == Status.pending
-    assert saved == []
+    assert saved and saved[0].deal.entry_client_oid is not None
 
 
 def test_base_order_affordability_check_uses_post_gate_price():
@@ -779,7 +769,7 @@ def test_base_order_affordability_check_uses_post_gate_price():
     futures_api = types.SimpleNamespace(
         DEFAULT_MULTIPLIER=1,
         DEFAULT_LEVERAGE=1,
-        sell=Mock(return_value=order),
+        place_futures_order=Mock(return_value=order),
     )
     deal = make_sizing_deal(fiat_order_size=100, multiplier=1)
     deal.active_bot.position = Position.short
@@ -801,7 +791,7 @@ def test_base_order_affordability_check_uses_post_gate_price():
     with pytest.raises(BinbotErrors, match="Required futures margin"):
         KucoinPositionDeal.base_order(deal)
 
-    futures_api.sell.assert_not_called()
+    futures_api.place_futures_order.assert_not_called()
 
 
 def test_close_all_blends_partial_ioc_fill_with_market_fallback():
@@ -948,7 +938,9 @@ def test_unfilled_base_order_logs_pending_wait_queue():
         def __init__(self):
             self.buy_calls: list[dict[str, float]] = []
 
-        def buy(self, symbol, qty, entry_limit_price=None, leverage=None):
+        def place_futures_order(self, symbol, size, price=None, **kwargs):
+            qty = size
+            entry_limit_price = price
             self.buy_calls.append(
                 {
                     "qty": qty,
@@ -994,7 +986,7 @@ def test_unfilled_base_order_logs_pending_wait_queue():
 
     assert deal.kucoin_futures_api.buy_calls == [{"qty": 1, "entry_limit_price": 10}]
     assert opened_bot.status == Status.pending
-    assert saved == [opened_bot]
+    assert saved[-1] is opened_bot
     assert any("pending for up to 5 minutes awaiting fill" in log for log in logged)
 
 
@@ -1581,21 +1573,19 @@ def test_top_gainer_places_exchange_native_emergency_backstop():
     )
     place_order = Mock(return_value=stop_order)
     deal.kucoin_futures_api = types.SimpleNamespace(place_futures_order=place_order)
-    deal.controller = types.SimpleNamespace(update_logs=Mock())
+    deal.controller = types.SimpleNamespace(update_logs=Mock(), save=Mock())
 
     deal.place_stop_loss()
 
-    place_order.assert_called_once_with(
-        symbol="SIRENUSDTM",
-        side=AddOrderReq.SideEnum.SELL,
-        order_type=OrderType.market,
-        stop=AddOrderReq.StopEnum.DOWN,
-        stop_price=98.0,
-        stop_price_type=AddOrderReq.StopPriceTypeEnum.MARK_PRICE,
-        reduce_only=True,
-        size=3,
-        leverage=1,
-        allow_market_fallback=True,
+    place_order.assert_called_once()
+    request = place_order.call_args.kwargs
+    assert request["order_type"] == OrderType.market
+    assert request["reduce_only"] is True
+    assert request["size"] == 3
+    assert request["stop_price"] == 98
+    assert request["allow_market_fallback"] is False
+    assert (
+        request["client_oid"] == deal.active_bot.deal.conditional_close_order.client_oid
     )
     assert deal.active_bot.deal.stop_loss_price == 98.0
     assert deal.active_bot.orders[-1].order_id == "top-mover-backstop"

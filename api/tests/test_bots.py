@@ -306,6 +306,8 @@ def test_recovery_params_api_lifecycle(client: TestClient, create_test_tables):
     assert recovery_id is not None
     assert created["recovery_params"] == {
         "id": recovery_id,
+        "source_bot_id": None,
+        "source_close_order_id": None,
         "reversal_path": "source",
         "source_contracts": 12,
         "source_loss_fiat": 4.75,
@@ -552,3 +554,24 @@ def test_get_public_bots(client: TestClient):
         assert "deal" in bot
         assert "opening_price" in bot["deal"]
         assert "closing_price" in bot["deal"] or "current_price" in bot["deal"]
+
+
+def test_recovery_cannot_be_enabled_with_an_unsettled_sizing_order(
+    client, create_test_tables
+):
+    response = client.post(
+        "/bot", json={"pair": f"PENDING-SIZING-{uuid4()}", "market_type": "FUTURES"}
+    )
+    bot_id = response.json()["data"]["id"]
+    with Session(create_test_tables) as session:
+        row = session.get(BotTable, UUID(bot_id))
+        assert row is not None
+        row.deal.position_size_order = {"client_oid": "pending-adjustment"}
+        session.add(row)
+        session.commit()
+    edited = client.put(
+        f"/bot/{bot_id}",
+        json={"pair": "TESTUSDTM", "market_type": "FUTURES", "recovery_params": {}},
+    )
+    assert edited.status_code == 422
+    assert "unsettled" in edited.json()["detail"]

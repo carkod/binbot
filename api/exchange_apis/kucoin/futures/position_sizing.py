@@ -27,6 +27,10 @@ class DynamicPositionSizing:
 
     def __init__(self, execution: KucoinPositionDeal) -> None:
         self.execution = execution
+        if execution.active_bot.recovery_params is not None:
+            raise ValueError(
+                "Dynamic position sizing and recovery are mutually exclusive"
+            )
 
     NOT_FOUND_RETRY_COUNT = 3
     NOT_FOUND_GRACE_MS = 60_000

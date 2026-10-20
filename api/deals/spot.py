@@ -61,7 +61,7 @@ class LongDeal(BinanceSpotDeal):
             and self.active_bot.deal.stop_loss_price > current_price
         ):
             self.execute_stop_loss()
-            if self.active_bot.margin_short_reversal:
+            if self.active_bot.recovery_params is not None:
                 if not self.symbol_info.is_margin_trading_allowed:
                     self.controller.update_logs(
                         bot=self.active_bot,
@@ -244,7 +244,7 @@ class LongDeal(BinanceSpotDeal):
 
         if not base_order:
             if not self.symbol_info.is_margin_trading_allowed:
-                self.active_bot.margin_short_reversal = False
+                self.active_bot.recovery_params = None
                 self.active_bot.add_log(
                     "Auto short bot reversal disabled. Exchange doesn't support margin trading for this pair."
                 )

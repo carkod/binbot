@@ -19,6 +19,8 @@ The phase-2 gate was removed; SL fires on mark-price breach as before.
 """
 
 import types
+from uuid import uuid4
+from pybinbot import RecoveryBotModel
 from typing import Any, cast
 
 import pytest
@@ -33,6 +35,7 @@ from pybinbot import (
 )
 
 from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
+from streaming.base import BaseStreaming
 from streaming.lifecycle import Lifecycle
 
 # ---------------------------------------------------------------------------
@@ -83,7 +86,7 @@ def _make_fheusdtm_deal(
     stop_loss_price: float = 0.02249,
     opening_price: float = 0.02343,
     stop_loss: float = 4.0,
-    margin_short_reversal: bool = False,
+    recovery_source: bool = False,
     position: Position = Position.long,
 ) -> Any:
     """Minimal Lifecycle stub shaped after the FHEUSDTM production case."""
@@ -101,7 +104,9 @@ def _make_fheusdtm_deal(
         stop_loss=stop_loss,
         take_profit=0.0,
         trailing=False,
-        margin_short_reversal=margin_short_reversal,
+        recovery_params=RecoveryBotModel(id=uuid4(), created_at=1, updated_at=1)
+        if recovery_source
+        else None,
         deal=DealModel(
             opening_price=opening_price,
             opening_qty=8.0,
@@ -118,8 +123,11 @@ def _make_fheusdtm_deal(
     )
     deal = Lifecycle(
         execution=execution,
-        base_streaming=types.SimpleNamespace(
-            interval=types.SimpleNamespace(get_ms=lambda: 15 * 60 * 1000)
+        base_streaming=cast(
+            BaseStreaming,
+            types.SimpleNamespace(
+                interval=types.SimpleNamespace(get_ms=lambda: 15 * 60 * 1000)
+            ),
         ),
     )
     deal.klines = klines if klines is not None else KLINES_WICK
@@ -218,43 +226,3 @@ def test_canceled_exit_stop_does_not_replace_confirmed_closing_values():
     assert deal.execution.active_bot.deal.closing_qty == 92
     assert deal.execution.active_bot.deal.closing_timestamp == 1788529590286
     assert deal.execution.active_bot.orders[-1].status == OrderStatus.CANCELED
-
-
-def test_reverse_position_passes_reference_price_to_close_leg():
-    """
-    Phase 1: reverse_position(reference_price=X) must pass reference_price
-    through to the reduce-only sell/buy call that closes the current position.
-    """
-    captured: dict = {}
-
-    def fake_sell(symbol, qty, reduce_only, leverage, reference_price=None):
-        captured["reference_price"] = reference_price
-        return OrderBase(
-            order_id="rev-close",
-            order_type="limit",
-            pair=symbol,
-            timestamp=1780247000000,
-            order_side="sell",
-            qty=qty,
-            price=0.02247,
-            status=OrderStatus.FILLED,
-            time_in_force="IOC",
-            deal_type=DealType.margin_short,
-        )
-
-    deal = _make_fheusdtm_deal()
-    # Stub the exchange position query
-    deal.execution.kucoin_futures_api = types.SimpleNamespace(
-        sell=fake_sell,
-        get_futures_position=lambda symbol: types.SimpleNamespace(current_qty=8.0),
-    )
-    # Stub the DB create so the new pending bot is created without a real DB
-    deal.execution.controller = types.SimpleNamespace(
-        save=lambda bot: None,
-        update_logs=lambda *a, **kw: None,
-        create=lambda bot: BotModel(**bot.model_dump()),
-    )
-
-    deal.reverse_position(reference_price=0.02252)
-
-    assert captured.get("reference_price") == pytest.approx(0.02252, abs=1e-6)

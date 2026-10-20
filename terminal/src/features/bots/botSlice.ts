@@ -25,6 +25,7 @@ export const botSlice = createAppSlice({
     ),
     setRecoveryParams: create.reducer(
       (state, { payload }: PayloadAction<RecoveryParams | null>) => {
+        if (payload !== null && state.bot.dynamic_position_sizing) return;
         state.bot.recovery_params = payload;
         if (payload === null) {
           state.bot.recovery_mode_id = null;
