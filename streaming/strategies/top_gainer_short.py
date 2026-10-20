@@ -21,6 +21,8 @@ class TopGainerShortLifecycleStrategy(DefaultLifecycleStrategy):
 
     Keep standard protection and market-close choppy positions after three
     current-price crossings in the last six hours of completed candles.
+    Position increases belong to dynamic sizing. Recovery follows the bot's
+    configuration and cannot be combined with dynamic sizing.
     """
 
     algorithm_names = frozenset({"top_gainer_short"})
@@ -30,8 +32,6 @@ class TopGainerShortLifecycleStrategy(DefaultLifecycleStrategy):
     )
     policy = LifecyclePolicy(
         low_price_stop_floor_pct=None,
-        reversal_enabled=False,
-        recovery_enabled=False,
         stale_position_close_enabled=False,
     )
 

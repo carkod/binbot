@@ -368,9 +368,9 @@ class KucoinSpotDeal(KucoinBaseBalance):
         if not base_order:
             if (
                 not self.symbol_info.is_margin_trading_allowed
-                and self.active_bot.margin_short_reversal
+                and self.active_bot.recovery_params is not None
             ):
-                self.active_bot.margin_short_reversal = False
+                self.active_bot.recovery_params = None
                 self.active_bot.add_log(
                     "Auto short bot reversal disabled. Exchange doesn't support margin trading for this pair."
                 )

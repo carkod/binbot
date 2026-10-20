@@ -78,7 +78,6 @@ class BotTable(SQLModel, table=True):
     stop_loss: float = Field(
         default=0, description="If stop_loss > 0, allow for reversal"
     )
-    margin_short_reversal: bool = Field(default=False)
     take_profit: float = Field(default=0)
     trailing: bool = Field(default=False)
     trailing_deviation: float = Field(
@@ -119,6 +118,7 @@ class BotTable(SQLModel, table=True):
     )
     recovery_params: Optional[RecoveryBotTable] = Relationship(
         sa_relationship_kwargs={
+            "foreign_keys": "[BotTable.recovery_mode_id]",
             "lazy": "joined",
             "single_parent": True,
             "cascade": "all, delete-orphan",

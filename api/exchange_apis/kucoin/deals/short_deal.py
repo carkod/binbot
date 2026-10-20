@@ -252,7 +252,7 @@ class KucoinShortDeal(KucoinMarginDeal):
                 self.active_bot,
             )
             self.execute_stop_loss()
-            if self.active_bot.margin_short_reversal:
+            if self.active_bot.recovery_params is not None:
                 if not self.symbol_info.is_margin_trading_allowed:
                     self.active_bot.add_log(
                         f"Margin trading not allowed for {self.symbol}. Cannot switch to long bot."

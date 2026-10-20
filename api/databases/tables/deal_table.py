@@ -19,6 +19,9 @@ class DealBase(SQLModel):
     position_size_pct: float = Field(default=25, gt=0, le=100)
     position_size_reference_price: float = Field(default=0, ge=0)
     position_size_order: dict | None = Field(default=None, sa_column=Column(JSON))
+    conditional_close_order: dict | None = Field(default=None, sa_column=Column(JSON))
+    entry_client_oid: str | None = Field(default=None)
+    recovery_cancelled: bool = Field(default=False)
 
     base_order_size: float = Field(default=0, gt=-1, sa_column=Column(Float()))
     current_price: float = Field(default=0)

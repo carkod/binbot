@@ -74,7 +74,7 @@ class BinanceShortDeal(BinanceMarginDeal):
                 self.active_bot,
             )
             self.execute_stop_loss()
-            if self.active_bot.margin_short_reversal:
+            if self.active_bot.recovery_params is not None:
                 if not self.symbol_info.is_margin_trading_allowed:
                     self.active_bot.add_log(
                         f"Margin trading not allowed for {self.active_bot.pair}. Cannot switch to long bot."
@@ -222,7 +222,7 @@ class BinanceShortDeal(BinanceMarginDeal):
 
         if not base_order_deal:
             if not self.symbol_info.is_margin_trading_allowed:
-                self.active_bot.margin_short_reversal = False
+                self.active_bot.recovery_params = None
                 self.controller.update_logs(
                     f"Disabled auto long bot reversal. Exchange doesn't support margin trading for {self.active_bot.pair}.",
                     self.active_bot,

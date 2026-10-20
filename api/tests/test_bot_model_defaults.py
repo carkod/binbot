@@ -21,6 +21,7 @@ from api.databases.crud.bot_crud import BotTableCrud
 from api.databases.tables.bot_table import BotTable
 from api.databases.tables.deal_table import DealTable
 from api.exchange_apis.kucoin.futures.futures_deal import EntryLiquidityError
+from streaming.base import BaseStreaming
 from streaming.lifecycle import Lifecycle
 
 
@@ -175,14 +176,16 @@ def test_exit_pending_calls_open_deal_and_returns_early():
 
     execution = types.SimpleNamespace(
         active_bot=bot,
+        awaiting_close_confirmation=lambda: False,
         controller=StubController(),
         price_precision=2,
     )
     execution.open_deal = lambda: stub_open_deal(execution)
     position_deal = Lifecycle(
         execution=cast(Any, execution),
-        base_streaming=types.SimpleNamespace(
-            interval=BinanceKlineIntervals.fifteen_minutes
+        base_streaming=cast(
+            BaseStreaming,
+            types.SimpleNamespace(interval=BinanceKlineIntervals.fifteen_minutes),
         ),
     )
 
@@ -215,14 +218,16 @@ def test_exit_pending_retries_deferred_liquidity_entry_on_next_tick():
 
     execution = types.SimpleNamespace(
         active_bot=bot,
+        awaiting_close_confirmation=lambda: False,
         controller=StubController(),
         price_precision=2,
         open_deal=open_deal,
     )
     position_deal = Lifecycle(
         execution=cast(Any, execution),
-        base_streaming=types.SimpleNamespace(
-            interval=BinanceKlineIntervals.fifteen_minutes
+        base_streaming=cast(
+            BaseStreaming,
+            types.SimpleNamespace(interval=BinanceKlineIntervals.fifteen_minutes),
         ),
     )
 
@@ -244,12 +249,14 @@ def test_exit_completed_bot_does_not_submit_another_close():
     close_calls: list[bool] = []
     execution = types.SimpleNamespace(
         active_bot=bot,
+        awaiting_close_confirmation=lambda: False,
         execute_stop_loss=lambda **kwargs: close_calls.append(True),
     )
     position_deal = Lifecycle(
         execution=cast(Any, execution),
-        base_streaming=types.SimpleNamespace(
-            interval=BinanceKlineIntervals.fifteen_minutes
+        base_streaming=cast(
+            BaseStreaming,
+            types.SimpleNamespace(interval=BinanceKlineIntervals.fifteen_minutes),
         ),
     )
 
@@ -276,14 +283,16 @@ def test_exit_pending_returns_persisted_liquidity_rejection_without_crashing():
 
     execution = types.SimpleNamespace(
         active_bot=bot,
+        awaiting_close_confirmation=lambda: False,
         controller=StubController(),
         price_precision=2,
         open_deal=reject_entry,
     )
     position_deal = Lifecycle(
         execution=cast(Any, execution),
-        base_streaming=types.SimpleNamespace(
-            interval=BinanceKlineIntervals.fifteen_minutes
+        base_streaming=cast(
+            BaseStreaming,
+            types.SimpleNamespace(interval=BinanceKlineIntervals.fifteen_minutes),
         ),
     )
 

@@ -19,6 +19,7 @@ from pybinbot import (
 )
 
 from streaming.context_evaluator import LifecycleContextEvaluator, LifecycleEvaluation
+from streaming.base import BaseStreaming
 from streaming.lifecycle import Lifecycle, calculate_trailing_stop_price
 from streaming.position_market import PositionMarket
 from streaming.strategies.base import (
@@ -618,8 +619,7 @@ def test_top_gainer_short_only_applies_default_protection(monkeypatch) -> None:
     assert signal.parameter_update.trailing_profit <= 3.5
     assert signal.parameter_update.trailing_deviation <= 2.5
     assert TopGainerShortLifecycleStrategy.policy.low_price_stop_floor_pct is None
-    assert TopGainerShortLifecycleStrategy.policy.reversal_enabled is False
-    assert TopGainerShortLifecycleStrategy.policy.recovery_enabled is False
+    assert TopGainerShortLifecycleStrategy.policy.recovery_enabled is True
 
 
 def test_top_gainer_short_lifecycle_uses_15m_candles_when_default_is_5m() -> None:
@@ -760,6 +760,7 @@ def test_chop_market_exit_precedes_pending_sizing_and_trailing_increases(
     api = Mock()
     execution = types.SimpleNamespace(
         active_bot=bot,
+        awaiting_close_confirmation=lambda: False,
         price_precision=2,
         _direction_multiplier=lambda: -1,
         controller=types.SimpleNamespace(save=Mock(), update_logs=Mock()),
@@ -769,7 +770,10 @@ def test_chop_market_exit_precedes_pending_sizing_and_trailing_increases(
     )
     lifecycle = Lifecycle(
         cast(Any, execution),
-        types.SimpleNamespace(interval=BinanceKlineIntervals.fifteen_minutes),
+        cast(
+            BaseStreaming,
+            types.SimpleNamespace(interval=BinanceKlineIntervals.fifteen_minutes),
+        ),
     )
     lifecycle.klines = []
     lifecycle.df = context.df

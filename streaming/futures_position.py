@@ -161,7 +161,10 @@ class FuturesPosition(PositionMarket):
         order.status = status
         order.timestamp = system_order.created_at
         if price_used > 0:
-            order.price = round_numbers(price_used, self.price_precision)
+            # A weighted average can have more precision than an individual tick.
+            order.price = price_used
+        elif filled_size > 0:
+            order.price = 0
 
     def _activate_filled_base_order(
         self, order: OrderModel, log_message: str | None = None
@@ -596,24 +599,29 @@ class FuturesPosition(PositionMarket):
         one directly from bot.stop_loss and the entry price rather than
         leaving the position unprotected until the next dynamic-trailing tick.
 
-        Skipped for reversal-eligible bots (they exit bot-side via exit(), so a
-        native exchange stop must never be placed for them) and once trailing
-        has armed (the protective order there is a trailing_profit order, not a
-        stop_loss order). Top-mover bots intentionally keep this native
+        Also covers recovery source/child bots. Once trailing has armed, its
+        native trailing_profit order owns protection instead of stop_loss. Top-mover bots intentionally keep this native
         emergency backstop alongside their bot-side dynamic exit logic.
         """
         if (
-            self.execution.active_bot.status != Status.active
+            self.execution.active_bot.deal.closing_qty > 0
+            or self.execution.active_bot.status != Status.active
             or self.execution.active_bot.stop_loss <= 0
             or self.execution.active_bot.deal.opening_price <= 0
-            or self.execution._reversal_eligible()
             or self.execution.active_bot.deal.trailing_stop_loss_price != 0
         ):
             return
 
         has_live_stop_loss = any(
             order.deal_type == DealType.stop_loss
-            and order.status not in self.TERMINAL_ORDER_STATUSES
+            and (
+                order.status not in self.TERMINAL_ORDER_STATUSES
+                or (
+                    order.status == OrderStatus.FILLED
+                    and order.requested_qty > 0
+                    and order.qty >= order.requested_qty
+                )
+            )
             for order in self.execution.active_bot.orders
         )
         if has_live_stop_loss:
@@ -655,6 +663,70 @@ class FuturesPosition(PositionMarket):
             )
         self.execution.controller.save(data=self.execution.active_bot)
 
+    def record_protective_fill(
+        self,
+        order: OrderModel,
+        filled_delta: float,
+        execution_timestamp: int,
+        fallback_timestamp: int,
+    ) -> None:
+        """Reconcile remaining exposure and closing accounting independently."""
+        position = self.base_streaming.kucoin_futures_api.get_futures_position(
+            convert_to_kucoin_symbol(self.execution.active_bot)
+        )
+        if position is not None:
+            live_quantity = abs(float(position.current_qty))
+            self.execution.active_bot.deal.current_position_qty = live_quantity
+        else:
+            # Absence alone can reflect endpoint lag. A closing
+            # fill covering the tracked remainder confirms flat.
+            tracked = self.execution.active_bot.deal.current_position_qty
+            if order.qty >= order.requested_qty >= tracked and order.requested_qty > 0:
+                # The order row may have committed before the deal update.
+                # A full cumulative fill still confirms closure after restart,
+                # even when the since-last-order-update delta is zero.
+                live_quantity = 0
+            else:
+                live_quantity = max(0, tracked - max(0, filled_delta))
+            self.execution.active_bot.deal.current_position_qty = live_quantity
+        if live_quantity == 0:
+            closing_orders = [
+                row
+                for row in self.execution.active_bot.orders
+                if row.deal_type
+                in {
+                    DealType.stop_loss,
+                    DealType.trailing_profit,
+                    DealType.take_profit,
+                    DealType.panic_close,
+                }
+                and row.qty > 0
+            ]
+            total_quantity = sum(row.qty for row in closing_orders)
+            self.execution.active_bot.deal.current_position_qty = 0
+            self.execution.active_bot.deal.closing_qty = total_quantity
+            if all(
+                row.price > 0 and row.status in self.TERMINAL_ORDER_STATUSES
+                for row in closing_orders
+            ):
+                self.execution.active_bot.deal.closing_price = (
+                    sum(row.qty * row.price for row in closing_orders) / total_quantity
+                )
+                self.execution.active_bot.deal.closing_timestamp = (
+                    execution_timestamp
+                    or self.execution.matching_exchange_fill_timestamp(
+                        order,
+                        fallback_timestamp=fallback_timestamp,
+                        last_fill=True,
+                    )
+                )
+                if not (
+                    order.deal_type == DealType.stop_loss
+                    and self.execution.active_bot.recovery_params is not None
+                    and self.execution.recovery_source_enabled()
+                ):
+                    self.execution.active_bot.status = Status.completed
+
     def order_updates(self) -> BotModel:
         """
         Take order id from list of bot.orders
@@ -662,7 +734,21 @@ class FuturesPosition(PositionMarket):
         """
         retry_missing_stop_loss = False
         for order in list(self.execution.active_bot.orders):
-            if order.status in self.TERMINAL_ORDER_STATUSES:
+            needs_close_confirmation = (
+                order.status == OrderStatus.FILLED
+                and order.qty > 0
+                and order.deal_type
+                in {
+                    DealType.stop_loss,
+                    DealType.trailing_profit,
+                    DealType.take_profit,
+                    DealType.panic_close,
+                }
+                and self.execution.active_bot.deal.closing_qty == 0
+            )
+            if order.status in self.TERMINAL_ORDER_STATUSES and not (
+                (order.qty > 0 and order.price <= 0) or needs_close_confirmation
+            ):
                 continue
 
             if self.base_streaming.exchange == ExchangeId.KUCOIN:
@@ -701,8 +787,37 @@ class FuturesPosition(PositionMarket):
                     status = OrderStatus.map_from_kucoin_status(
                         system_order.status.value
                     )
-                    filled_size = float(system_order.filled_size)
-                    price_used = float(system_order.avg_deal_price)
+                    filled_size = float(system_order.filled_size or 0)
+                    price_used = float(system_order.avg_deal_price or 0)
+                    execution_timestamp = 0
+                    protective = order.deal_type in {
+                        DealType.take_profit,
+                        DealType.stop_loss,
+                        DealType.panic_close,
+                        DealType.trailing_profit,
+                    }
+                    if protective and (filled_size > 0 or status == OrderStatus.FILLED):
+                        if filled_size <= 0 or price_used <= 0:
+                            confirmed_qty, confirmed_price, execution_timestamp = (
+                                self.base_streaming.kucoin_futures_api.get_order_execution(
+                                    str(order.order_id)
+                                )
+                            )
+                            filled_size = max(filled_size, confirmed_qty)
+                            if confirmed_price > 0:
+                                price_used = confirmed_price
+                        if (
+                            status == OrderStatus.FILLED
+                            and filled_size <= 0
+                            and not system_order.cancel_exist
+                        ):
+                            status = OrderStatus.NEW
+                    if protective and filled_size < order.qty:
+                        # Cumulative fills cannot shrink. An older exchange
+                        # snapshot must not make a later fill count twice.
+                        continue
+                    if protective and filled_size == order.qty and price_used <= 0:
+                        price_used = order.price
                     if (
                         order.deal_type != DealType.base_order
                         and status == OrderStatus.FILLED
@@ -771,8 +886,8 @@ class FuturesPosition(PositionMarket):
                                 )
                                 continue
 
-                    previous_qty = float(order.qty)
-                    previous_status = order.status
+                    previous_qty = order.qty
+                    previous_order = order.model_dump()
 
                     if (
                         order.deal_type == DealType.base_order
@@ -840,45 +955,27 @@ class FuturesPosition(PositionMarket):
                     ):
                         continue
 
-                    if order.status == status and (
-                        filled_size == 0 or previous_qty == filled_size
-                    ):
-                        if previous_status == status:
-                            continue
-
-                    if previous_status == status and previous_qty == filled_size:
-                        continue
-
-                    self.execution.controller.update_order(order)
-                    self.execution.active_bot.add_log(
-                        f"Order {order.order_id} updated from system"
+                    execution_changed = any(
+                        previous_order[field] != getattr(order, field)
+                        for field in ("qty", "price", "status")
                     )
+                    if not execution_changed and not (protective and filled_size > 0):
+                        continue
+                    if execution_changed:
+                        self.execution.controller.update_order(order)
+                        self.execution.active_bot.add_log(
+                            f"Order {order.order_id} reconciled from exchange"
+                        )
 
-                    if (
-                        (
-                            order.deal_type == DealType.take_profit
-                            or order.deal_type == DealType.stop_loss
-                            or order.deal_type == DealType.panic_close
-                            or order.deal_type == DealType.trailing_profit
+                    if protective and filled_size > 0:
+                        self.record_protective_fill(
+                            order,
+                            max(0, filled_size - previous_qty),
+                            execution_timestamp,
+                            int(
+                                system_order.end_at or system_order.updated_at or now_ms
+                            ),
                         )
-                        and self.execution.active_bot.deal.closing_price == 0
-                        and filled_size > 0
-                        and self.confirm_close_from_position(filled_size)
-                    ):
-                        self.execution.active_bot.deal.closing_price = order.price
-                        self.execution.active_bot.deal.closing_qty = order.qty
-                        self.execution.active_bot.deal.closing_timestamp = (
-                            self.execution.matching_exchange_fill_timestamp(
-                                order,
-                                fallback_timestamp=int(
-                                    system_order.updated_at
-                                    or system_order.end_at
-                                    or now_ms
-                                ),
-                            )
-                        )
-                        self.execution.active_bot.deal.current_position_qty = 0
-                        self.execution.active_bot.status = Status.completed
 
                     self.execution.controller.save(data=self.execution.active_bot)
 
@@ -920,6 +1017,42 @@ class FuturesPosition(PositionMarket):
                                         position_qty,
                                         self.execution.active_bot.id,
                                     )
+                            elif order.deal_type in {
+                                DealType.stop_loss,
+                                DealType.trailing_profit,
+                                DealType.take_profit,
+                                DealType.panic_close,
+                            }:
+                                quantity, price, executed_at = (
+                                    self.base_streaming.kucoin_futures_api.get_order_execution(
+                                        str(order.order_id)
+                                    )
+                                )
+                                if quantity > 0 and quantity >= order.qty:
+                                    previous_quantity = order.qty
+                                    order.qty = quantity
+                                    if price > 0:
+                                        order.price = price
+                                    elif quantity > previous_quantity:
+                                        order.price = 0
+                                    if (
+                                        order.requested_qty > 0
+                                        and quantity >= order.requested_qty
+                                    ):
+                                        order.status = OrderStatus.FILLED
+                                    self.execution.controller.update_order(order)
+                                    self.record_protective_fill(
+                                        order,
+                                        max(0, quantity - previous_quantity),
+                                        executed_at,
+                                        now_ms,
+                                    )
+                                self.execution.active_bot.add_log(
+                                    "Protective order details unavailable; retaining identity and reconciling exact fill history."
+                                )
+                                self.execution.controller.save(
+                                    data=self.execution.active_bot
+                                )
                             elif self.should_expire_order_by_age(order):
                                 self.execution.cancel_current_sl()
                                 self.execution.active_bot.add_log(

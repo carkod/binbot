@@ -1,3 +1,4 @@
+from typing import cast
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 from pathlib import Path
@@ -10,6 +11,8 @@ from pybinbot import (
     BotModel,
     DealType,
     MarketType,
+    OrderModel,
+    OrderStatus,
     Position,
     Status,
 )
@@ -23,6 +26,7 @@ from api.alembic.versions import a7b4e9c261f0_dynamic_position_sizing as migrati
 from api.databases.crud.bot_crud import BotTableCrud
 from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from api.exchange_apis.kucoin.futures.position_sizing import DynamicPositionSizing
+from streaming.base import BaseStreaming
 from streaming.lifecycle import Lifecycle
 from streaming.context_evaluator import LifecycleEvaluation
 from streaming.strategies.base import LifecyclePolicy, LifecycleSignal
@@ -55,6 +59,9 @@ def execution(*, short=False):
     )
     result._direction_multiplier.return_value = -1 if short else 1
     result._is_recovery_bot.return_value = False
+    result.awaiting_close_confirmation.side_effect = lambda: (
+        KucoinPositionDeal.awaiting_close_confirmation(result)
+    )
     result.close_all.return_value = bot
     result.last_trailing_stop_replace_ts_ms.return_value = None
     result.trailing_stop_replace_on_cooldown.return_value = False
@@ -89,7 +96,11 @@ def execution(*, short=False):
 
 def make_lifecycle(engine, monkeypatch):
     lifecycle = Lifecycle(
-        engine, SimpleNamespace(interval=BinanceKlineIntervals.fifteen_minutes)
+        engine,
+        cast(
+            BaseStreaming,
+            SimpleNamespace(interval=BinanceKlineIntervals.fifteen_minutes),
+        ),
     )
     lifecycle.klines = []
     monkeypatch.setattr(
@@ -494,6 +505,34 @@ def test_trailing_profit_arms_protection_and_increases_once_per_trigger(
     assert engine.active_bot.deal.trailing_profit_price == trigger
 
 
+@pytest.mark.parametrize("short,price", [(False, 105), (True, 95)])
+def test_stop_filled_during_trailing_placement_prevents_same_tick_scale_in(
+    monkeypatch, short, price
+):
+    engine = execution(short=short)
+
+    def fill_stop():
+        engine.active_bot.orders.append(
+            OrderModel(
+                order_id="trailing-close",
+                pair="XBTUSDTM",
+                order_type="market",
+                order_side="buy" if short else "sell",
+                time_in_force="GTC",
+                status=OrderStatus.FILLED,
+                qty=100,
+                requested_qty=100,
+                price=0,
+                deal_type=DealType.trailing_profit,
+            )
+        )
+
+    engine.place_trailing_stop_loss.side_effect = fill_stop
+    make_lifecycle(engine, monkeypatch).exit(price)
+    assert engine.awaiting_close_confirmation()
+    engine.kucoin_futures_api.futures_order_api.add_order.assert_not_called()
+
+
 @pytest.mark.parametrize("short", [False, True])
 def test_trailing_deviation_closes_full_position_even_with_pending_increase(
     monkeypatch, short
@@ -589,7 +628,11 @@ def test_fallback_runs_normal_trailing_in_the_same_tick(monkeypatch):
     engine._is_recovery_bot.return_value = False
     engine.kucoin_futures_api.futures_account_api.get_futures_account.return_value.available_balance = 0
     lifecycle = Lifecycle(
-        engine, SimpleNamespace(interval=BinanceKlineIntervals.fifteen_minutes)
+        engine,
+        cast(
+            BaseStreaming,
+            SimpleNamespace(interval=BinanceKlineIntervals.fifteen_minutes),
+        ),
     )
     lifecycle.klines = []
     monkeypatch.setattr(

@@ -31,6 +31,8 @@ export interface RecoveryParams {
   source_contracts: number;
   source_loss_fiat: number;
   stop_loss_pct: number;
+  source_bot_id?: string | null;
+  source_close_order_id?: string | null;
 }
 
 export const defaultRecoveryParams: RecoveryParams = {
@@ -55,7 +57,7 @@ export interface Bot {
   name: string;
   status: BotStatus;
   stop_loss: number;
-  margin_short_reversal: boolean;
+  dynamic_position_sizing: boolean;
   recovery_mode_id?: string | null;
   recovery_params?: RecoveryParams | null;
   take_profit: number;
@@ -116,7 +118,7 @@ export const singleBot: Bot = {
   },
   orders: [],
   stop_loss: 3,
-  margin_short_reversal: true,
+  dynamic_position_sizing: false,
   recovery_mode_id: null,
   recovery_params: null,
   position: BotPosition.LONG,

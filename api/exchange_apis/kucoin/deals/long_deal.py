@@ -186,7 +186,7 @@ class KucoinLongDeal(KucoinSpotDeal):
                 self.active_bot.deal.closing_qty = float(system_order.deal_size)
                 self.active_bot.deal.closing_timestamp = system_order.created_at
                 msg = "Completed Stop loss."
-                if self.active_bot.margin_short_reversal:
+                if self.active_bot.recovery_params is not None:
                     msg += " Scheduled to switch strategy"
 
                 self.active_bot.add_log(msg)
@@ -289,7 +289,7 @@ class KucoinLongDeal(KucoinSpotDeal):
             and self.active_bot.deal.stop_loss_price > current_price
         ):
             self.execute_stop_loss()
-            if self.active_bot.margin_short_reversal:
+            if self.active_bot.recovery_params is not None:
                 if not self.symbol_info.is_margin_trading_allowed:
                     self.controller.update_logs(
                         bot=self.active_bot,

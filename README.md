@@ -42,6 +42,33 @@ flowchart LR
     Cronjobs -->|maintenance| Postgres
 ```
 
+## KuCoin futures recovery
+
+Recovery is configured through `recovery_params`; `margin_short_reversal` has
+been removed. After an entry fills, binbot arms a native conditional market
+close for the current quantity with `reduceOnly=true`. KuCoin executes that
+close independently of the worker. The worker reconciles order details and
+historical fills before recording closure and creating one opposite pending
+recovery bot. That bot enters through `open_deal()` / `base_order()` with a
+separate order and cannot create another recovery child.
+
+Conditional submissions never fall back to unconditional orders. Persisted
+`clientOid` values recover ambiguous acknowledgements; order records keep the
+requested quantity and trigger separate from executed quantity and price.
+Source completion and creation of its uniquely linked recovery child commit
+in one transaction. Manual/algorithmic closes cancel recovery eligibility.
+
+Recovery and dynamic position sizing are mutually exclusive, including any
+unsettled sizing order. Binquant configures `top_gainer_short` to use position
+sizing with recovery disabled; the execution engine accepts recovery for any
+strategy when sizing is disabled. Its trailing-deviation and six-hour crossing
+exits remain in place.
+
+Deploy the companion pybinbot changes with this application and binquant, and
+apply migration `f6a81c2d490e` before starting the updated API/streaming workers.
+The migration preserves existing recovery metadata, converts legacy flags, and
+prioritizes position sizing when legacy configuration contains both modes.
+
 # Development instructions
 
 ## Requirements

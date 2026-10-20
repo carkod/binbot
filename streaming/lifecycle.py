@@ -27,6 +27,7 @@ from api.exchange_apis.kucoin.futures.futures_deal import (
     KucoinPositionDeal,
 )
 from api.exchange_apis.kucoin.futures.position_sizing import DynamicPositionSizing
+from streaming.base import BaseStreaming
 from streaming.context_evaluator import (
     LifecycleContextEvaluator,
     LifecycleEvaluation,
@@ -34,7 +35,6 @@ from streaming.context_evaluator import (
 from streaming.futures_position import FuturesPosition
 from streaming.spot_position import SpotPosition
 from streaming.strategies.base import (
-    EmergencyStopBounds,
     LifecycleContext,
     LifecycleExitKind,
 )
@@ -82,12 +82,11 @@ class Lifecycle:
     RECOVERY_TRAILING_PROFIT_CAP_PCT = 6.0
     RECOVERY_TRAILING_MIN_GAP_PCT = 0.35
     RECOVERY_COOLDOWN_MINUTES = 240
-    RECOVERY_EMERGENCY_ATR_MULTIPLIER = 1.0
 
     def __init__(
         self,
         execution: KucoinPositionDeal,
-        base_streaming,
+        base_streaming: BaseStreaming,
     ) -> None:
         self.execution = execution
         self.base_streaming = base_streaming
@@ -266,76 +265,6 @@ class Lifecycle:
         )
         return round_numbers(recovery_stop_pct, 2)
 
-    def recovery_body_breakout_confirmed(
-        self,
-        target_position: Position,
-        completed_candles: list,
-    ) -> bool:
-        if len(completed_candles) < self.RECOVERY_STRUCTURE_WINDOW:
-            return False
-
-        structure_candles = completed_candles[-self.RECOVERY_STRUCTURE_WINDOW :]
-        latest_candle = structure_candles[-1]
-        preceding_candles = structure_candles[:-1]
-        latest_open = float(latest_candle[1])
-        latest_close = float(latest_candle[4])
-
-        if target_position == Position.short:
-            preceding_body_floor = min(
-                min(float(candle[1]), float(candle[4])) for candle in preceding_candles
-            )
-            return latest_close < latest_open and latest_close < preceding_body_floor
-
-        preceding_body_ceiling = max(
-            max(float(candle[1]), float(candle[4])) for candle in preceding_candles
-        )
-        return latest_close > latest_open and latest_close > preceding_body_ceiling
-
-    def recovery_emergency_stop_price(
-        self,
-        stop_loss_price: float,
-        completed_candles: list,
-        bounds: EmergencyStopBounds,
-    ) -> tuple[float, float]:
-        atr = self.execution.closed_candle_atr(completed_candles)
-        if atr is None:
-            emergency_pct = bounds.minimum_pct
-        else:
-            atr_pct = (
-                self.RECOVERY_EMERGENCY_ATR_MULTIPLIER * atr / stop_loss_price * 100
-            )
-            emergency_pct = max(
-                bounds.minimum_pct,
-                min(atr_pct, bounds.maximum_pct),
-            )
-
-        direction = self.execution._direction_multiplier()
-        emergency_price = round_numbers(
-            stop_loss_price - (stop_loss_price * emergency_pct / 100 * direction),
-            self.execution.price_precision,
-        )
-        return emergency_price, emergency_pct
-
-    def _add_recovery_log_once(self, marker: str, message: str) -> None:
-        if any(marker in str(log) for log in self.execution.active_bot.logs):
-            return
-        self.execution.active_bot.add_log(message)
-        self.execution.controller.save(self.execution.active_bot)
-
-    def _close_source_without_recovery(
-        self,
-        message: str,
-        reference_price: float | None,
-    ) -> BotModel:
-        self.execution.active_bot.add_log(message)
-        self.execution.active_bot = self.execution.execute_stop_loss(
-            reference_price=reference_price
-        )
-        if self.execution.active_bot.status == Status.completed:
-            self._start_recovery_cooldown()
-            self.execution.controller.save(self.execution.active_bot)
-        return self.execution.active_bot
-
     def _start_recovery_cooldown(self) -> None:
         configured_symbol_cooldown = self.execution.symbol_info.cooldown
         bot_cooldown_seconds = self.execution.active_bot.cooldown * 60
@@ -451,119 +380,111 @@ class Lifecycle:
                 return True
         return False
 
-    def reverse_position(self, reference_price: float | None = None) -> BotModel:
-        """
-        Close the current position with a reduce_only order, mark source bot as
-        completed, then create a new opposite-direction bot in Status.pending.
-        The next exit() tick promotes pending -> active via open_deal(), which
-        places a candle-body-capped base order for recovery-enabled bots.
-
-        When ``reference_price`` is provided the reduce-only close leg is routed
-        through the anti-wick escalation path so the reversal close doesn't fill
-        into a wick.
-        """
-        source_bot = self.execution.active_bot
-        target_position = (
-            Position.short if source_bot.position == Position.long else Position.long
+    def recover_closed_position(self) -> BotModel:
+        """Create one opposite pending bot only after the source stop filled."""
+        source = self.execution.active_bot
+        strategy = self.context_evaluator.resolve(source.name)
+        stop_filled = any(
+            order.deal_type == DealType.stop_loss and order.qty > 0 and order.price > 0
+            for order in source.orders
         )
-
-        close_result = self.execution.close_position_for_reversal(
-            reference_price=reference_price
+        eligible = (
+            self.execution.recovery_source_enabled()
+            and strategy.policy.recovery_enabled
+            and stop_filled
+            and not source.deal.recovery_cancelled
         )
-        if close_result is None:
-            self.execution.active_bot = source_bot
-            return source_bot
-
-        closing_order, current_contracts = close_result
-        source_bot.orders.append(closing_order)
-        source_bot.deal.closing_price = closing_order.price
-        source_bot.deal.closing_qty = current_contracts
-        source_bot.deal.closing_timestamp = closing_order.timestamp
-        source_bot.status = Status.completed
-        source_bot.add_log(
-            "Reversal: reduce_only source close placed; evaluating opposite "
-            f"{target_position.value} entry."
+        if not eligible:
+            source.status = Status.completed
+            self.execution.controller.save(source)
+            return source
+        target = Position.short if source.position == Position.long else Position.long
+        if strategy.policy.block_reversal_after_loss and self._prior_leg_was_loss():
+            source.add_log(
+                "Recovery skipped: prior leg was a loss within the cooldown window."
+            )
+            source.status = Status.completed
+            self._start_recovery_cooldown()
+            self.execution.controller.save(source)
+            return source
+        stop_pct = self.compute_recovery_stop_loss_pct(
+            source.deal.closing_price, target
         )
-
-        source_recovery_params = source_bot.recovery_params
-        recovery_stop_pct: float | None = None
-        recovery_params: RecoveryParams | None = None
-        recovery_fiat_order_size = source_bot.fiat_order_size
-        recovery_trailing_profit = source_bot.trailing_profit
-        recovery_trailing_deviation = source_bot.trailing_deviation
-        recovery_margin_short_reversal = source_bot.margin_short_reversal
-
-        if source_recovery_params is not None:
-            recovery_stop_pct = self.compute_recovery_stop_loss_pct(
-                reference_price=closing_order.price,
-                target_position=target_position,
+        if stop_pct is None:
+            source.add_log(
+                "Source stop filled; no recovery entry passed the structure/risk limits."
             )
-            if recovery_stop_pct is None:
-                source_bot.add_log("Source position closed without recovery entry.")
-                self._start_recovery_cooldown()
-                self.execution.controller.save(source_bot)
-                self.execution.active_bot = source_bot
-                return source_bot
-
-            recovery_fiat_order_size = AutotradeCrud().get_settings().base_order_size
-
-            (
-                recovery_trailing_profit,
-                recovery_trailing_deviation,
-            ) = self._recovery_trailing_params(source_bot, recovery_stop_pct)
-            recovery_margin_short_reversal = False
-            recovery_params = RecoveryParams(
-                reversal_path="recovery",
-                source_contracts=current_contracts,
-                source_loss_fiat=self._source_loss_fiat(
-                    source_bot,
-                    closing_order.price,
-                    current_contracts,
-                ),
-                stop_loss_pct=recovery_stop_pct,
-            )
-            source_bot.add_log(
-                "Recovery entry approved; creating one opposite pending bot."
-            )
-
-        self.execution.controller.save(source_bot)
-        new_bot = BotBase(
-            pair=source_bot.pair,
-            fiat=source_bot.fiat,
-            fiat_order_size=recovery_fiat_order_size,
-            futures_leverage=source_bot.futures_leverage,
-            quote_asset=source_bot.quote_asset,
-            candlestick_interval=source_bot.candlestick_interval,
-            market_type=source_bot.market_type,
-            close_condition=source_bot.close_condition,
-            cooldown=source_bot.cooldown,
-            dynamic_trailing=source_bot.dynamic_trailing,
-            margin_short_reversal=recovery_margin_short_reversal,
-            name=source_bot.name,
-            position=target_position,
-            mode=source_bot.mode,
+            source.status = Status.completed
+            self._start_recovery_cooldown()
+            self.execution.controller.save(source)
+            return source
+        trailing_profit, trailing_deviation = self._recovery_trailing_params(
+            source, stop_pct
+        )
+        closing_order = next(
+            order
+            for order in reversed(source.orders)
+            if order.deal_type == DealType.stop_loss
+            and order.qty > 0
+            and order.price > 0
+        )
+        child = BotBase(
+            pair=source.pair,
+            fiat=source.fiat,
+            quote_asset=source.quote_asset,
+            fiat_order_size=AutotradeCrud().get_settings().base_order_size,
+            futures_leverage=source.futures_leverage,
+            candlestick_interval=source.candlestick_interval,
+            market_type=source.market_type,
+            close_condition=source.close_condition,
+            cooldown=source.cooldown,
+            dynamic_trailing=source.dynamic_trailing,
+            dynamic_position_sizing=False,
+            name=source.name,
+            position=target,
+            mode=source.mode,
             status=Status.pending,
-            stop_loss=(
-                recovery_stop_pct
-                if recovery_stop_pct is not None
-                else source_bot.stop_loss
+            stop_loss=stop_pct,
+            take_profit=source.take_profit,
+            trailing=source.trailing,
+            trailing_profit=trailing_profit,
+            trailing_deviation=trailing_deviation,
+            recovery_params=RecoveryParams(
+                reversal_path="recovery",
+                source_bot_id=source.id,
+                source_close_order_id=str(closing_order.order_id),
+                source_contracts=source.deal.closing_qty,
+                source_loss_fiat=self._source_loss_fiat(
+                    source, source.deal.closing_price, source.deal.closing_qty
+                ),
+                stop_loss_pct=stop_pct,
             ),
-            take_profit=source_bot.take_profit,
-            trailing=source_bot.trailing,
-            trailing_deviation=recovery_trailing_deviation,
-            trailing_profit=recovery_trailing_profit,
-            logs=[],
-            recovery_params=recovery_params,
         )
-        created_bot = self.execution.controller.create(new_bot)
-        reversed_bot = BotModel.dump_from_table(created_bot)
-        self.execution.active_bot = reversed_bot
-        return reversed_bot
+        source.add_log(
+            "Source stop fill confirmed; creating one linked pending recovery bot."
+        )
+        created = self.execution.controller.complete_with_recovery(source, child)
+        self.execution.active_bot = BotModel.dump_from_table(created)
+        return self.execution.active_bot
 
     def exit(self, close_price: float) -> BotModel:
         """
         Exit logic for futures positions.
         """
+        if (
+            self.execution.active_bot.deal.closing_qty > 0
+            and self.execution.active_bot.deal.current_position_qty == 0
+            and self.execution.active_bot.deal.closing_price == 0
+        ):
+            return self.execution.active_bot
+        if (
+            self.execution.active_bot.deal.closing_qty > 0
+            and self.execution.active_bot.deal.closing_price > 0
+            and self.execution.active_bot.deal.current_position_qty == 0
+            and self.execution.active_bot.status != Status.completed
+        ):
+            return self.recover_closed_position()
+
         if self.execution.active_bot.status == Status.completed:
             if self.execution.active_bot.deal.position_size_order is not None:
                 # A native stop can fill while an increase is still settling.
@@ -575,6 +496,9 @@ class Lifecycle:
                         else DealType.stop_loss
                     )
                 )
+            return self.execution.active_bot
+
+        if self.execution.awaiting_close_confirmation():
             return self.execution.active_bot
 
         current_price = round_numbers(close_price, self.execution.price_precision)
@@ -726,114 +650,16 @@ class Lifecycle:
             )
             < 0
         ):
-            recovery_source_enabled = (
-                recovery_params is not None
-                and recovery_params.reversal_path == "source"
-            )
-            reversal_requires_confirmation = recovery_params is not None
-
+            if recovery_params is not None:
+                # KuCoin owns execution. A tick beyond the threshold is not
+                # evidence of a fill; it must never open the recovery entry.
+                self.execution.reconcile_exchange_sl()
+                return self.execution.active_bot
             if self.execution.active_bot.dynamic_position_sizing:
                 return self.execution.close_all(deal_type=DealType.stop_loss)
-            if not evaluation.policy.reversal_enabled:
-                self.execution.controller.update_logs(
-                    f"Executing futures {position_name} stop_loss after hitting "
-                    f"{self.execution.active_bot.deal.stop_loss_price}; "
-                    "strategy policy disables reversal and recovery.",
-                    self.execution.active_bot,
-                )
-                self.execution.active_bot = self.execution.execute_stop_loss(
-                    reference_price=exit_reference_price
-                )
-            elif reversal_requires_confirmation:
-                stop_loss_price = self.execution.active_bot.deal.stop_loss_price
-                emergency_price, emergency_pct = self.recovery_emergency_stop_price(
-                    stop_loss_price=stop_loss_price,
-                    completed_candles=completed_candles,
-                    bounds=evaluation.policy.emergency_stop_bounds,
-                )
-                emergency_breached = (current_price - emergency_price) * direction < 0
-                if emergency_breached:
-                    self.execution.active_bot = self._close_source_without_recovery(
-                        "Recovery emergency threshold breached at "
-                        f"{emergency_price} ({emergency_pct:.2f}% beyond stop); "
-                        "closing without reversal.",
-                        exit_reference_price,
-                    )
-                    return self.execution.active_bot
-
-                latest_closed_price = (
-                    float(completed_candles[-1][4]) if completed_candles else None
-                )
-                stop_confirmed = (
-                    latest_closed_price is not None
-                    and (latest_closed_price - stop_loss_price) * direction < 0
-                )
-                if not stop_confirmed:
-                    closed_price_text = (
-                        str(latest_closed_price)
-                        if latest_closed_price is not None
-                        else "unavailable"
-                    )
-                    self._add_recovery_log_once(
-                        "Recovery reversal deferred:",
-                        "Recovery reversal deferred: live price breached stop "
-                        f"{stop_loss_price}, but latest completed candle close "
-                        f"{closed_price_text} did not confirm it; emergency "
-                        f"threshold is {emergency_price}.",
-                    )
-                    return self.execution.active_bot
-
-                target_position = (
-                    Position.short
-                    if self.execution.active_bot.position == Position.long
-                    else Position.long
-                )
-                if not self.recovery_body_breakout_confirmed(
-                    target_position=target_position,
-                    completed_candles=completed_candles,
-                ):
-                    self.execution.active_bot = self._close_source_without_recovery(
-                        "Recovery body breakout rejected for opposite "
-                        f"{target_position.value}; closing source without reversal.",
-                        exit_reference_price,
-                    )
-                    return self.execution.active_bot
-
-                self.execution.active_bot.add_log(
-                    "Recovery candle confirmation approved: completed candle "
-                    f"closed beyond {stop_loss_price} with an opposite "
-                    f"{target_position.value} body breakout."
-                )
-                self.execution.active_bot = self.reverse_position(
-                    reference_price=exit_reference_price
-                )
-            elif self.execution.active_bot.margin_short_reversal and (
-                recovery_source_enabled
-                or not evaluation.policy.block_reversal_after_loss
-                or not self._prior_leg_was_loss()
-            ):
-                self.execution.controller.update_logs(
-                    "Margin short reversal enabled; closing source position and "
-                    "opening the opposite position.",
-                    self.execution.active_bot,
-                )
-                self.execution.active_bot = self.reverse_position(
-                    reference_price=exit_reference_price
-                )
-            else:
-                if self.execution.active_bot.margin_short_reversal:
-                    self.execution.controller.update_logs(
-                        f"Reversal circuit-breaker tripped: prior {self.execution.active_bot.name} leg on {self.execution.active_bot.pair} was a loss; closing instead of flipping.",
-                        self.execution.active_bot,
-                    )
-                if not self.execution.active_bot.margin_short_reversal:
-                    self.execution.controller.update_logs(
-                        f"Executing futures {position_name} stop_loss after hitting {self.execution.active_bot.deal.stop_loss_price}",
-                        self.execution.active_bot,
-                    )
-                self.execution.active_bot = self.execution.execute_stop_loss(
-                    reference_price=exit_reference_price
-                )
+            self.execution.active_bot = self.execution.execute_stop_loss(
+                reference_price=exit_reference_price
+            )
             return self.execution.active_bot
 
         # Trailing profit (price going down)
@@ -944,7 +770,10 @@ class Lifecycle:
                     )
 
                 self.execution.controller.save(self.execution.active_bot)
-                if self.execution.active_bot.status == Status.completed:
+                if (
+                    self.execution.active_bot.status == Status.completed
+                    or self.execution.awaiting_close_confirmation()
+                ):
                     return self.execution.active_bot
                 if self.execution.active_bot.dynamic_position_sizing:
                     DynamicPositionSizing(self.execution).process(
@@ -1025,7 +854,14 @@ class Lifecycle:
                 self.execution.active_bot.pair
             )
 
-        self.execution.active_bot = cls.position_updates(position=position)
+        if self.execution.awaiting_close_confirmation():
+            return self.execution.active_bot
+
+        if not (
+            self.execution.active_bot.deal.closing_qty > 0
+            and self.execution.active_bot.deal.current_position_qty == 0
+        ):
+            self.execution.active_bot = cls.position_updates(position=position)
 
         if not close_price or close_price == 0:
             close_price = self.klines[-1][4]

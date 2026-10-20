@@ -43,8 +43,9 @@ class BotTableCrud:
     - Always returns ORM objects.
     """
 
-    def __init__(self, session: Session | None = None):
+    def __init__(self, session: Session | None = None, *, commit: bool = True):
         self._external_session = session
+        self._commit = commit
 
     @staticmethod
     def _order_field_names() -> list[str]:
@@ -68,6 +69,9 @@ class BotTableCrud:
             order_type=order.order_type,
             time_in_force=order.time_in_force,
             order_id=str(order.order_id),
+            client_oid=order.client_oid,
+            requested_qty=order.requested_qty,
+            stop_price=order.stop_price,
             order_side=order.order_side,
             pair=order.pair,
             qty=order.qty,
@@ -252,7 +256,9 @@ class BotTableCrud:
                 if symbol is not None:
                     new_bot.futures_leverage = symbol.futures_leverage
             s.add(new_bot)
-            s.commit()
+            s.flush()
+            if self._commit:
+                s.commit()
             s.refresh(new_bot)
             detach_bot_graph(s, new_bot)
 
@@ -335,11 +341,55 @@ class BotTableCrud:
                     s.add(new_order)
 
             s.add(bot_row)
-            s.commit()
+            s.flush()
+            if self._commit:
+                s.commit()
             s.refresh(bot_row)
             detach_bot_graph(s, bot_row)
 
             return bot_row
+
+    def complete_with_recovery(self, source: BotModel, recovery: BotBase) -> BotTable:
+        """Commit a confirmed source close and its one pending recovery together."""
+        with get_db_session(self._external_session) as session:
+            source_row = session.exec(
+                select(BotTable)
+                .where(BotTable.id == source.id)
+                .with_for_update(of=BotTable)
+            ).first()
+            if source_row is None:
+                raise SaveBotError("Recovery source bot not found")
+            child_params = session.exec(
+                select(RecoveryBotTable).where(
+                    RecoveryBotTable.source_bot_id == source.id
+                )
+            ).first()
+            if child_params is not None:
+                child = (
+                    session.exec(
+                        select(BotTable).where(
+                            BotTable.recovery_mode_id == child_params.id
+                        )
+                    )
+                    .unique()
+                    .one()
+                )
+                detach_bot_graph(session, child)
+                return child
+            if source_row.status == Status.completed:
+                detach_bot_graph(session, source_row)
+                return source_row
+            if source.deal.closing_price <= 0 or source.deal.current_position_qty != 0:
+                raise SaveBotError(
+                    "Recovery requires a confirmed flat source with an execution price"
+                )
+            source.status = Status.completed
+            transaction = BotTableCrud(session, commit=False)
+            transaction.save(source)
+            child = transaction.create(recovery)
+            if self._commit:
+                session.commit()
+            return child
 
     def delete(self, bot_ids: List[str]) -> List[str]:
         with get_db_session(self._external_session) as s:

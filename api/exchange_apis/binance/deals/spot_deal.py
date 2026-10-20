@@ -167,7 +167,7 @@ class BinanceSpotDeal(BinanceDeal):
         self.active_bot.deal.closing_qty = float(res["origQty"])
         self.active_bot.deal.closing_timestamp = round_timestamp(res["transactTime"])
         msg = "Completed Stop loss."
-        if self.active_bot.margin_short_reversal:
+        if self.active_bot.recovery_params is not None:
             msg += " Scheduled to switch strategy"
 
         self.active_bot.add_log(msg)

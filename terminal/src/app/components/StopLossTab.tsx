@@ -39,7 +39,6 @@ const StopLossTab: FC = () => {
     reValidateMode: "onBlur",
     defaultValues: {
       stop_loss: bot.stop_loss,
-      margin_short_reversal: bot.margin_short_reversal,
     },
   });
 
@@ -58,7 +57,6 @@ const StopLossTab: FC = () => {
     if (bot.id) {
       reset({
         stop_loss: bot.stop_loss,
-        margin_short_reversal: bot.margin_short_reversal,
       });
     }
 
@@ -129,41 +127,15 @@ const StopLossTab: FC = () => {
               )}
             </InputGroup>
           </Col>
-          <Col md={4} sm="12">
-            <Form.Group className="position-relative">
-              <Form.Label htmlFor="margin_short_reversal">
-                Autoswitch (reversal)
-              </Form.Label>
-              <br />
-              <ButtonGroup className="mb-2">
-                <ToggleButton
-                  id="margin_short_reversal"
-                  type="radio"
-                  name="margin_short_reversal"
-                  variant={bot.margin_short_reversal ? "primary" : "secondary"}
-                  value={1}
-                  checked={bot.margin_short_reversal}
-                  onClick={() => {
-                    dispatch(
-                      setToggle({
-                        name: "margin_short_reversal",
-                        value: !bot.margin_short_reversal,
-                      }),
-                    );
-                  }}
-                >
-                  {bot.margin_short_reversal ? "On" : "Off"}
-                </ToggleButton>
-              </ButtonGroup>
-              <Form.Control.Feedback tooltip>
-                Autoswitch position to short or long
-              </Form.Control.Feedback>
-            </Form.Group>
-          </Col>
           {
             <Col md="4" sm="12">
               <Form.Group className="position-relative">
                 <Form.Label htmlFor="recovery_mode">Recovery mode</Form.Label>
+                {bot.dynamic_position_sizing && (
+                  <Form.Text className="d-block">
+                    Recovery is unavailable while position sizing is enabled.
+                  </Form.Text>
+                )}
                 <br />
                 <ButtonGroup className="mb-2">
                   <ToggleButton
@@ -173,6 +145,7 @@ const StopLossTab: FC = () => {
                     variant={recoveryEnabled ? "primary" : "secondary"}
                     value={1}
                     checked={recoveryEnabled}
+                    disabled={bot.dynamic_position_sizing}
                     onChange={handleRecoveryToggle}
                   >
                     {recoveryEnabled ? "On" : "Off"}

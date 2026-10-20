@@ -40,7 +40,7 @@ class SettingsDocument(SQLModel):
     )
     autoswitch: bool = Field(
         default=True,
-        description="Automatically switch between long bot or short bot based on stop loss a.k.a. margin_short_reversal in bots",
+        description="Automatically switch between long bot or short bot based on stop loss through bot recovery_params",
     )
     exchange_id: ExchangeId = Field(
         default=ExchangeId.BINANCE,
