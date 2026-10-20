@@ -683,6 +683,8 @@ class TestPositionManager:
             created_at=int(time.time() * 1000),
             price=1.267,
             remark=None,
+            updated_at=None,
+            end_at=None,
         )
         base.kucoin_futures_api.get_futures_position = lambda symbol: None
 
@@ -854,6 +856,8 @@ class TestPositionManager:
             created_at=created_at,
             price=0,
             remark=None,
+            updated_at=None,
+            end_at=None,
         )
         base.kucoin_futures_api.get_futures_position = lambda symbol: (
             types.SimpleNamespace(current_qty=0)
@@ -1765,7 +1769,7 @@ class TestPositionManager:
         assert updated == []
         assert saved == []
 
-    def test_pending_entry_cancel_uses_sdk_standard_cancel_before_stop_cancel(
+    def test_pending_entry_cancel_uses_pybinbot_standard_cancel_before_stop_cancel(
         self, monkeypatch
     ):
         base = self._make_base_streaming(monkeypatch, active_pairs=["MEMEUSDT"])
@@ -1791,13 +1795,11 @@ class TestPositionManager:
         canceled_futures_orders: list[str] = []
         canceled_stop_orders: list[str] = []
 
-        def cancel_order_by_id(request):
-            canceled_futures_orders.append(request.order_id)
-
         base.kucoin_futures_api = types.SimpleNamespace(
-            futures_order_api=types.SimpleNamespace(
-                cancel_order_by_id=cancel_order_by_id
+            cancel_futures_order=lambda order_id: canceled_futures_orders.append(
+                order_id
             ),
+            retrieve_order=lambda order_id: None,
             batch_cancel_stop_loss_orders=lambda order_ids: canceled_stop_orders.extend(
                 order_ids
             ),
@@ -1807,7 +1809,7 @@ class TestPositionManager:
         fp.base_streaming = base
         fp.execution = types.SimpleNamespace(active_bot=bot)
 
-        fp._cancel_pending_entry_order(order, "MEMEUSDTM")
+        assert not fp._cancel_pending_entry_and_confirm_unfilled(order, "MEMEUSDTM", "")
 
         assert canceled_futures_orders == ["entry-order-1"]
         assert canceled_stop_orders == []

@@ -5,67 +5,74 @@ title: Dynamic position sizing
 
 # Dynamic position sizing
 
-`dynamic_position_sizing` defaults to `false` on live and paper bots. Enabling it
-selects `DynamicPositionSizing` in the KuCoin futures lifecycle. Both long and
-short positions are supported. Spot and margin bots reject this setting.
+`dynamic_position_sizing` defaults to `false`. When enabled on a KuCoin
+futures bot with `trailing=true`, it adds contracts only when the lifecycle
+reaches `deal.trailing_profit_price`. Both long and short positions are
+supported. Spot and margin bots reject this setting.
 
-The bot needs `0 < stop_loss < 100`, `take_profit > 0`, `trailing_profit > 0`, and
-`0 < trailing_deviation < 100`. The trailing parameters configure the fallback.
-The persisted deal field `position_size_pct` defaults to **25** and accepts
-percentages greater than zero through 100.
+The existing shared model requires `0 < stop_loss < 100`, `take_profit > 0`,
+`trailing_profit > 0`, and `0 < trailing_deviation < 100`. Sizing uses the
+trailing-profit trigger, not `take_profit`; fixed take-profit exits are
+suppressed while trailing-based sizing is enabled. The persisted deal field
+`position_size_pct` defaults to **25** and accepts percentages through 100.
 
-- An adverse move of `stop_loss` percent reduces the current contracts by
-  `position_size_pct` percent, using a reduce-only market order.
-- A favorable move of `take_profit` percent adds the same percentage of the
-  current contracts. It checks the futures wallet and
-  `required_margin_for_contracts` first, using the bot's saved `futures_leverage`.
-- Thresholds initially use the entry price, then reset around each adjustment's
-  confirmed average fill price. There is at most one adjustment per tick;
-  a price gap does not submit a batch of catch-up orders.
-- Contract adjustments round down to the exchange lot size. When a reduction
-  rounds to zero, the remaining minimum position closes. An increase below one
-  lot falls back to trailing profit.
+- A trailing-profit trigger arms or tightens the full-position trailing stop
+  and requests an increase of `position_size_pct` percent of current contracts.
+- The next trigger is persisted in `deal.trailing_profit_price`, using the
+  current price and `trailing_profit`. Repeated ticks or restarts at the same
+  price do not repeat an increase. An active pending order prevents a second
+  increase.
+- Each increase checks the futures wallet and `required_margin_for_contracts`,
+  using the bot's saved leverage. Quantities round down to exchange lots.
+- Cumulative partial fills update the weighted entry and current quantity while
+  the order remains active. Each observation resizes native protection using
+  the confirmed quantity, even if the position endpoint still reports the old
+  size. The pending intent remains until terminal; the pre-order snapshot makes
+  repeated polls and restarts idempotent. A delayed fill price does not delay
+  protecting observed contracts. Terminal history records the cumulative fill
+  once. Fills do not
+  reset the trailing trigger, stop loss, or trailing stop around the fill price.
+  Exchange protection is reconciled to cover the new full position quantity,
+  even during the normal stop-replacement cooldown, without loosening its price.
+- Reaching `deal.trailing_stop_loss_price` closes the **entire live position**,
+  including at exact equality. The trailing exit takes precedence over pending
+  sizing lookups and further increases. Pending increases are disabled and open
+  orders are cancelled before a full close reads the exchange position quantity.
+- Stop loss continues to close the whole position; sizing never submits partial
+  stop-loss reductions. Native full-position stops remain enabled.
 
-For example, with 100 contracts, entry 100, `stop_loss=5`, `take_profit=10`, and
-`position_size_pct=25`, a long reduces 25 contracts at price 95. After a fill at
-95, its next thresholds are 90.25 and 104.5; the next adjustment uses the
-remaining 75 contracts. A short uses the opposite price directions.
+For example, a short entered at 0.06320 with `trailing_profit=4.5`,
+`trailing_deviation=3`, and 24 contracts reaches its first trailing trigger at
+approximately 0.06035. At 0.06028 it arms a trailing stop near 0.06208 and adds
+6 contracts. At 0.05745 it tightens the stop to approximately 0.05917 and adds
+7 more. A rebound to 0.05917 closes all 37 contracts; it does not buy back only
+25 percent and resume sizing.
 
-When an increase is unaffordable, the bot logs the reason, switches
-`dynamic_position_sizing` off, enables `trailing`, clears fixed take profit, and
-continues through the normal lifecycle in the same tick. The switch persists
-until explicitly re-enabled. Paper adjustments simulate fills without a wallet
-limit; they do not place exchange orders or read live account positions.
+When an increase is unaffordable or below one exchange lot, sizing disables
+itself, leaves trailing enabled, and clears fixed take profit. The armed
+trailing stop is preserved. Normal strategy evaluation and protective exits
+run whether or not sizing is enabled.
 
-While enabled, sizing owns the SL/TP flow and bypasses strategy parameter
-updates, reversal, full-position stops, and trailing profit. Existing exchange
-stops are cancelled when sizing starts. Consequently, reductions depend on the
-streaming service running. Normal strategy management resumes after fallback.
-
-`position_size_reference_price` persists the threshold anchor.
-`position_size_order` persists an adjustment's client ID and pre-order state
+`position_size_order` persists an increase's client ID and pre-order state
 before submission. New intents start in `prepared`; `submitting` is committed
-before calling the exchange. A restart discards a `prepared` intent and restores
-normal trailing/stop protection, because no submission could have occurred.
-Legacy intents default to `submitting`, preserving their uncertain outcome.
+before the API call. A restart discards a `prepared` intent and restores normal
+protection because no submission could have occurred. Legacy intents default
+to `submitting`; old partial reduction intents can still be reconciled, but are
+never resubmitted. `position_size_reference_price` remains for compatibility
+and no longer defines independent sizing thresholds.
 
-For uncertain submissions, lookup remains authoritative. After at least three
-explicit missing-order responses spanning 60 seconds, the worker retries using
-the **same client ID**. The counter and first-missing time survive restarts.
-Duplicate-ID rejections keep the intent pending for reconciliation; they never
-count as fills. A successful lookup resets the missing counter. Invalid
-parameters, rate limits, and server failures do not count as missing orders.
-Increases recheck margin at the latest price before retrying. If funds are no
-longer sufficient, normal protection resumes while the uncertain ID is retained
-for reconciliation, with further submissions disabled. Terminal partial fills
-use only their actual filled quantity. This follows KuCoin's
-[client order ID contract](https://www.kucoin.com/docs-new/rest/futures-trading/orders/add-order).
+Uncertain submissions are looked up by their original client ID. After at least
+three explicit missing-order responses over 60 seconds, recovery retries the
+same ID while the bot remains active and sizing is enabled. The handler also
+recognizes KuCoin's `error.getOrder.orderNotExist` response. Duplicate-ID
+rejections retain the pending intent; they do not count as fills. Retry counters
+survive restarts, and increases recheck margin before retrying. Invalid
+parameters, rate limits, and server failures do not count as missing orders;
+lookup failures do not suppress protective lifecycle exits.
 
-`opening_qty` preserves the original fill; `current_position_qty` and
-`base_order_size` track the remaining contracts. Adds update the weighted entry
-price. Each confirmed adjustment remains in order history, including paper
-orders. Existing simple price-return reports do not aggregate realized PnL
-across these partial exits.
+`opening_qty` remains historical; `current_position_qty` and `base_order_size`
+track live contracts. Confirmed increases remain in order history. No shared
+model changes or new database migration are needed for this behavior update.
 
 ## Installation
 

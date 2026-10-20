@@ -67,6 +67,10 @@ def make_sizing_deal(
     deal.controller = types.SimpleNamespace(save=lambda bot: bot)
     deal._entry_reference_price = 100.0
     deal._entry_allowance_pct = 1.5
+    deal._entry_signal_loaded = False
+    deal._entry_signal_context = None
+    deal._entry_signal_indicators = None
+    deal._entry_post_only = False
     return deal
 
 
@@ -1818,3 +1822,115 @@ def test_non_protective_futures_orders_remain_subject_to_age_expiry(deal_type):
     )
 
     assert position.should_expire_order_by_age(order) is True
+
+
+@pytest.mark.parametrize("short", [False, True])
+def test_trailing_exit_cancels_pending_increase_and_closes_all_live_contracts(short):
+    from pybinbot.models.deal import PositionSizeOrder
+
+    deal = make_sizing_deal(multiplier=1)
+    deal.active_bot.position = Position.short if short else Position.long
+    deal.active_bot.status = Status.active
+    deal.active_bot.dynamic_position_sizing = True
+    deal.active_bot.deal.opening_qty = 24
+    deal.active_bot.deal.current_position_qty = 30
+    deal.kucoin_symbol = deal.active_bot.pair
+    deal.active_bot.deal.position_size_order = PositionSizeOrder(
+        client_oid="uncertain-increase",
+        reducing=False,
+        quantity_before=30,
+        entry_price_before=100,
+        requested_qty=7,
+        signal_price=90 if short else 110,
+    )
+    events = []
+
+    def cancel(symbol):
+        assert not deal.active_bot.dynamic_position_sizing
+        events.append("cancel")
+
+    def position(symbol):
+        events.append("position")
+        # A fill raced the cancellation. Close the exchange's 37, not stored 30.
+        return types.SimpleNamespace(current_qty=-37 if short else 37)
+
+    deal.kucoin_futures_api = types.SimpleNamespace(
+        cancel_all_futures_orders=cancel,
+        get_futures_position=position,
+    )
+    close_side = AddOrderReq.SideEnum.BUY if short else AddOrderReq.SideEnum.SELL
+    order = OrderBase(
+        order_id="full-trailing-close",
+        deal_type=DealType.trailing_profit,
+        pair=deal.active_bot.pair,
+        order_type="market",
+        order_side=close_side.value,
+        qty=37,
+        price=95 if short else 105,
+        timestamp=1775008219262,
+        time_in_force="GTC",
+        status=OrderStatus.FILLED,
+    )
+    deal._close_with_market_fallback = Mock(return_value=[(order, 37, order.price)])
+    deal._cleanup_native_protection_after_close = Mock()
+    deal.controller = types.SimpleNamespace(
+        save=lambda bot: events.append("save"),
+        update_logs=lambda **kwargs: None,
+    )
+    result = deal.close_all(deal_type=DealType.trailing_profit)
+    assert events[:3] == ["save", "cancel", "position"]
+    deal._close_with_market_fallback.assert_called_once_with(
+        close_side, 37, market_only=False
+    )
+    assert result.status == Status.completed
+    assert result.deal.current_position_qty == 0
+    assert result.deal.closing_qty == 37
+    assert result.deal.closing_timestamp == order.timestamp
+    assert result.orders[-1].deal_type == DealType.trailing_profit
+
+
+@pytest.mark.parametrize("short", [False, True])
+def test_market_only_close_skips_ioc_and_market_closes_whole_live_position(short):
+    deal = make_sizing_deal(multiplier=1)
+    deal.active_bot.status = Status.active
+    deal.active_bot.position = Position.short if short else Position.long
+    deal.kucoin_symbol = deal.active_bot.pair
+    deal.CLOSE_ALL_FILL_CHECK_SLEEP_S = 0
+    side = AddOrderReq.SideEnum.BUY if short else AddOrderReq.SideEnum.SELL
+    order = OrderBase(
+        order_id="chop-market-exit",
+        order_type="market",
+        pair=deal.kucoin_symbol,
+        timestamp=1775008219262,
+        order_side=side.value,
+        qty=37,
+        price=100,
+        status=OrderStatus.FILLED,
+        time_in_force="GTC",
+        deal_type=DealType.algorithmic_close,
+    )
+    place = Mock(return_value=order)
+    matching = Mock(side_effect=AssertionError("Market exit must not use IOC pricing"))
+    deal.kucoin_futures_api = types.SimpleNamespace(
+        get_futures_position=lambda symbol: types.SimpleNamespace(
+            current_qty=-37 if short else 37
+        ),
+        matching_engine=matching,
+        place_futures_order=place,
+    )
+    deal._cleanup_native_protection_after_close = Mock()
+    deal.controller = types.SimpleNamespace(
+        save=lambda bot: bot, update_logs=lambda **kwargs: None
+    )
+    result = deal.close_all(algorithmic_close=True, market_only=True)
+    matching.assert_not_called()
+    place.assert_called_once()
+    request = place.call_args.kwargs
+    assert request["order_type"] == OrderType.market
+    assert request["size"] == 37
+    assert request["reduce_only"] is True
+    assert request["side"] == side
+    assert result.status == Status.completed
+    assert result.deal.current_position_qty == 0
+    assert result.deal.closing_qty == 37
+    assert result.orders[-1].deal_type == DealType.algorithmic_close

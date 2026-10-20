@@ -109,55 +109,62 @@ and persistence model rather than the standard bot lifecycle.
 | `streaming/strategies/default.py` | Supplies common dynamic stop and trailing behaviour and is the intentional fallback. |
 | `streaming/strategies/<path>.py` | Expresses only the lifecycle differences required by one entry strategy. |
 | `api/exchange_apis/kucoin/futures/futures_deal.py` | Performs exchange operations and persists the resulting bot state. |
-| `api/exchange_apis/kucoin/futures/position_sizing.py` | Adjusts futures position quantities when dynamic sizing is enabled, reconciles fills, and hands control back to normal trailing profit when an increase is unaffordable. |
+| `api/exchange_apis/kucoin/futures/position_sizing.py` | Increases futures quantity at trailing-profit triggers, reconciles fills, and disables increases when unaffordable without bypassing protective exits. |
+
+### Top-gainer short chop exit
+
+`top_gainer_short` counts completed candle closes switching sides of the fixed
+current price over the rolling last six hours, using the shared
+`pybinbot.shared.price_crossings.price_crossings_six_hours` calculation also used
+by binquant. At **three or more crossings**, it closes the full live position
+with a reduce-only **market order**, bypassing the normal IOC limit leg. This
+exit runs before pending sizing recovery, new increases, and strategy parameter
+changes. An already breached trailing stop still takes precedence.
+
+This is a rolling history condition, not a six-hour minimum bot age. Wicks and
+exact touches do not count; incomplete, stale, or invalid candle history does
+not produce a chop exit. Normal protective stops continue to apply. The
+binquant entry gate remains at four crossings; its score penalties are unchanged.
+Release the updated shared `pybinbot` module before deploying these consumers.
 
 ## Dynamic position sizing
 
-`BotBase.dynamic_position_sizing` is an opt-in flag, persisted on both `BotTable`
-only. It defaults to `false`. When enabled for an active
-KuCoin futures bot, `Lifecycle.exit()` delegates to `DynamicPositionSizing`
-before strategy evaluation and the usual full-position SL/TP branches.
+`BotBase.dynamic_position_sizing` defaults to `false`. For a KuCoin futures bot
+with trailing enabled, it adds `deal.position_size_pct` percent of current
+contracts only when `Lifecycle.exit()` reaches `deal.trailing_profit_price`.
+The default increase is 25 percent, rounded down to exchange lots. Both long
+and short positions use their existing trailing-profit direction.
 
-The deal's `position_size_pct` defaults to 25 percent of the **current open
-quantity**. A `stop_loss` percent adverse price move reduces that quantity; a
-`take_profit` percent favorable move increases it. Long and short directions
-are mirrored. The first reference price is entry; every confirmed adjustment
-resets both price thresholds around its average fill price. Contract quantities
-round down to exchange lots, with a final reduction closing the minimum lot.
+Sizing does not own exits. Normal strategy evaluation, native stop-loss
+protection, and full-position stops continue to run. A breach of
+`deal.trailing_stop_loss_price`, including exact equality, closes the entire
+exchange position before any sizing lookup or increase. There are no new
+partial stop-loss reductions. Pending increases are disabled and open exchange
+orders cancelled before a full close reads the live position quantity.
 
-Sizing owns the exit flow while enabled: strategy parameter updates, reversals,
-and ordinary trailing management are bypassed, and exchange-native full-position
-stops are suppressed. An existing protective stop is cancelled when sizing
-starts. Streaming therefore must remain running to execute reductions.
+At a trailing-profit trigger, the lifecycle persists the next trigger and arms
+or tightens its trailing stop. A confirmed increase updates weighted entry and
+quantity without resetting those prices. The exchange trailing stop is resized
+to cover the new full quantity even during replacement cooldowns, preserving
+any tighter stop price. Restarting at the same price cannot repeat the increase.
 
-Before an increase, the class checks the futures wallet against
-`required_margin_for_contracts`, including the bot's saved `futures_leverage`
-and fee allowance. Insufficient funds cause a persisted log entry, disable
-dynamic sizing, enable trailing, and clear fixed take profit. Execution then
-continues through the ordinary lifecycle in the same tick, using the configured
-`trailing_profit` and `trailing_deviation`. Normal strategy updates also resume.
+The sizing class checks wallet affordability with `required_margin_for_contracts`
+and the bot's persisted leverage. An unaffordable increase or a quantity below
+one exchange lot disables sizing and clears fixed take profit while preserving
+trailing protection. Fixed take-profit exits are bypassed while trailing-based
+sizing remains enabled; `take_profit` does not define a separate sizing trigger.
 
-The deal stores `position_size_reference_price` and a pending
-`position_size_order`. The pending client ID and `prepared` phase are saved
-**before** order submission, then `submitting` is committed before the API call.
-A restart safely abandons a `prepared` intent and restores normal exits. An
-uncertain submission is looked up by its original ID; after three explicit
-missing-order responses over at least 60 seconds, recovery retries that same ID
-without creating a new adjustment. Duplicate-ID responses preserve the pending
-intent for reconciliation. Retry counters survive restarts, and increases
-recheck available margin. An unaffordable retry restores normal exits while
-retaining the uncertain ID for reconciliation without further submission.
-Active orders block further sizing, and terminal
-partial fills change quantity only by the actual fill. All confirmed adjustments
-are retained in order history. Paper futures simulate this flow without reading
-live position quantities or submitting exchange orders; simulated trailing stops
-fill only after the price crosses them.
+`deal.position_size_order` persists an intent before submission. Recovery looks
+up the original client ID, retains active orders until their terminal fills,
+and retries missing increases with that same ID only after three missing-order
+responses over 60 seconds. Pending lookups do not suppress normal exits. Old
+reduction intents remain reconcilable but cannot be resubmitted. The legacy
+`position_size_reference_price` no longer controls sizing thresholds.
 
-The models also change in the shared `pybinbot` project. Install that updated
-package and apply Alembic revision `a7b4e9c261f0` before starting workers. The
-migration is replay-safe and leaves existing bots opted out. See
-[dynamic position sizing](./bots/dynamic-position-sizing.md) for configuration,
-worked examples, pending-order recovery, and local validation commands.
+The existing shared models and Alembic revision `a7b4e9c261f0` provide these
+fields. No additional migration is needed. See
+[dynamic position sizing](./bots/dynamic-position-sizing.md) for worked examples,
+recovery details, and validation commands.
 
 ## Strategy input and output
 

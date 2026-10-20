@@ -33,6 +33,7 @@ class LifecycleExitIntent:
     kind: LifecycleExitKind
     log_message: str
     max_holding_bars: int | None = None
+    market_only: bool = False
 
 
 @dataclass(frozen=True)

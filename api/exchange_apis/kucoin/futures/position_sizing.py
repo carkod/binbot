@@ -1,4 +1,4 @@
-"""Fill-confirmed, percentage-based adjustments to an existing futures position."""
+"""Fill-confirmed position increases at trailing-profit triggers."""
 
 from decimal import Decimal, ROUND_DOWN
 from time import time
@@ -18,7 +18,7 @@ from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 
 
 class DynamicPositionSizing:
-    """Own SL/TP thresholds until sizing falls back to the normal lifecycle.
+    """Increase position size without taking ownership of protective exits.
 
     Persist an intent before submitting. After an ambiguous response, look up
     that same client ID on subsequent ticks. Recovery reuses the original ID
@@ -77,7 +77,7 @@ class DynamicPositionSizing:
                     "order not found",
                     "order does not exist",
                     "order not exist",
-                    "order does not exist.",
+                    "error.getorder.ordernotexist",
                 )
             ):
                 raise
@@ -86,8 +86,20 @@ class DynamicPositionSizing:
                 pending.not_found_since_ms = now_ms
             pending.not_found_count += 1
             self.execution.controller.save(bot)
+            direction = 1 if bot.position == Position.long else -1
             if (
                 bot.dynamic_position_sizing
+                and bot.status == Status.active
+                and not pending.reducing
+                and (
+                    deal.stop_loss_price == 0
+                    or (deal.current_price - deal.stop_loss_price) * direction > 0
+                )
+                and (
+                    deal.trailing_stop_loss_price == 0
+                    or (deal.current_price - deal.trailing_stop_loss_price) * direction
+                    > 0
+                )
                 and pending.not_found_count >= self.NOT_FOUND_RETRY_COUNT
                 and now_ms - pending.not_found_since_ms >= self.NOT_FOUND_GRACE_MS
             ):
@@ -101,68 +113,76 @@ class DynamicPositionSizing:
             pending.not_found_count = 0
             pending.not_found_since_ms = 0
             self.execution.controller.save(bot)
-        if order.is_active:
-            return
         quantity = float(order.filled_size or 0)
         price = float(order.avg_deal_price or 0)
-        order_id = order.id
-        timestamp = int(order.end_at or order.updated_at or order.created_at)
-        if quantity > 0 and price <= 0:
-            # Do not discard a fill whose execution price is still missing.
-            return
-
+        fill_complete = not order.is_active and (quantity == 0 or price > 0)
+        remaining = deal.current_position_qty
         if quantity > 0:
+            # KuCoin reports cumulative fills. Always derive from the persisted
+            # pre-order snapshot, including after a restart; never add the same
+            # partial fill to an already updated position a second time.
             signed_quantity = -quantity if pending.reducing else quantity
             remaining = max(0, pending.quantity_before + signed_quantity)
-            if not pending.reducing:
+            if not pending.reducing and price > 0:
                 deal.opening_price = (
                     pending.entry_price_before * pending.quantity_before
                     + price * quantity
                 ) / remaining
             deal.current_position_qty = remaining
             deal.base_order_size = remaining
-            # opening_qty remains historical; current_position_qty is live size.
-            deal.position_size_reference_price = price
-            direction = 1 if bot.position == Position.long else -1
-            deal.stop_loss_price = price - direction * price * bot.stop_loss / 100
-            deal.take_profit_price = price + direction * price * bot.take_profit / 100
-            side = (
-                "sell" if (bot.position == Position.long) == pending.reducing else "buy"
-            )
-            bot.orders.append(
-                OrderModel(
-                    order_id=order_id,
-                    pair=bot.pair,
-                    order_side=side,
-                    order_type="MARKET",
-                    time_in_force="GTC",
-                    timestamp=timestamp,
-                    qty=quantity,
-                    price=price,
-                    status=OrderStatus.FILLED,
-                    deal_type=DealType.stop_loss
-                    if pending.reducing
-                    else DealType.base_order,
+            # Protect observed contracts even when the fill price is delayed.
+            # Keep lifecycle triggers and protective prices intact.
+            if fill_complete:
+                timestamp = int(order.end_at or order.updated_at or order.created_at)
+                side = (
+                    "sell"
+                    if (bot.position == Position.long) == pending.reducing
+                    else "buy"
                 )
-            )
-            if remaining == 0:
-                bot.status = Status.completed
-                deal.closing_qty = quantity
-                deal.closing_price = price
-                deal.closing_timestamp = timestamp
-            bot.add_log(
-                f"Dynamic position {'reduced' if pending.reducing else 'increased'} "
-                f"by {quantity} contracts at {price}; remaining {remaining}."
-            )
-        else:
+                bot.orders.append(
+                    OrderModel(
+                        order_id=order.id,
+                        pair=bot.pair,
+                        order_side=side,
+                        order_type="MARKET",
+                        time_in_force="GTC",
+                        timestamp=timestamp,
+                        qty=quantity,
+                        price=price,
+                        status=OrderStatus.FILLED,
+                        deal_type=DealType.stop_loss
+                        if pending.reducing
+                        else DealType.base_order,
+                    )
+                )
+                if remaining == 0:
+                    bot.status = Status.completed
+                    deal.closing_qty = quantity
+                    deal.closing_price = price
+                    deal.closing_timestamp = timestamp
+                bot.add_log(
+                    f"Dynamic position {'reduced' if pending.reducing else 'increased'} "
+                    f"by {quantity} contracts at {price}; remaining {remaining}."
+                )
+        elif fill_complete:
             bot.add_log(
                 "Dynamic position adjustment ended without a fill; thresholds unchanged."
             )
-        deal.position_size_order = None
+        else:
+            return
+        if fill_complete:
+            deal.position_size_order = None
         self.execution.controller.save(bot)
+        if quantity > 0 and remaining > 0 and bot.status == Status.active:
+            # The position endpoint can lag these confirmed fills. Pass the
+            # observed quantity through to protection instead of shrinking it
+            # back to a stale position response.
+            self.execution.reconcile_exchange_sl(position_qty=remaining)
 
-    def process(self, current_price: float) -> bool:
-        """Return True when sizing owns this tick; False to run normal exits."""
+    def process(
+        self, current_price: float, *, trailing_profit_reached: bool = False
+    ) -> bool:
+        """Reconcile a pending intent or increase once at a trailing-profit trigger."""
         bot = self.execution.active_bot
         deal = bot.deal
         if current_price > 0:
@@ -187,79 +207,60 @@ class DynamicPositionSizing:
                 )
                 self.execution.controller.save(bot)
             return bot.dynamic_position_sizing
-        if not bot.dynamic_position_sizing or bot.status != Status.active:
+        if (
+            not bot.dynamic_position_sizing
+            or bot.status != Status.active
+            or not trailing_profit_reached
+        ):
             return False
         # Validate again because table hydration and model_construct bypass
         # BotBase validation, and strategy/API updates can mutate parameters.
         if (
             bot.market_type != MarketType.FUTURES
-            or not 0 < bot.stop_loss < 100
-            or bot.take_profit <= 0
             or bot.trailing_profit <= 0
             or not 0 < bot.trailing_deviation < 100
             or not 0 < deal.position_size_pct <= 100
         ):
             raise ValueError("Invalid dynamic position sizing configuration")
         if current_price <= 0 or deal.opening_price <= 0:
-            return True
-        deal.current_price = current_price
-        if deal.position_size_reference_price == 0:
-            self.execution.cancel_current_sl()
-            deal.trailing_stop_loss_price = 0
-            deal.position_size_reference_price = deal.opening_price
-            self.execution.controller.save(bot)
-
+            return False
         direction = 1 if bot.position == Position.long else -1
-        anchor = deal.position_size_reference_price
-        stop_price = anchor - direction * anchor * bot.stop_loss / 100
-        profit_price = anchor + direction * anchor * bot.take_profit / 100
-        deal.stop_loss_price = stop_price
-        deal.take_profit_price = profit_price
-        reducing = (current_price - stop_price) * direction <= 0
-        increasing = (current_price - profit_price) * direction >= 0
-        if not reducing and not increasing:
-            return True
 
         position = self.execution.kucoin_futures_api.get_futures_position(
             self.execution.kucoin_symbol
         )
         signed_quantity = float(position.current_qty)
         if signed_quantity * direction <= 0:
-            return True
+            return False
         quantity = abs(signed_quantity)
-        if quantity <= 0:
-            return True
         lot_size = self.execution.kucoin_symbol_data.lot_size or 1
         adjustment = self.adjustment_quantity(
             quantity, deal.position_size_pct, lot_size
         )
         if adjustment == 0:
-            if reducing:
-                # At the minimum lot, the only executable risk reduction is flat.
-                adjustment = int(quantity)
-            else:
-                self.fallback("increase is smaller than the exchange lot size")
-                return False
+            self.fallback("increase is smaller than the exchange lot size")
+            return False
 
-        if increasing:
-            request = GetFuturesAccountReqBuilder().set_currency(bot.fiat).build()
-            account = self.execution.kucoin_futures_api.futures_account_api.get_futures_account(
+        request = GetFuturesAccountReqBuilder().set_currency(bot.fiat).build()
+        account = (
+            self.execution.kucoin_futures_api.futures_account_api.get_futures_account(
                 request
             )
-            available = float(account.available_balance or 0)
-            required = self.execution.required_margin_for_contracts(
-                adjustment, current_price
+        )
+        available = float(account.available_balance or 0)
+        required = self.execution.required_margin_for_contracts(
+            adjustment, current_price
+        )
+        if required > available:
+            self.fallback(
+                f"insufficient futures funds (requires {required}, available {available})"
             )
-            if required > available:
-                self.fallback(
-                    f"insufficient futures funds (requires {required}, available {available})"
-                )
-                return False
+            return False
 
         pending = PositionSizeOrder(
             client_oid=str(uuid4()),
             submission_phase="prepared",
-            reducing=reducing,
+            reducing=False,
             quantity_before=quantity,
             entry_price_before=deal.opening_price,
             requested_qty=adjustment,
