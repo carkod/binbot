@@ -20,7 +20,11 @@ import {
   TabsKeys,
 } from "../../../utils/enums";
 import { setBot } from "../../../features/bots/botSlice";
-import { singleBot, type Bot } from "../../../features/bots/botInitialState";
+import {
+  defaultRecoveryParams,
+  singleBot,
+  type Bot,
+} from "../../../features/bots/botInitialState";
 
 const settingsResponse = vi.hoisted(() => ({
   data: { fiat: "USDT", base_order_size: 123 },
@@ -76,6 +80,55 @@ function renderLeverage(botOverrides: Partial<Bot> = {}) {
 }
 
 describe("BaseOrderTab", () => {
+  it("enables automatic recovery without exposing source metadata or changing order size", () => {
+    const store = renderLeverage({ fiat_order_size: 25 });
+    const recoveryToggle = testingScreen.getByRole("checkbox", {
+      name: /^Recovery mode /,
+    });
+
+    fireEvent.click(recoveryToggle);
+
+    expect(recoveryToggle).toBeChecked();
+    expect(store.getState().bot.bot.recovery_params).toEqual(
+      defaultRecoveryParams,
+    );
+    expect(store.getState().bot.bot.fiat_order_size).toBe(25);
+    expect(testingScreen.queryByLabelText("Reversal path")).toBeNull();
+    expect(testingScreen.queryByLabelText("Source contracts")).toBeNull();
+
+    fireEvent.click(recoveryToggle);
+
+    expect(recoveryToggle).not.toBeChecked();
+    expect(store.getState().bot.bot.recovery_params).toBeNull();
+    expect(store.getState().bot.bot.recovery_mode_id).toBeNull();
+  });
+
+  it("keeps recovery unavailable while dynamic position sizing is enabled", () => {
+    const store = renderLeverage({ dynamic_position_sizing: true });
+    const recoveryToggle = testingScreen.getByRole("checkbox", {
+      name: /^Recovery mode /,
+    });
+
+    expect(recoveryToggle).toBeDisabled();
+    fireEvent.click(recoveryToggle);
+    expect(store.getState().bot.bot.recovery_params).toBeNull();
+  });
+
+  it("preserves the recovery role and parent link when displaying an existing child", () => {
+    const recoveryParams = {
+      ...defaultRecoveryParams,
+      reversal_path: "recovery" as const,
+      source_bot_id: "source-bot",
+      source_contracts: 7,
+    };
+    const store = renderLeverage({ recovery_params: recoveryParams });
+
+    expect(
+      testingScreen.getByRole("checkbox", { name: /^Recovery mode / }),
+    ).toBeChecked();
+    expect(store.getState().bot.bot.recovery_params).toEqual(recoveryParams);
+  });
+
   it("inherits symbol leverage for a new futures bot without submitting an override", () => {
     const store = renderLeverage();
     expect(

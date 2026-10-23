@@ -1,17 +1,25 @@
 import { type FC, useContext, useEffect, useRef, useState } from "react";
 import {
   Button,
+  ButtonGroup,
   Col,
   Container,
   Form,
   InputGroup,
   Row,
   Tab,
+  ToggleButton,
 } from "react-bootstrap";
 import { type FieldValues, useForm } from "react-hook-form";
 import { useImmer } from "use-immer";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
-import { selectBot, setField, setToggle } from "../../features/bots/botSlice";
+import {
+  selectBot,
+  setField,
+  setRecoveryParams,
+  setToggle,
+} from "../../features/bots/botSlice";
+import { defaultRecoveryParams } from "../../features/bots/botInitialState";
 import {
   BotStatus,
   BotPosition,
@@ -45,6 +53,7 @@ const BaseOrderTab: FC<{
     updateQuoteBaseState,
   } = useSymbolData();
   const { bot } = useAppSelector(selectBot);
+  const recoveryEnabled = bot.recovery_params != null;
 
   const isBusyBot =
     bot.status === BotStatus.ACTIVE || bot.status === BotStatus.COMPLETED;
@@ -358,6 +367,39 @@ const BaseOrderTab: FC<{
               </Col>
             </Row>
           )}
+        </Row>
+        <Row className="my-3">
+          <Col md="6" sm="12">
+            <Form.Group controlId="recovery_mode">
+              <Form.Label>Recovery mode</Form.Label>
+              <br />
+              <ButtonGroup>
+                <ToggleButton
+                  id="recovery_mode"
+                  type="checkbox"
+                  name="recovery_mode"
+                  variant={recoveryEnabled ? "primary" : "secondary"}
+                  value={1}
+                  checked={recoveryEnabled}
+                  disabled={bot.dynamic_position_sizing}
+                  onChange={() =>
+                    dispatch(
+                      setRecoveryParams(
+                        recoveryEnabled ? null : { ...defaultRecoveryParams },
+                      ),
+                    )
+                  }
+                >
+                  {recoveryEnabled ? "On" : "Off"}
+                </ToggleButton>
+              </ButtonGroup>
+              {bot.dynamic_position_sizing && (
+                <Form.Text className="d-block">
+                  Recovery is unavailable while position sizing is enabled.
+                </Form.Text>
+              )}
+            </Form.Group>
+          </Col>
         </Row>
       </Container>
     </Tab.Pane>
