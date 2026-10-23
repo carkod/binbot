@@ -683,8 +683,8 @@ def _crossing_context(crossings: int) -> LifecycleContext:
                 "open_time": start + i * INTERVAL_MS,
                 "close_time": start + (i + 1) * INTERVAL_MS - 1,
                 "close": 99.0 if (i * (crossings + 1) // 24) % 2 == 0 else 101.0,
-                "high": 110.0,
-                "low": 90.0,
+                "high": 99.0 if (i * (crossings + 1) // 24) % 2 == 0 else 101.0,
+                "low": 99.0 if (i * (crossings + 1) // 24) % 2 == 0 else 101.0,
             }
             for i in range(24)
         ]
@@ -712,6 +712,24 @@ def test_top_gainer_short_market_exits_at_three_crossings_in_rolling_six_hours(
         assert signal.exit_intent.market_only
         assert f"{crossings} current-price crossings" in signal.exit_intent.log_message
         assert signal.parameter_update is None
+
+
+@pytest.mark.parametrize("wick_count", [2, 3])
+def test_top_gainer_short_chop_exit_counts_wicks_with_all_closes_on_one_side(
+    wick_count,
+):
+    context = _crossing_context(0)
+    frame = context.df.copy()
+    frame.loc[frame.index[-wick_count:], "high"] = 101.0
+
+    signal = TopGainerShortLifecycleStrategy().signal(replace(context, df=frame))
+
+    if wick_count < 3:
+        assert signal.exit_intent is None
+    else:
+        assert signal.exit_intent is not None
+        assert signal.exit_intent.kind == LifecycleExitKind.algorithmic_close
+        assert signal.exit_intent.market_only
 
 
 @pytest.mark.parametrize("case", ["gap", "stale", "nan", "missing_columns"])
