@@ -29,42 +29,35 @@ const TakeProfit: FC = () => {
     reValidateMode: "onBlur",
     defaultValues: {
       take_profit: bot.take_profit,
-      trailing: bot.trailing,
       trailing_deviation: bot.trailing_deviation,
       trailing_profit: bot.trailing_profit,
-      dynamic_trailing: bot.dynamic_trailing,
     },
   });
 
   useEffect(() => {
-    const { unsubscribe } = watch((v, { name, type }) => {
-      if (v && v?.[name]) {
-        if (typeof v === "boolean") {
-          dispatch(setToggle({ name, value: v[name] }));
-        } else {
-          dispatch(setField({ name, value: v[name] as number | string }));
-        }
+    const { unsubscribe } = watch((values, { name }) => {
+      const value = name ? values[name] : undefined;
+      if (name && typeof value === "number" && Number.isFinite(value)) {
+        dispatch(setField({ name, value }));
       }
     });
 
-    if (bot.id) {
-      reset({
-        take_profit: bot.take_profit,
-        trailing: bot.trailing,
-        trailing_deviation: bot.trailing_deviation,
-        dynamic_trailing: bot.dynamic_trailing,
-        trailing_profit: bot.trailing_profit,
-      });
-    }
-
     return () => unsubscribe();
-  }, [watch, dispatch, bot, reset]);
+  }, [watch, dispatch]);
 
-  const handleBlur = (e) => {
-    if (e.target.value) {
-      dispatch(setField({ name: e.target.name, value: watch(e.target.name) }));
-    }
-  };
+  useEffect(() => {
+    reset({
+      take_profit: bot.take_profit,
+      trailing_deviation: bot.trailing_deviation,
+      trailing_profit: bot.trailing_profit,
+    });
+  }, [
+    bot.id,
+    bot.take_profit,
+    bot.trailing_deviation,
+    bot.trailing_profit,
+    reset,
+  ]);
 
   return (
     <Tab.Pane eventKey={TabsKeys.TAKEPROFIT}>
@@ -79,7 +72,7 @@ const TakeProfit: FC = () => {
                 <Form.Control
                   type="number"
                   name="trailing_profit"
-                  onBlur={(e) => handleBlur(e)}
+                  id="trailing_profit"
                   {...register("trailing_profit", {
                     required:
                       "Trailing profit in percentage is required when trailing is activated",
@@ -107,7 +100,6 @@ const TakeProfit: FC = () => {
                   type="number"
                   name="take_profit"
                   id="take_profit"
-                  onBlur={(e) => handleBlur(e)}
                   {...register("take_profit", {
                     valueAsNumber: true,
                     min: {
@@ -136,11 +128,13 @@ const TakeProfit: FC = () => {
               <ButtonGroup>
                 <ToggleButton
                   id="trailing"
+                  type="checkbox"
+                  name="trailing"
                   className="position-relative"
                   checked={bot.trailing}
                   value={1}
                   variant={bot.trailing ? "primary" : "secondary"}
-                  onClick={(e) => {
+                  onChange={() => {
                     dispatch(
                       setToggle({ name: "trailing", value: !bot.trailing }),
                     );
@@ -163,12 +157,13 @@ const TakeProfit: FC = () => {
               <ButtonGroup>
                 <ToggleButton
                   id="dynamic_trailing"
+                  type="checkbox"
                   name="dynamic_trailing"
                   className="position-relative"
                   checked={bot.dynamic_trailing}
                   value={1}
                   variant={bot.dynamic_trailing ? "primary" : "secondary"}
-                  onClick={(e) => {
+                  onChange={() => {
                     dispatch(
                       setToggle({
                         name: "dynamic_trailing",
@@ -196,7 +191,7 @@ const TakeProfit: FC = () => {
                 <Form.Control
                   type="number"
                   name="trailing_deviation"
-                  onBlur={(e) => handleBlur(e)}
+                  id="trailing_deviation"
                   {...register("trailing_deviation", {
                     required:
                       "Trailing deviation in percentage is required when trailing is activated",

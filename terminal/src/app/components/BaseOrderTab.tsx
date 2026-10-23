@@ -1,18 +1,25 @@
 import { type FC, useContext, useEffect, useRef, useState } from "react";
 import {
   Button,
+  ButtonGroup,
   Col,
   Container,
   Form,
-  FormLabel,
   InputGroup,
   Row,
   Tab,
+  ToggleButton,
 } from "react-bootstrap";
 import { type FieldValues, useForm } from "react-hook-form";
 import { useImmer } from "use-immer";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
-import { selectBot, setField, setToggle } from "../../features/bots/botSlice";
+import {
+  selectBot,
+  setField,
+  setRecoveryParams,
+  setToggle,
+} from "../../features/bots/botSlice";
+import { defaultRecoveryParams } from "../../features/bots/botInitialState";
 import {
   BotStatus,
   BotPosition,
@@ -25,7 +32,6 @@ import { InputTooltip } from "./InputTooltip";
 import SymbolSearch from "./SymbolSearch";
 import { useLocation, useParams } from "react-router-dom";
 import { SpinnerContext } from "../spinner-context";
-import InputGroupText from "react-bootstrap/esm/InputGroupText";
 import { matchNewRoutes } from "../../utils/validations";
 
 interface ErrorsState {
@@ -47,6 +53,7 @@ const BaseOrderTab: FC<{
     updateQuoteBaseState,
   } = useSymbolData();
   const { bot } = useAppSelector(selectBot);
+  const recoveryEnabled = bot.recovery_params != null;
 
   const isBusyBot =
     bot.status === BotStatus.ACTIVE || bot.status === BotStatus.COMPLETED;
@@ -316,10 +323,28 @@ const BaseOrderTab: FC<{
               </Col>
               <Col md="6" sm="12" className="my-6">
                 {bot.market_type === MarketType.FUTURES ? (
-                  <div>
-                    <FormLabel>Leverage:</FormLabel>
-                    <InputGroupText>{futuresLeverage}x</InputGroupText>
-                  </div>
+                  <Form.Group controlId="futures_leverage">
+                    <Form.Label>Leverage</Form.Label>
+                    <Form.Select
+                      name="futures_leverage"
+                      value={bot.futures_leverage ?? futuresLeverage}
+                      disabled={isBusyBot || bot.status === BotStatus.PENDING}
+                      onChange={(event) =>
+                        dispatch(
+                          setField({
+                            name: "futures_leverage",
+                            value: Number(event.target.value),
+                          }),
+                        )
+                      }
+                    >
+                      {[1, 2, 3, 4, 5].map((leverage) => (
+                        <option key={leverage} value={leverage}>
+                          {leverage}x
+                        </option>
+                      ))}
+                    </Form.Select>
+                  </Form.Group>
                 ) : (
                   <>
                     <InputTooltip
@@ -342,6 +367,39 @@ const BaseOrderTab: FC<{
               </Col>
             </Row>
           )}
+        </Row>
+        <Row className="my-3">
+          <Col md="6" sm="12">
+            <Form.Group controlId="recovery_mode">
+              <Form.Label>Recovery mode</Form.Label>
+              <br />
+              <ButtonGroup>
+                <ToggleButton
+                  id="recovery_mode"
+                  type="checkbox"
+                  name="recovery_mode"
+                  variant={recoveryEnabled ? "primary" : "secondary"}
+                  value={1}
+                  checked={recoveryEnabled}
+                  disabled={bot.dynamic_position_sizing}
+                  onChange={() =>
+                    dispatch(
+                      setRecoveryParams(
+                        recoveryEnabled ? null : { ...defaultRecoveryParams },
+                      ),
+                    )
+                  }
+                >
+                  {recoveryEnabled ? "On" : "Off"}
+                </ToggleButton>
+              </ButtonGroup>
+              {bot.dynamic_position_sizing && (
+                <Form.Text className="d-block">
+                  Recovery is unavailable while position sizing is enabled.
+                </Form.Text>
+              )}
+            </Form.Group>
+          </Col>
         </Row>
       </Container>
     </Tab.Pane>

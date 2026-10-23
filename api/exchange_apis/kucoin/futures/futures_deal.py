@@ -1268,6 +1268,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
     def cancel_current_sl(self, *, deal_type: DealType | None = None) -> None:
         """Cancel only this bot's protection, retaining execution history."""
+        # A replacement target can have been tightened in memory. Persist it
+        # before cancelling protection so a delayed lookup cannot roll it back.
+        self.controller.save(self.active_bot)
         intent = self.active_bot.deal.conditional_close_order
         if intent is not None and intent.order_id is None:
             details = self.kucoin_futures_api.retrieve_order_by_client_oid(
@@ -1305,18 +1308,75 @@ class KucoinPositionDeal(KucoinBaseBalance):
             )
         }
         for order_id, local_order in owned.items():
+            known_filled_quantity = 0.0
+            if local_order is not None and (
+                local_order.requested_qty > 0
+                or local_order.status == OrderStatus.PARTIALLY_FILLED
+            ):
+                # Older NEW rows used qty for the requested stop size.
+                known_filled_quantity = local_order.qty
+            stop_cancellation = None
+            standard_cancellation = None
             if order_id in untriggered:
-                self.kucoin_futures_api.batch_cancel_stop_loss_orders([order_id])
+                stop_cancellation = (
+                    self.kucoin_futures_api.batch_cancel_stop_loss_orders([order_id])
+                )
             else:
                 details = self.kucoin_futures_api.retrieve_order(order_id)
-                if details.is_active:
-                    self.kucoin_futures_api.cancel_futures_order(order_id)
-            details = self.kucoin_futures_api.retrieve_order(order_id)
-            if details.is_active:
-                raise BinbotErrors(
-                    "Conditional close cancellation is not confirmed; deferring replacement/exit"
+                known_filled_quantity = max(
+                    known_filled_quantity, float(details.filled_size or 0)
                 )
-            if float(details.filled_size or 0) > 0:
+                if details.is_active:
+                    standard_cancellation = (
+                        self.kucoin_futures_api.cancel_futures_order(order_id)
+                    )
+            try:
+                details = self.kucoin_futures_api.retrieve_order(order_id)
+            except RestError as exc:
+                missing = str(exc.response.code) == "100001" and any(
+                    phrase in str(exc.response.message).lower()
+                    for phrase in (
+                        "order not found",
+                        "order not exist",
+                        "order does not exist",
+                        "getorder.ordernotexist",
+                    )
+                )
+                acknowledged = (
+                    stop_cancellation is not None
+                    and any(
+                        str(result.order_id) == order_id
+                        and str(result.code) == "200000"
+                        for result in stop_cancellation.data or []
+                    )
+                ) or (
+                    standard_cancellation is not None
+                    and order_id in (standard_cancellation.cancelled_order_ids or [])
+                )
+                if not missing or not acknowledged:
+                    raise
+                # The detail endpoint can temporarily lose an untriggered stop
+                # after cancellation. An acknowledgement alone is insufficient:
+                # verify removal and check history for a fill racing the cancel.
+                if any(
+                    str(order.id) == order_id
+                    for order in self.kucoin_futures_api.get_all_stop_loss_orders(
+                        self.kucoin_symbol
+                    )
+                ):
+                    raise BinbotErrors(
+                        "Conditional close cancellation is not confirmed; deferring replacement/exit"
+                    ) from exc
+                filled_quantity, _, _ = self.kucoin_futures_api.get_order_execution(
+                    order_id
+                )
+            else:
+                if details.is_active:
+                    raise BinbotErrors(
+                        "Conditional close cancellation is not confirmed; deferring replacement/exit"
+                    )
+                filled_quantity = float(details.filled_size or 0)
+            if max(known_filled_quantity, filled_quantity) > 0:
                 raise BinbotErrors(
                     "Conditional close filled during cancellation; reconcile its fills before another exit"
                 )
@@ -2436,6 +2496,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
         exchange_ok, exchange_price, exchange_qty = self._exchange_stop_loss_details(
             order_id=trailing_order_id
         )
+        if not exchange_ok:
+            return self.active_bot
         quantity_changed = (exchange_qty is not None and exchange_qty != qty) or any(
             str(order.order_id) == trailing_order_id
             and (order.requested_qty if order.requested_qty > 0 else order.qty) != qty
@@ -2459,10 +2521,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 cooldown_ms=self.TRAILING_STOP_REPLACE_COOLDOWN_MS,
             ):
                 return self.active_bot
-        elif not exchange_ok and self.trailing_stop_replace_on_cooldown(
-            last_replace_ts_ms
-        ):
-            return self.active_bot
 
         action = "buy" if self.active_bot.position == Position.short else "sell"
         self.controller.update_logs(
@@ -2528,7 +2586,9 @@ class KucoinPositionDeal(KucoinBaseBalance):
         ) or (
             position_qty is not None
             and any(
-                str(order.order_id) == trailing_order_id and order.qty != position_qty
+                str(order.order_id) == trailing_order_id
+                and (order.requested_qty if order.requested_qty > 0 else order.qty)
+                != position_qty
                 for order in self.active_bot.orders
             )
         )
