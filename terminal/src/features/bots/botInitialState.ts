@@ -48,6 +48,8 @@ export interface Bot {
   fiat?: string;
   quote_asset: QuoteAsset;
   fiat_order_size: number;
+  // New bots inherit symbol leverage until the user chooses an override.
+  futures_leverage?: number;
   candle_interval?: string;
   close_condition?: string;
   dynamic_trailing: boolean;

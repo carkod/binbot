@@ -4,7 +4,6 @@ import {
   Col,
   Container,
   Form,
-  FormLabel,
   InputGroup,
   Row,
   Tab,
@@ -25,7 +24,6 @@ import { InputTooltip } from "./InputTooltip";
 import SymbolSearch from "./SymbolSearch";
 import { useLocation, useParams } from "react-router-dom";
 import { SpinnerContext } from "../spinner-context";
-import InputGroupText from "react-bootstrap/esm/InputGroupText";
 import { matchNewRoutes } from "../../utils/validations";
 
 interface ErrorsState {
@@ -316,10 +314,28 @@ const BaseOrderTab: FC<{
               </Col>
               <Col md="6" sm="12" className="my-6">
                 {bot.market_type === MarketType.FUTURES ? (
-                  <div>
-                    <FormLabel>Leverage:</FormLabel>
-                    <InputGroupText>{futuresLeverage}x</InputGroupText>
-                  </div>
+                  <Form.Group controlId="futures_leverage">
+                    <Form.Label>Leverage</Form.Label>
+                    <Form.Select
+                      name="futures_leverage"
+                      value={bot.futures_leverage ?? futuresLeverage}
+                      disabled={isBusyBot || bot.status === BotStatus.PENDING}
+                      onChange={(event) =>
+                        dispatch(
+                          setField({
+                            name: "futures_leverage",
+                            value: Number(event.target.value),
+                          }),
+                        )
+                      }
+                    >
+                      {[1, 2, 3, 4, 5].map((leverage) => (
+                        <option key={leverage} value={leverage}>
+                          {leverage}x
+                        </option>
+                      ))}
+                    </Form.Select>
+                  </Form.Group>
                 ) : (
                   <>
                     <InputTooltip
