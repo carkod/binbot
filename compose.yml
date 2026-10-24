@@ -4,7 +4,7 @@ networks:
 
 services:
   api_db:
-    image: postgres
+    image: postgres:latest
     container_name: binbot_api_db
     restart: on-failure
     networks:
