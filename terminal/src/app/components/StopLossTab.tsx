@@ -1,14 +1,5 @@
 import { type FC, useEffect } from "react";
-import {
-  ButtonGroup,
-  Col,
-  Container,
-  Form,
-  InputGroup,
-  Row,
-  Tab,
-  ToggleButton,
-} from "react-bootstrap";
+import { Col, Container, Form, InputGroup, Row, Tab } from "react-bootstrap";
 import InputGroupText from "react-bootstrap/esm/InputGroupText";
 import { useForm } from "react-hook-form";
 import {
@@ -69,12 +60,6 @@ const StopLossTab: FC = () => {
     }
   };
 
-  const handleRecoveryToggle = () => {
-    dispatch(
-      setRecoveryParams(recoveryEnabled ? null : { ...defaultRecoveryParams }),
-    );
-  };
-
   const handleRecoveryChange = (
     name: keyof RecoveryParams,
     value: RecoveryParams[keyof RecoveryParams],
@@ -127,88 +112,9 @@ const StopLossTab: FC = () => {
               )}
             </InputGroup>
           </Col>
-          {
-            <Col md="4" sm="12">
-              <Form.Group className="position-relative">
-                <Form.Label htmlFor="recovery_mode">Recovery mode</Form.Label>
-                {bot.dynamic_position_sizing && (
-                  <Form.Text className="d-block">
-                    Recovery is unavailable while position sizing is enabled.
-                  </Form.Text>
-                )}
-                <br />
-                <ButtonGroup className="mb-2">
-                  <ToggleButton
-                    id="recovery_mode"
-                    type="checkbox"
-                    name="recovery_mode"
-                    variant={recoveryEnabled ? "primary" : "secondary"}
-                    value={1}
-                    checked={recoveryEnabled}
-                    disabled={bot.dynamic_position_sizing}
-                    onChange={handleRecoveryToggle}
-                  >
-                    {recoveryEnabled ? "On" : "Off"}
-                  </ToggleButton>
-                </ButtonGroup>
-              </Form.Group>
-            </Col>
-          }
         </Row>
         {recoveryEnabled && (
           <Row className="my-3">
-            <Col md="3" sm="12">
-              <Form.Label htmlFor="reversal_path">Reversal path</Form.Label>
-              <Form.Select
-                id="reversal_path"
-                value={bot.recovery_params?.reversal_path ?? "source"}
-                onChange={(event) =>
-                  handleRecoveryChange(
-                    "reversal_path",
-                    event.target.value as RecoveryParams["reversal_path"],
-                  )
-                }
-              >
-                <option value="source">Source</option>
-                <option value="recovery">Recovery</option>
-              </Form.Select>
-            </Col>
-            <Col md="3" sm="12">
-              <Form.Label htmlFor="source_contracts">
-                Source contracts
-              </Form.Label>
-              <Form.Control
-                id="source_contracts"
-                type="number"
-                min={0}
-                step="any"
-                value={bot.recovery_params?.source_contracts ?? 0}
-                onChange={(event) =>
-                  handleRecoveryChange(
-                    "source_contracts",
-                    Number(event.target.value) || 0,
-                  )
-                }
-              />
-            </Col>
-            <Col md="3" sm="12">
-              <Form.Label htmlFor="source_loss_fiat">
-                Source loss ({bot.fiat ?? "fiat"})
-              </Form.Label>
-              <Form.Control
-                id="source_loss_fiat"
-                type="number"
-                min={0}
-                step="any"
-                value={bot.recovery_params?.source_loss_fiat ?? 0}
-                onChange={(event) =>
-                  handleRecoveryChange(
-                    "source_loss_fiat",
-                    Number(event.target.value) || 0,
-                  )
-                }
-              />
-            </Col>
             <Col md="3" sm="12">
               <Form.Label htmlFor="recovery_stop_loss_pct">
                 Recovery stop loss

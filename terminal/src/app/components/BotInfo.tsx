@@ -96,6 +96,9 @@ export default function BotInfo({ bot }: BotInfoProps) {
                     dealData =
                       bot.deal[k] === 0 || formatTimestamp(bot.deal[k]);
                   }
+                  if (dealData !== null && typeof dealData === "object") {
+                    dealData = JSON.stringify(dealData);
+                  }
                   return (
                     <ListGroup.Item
                       action

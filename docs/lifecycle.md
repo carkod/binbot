@@ -113,18 +113,20 @@ and persistence model rather than the standard bot lifecycle.
 
 ### Top-gainer short chop exit
 
-`top_gainer_short` counts completed candle closes switching sides of the fixed
-current price over the rolling last six hours, using the shared
+`top_gainer_short` counts completed candles whose low is below and high is above
+the fixed current price over the rolling last six hours. Each spanning candle
+counts once, including wicks. Close-to-close changes of side also count to catch
+gaps, without counting a candle twice. It uses the shared
 `pybinbot.shared.price_crossings.price_crossings_six_hours` calculation also used
 by binquant. At **three or more crossings**, it closes the full live position
 with a reduce-only **market order**, bypassing the normal IOC limit leg. This
 exit runs before pending sizing recovery, new increases, and strategy parameter
 changes. An already breached trailing stop still takes precedence.
 
-This is a rolling history condition, not a six-hour minimum bot age. Wicks and
-exact touches do not count; incomplete, stale, or invalid candle history does
+This is a rolling history condition, not a six-hour minimum bot age. Exact
+touches do not count; incomplete, stale, or invalid candle history does
 not produce a chop exit. Normal protective stops continue to apply. The
-binquant entry gate remains at four crossings; its score penalties are unchanged.
+binquant entry gate also rejects at three crossings; its per-crossing score penalty is unchanged.
 Release the updated shared `pybinbot` module before deploying these consumers.
 
 ## Dynamic position sizing
