@@ -1,7 +1,7 @@
 @use "variables" as *;
 
 .dashboard {
-  // Share the card dimensions between loading and populated states.
+  // Reserve card space while loading; populated cards follow their content.
   --dashboard-card-height: 190px;
 
   .dashboard-balance {
@@ -30,8 +30,11 @@
 
   .card {
     width: 100%;
-    height: var(--dashboard-card-height);
-    overflow: auto;
+
+    &.card-loading {
+      height: var(--dashboard-card-height);
+      overflow: auto;
+    }
 
     > .card-header,
     > .card-footer {
