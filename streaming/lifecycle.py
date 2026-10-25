@@ -471,6 +471,9 @@ class Lifecycle:
         """
         Exit logic for futures positions.
         """
+        strategy_exit_before_sizing = self.context_evaluator.resolve(
+            self.execution.active_bot.name
+        ).policy.strategy_exit_before_sizing
         if (
             self.execution.active_bot.deal.closing_qty > 0
             and self.execution.active_bot.deal.current_position_qty == 0

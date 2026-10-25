@@ -2680,6 +2680,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         depth); whatever doesn't fill immediately is guaranteed closed with
         a market order for the residual qty, so this always fully closes.
 
+        Market-only exits skip the IOC leg and use the same fill confirmation.
         Returns every leg that actually filled as (order, filled_qty,
         avg_price) — both legs when the IOC only partially fills — so the
         caller can record every fill and compute a true weighted-average

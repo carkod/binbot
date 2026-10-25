@@ -33,6 +33,7 @@ class TopGainerShortLifecycleStrategy(DefaultLifecycleStrategy):
     policy = LifecyclePolicy(
         low_price_stop_floor_pct=None,
         stale_position_close_enabled=False,
+        strategy_exit_before_sizing=True,
     )
 
     def signal(self, context: LifecycleContext) -> LifecycleSignal:
