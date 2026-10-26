@@ -330,7 +330,7 @@ def test_base_order_downsizes_when_margin_size_exceeds_available_balance():
             return 10
 
         def retrieve_order(self, order_id):
-            # Simulate an already-filled entry so base_order() activates immediately.
+            # Fill confirmation belongs to streaming after base_order() returns.
             return types.SimpleNamespace(filled_size="9", avg_deal_price="10")
 
     # margin_sized at 1x: 1500 / (10*10) = 15 contracts (notional 1500, margin 1500).
@@ -377,9 +377,9 @@ def test_limit_entry_keeps_margin_sized_quantity_and_rechecks_required_margin():
         pair="TESTUSDTM",
         timestamp=1775008219262,
         order_side="buy",
-        qty=4,
+        qty=10,
         price=10,
-        status=OrderStatus.FILLED,
+        status=OrderStatus.NEW,
         time_in_force="GTC",
         deal_type=DealType.base_order,
     )
@@ -420,12 +420,14 @@ def test_limit_entry_keeps_margin_sized_quantity_and_rechecks_required_margin():
 
     opened_bot = KucoinPositionDeal.base_order(deal)
 
-    assert margin_checks == [(4, 10)]
+    assert margin_checks == [(10, 10)]
     request = futures_api.place_futures_order.call_args.kwargs
-    assert request["size"] == 4
+    assert request["size"] == 10
     assert request["price"] == 10
     assert request["leverage"] == 1
-    assert opened_bot.deal.base_order_size == 4
+    assert opened_bot.deal.base_order_size == 10
+    assert opened_bot.status == Status.pending
+    futures_api.retrieve_order.assert_not_called()
 
 
 def test_sustained_top_gainer_base_order_is_submitted_post_only():

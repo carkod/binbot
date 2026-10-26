@@ -8,10 +8,9 @@ from pybinbot import (
     BinanceKlineIntervals,
     BotBase,
     BotModel,
-    DealType,
-    OrderStatus,
     Candles,
     DealType,
+    OrderStatus,
     ExchangeId,
     KucoinApi,
     KucoinFutures,
@@ -473,9 +472,6 @@ class Lifecycle:
         """
         Exit logic for futures positions.
         """
-        strategy_exit_before_sizing = self.context_evaluator.resolve(
-            self.execution.active_bot.name
-        ).policy.strategy_exit_before_sizing
         if (
             self.execution.active_bot.deal.closing_qty > 0
             and self.execution.active_bot.deal.current_position_qty == 0
@@ -572,7 +568,8 @@ class Lifecycle:
         )
         exit_intent = evaluation.signal.exit_intent
         if (
-            exit_intent is not None
+            evaluation.policy.strategy_exit_before_sizing
+            and exit_intent is not None
             and exit_intent.kind == LifecycleExitKind.algorithmic_close
             and exit_intent.market_only
         ):

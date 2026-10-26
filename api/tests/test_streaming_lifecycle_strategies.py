@@ -619,7 +619,7 @@ def test_top_gainer_short_only_applies_default_protection(monkeypatch) -> None:
     assert signal.parameter_update.trailing_profit <= 3.5
     assert signal.parameter_update.trailing_deviation <= 2.5
     assert TopGainerShortLifecycleStrategy.policy.low_price_stop_floor_pct is None
-    assert TopGainerShortLifecycleStrategy.policy.recovery_enabled is True
+    assert TopGainerShortLifecycleStrategy.policy.recovery_enabled is False
 
 
 def test_top_gainer_short_lifecycle_uses_15m_candles_when_default_is_5m() -> None:
@@ -693,9 +693,22 @@ def _crossing_context(crossings: int) -> LifecycleContext:
         name="top_gainer_short",
         position=Position.short,
         now_ms=now_ms,
-        opening_timestamp=now_ms - 60_000,
+        opening_timestamp=now_ms
+        - TopGainerShortLifecycleStrategy.MIN_CROSSING_EXIT_HOLD_MS,
     )
     return replace(context, df=frame)
+
+
+@pytest.mark.parametrize("elapsed_ms", [None, 60_000, 6 * 60 * 60 * 1000 - 1])
+def test_top_gainer_short_crossing_exit_waits_six_elapsed_hours(elapsed_ms):
+    context = _crossing_context(3)
+    context.bot.deal.opening_timestamp = (
+        0 if elapsed_ms is None else context.now_ms - elapsed_ms
+    )
+
+    signal = TopGainerShortLifecycleStrategy().signal(context)
+
+    assert signal.exit_intent is None
 
 
 @pytest.mark.parametrize("crossings", [0, 1, 2, 3, 4, 23])

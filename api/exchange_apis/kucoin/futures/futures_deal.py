@@ -1541,16 +1541,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
                     "margin exceeded available balance."
                 )
 
-            contracts, entry_limit_price = self.liquidity_gated_contracts(
-                affordability_capped_contracts, candidate_limit_price
-            )
-            # liquidity_gated_contracts() can move entry_limit_price away from
-            # the pre-gate `price` (e.g. tightening a short's floor up to the
-            # book's worst_fill_price raises the price actually sent to
-            # KuCoin) — margin/notional must be checked against the price that
-            # will actually be submitted, not the stale candidate, or an
-            # account near its balance limit could pass this check and then
-            # submit contracts it can't actually afford at entry_limit_price.
+            contracts = affordability_capped_contracts
+            entry_limit_price = self.prepare_entry_limit_price(candidate_limit_price)
             required_margin = self.required_margin_for_contracts(
                 contracts, entry_limit_price
             )
@@ -1613,79 +1605,31 @@ class KucoinPositionDeal(KucoinBaseBalance):
         order.qty = contracts
         self.active_bot.deal.base_order_size = contracts
         self.active_bot.deal.opening_timestamp = order.timestamp
-        self.active_bot.deal.current_price = mark_price
-
-        # Check if the order has already been filled on the exchange. Futures
-        # market orders settle quickly but not always before this code runs —
-        # the position endpoint can lag by several minutes. If unfilled, leave
-        # opening_price == 0 and do not activate; open_deal() will set the bot
-        # to pending and order_updates() will promote it once KuCoin confirms
-        # the fill. A confirmed fill remains pending in memory until
-        # open_deal() has reconciled its initial protective order.
-        system_order = self.kucoin_futures_api.retrieve_order(str(order.order_id))
-        filled_size = float(system_order.filled_size or 0)
-        avg_price = float(system_order.avg_deal_price or 0)
-
-        # A non-zero fill is not necessarily the final fill. KuCoin can return
-        # an intermediate snapshot for a marketable order and continue filling
-        # it afterwards. Freeze the entry by cancelling the remainder, then
-        # read the cumulative fill again before sizing any protection.
-        if 0 < filled_size < contracts:
-            self.active_bot.add_log(
-                f"Entry order {order.order_id} partially filled {filled_size} of "
-                f"{contracts} contracts; cancelling the remainder before activation."
+        self.active_bot.status = Status.pending
+        pending_entry_minutes = 5
+        if self.active_bot.name == RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
+            pending_entry_minutes = (
+                self.interval_ms
+                * RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES
+                // 60_000
             )
-            cancel_error: RestError | None = None
-            try:
-                self.kucoin_futures_api.cancel_futures_order(str(order.order_id))
-            except RestError as exc:
-                # A marketable order can finish between the partial snapshot
-                # and cancellation. Re-read it before deciding that cancellation
-                # failed; a terminal cumulative fill is still safe to finalize.
-                cancel_error = exc
-            system_order = self.kucoin_futures_api.retrieve_order(str(order.order_id))
-            filled_size = float(system_order.filled_size or 0)
-            avg_price = float(system_order.avg_deal_price or 0)
-            if system_order.is_active:
-                if cancel_error is not None:
-                    raise cancel_error
-                self.active_bot.deal.current_position_qty = filled_size
-                filled_size = 0
-            actual_filled_size, actual_avg_price = self._actual_fill(order)
-            if (
-                not system_order.is_active
-                and actual_filled_size > 0
-                and actual_avg_price > 0
-            ):
-                filled_size = actual_filled_size
-                avg_price = actual_avg_price
-
-        if filled_size > 0 and avg_price > 0:
-            order.status = OrderStatus.FILLED
-            order.qty = filled_size
-            order.price = avg_price
-            self.active_bot.deal.opening_price = avg_price
-            self.active_bot.deal.opening_qty = filled_size
-            self.active_bot.deal.current_position_qty = filled_size
-            self.active_bot.deal.base_order_size = filled_size
-            if self.active_bot.name == RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
-                self.active_bot.deal.opening_timestamp = (
-                    self.matching_exchange_fill_timestamp(order)
-                )
-            # open_deal() publishes Status.active only after the initial
-            # protective order has been reconciled.
-            self.active_bot.status = Status.pending
-        else:
-            self.active_bot.status = Status.pending
-
-        position_label = getattr(
-            self.active_bot.position,
-            "name",
-            self.active_bot.position,
-        )
+        elif self.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO:
+            pending_entry_minutes = (
+                self.interval_ms
+                * TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES
+                // 60_000
+            )
+        elif self.active_bot.name == TOP_GAINER_FAILURE_REVERSAL_ALGO:
+            pending_entry_minutes = (
+                TOP_GAINER_FAILURE_REVERSAL_PENDING_ENTRY_TTL_MS // 60_000
+            )
         self.controller.update_logs(
             bot=self.active_bot,
-            log_message=log_message,
+            log_message=(
+                f"Futures entry limit order {order.order_id} submitted at {entry_limit_price} "
+                f"with {contracts} contracts. Bot is pending for up to "
+                f"{pending_entry_minutes} minutes awaiting fill confirmation by lifecycle order updates."
+            ),
         )
 
         self.controller.save(self.active_bot)
@@ -2409,8 +2353,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         """Best-effort real (filled_qty, avg_price) for a just-placed order.
 
         place_futures_order()'s own response doesn't reliably carry fill
-        details (same reasoning as base_order()'s post-place retrieve_order
-        check) — query the order and then its fills to get the real numbers.
+        details, so query the order and then its fills to get the real numbers.
         Returns zero filled quantity when confirmation is unavailable; callers
         decide how to handle an unconfirmed fill.
         """
