@@ -141,6 +141,7 @@ describe("FuturesBotDetail page", () => {
     );
 
     expect(container.querySelector(".content")).not.toBeNull();
+    expect(rtlScreen.getByTestId("chart-container")).toBeTruthy();
   });
 
   it("keeps existing bot data but overrides market_type to FUTURES when editing", () => {

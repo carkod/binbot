@@ -4,9 +4,26 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import BotDetail from "../BotDetail";
 import { store } from "../../store";
 import { vi } from "vitest";
-import { render } from "@testing-library/react";
-// import { vi } from "vitest"; // Commented out for clarity
-// Place mocks here, after imports, before any usage
+import { render, screen as rtlScreen, waitFor } from "@testing-library/react";
+import { singleBot } from "../../../features/bots/botInitialState";
+
+const mockUseGetSingleBotQuery = vi.hoisted(() => vi.fn());
+
+vi.mock("../../../features/bots/botsApiSlice", async () => ({
+  ...(await vi.importActual("../../../features/bots/botsApiSlice")),
+  useGetSingleBotQuery: mockUseGetSingleBotQuery,
+}));
+
+vi.mock("../../../features/balanceApiSlice", async () => ({
+  ...(await vi.importActual("../../../features/balanceApiSlice")),
+  useGetBalanceQuery: vi.fn(() => ({ data: undefined, isLoading: false })),
+}));
+
+vi.mock("../../../features/symbolsApiSlice", async () => ({
+  ...(await vi.importActual("../../../features/symbolsApiSlice")),
+  useGetSymbolsQuery: vi.fn(() => ({ data: [] })),
+}));
+
 vi.mock("../../components/ChartContainer", () => {
   const ChartContainer = (_props: any) => <div data-testid="chart-container" />;
   ChartContainer.displayName = "ChartContainer";
@@ -42,6 +59,13 @@ const SpinnerContext = React.createContext({
 });
 
 describe("BotDetail page", () => {
+  beforeEach(() => {
+    mockUseGetSingleBotQuery.mockReturnValue({
+      data: { bot: { ...singleBot, id: "123" } },
+      isLoading: false,
+    });
+  });
+
   it("renders without crashing", () => {
     const { container } = render(
       <Provider store={store}>
@@ -57,9 +81,10 @@ describe("BotDetail page", () => {
       </Provider>,
     );
     expect(container.querySelector(".content")).not.toBeNull();
+    expect(rtlScreen.getByTestId("chart-container")).toBeTruthy();
   });
 
-  it("shows BotInfo and BotDetailTabs when bot and id are present", () => {
+  it("shows BotInfo and BotDetailTabs when bot and id are present", async () => {
     render(
       <Provider store={store}>
         <SpinnerContext.Provider
@@ -73,9 +98,9 @@ describe("BotDetail page", () => {
         </SpinnerContext.Provider>
       </Provider>,
     );
-    // Check for BotInfo by class or id
-    expect(document.querySelector(".card-header")).not.toBeNull();
-    // Check for BotDetailTabs by nav-tabs class
-    expect(document.querySelector(".nav.nav-tabs")).not.toBeNull();
+    await waitFor(() => {
+      expect(rtlScreen.getByTestId("bot-info")).toBeTruthy();
+    });
+    expect(rtlScreen.getByTestId("bot-detail-tabs")).toBeTruthy();
   });
 });
