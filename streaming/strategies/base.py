@@ -21,6 +21,7 @@ class LifecyclePolicy:
     block_reversal_after_loss: bool = False
     recovery_enabled: bool = True
     stale_position_close_enabled: bool = True
+    strategy_exit_before_sizing: bool = False
 
 
 class LifecycleExitKind(str, Enum):

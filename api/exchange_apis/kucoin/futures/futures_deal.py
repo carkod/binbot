@@ -24,7 +24,6 @@ from pybinbot import (
     round_numbers,
     round_numbers_ceiling,
     round_timestamp,
-    supress_notation,
 )
 
 from api.databases.crud.bot_crud import BotTableCrud
@@ -35,12 +34,10 @@ from api.databases.utils import get_db_session
 from api.exchange_apis.kucoin.deals.base import KucoinBaseBalance
 from api.exchange_apis.kucoin.futures.balance import KucoinFuturesBalance
 from api.exchange_apis.kucoin.futures.liquidity import (
-    calculate_liquidity_snapshot,
     ceil_price_to_tick,
     floor_price_to_tick,
     load_futures_order_book,
 )
-from api.exchange_apis.kucoin.futures.models import LiquiditySnapshot
 from api.tools.constants import (
     RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO,
     RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES,
@@ -99,16 +96,13 @@ class KucoinPositionDeal(KucoinBaseBalance):
     TOP_GAINER_PULLBACK_MAX_DISPLACEMENT_PCT = 1.0
     TOP_GAINER_ENTRY_MIN_MICRO_REGIME_STRENGTH = 0.52
     TOP_GAINER_ENTRY_MAX_UPPER_WICK_FRACTION = 0.30
-    ENTRY_LIQUIDITY_PRICE_BAND_BPS = 50.0
-    # Keep size-aware execution costs small relative to the configured stop.
-    # This also bounds the spread: crossing the best quote costs half the
-    # spread from midpoint, and walking the book can only increase that cost.
-    ENTRY_LIQUIDITY_MAX_SLIPPAGE_BPS = 15.0
+    ENTRY_BOOK_MAX_ATTEMPTS = 3
+    ENTRY_BOOK_RETRY_SECONDS = 1.0
     # Thin books can go many seconds between quote updates without being
     # genuinely stale (KuCoin's ts reflects the last book change, not "now"),
     # confirmed against live low-cap futures books (~15s observed on a quiet
     # book). 20s comfortably clears that while still catching a hung fetch.
-    ENTRY_LIQUIDITY_MAX_DATA_AGE_MS = 20_000
+    ENTRY_BOOK_MAX_DATA_AGE_MS = 20_000
     ENTRY_DISPLACEMENT_RETRY_MARKER = "Entry displacement retry 1/1:"
     # How long to wait after the first (limit) close leg before checking its
     # fill status — mirrors pybinbot's _EXIT_ESCALATION_SLEEP_S for the same
@@ -149,8 +143,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
         )
         self.price_precision = self.symbol_info.price_precision
         # Set by body_capped_entry_limit_price(); reused by
-        # liquidity_gated_contracts() so the live executable price must remain
-        # inside the same candle-reference band without a second klines fetch.
+        # prepare_entry_limit_price() keeps the submitted limit inside the
+        # same candle-reference band without a second klines fetch.
         self._entry_reference_price: float | None = None
         self._entry_allowance_pct: float | None = None
         self._top_gainer_volatility_discount_pct: float | None = None
@@ -767,79 +761,34 @@ class KucoinPositionDeal(KucoinBaseBalance):
 
         return int(contracts)
 
-    @staticmethod
-    def liquidity_snapshot_summary(
-        snapshot: LiquiditySnapshot,
-        approved_contracts: int,
-    ) -> str:
-        expected_average = (
-            f"{snapshot.expected_average_fill_price:.8g}"
-            if snapshot.expected_average_fill_price is not None
-            else "unavailable"
-        )
-        expected_slippage = (
-            f"{snapshot.expected_slippage_bps:.2f}"
-            if snapshot.expected_slippage_bps is not None
-            else "unavailable"
-        )
-        imbalance = (
-            f"{snapshot.book_imbalance:.3f}"
-            if snapshot.book_imbalance is not None
-            else "unavailable"
-        )
-        return (
-            f"spread={snapshot.spread_bps:.2f}bps, "
-            f"depth10(bid/ask)={snapshot.bid_depth_10_bps:g}/{snapshot.ask_depth_10_bps:g}, "
-            f"depth25(bid/ask)={snapshot.bid_depth_25_bps:g}/{snapshot.ask_depth_25_bps:g}, "
-            f"depth50(bid/ask)={snapshot.bid_depth_50_bps:g}/{snapshot.ask_depth_50_bps:g}, "
-            f"fillable={snapshot.contracts_fillable:g} contracts within "
-            f"{snapshot.permitted_price_band_bps:g}bps, "
-            f"requested={snapshot.requested_contracts:g}, approved={approved_contracts}, "
-            f"expected_average_fill={expected_average}, "
-            f"expected_slippage={expected_slippage}bps, "
-            f"imbalance={imbalance}, data_age={snapshot.data_age_ms}ms"
-        )
-
-    def liquidity_gated_contracts(
-        self, requested_contracts: int, candidate_limit_price: float
-    ) -> tuple[int, float]:
+    def prepare_entry_limit_price(self, candidate_limit_price: float) -> float:
+        """Prepare a bounded limit price; the entry lifecycle owns fill decisions."""
         self._entry_post_only = False
-        side = (
-            AddOrderReq.SideEnum.SELL
-            if self.active_bot.position == Position.short
-            else AddOrderReq.SideEnum.BUY
-        )
-        slippage_threshold_bps = self.ENTRY_LIQUIDITY_MAX_SLIPPAGE_BPS
-        try:
-            order_book = load_futures_order_book(
-                self.kucoin_futures_api,
-                self.kucoin_symbol,
-            )
-            requested_snapshot = calculate_liquidity_snapshot(
-                order_book,
-                side,
-                requested_contracts,
-                self.ENTRY_LIQUIDITY_PRICE_BAND_BPS,
-            )
-        except Exception as error:
-            message = (
-                "Entry rejected: unable to load a reliable KuCoin futures "
-                f"order-book liquidity snapshot ({error})."
-            )
-            self.reject_entry_for_liquidity(message, cause=error)
+        for attempt in range(self.ENTRY_BOOK_MAX_ATTEMPTS):
+            try:
+                order_book = load_futures_order_book(
+                    self.kucoin_futures_api, self.kucoin_symbol
+                )
+                if order_book.data_age_ms > self.ENTRY_BOOK_MAX_DATA_AGE_MS:
+                    raise ValueError(
+                        f"order book is stale ({order_book.data_age_ms}ms)"
+                    )
+                break
+            except Exception as error:
+                if attempt + 1 == self.ENTRY_BOOK_MAX_ATTEMPTS:
+                    self.reject_entry_for_liquidity(
+                        f"Entry rejected: unable to load a reliable KuCoin futures order book after {self.ENTRY_BOOK_MAX_ATTEMPTS} attempts ({error}).",
+                        cause=error,
+                    )
+                self.active_bot.add_log(
+                    f"Entry order-book retry {attempt + 1}/{self.ENTRY_BOOK_MAX_ATTEMPTS - 1}: {error}"
+                )
+                sleep(self.ENTRY_BOOK_RETRY_SECONDS)
 
-        summary = self.liquidity_snapshot_summary(
-            requested_snapshot,
-            requested_contracts,
-        )
-
-        if requested_snapshot.data_age_ms > self.ENTRY_LIQUIDITY_MAX_DATA_AGE_MS:
-            message = (
-                "Entry rejected: KuCoin futures order book is stale; "
-                f"maximum age is {self.ENTRY_LIQUIDITY_MAX_DATA_AGE_MS}ms. {summary}."
-            )
-            self.reject_entry_for_liquidity(message)
-
+        best_bid = order_book.bids[0].price
+        best_ask = order_book.asks[0].price
+        midpoint = (best_bid + best_ask) / 2
+        spread_bps = (best_ask - best_bid) / midpoint * 10000
         if self.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO:
             volatility_discount_pct = self._top_gainer_volatility_discount_pct
             if volatility_discount_pct is None or self._entry_reference_price is None:
@@ -859,9 +808,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
                     * 100
                 )
                 spread_distance_pct = (
-                    requested_snapshot.spread_bps
-                    * self.TOP_GAINER_RETEST_SPREAD_MULTIPLIER
-                    / 100
+                    spread_bps * self.TOP_GAINER_RETEST_SPREAD_MULTIPLIER / 100
                 )
                 discount_pct = min(
                     max(
@@ -924,25 +871,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 f"limit={candidate_limit_price}."
             )
 
-        if self.active_bot.name == TOP_GAINER_FAILURE_REVERSAL_ALGO:
-            if side != AddOrderReq.SideEnum.SELL:
-                self.reject_entry_for_liquidity(
-                    "Entry rejected: top-gainer failure reversal must open short."
-                )
-            candidate_limit_price = (
-                requested_snapshot.worst_fill_price or requested_snapshot.best_bid
-            )
-            self.active_bot.add_log(
-                "Top-gainer failure-reversal entry routed as a marketable limit: "
-                f"live_bid={requested_snapshot.best_bid}, "
-                f"requested_depth_limit={candidate_limit_price}."
-            )
-
         if self._entry_reference_price is None or self._entry_allowance_pct is None:
             self.reject_entry_for_liquidity(
                 "Entry rejected: candle-reference displacement band is unavailable."
             )
-
         lower_reference_bound = float(
             round_numbers(
                 self._entry_reference_price * (1 - self._entry_allowance_pct / 100),
@@ -955,11 +887,17 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 self.price_precision,
             )
         )
-        if self._is_sustained_top_gainer_signal():
-            sustained_best_bid = floor_price_to_tick(
-                requested_snapshot.best_bid,
-                tick_size,
+
+        if self.active_bot.name == TOP_GAINER_FAILURE_REVERSAL_ALGO:
+            if self.active_bot.position != Position.short:
+                self.reject_entry_for_liquidity(
+                    "Entry rejected: top-gainer failure reversal must open short."
+                )
+            candidate_limit_price = min(
+                upper_reference_bound, max(lower_reference_bound, best_bid)
             )
+        elif self._is_sustained_top_gainer_signal():
+            sustained_best_bid = floor_price_to_tick(best_bid, tick_size)
             if (
                 sustained_best_bid > candidate_limit_price
                 and lower_reference_bound <= sustained_best_bid <= upper_reference_bound
@@ -967,167 +905,32 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 candidate_limit_price = sustained_best_bid
                 self._entry_post_only = True
                 self.active_bot.add_log(
-                    "Sustained top-gainer maker entry joined the current best bid: "
-                    f"best_bid={sustained_best_bid}, permitted_band="
-                    f"{lower_reference_bound}-{upper_reference_bound}."
+                    f"Sustained top-gainer maker entry joined the current best bid: best_bid={sustained_best_bid}, permitted_band={lower_reference_bound}-{upper_reference_bound}."
                 )
 
-        # Current-book VWAP describes an order that crosses now. A resting limit
-        # can only fill at its candidate price or better.
-        marketable = (
-            candidate_limit_price >= requested_snapshot.best_ask
-            if side == AddOrderReq.SideEnum.BUY
-            else candidate_limit_price <= requested_snapshot.best_bid
-        )
-        if not marketable:
-            quantized_candidate_limit_price = float(
-                supress_notation(candidate_limit_price, self.price_precision)
+        try:
+            tick_size = float(self.kucoin_symbol_data.tick_size)
+            candidate_limit_price = (
+                ceil_price_to_tick(candidate_limit_price, tick_size)
+                if self.active_bot.position == Position.short
+                else floor_price_to_tick(candidate_limit_price, tick_size)
             )
-            if not self._entry_price_is_within_displacement_band(
-                quantized_candidate_limit_price,
-                lower_reference_bound,
-                upper_reference_bound,
-            ):
-                displacement_pct = (
-                    candidate_limit_price / self._entry_reference_price - 1
-                ) * 100
-                displacement_direction = "above" if displacement_pct > 0 else "below"
-                message = (
-                    "Entry rejected: passive KuCoin futures limit price "
-                    f"{candidate_limit_price:.8g} is {abs(displacement_pct):.2f}% "
-                    f"{displacement_direction} candle reference "
-                    f"{self._entry_reference_price:.8g}; maximum allowed "
-                    f"displacement is {self._entry_allowance_pct:.2f}%. {summary}."
-                )
-                self.reject_entry_for_displacement(message)
-
-            self.active_bot.add_log(
-                f"Futures passive entry liquidity snapshot: {summary}. "
-                f"Candidate limit {candidate_limit_price:.8g} is not marketable; "
-                "current expected-fill slippage and displacement checks do not apply."
-            )
-            return requested_contracts, candidate_limit_price
-
-        lot_size = float(self.kucoin_symbol_data.lot_size or 1)
-        fillable_lots = int(requested_snapshot.contracts_fillable // lot_size)
-        fillable_contracts = int(fillable_lots * lot_size)
-        approved_contracts = min(requested_contracts, fillable_contracts)
-        summary = self.liquidity_snapshot_summary(
-            requested_snapshot,
-            approved_contracts,
-        )
-
-        if approved_contracts <= 0:
-            message = (
-                "Entry rejected: no complete contract lot is executable within "
-                f"the permitted {self.ENTRY_LIQUIDITY_PRICE_BAND_BPS:g}bps band. "
-                f"{summary}."
-            )
-            self.reject_entry_for_liquidity(message)
-
-        approved_snapshot = calculate_liquidity_snapshot(
-            order_book,
-            side,
-            approved_contracts,
-            self.ENTRY_LIQUIDITY_PRICE_BAND_BPS,
-        )
-        summary = self.liquidity_snapshot_summary(
-            approved_snapshot,
-            approved_contracts,
-        )
-        if (
-            approved_snapshot.expected_slippage_bps is None
-            or approved_snapshot.expected_slippage_bps > slippage_threshold_bps
-        ):
-            message = (
-                "Entry rejected: expected KuCoin futures slippage exceeds "
-                f"{slippage_threshold_bps:.2f}bps. {summary}."
-            )
-            self.reject_entry_for_liquidity(message)
-
-        expected_fill_price = approved_snapshot.expected_average_fill_price
-        if expected_fill_price is None:
+        except (TypeError, ValueError) as error:
             self.reject_entry_for_liquidity(
-                "Entry rejected: expected KuCoin futures fill price is unavailable. "
-                f"{summary}."
+                f"Entry rejected: invalid futures limit price or tick size ({error}).",
+                cause=error,
             )
 
-        quantized_expected_fill_price = float(
-            supress_notation(expected_fill_price, self.price_precision)
-        )
-        displacement_pct = (expected_fill_price / self._entry_reference_price - 1) * 100
         if not self._entry_price_is_within_displacement_band(
-            quantized_expected_fill_price,
-            lower_reference_bound,
-            upper_reference_bound,
+            candidate_limit_price, lower_reference_bound, upper_reference_bound
         ):
-            displacement_direction = "above" if displacement_pct > 0 else "below"
-            message = (
-                "Entry rejected: expected KuCoin futures fill price "
-                f"{expected_fill_price:.8g} is {abs(displacement_pct):.2f}% "
-                f"{displacement_direction} candle reference "
-                f"{self._entry_reference_price:.8g}; maximum allowed displacement "
-                f"is {self._entry_allowance_pct:.2f}%. {summary}."
+            self.reject_entry_for_displacement(
+                f"Entry rejected: KuCoin futures limit price {candidate_limit_price:.8g} is outside the candle-reference band {lower_reference_bound:.8g}-{upper_reference_bound:.8g}."
             )
-            self.reject_entry_for_displacement(message)
-
-        entry_limit_price = candidate_limit_price
-        if (
-            self.active_bot.name == TOP_GAINER_FAILURE_REVERSAL_ALGO
-            and approved_snapshot.worst_fill_price is not None
-        ):
-            entry_limit_price = approved_snapshot.worst_fill_price
-            quantized_entry_limit_price = float(
-                supress_notation(entry_limit_price, self.price_precision)
-            )
-            if not self._entry_price_is_within_displacement_band(
-                quantized_entry_limit_price,
-                lower_reference_bound,
-                upper_reference_bound,
-            ):
-                displacement_pct = (
-                    entry_limit_price / self._entry_reference_price - 1
-                ) * 100
-                displacement_direction = "above" if displacement_pct > 0 else "below"
-                message = (
-                    "Entry rejected: marketable top-gainer failure-reversal limit "
-                    f"{entry_limit_price:.8g} is {abs(displacement_pct):.2f}% "
-                    f"{displacement_direction} candle reference "
-                    f"{self._entry_reference_price:.8g}; maximum allowed "
-                    f"displacement is {self._entry_allowance_pct:.2f}%. {summary}."
-                )
-                self.reject_entry_for_displacement(message)
-        elif approved_snapshot.worst_fill_price is not None:
-            if side == AddOrderReq.SideEnum.BUY:
-                entry_limit_price = min(
-                    candidate_limit_price, approved_snapshot.worst_fill_price
-                )
-            else:
-                entry_limit_price = max(
-                    candidate_limit_price, approved_snapshot.worst_fill_price
-                )
-            # Both candidates are already exchange-valid prices: the candle-based
-            # limit was quantized when it was built, and worst_fill_price came
-            # directly from the live book. Flooring the selected book price again
-            # can move a BUY below the ask level whose depth we just approved.
-
         self.active_bot.add_log(
-            f"Futures entry liquidity snapshot: {summary}. "
-            f"threshold: slippage<={slippage_threshold_bps:.2f}bps."
+            f"Futures entry limit prepared at {candidate_limit_price:.8g}; best bid/ask={best_bid:.8g}/{best_ask:.8g}. Fill confirmation is deferred to lifecycle order updates."
         )
-        if approved_contracts < requested_contracts:
-            self.active_bot.add_log(
-                f"Futures order downsized from {requested_contracts} to "
-                f"{approved_contracts} contracts because only that amount was "
-                "executable within the liquidity price band."
-            )
-        if entry_limit_price != candidate_limit_price:
-            self.active_bot.add_log(
-                f"Entry limit price tightened from {candidate_limit_price} to "
-                f"{entry_limit_price} based on order-book depth "
-                f"(worst_fill_price={approved_snapshot.worst_fill_price})."
-            )
-        return approved_contracts, entry_limit_price
+        return candidate_limit_price
 
     def reject_entry_for_liquidity(
         self,
@@ -1738,16 +1541,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
                     "margin exceeded available balance."
                 )
 
-            contracts, entry_limit_price = self.liquidity_gated_contracts(
-                affordability_capped_contracts, candidate_limit_price
-            )
-            # liquidity_gated_contracts() can move entry_limit_price away from
-            # the pre-gate `price` (e.g. tightening a short's floor up to the
-            # book's worst_fill_price raises the price actually sent to
-            # KuCoin) — margin/notional must be checked against the price that
-            # will actually be submitted, not the stale candidate, or an
-            # account near its balance limit could pass this check and then
-            # submit contracts it can't actually afford at entry_limit_price.
+            contracts = affordability_capped_contracts
+            entry_limit_price = self.prepare_entry_limit_price(candidate_limit_price)
             required_margin = self.required_margin_for_contracts(
                 contracts, entry_limit_price
             )
@@ -1805,115 +1600,39 @@ class KucoinPositionDeal(KucoinBaseBalance):
         order = OrderModel(**order.model_dump())
         self.active_bot.orders.append(order)
 
-        mark_price = self.kucoin_futures_api.get_mark_price(self.kucoin_symbol)
-
-        # For Futures, base_order_size is contracts
-        # Kucoin only operates with contracts, not underlying asset (qty)
-        # so in Binbot we only care about that
+        # Keep acknowledgements nonterminal until streaming verifies the fills.
+        order.status = OrderStatus.NEW
+        order.qty = contracts
         self.active_bot.deal.base_order_size = contracts
         self.active_bot.deal.opening_timestamp = order.timestamp
-        self.active_bot.deal.current_price = mark_price
-
-        # Check if the order has already been filled on the exchange. Futures
-        # market orders settle quickly but not always before this code runs —
-        # the position endpoint can lag by several minutes. If unfilled, leave
-        # opening_price == 0 and do not activate; open_deal() will set the bot
-        # to pending and order_updates() will promote it once KuCoin confirms
-        # the fill. A confirmed fill remains pending in memory until
-        # open_deal() has reconciled its initial protective order.
-        system_order = self.kucoin_futures_api.retrieve_order(str(order.order_id))
-        filled_size = float(system_order.filled_size or 0)
-        avg_price = float(system_order.avg_deal_price or 0)
-
-        # A non-zero fill is not necessarily the final fill. KuCoin can return
-        # an intermediate snapshot for a marketable order and continue filling
-        # it afterwards. Freeze the entry by cancelling the remainder, then
-        # read the cumulative fill again before sizing any protection.
-        if 0 < filled_size < contracts:
-            self.active_bot.add_log(
-                f"Entry order {order.order_id} partially filled {filled_size} of "
-                f"{contracts} contracts; cancelling the remainder before activation."
+        self.active_bot.status = Status.pending
+        pending_entry_minutes = 5
+        if self.active_bot.name == RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
+            pending_entry_minutes = (
+                self.interval_ms
+                * RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES
+                // 60_000
             )
-            cancel_error: RestError | None = None
-            try:
-                self.kucoin_futures_api.cancel_futures_order(str(order.order_id))
-            except RestError as exc:
-                # A marketable order can finish between the partial snapshot
-                # and cancellation. Re-read it before deciding that cancellation
-                # failed; a terminal cumulative fill is still safe to finalize.
-                cancel_error = exc
-            system_order = self.kucoin_futures_api.retrieve_order(str(order.order_id))
-            filled_size = float(system_order.filled_size or 0)
-            avg_price = float(system_order.avg_deal_price or 0)
-            if system_order.is_active:
-                if cancel_error is not None:
-                    raise cancel_error
-                self.active_bot.deal.current_position_qty = filled_size
-                filled_size = 0
-            actual_filled_size, actual_avg_price = self._actual_fill(order)
-            if (
-                not system_order.is_active
-                and actual_filled_size > 0
-                and actual_avg_price > 0
-            ):
-                filled_size = actual_filled_size
-                avg_price = actual_avg_price
-
-        if filled_size > 0 and avg_price > 0:
-            order.status = OrderStatus.FILLED
-            order.qty = filled_size
-            order.price = avg_price
-            self.active_bot.deal.opening_price = avg_price
-            self.active_bot.deal.opening_qty = filled_size
-            self.active_bot.deal.current_position_qty = filled_size
-            self.active_bot.deal.base_order_size = filled_size
-            if self.active_bot.name == RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
-                self.active_bot.deal.opening_timestamp = (
-                    self.matching_exchange_fill_timestamp(order)
-                )
-            # open_deal() publishes Status.active only after the initial
-            # protective order has been reconciled.
-            self.active_bot.status = Status.pending
-        else:
-            self.active_bot.status = Status.pending
-
-        position_label = getattr(
-            self.active_bot.position,
-            "name",
-            self.active_bot.position,
-        )
-        if self.active_bot.deal.opening_price > 0:
-            log_message = f"Futures {position_label} opened @ {self.active_bot.deal.opening_price} with {int(self.active_bot.deal.opening_qty)} contracts"
-        else:
-            pending_entry_minutes = 5
-            if self.active_bot.name == RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
-                pending_entry_minutes = (
-                    self.interval_ms
-                    * RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES
-                    // 60_000
-                )
-            elif self.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO:
-                pending_entry_minutes = (
-                    self.interval_ms
-                    * TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES
-                    // 60_000
-                )
-            elif self.active_bot.name == TOP_GAINER_FAILURE_REVERSAL_ALGO:
-                pending_entry_minutes = (
-                    TOP_GAINER_FAILURE_REVERSAL_PENDING_ENTRY_TTL_MS // 60_000
-                )
-            log_message = (
-                f"Futures {position_label} entry limit order {order.order_id} submitted "
-                f"at {entry_limit_price} with {contracts} contracts. Bot is pending "
-                f"for up to {pending_entry_minutes} minutes awaiting fill."
+        elif self.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO:
+            pending_entry_minutes = (
+                self.interval_ms
+                * TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES
+                // 60_000
+            )
+        elif self.active_bot.name == TOP_GAINER_FAILURE_REVERSAL_ALGO:
+            pending_entry_minutes = (
+                TOP_GAINER_FAILURE_REVERSAL_PENDING_ENTRY_TTL_MS // 60_000
             )
         self.controller.update_logs(
             bot=self.active_bot,
-            log_message=log_message,
+            log_message=(
+                f"Futures entry limit order {order.order_id} submitted at {entry_limit_price} "
+                f"with {contracts} contracts. Bot is pending for up to "
+                f"{pending_entry_minutes} minutes awaiting fill confirmation by lifecycle order updates."
+            ),
         )
 
-        if self.active_bot.deal.opening_price == 0:
-            self.controller.save(self.active_bot)
+        self.controller.save(self.active_bot)
         return self.active_bot
 
     def current_position_quantity(self) -> float:
@@ -2634,8 +2353,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         """Best-effort real (filled_qty, avg_price) for a just-placed order.
 
         place_futures_order()'s own response doesn't reliably carry fill
-        details (same reasoning as base_order()'s post-place retrieve_order
-        check) — query the order and then its fills to get the real numbers.
+        details, so query the order and then its fills to get the real numbers.
         Returns zero filled quantity when confirmation is unavailable; callers
         decide how to handle an unconfirmed fill.
         """
@@ -2680,6 +2398,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         depth); whatever doesn't fill immediately is guaranteed closed with
         a market order for the residual qty, so this always fully closes.
 
+        Market-only exits skip the IOC leg and use the same fill confirmation.
         Returns every leg that actually filled as (order, filled_qty,
         avg_price) — both legs when the IOC only partially fills — so the
         caller can record every fill and compute a true weighted-average

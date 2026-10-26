@@ -31,7 +31,8 @@
       "name": "Python: streaming",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/api/market_updates.py",
+      "module": "streaming.main",
+      "cwd": "${workspaceFolder}",
       "console": "internalConsole",
       "envFile": "${workspaceFolder}/.env",
       "env": {

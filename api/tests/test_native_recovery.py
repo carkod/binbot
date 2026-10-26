@@ -380,7 +380,7 @@ def test_complete_native_fill_rechecks_lagging_position_before_handoff():
 
 @pytest.mark.parametrize("name", ["terminal", "top_gainer_short"])
 @pytest.mark.parametrize("fill_price", [0, 98])
-def test_persisted_full_fill_recovers_after_worker_stops_before_saving_deal(
+def test_persisted_full_fill_respects_recovery_policy_after_worker_restart(
     create_test_tables, monkeypatch, name, fill_price
 ):
     with Session(create_test_tables) as session:
@@ -476,11 +476,16 @@ def test_persisted_full_fill_recovers_after_worker_stops_before_saving_deal(
                 get_settings=lambda: SimpleNamespace(base_order_size=20)
             ),
         )
-        child = lifecycle.exit(98)
-        assert child.status == Status.pending
-        assert child.position == Position.short
-        assert child.recovery_params is not None
-        assert child.recovery_params.source_bot_id == row.id
+        result = lifecycle.exit(98)
+        if name == "top_gainer_short":
+            assert result.id == row.id
+            assert result.status == Status.completed
+            assert result.position == Position.long
+        else:
+            assert result.status == Status.pending
+            assert result.position == Position.short
+            assert result.recovery_params is not None
+            assert result.recovery_params.source_bot_id == row.id
 
 
 def test_repeated_cumulative_partial_close_does_not_reduce_remaining_quantity_twice():

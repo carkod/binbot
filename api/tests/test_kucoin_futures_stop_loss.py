@@ -1153,7 +1153,7 @@ def test_top_gainer_short_ignores_recovery_configuration_for_native_stop(
     assert calls == ["cancel", "place"]
 
 
-def test_top_gainer_short_with_recovery_waits_for_native_stop_confirmation():
+def test_top_gainer_short_ignores_legacy_recovery_settings_at_stop():
     deal = _make_lifecycle(
         stop_loss=2.0,
         stop_loss_price=102.0,
@@ -1189,8 +1189,8 @@ def test_top_gainer_short_with_recovery_waits_for_native_stop_confirmation():
 
     Lifecycle.exit(deal, 103.0)
 
-    assert stop_calls == []
-    assert reconcile_calls == [True]
+    assert stop_calls == [None]
+    assert reconcile_calls == []
 
 
 def test_top_gainer_short_low_price_stop_is_not_widened():
