@@ -771,3 +771,58 @@ def test_native_trailing_fill_cancels_a_pending_increase_before_retiring_bot(
     make_lifecycle(engine, monkeypatch).exit(104)
     engine.close_all.assert_called_once_with(deal_type=DealType.trailing_profit)
     engine.kucoin_futures_api.futures_order_api.add_order.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "trailing_stop_price,expected_deal_type",
+    [(0, DealType.stop_loss), (105, DealType.trailing_profit)],
+)
+def test_process_tick_cleans_pending_increase_after_native_protective_fill(
+    monkeypatch, trailing_stop_price, expected_deal_type
+):
+    engine = execution()
+    bot = engine.active_bot
+    bot.deal.position_size_order = pending_order()
+    bot.deal.trailing_stop_loss_price = trailing_stop_price
+    lifecycle = make_lifecycle(engine, monkeypatch)
+    lifecycle.base_streaming.kucoin_futures_api = engine.kucoin_futures_api
+    monkeypatch.setattr(
+        lifecycle,
+        "lifecycle_candle_intervals",
+        lambda: (
+            BinanceKlineIntervals.fifteen_minutes,
+            BinanceKlineIntervals.fifteen_minutes,
+        ),
+    )
+
+    class FilledProtectiveOrderPosition:
+        def __init__(self, base_streaming, execution):
+            self.base_streaming = base_streaming
+            self.execution = execution
+            self.df = None
+            self.btc_df = None
+
+        def dataframe_ops(self, **kwargs):
+            return [], []
+
+        def build_bb_metrics(self):
+            return None
+
+        def order_updates(self):
+            bot.deal.closing_qty = bot.deal.opening_qty
+            bot.deal.current_position_qty = 0
+            bot.deal.closing_price = trailing_stop_price or 95
+            bot.status = Status.completed
+            return bot
+
+        def position_updates(self, **kwargs):
+            pytest.fail("completed bot must not run position updates")
+
+    monkeypatch.setattr(
+        "streaming.lifecycle.FuturesPosition", FilledProtectiveOrderPosition
+    )
+
+    assert lifecycle.process_tick() is bot
+    engine.close_all.assert_called_once_with(deal_type=expected_deal_type)
+    engine.kucoin_futures_api.get_futures_position.assert_not_called()
+    engine.kucoin_futures_api.futures_order_api.add_order.assert_not_called()

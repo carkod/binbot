@@ -851,39 +851,38 @@ class Lifecycle:
         self.btc_df = cls.btc_df
         self.bb_metrics = cls.build_bb_metrics()
         self.execution.active_bot = cls.order_updates()
-        if self.execution.active_bot.status in {
-            Status.error,
-            Status.inactive,
-            Status.completed,
-        }:
-            return self.execution.active_bot
+        bot = self.execution.active_bot
+        if bot.status in {Status.error, Status.inactive}:
+            return bot
+        if bot.status == Status.completed and bot.deal.position_size_order is None:
+            return bot
 
-        # Fetch position AFTER order_updates so any fill-promotion is already
-        # reflected. Same single call as before; close_price stays mark-price.
-        position = None
-        if self.execution.active_bot.market_type == MarketType.FUTURES:
-            position = self.base_streaming.kucoin_futures_api.get_futures_position(
-                self.execution.active_bot.pair
-            )
-            close_price = self.base_streaming.kucoin_futures_api.get_mark_price(
-                self.execution.active_bot.pair
-            )
+        if bot.status != Status.completed:
+            # Fetch position AFTER order_updates so any fill-promotion is already
+            # reflected. Same single call as before; close_price stays mark-price.
+            position = None
+            if bot.market_type == MarketType.FUTURES:
+                position = self.base_streaming.kucoin_futures_api.get_futures_position(
+                    bot.pair
+                )
+                close_price = self.base_streaming.kucoin_futures_api.get_mark_price(
+                    bot.pair
+                )
 
-        if self.execution.awaiting_close_confirmation():
-            return self.execution.active_bot
+            if self.execution.awaiting_close_confirmation():
+                return bot
 
-        if not (
-            self.execution.active_bot.deal.closing_qty > 0
-            and self.execution.active_bot.deal.current_position_qty == 0
-        ):
-            self.execution.active_bot = cls.position_updates(position=position)
+            if not (bot.deal.closing_qty > 0 and bot.deal.current_position_qty == 0):
+                self.execution.active_bot = cls.position_updates(position=position)
 
-        if not close_price or close_price == 0:
-            close_price = self.klines[-1][4]
+            if not close_price or close_price == 0:
+                close_price = self.klines[-1][4]
 
-        self.execution.active_bot.deal.current_price = close_price
-        self.execution.controller.save(self.execution.active_bot)
+            self.execution.active_bot.deal.current_price = close_price
+            self.execution.controller.save(self.execution.active_bot)
 
+        # A protective fill may complete the bot while an increase remains live.
+        # exit() cancels that order and flattens any residual before retirement.
         try:
             self.execution.active_bot = self.exit(close_price)
             return self.execution.active_bot
