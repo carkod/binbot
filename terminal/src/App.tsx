@@ -1,9 +1,5 @@
 import { Provider } from "react-redux";
-import {
-  createBrowserRouter,
-  Navigate,
-  RouterProvider,
-} from "react-router-dom";
+import { createBrowserRouter, Navigate, RouterProvider } from "react-router";
 import { Layout } from "./app/Layout";
 import LoginPage from "./app/pages/Login";
 import { store } from "./app/store";

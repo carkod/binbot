@@ -15,21 +15,24 @@ export type LightSwitchProps = {
  * @param {*} value: boolean
  * @returns React.Component
  */
-const LightSwitch: FC<LightSwitchProps> = (
-  { value, name, toggle, register, required = false },
-  props,
-) => {
+const LightSwitch: FC<LightSwitchProps> = ({
+  value,
+  name,
+  toggle,
+  register,
+  required = false,
+}) => {
   return (
     <ToggleButtonGroup type="checkbox">
       <ToggleButton
-        type="button"
+        type="checkbox"
+        id={name}
         name={name}
+        value={name}
         checked={value}
         variant={value ? "success" : "secondary"}
-        defaultValue={value}
-        onClick={(e) => toggle(name, value)}
-        {...register(name, { required: required })}
-        {...props}
+        onClick={() => toggle?.(name, value)}
+        {...register?.(name, { required })}
       >
         {value ? "On" : "Off"}
       </ToggleButton>

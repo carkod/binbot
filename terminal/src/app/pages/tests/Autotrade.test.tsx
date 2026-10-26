@@ -2,7 +2,7 @@ import { render, screen as rtlScreen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { makeStore } from "../../store";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import Autotrade from "../Autotrade";
 import { initialAutotradeSettings } from "../../../features/autotradeSlice";
 import { vi } from "vitest";

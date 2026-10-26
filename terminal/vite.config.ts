@@ -13,8 +13,8 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      "@public": path.resolve(__dirname, "charting_library"),
-      "~bootstrap": path.resolve(__dirname, "node_modules/bootstrap"),
+      "@public": path.resolve(import.meta.dirname, "charting_library"),
+      "~bootstrap": path.resolve(import.meta.dirname, "node_modules/bootstrap"),
     },
   },
   publicDir: "/charting_library",

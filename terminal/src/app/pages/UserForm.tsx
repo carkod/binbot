@@ -1,7 +1,7 @@
 import { type FC, useEffect } from "react";
 import { Button, Card, Col, Container, Form, Row } from "react-bootstrap";
 import { useForm, type FieldValues } from "react-hook-form";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router";
 import {
   type UserPayload,
   useEditUserMutation,

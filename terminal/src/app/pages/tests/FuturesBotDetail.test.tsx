@@ -1,6 +1,6 @@
 import React from "react";
 import { Provider } from "react-redux";
-import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useNavigate } from "react-router";
 import {
   fireEvent,
   render,
