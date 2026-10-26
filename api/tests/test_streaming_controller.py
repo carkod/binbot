@@ -979,7 +979,7 @@ class TestPositionManager:
 
         FuturesPosition.order_updates(fp)
 
-        assert bot.status == Status.inactive
+        assert bot.status == Status.error
         assert canceled_futures_orders == ["455559324140359680"]
         assert canceled_stop_orders == []
         assert deleted == []

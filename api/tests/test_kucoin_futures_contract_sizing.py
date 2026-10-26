@@ -53,6 +53,7 @@ def make_sizing_deal(
         price_precision=5,
     )
     deal.price_precision = 5
+    deal.kucoin_symbol = "TESTUSDTM"
     deal.kucoin_symbol_data = types.SimpleNamespace(
         multiplier=multiplier,
         taker_fee_rate=0.0006,
@@ -225,270 +226,68 @@ def attach_order_book(
     deal.kucoin_symbol = "TESTUSDTM"
 
 
-def test_entry_liquidity_gate_downsizes_to_contracts_fillable_inside_price_band():
+@pytest.mark.parametrize(
+    "bids,asks",
+    [
+        ([[99.8, 100]], [[100.2, 100]]),
+        ([[99.99, 1]], [[100.01, 1], [100.49, 9]]),
+        ([[99.99, 1]], [[102, 1]]),
+    ],
+)
+def test_limit_entry_accepts_wide_spread_and_thin_depth_without_bps_gate(bids, asks):
     deal = make_sizing_deal(multiplier=1)
     deal.active_bot.position = Position.long
-    attach_order_book(
-        deal,
-        bids=[[99.99, 100]],
-        asks=[[100.01, 3], [100.6, 100]],
-    )
-
-    contracts, _ = deal.liquidity_gated_contracts(10, 100.5)
-
-    assert contracts == 3
-    assert any(
-        "Futures order downsized from 10 to 3 contracts" in log
-        for log in deal.active_bot.logs
-    )
-    assert any("depth50(bid/ask)" in log for log in deal.active_bot.logs)
+    attach_order_book(deal, bids=bids, asks=asks)
+    assert deal.prepare_entry_limit_price(100.5) == 100.5
+    assert deal.active_bot.status != Status.error
+    assert not any("slippage" in line for line in deal.active_bot.logs)
 
 
-def test_entry_liquidity_gate_preserves_exchange_book_price_when_tightening_buy():
+@pytest.mark.parametrize(
+    "position,candidate", [(Position.long, 99.5), (Position.short, 100.5)]
+)
+def test_limit_entry_preserves_candle_bounded_price(position, candidate):
     deal = make_sizing_deal(multiplier=1)
-    deal.active_bot.position = Position.long
-    deal.price_precision = 2
-    attach_order_book(
-        deal,
-        bids=[[99.99, 100]],
-        asks=[[100.005, 100]],
-    )
-
-    contracts, entry_limit_price = deal.liquidity_gated_contracts(10, 100.50)
-
-    assert contracts == 10
-    assert entry_limit_price == 100.005
+    deal.active_bot.position = position
+    deal._entry_allowance_pct = 0.5
+    attach_order_book(deal, bids=[[97.8, 3]], asks=[[98.2, 100]])
+    assert deal.prepare_entry_limit_price(candidate) == candidate
 
 
-def test_entry_liquidity_gate_logs_spread_without_a_spread_threshold():
+def test_limit_entry_retries_stale_book_then_uses_fresh_snapshot(monkeypatch):
+    from api.exchange_apis.kucoin.futures.liquidity import load_futures_order_book
+
     deal = make_sizing_deal(multiplier=1)
-    deal.active_bot.position = Position.long
-    attach_order_book(
-        deal,
-        bids=[[99.875, 100]],
-        asks=[[100.125, 100]],
+    attach_order_book(deal, bids=[[99.99, 100]], asks=[[100.01, 100]])
+    fresh = load_futures_order_book(deal.kucoin_futures_api, deal.kucoin_symbol)
+    stale = fresh.model_copy(
+        update={"exchange_timestamp_ms": fresh.received_timestamp_ms - 21000}
     )
-
-    contracts, entry_limit_price = deal.liquidity_gated_contracts(10, 100.5)
-
-    assert contracts == 10
-    assert entry_limit_price == 100.125
-    assert any(
-        "spread=25.00bps" in log and "threshold: slippage<=15.00bps" in log
-        for log in deal.active_bot.logs
+    loader = Mock(side_effect=[stale, TimeoutError("transient timeout"), fresh])
+    sleeper = Mock()
+    monkeypatch.setattr(
+        "api.exchange_apis.kucoin.futures.futures_deal.load_futures_order_book", loader
     )
+    monkeypatch.setattr("api.exchange_apis.kucoin.futures.futures_deal.sleep", sleeper)
+    assert deal.prepare_entry_limit_price(100) == 100
+    assert loader.call_count == 3
+    assert sleeper.call_count == 2
 
 
-def test_entry_liquidity_gate_rejects_wide_spread_through_expected_slippage():
+def test_limit_entry_stops_after_three_failed_book_reads(monkeypatch):
     deal = make_sizing_deal(multiplier=1)
-    deal.active_bot.position = Position.long
-    saved: list[BotModel] = []
-    deal.controller = types.SimpleNamespace(save=lambda bot: saved.append(bot))
-    attach_order_book(
-        deal,
-        bids=[[99.8, 100]],
-        asks=[[100.2, 100]],
+    loader = Mock(side_effect=TimeoutError("timeout"))
+    monkeypatch.setattr(
+        "api.exchange_apis.kucoin.futures.futures_deal.load_futures_order_book", loader
     )
-
-    with pytest.raises(BinbotErrors, match="expected KuCoin futures slippage"):
-        deal.liquidity_gated_contracts(10, 101.0)
-
+    monkeypatch.setattr(
+        "api.exchange_apis.kucoin.futures.futures_deal.sleep", lambda _: None
+    )
+    with pytest.raises(BinbotErrors, match="after 3 attempts"):
+        deal.prepare_entry_limit_price(100)
+    assert loader.call_count == 3
     assert deal.active_bot.status == Status.error
-    assert saved == [deal.active_bot]
-    assert "spread=40.00bps" in deal.active_bot.logs[-1]
-    assert "expected_slippage=20.00bps" in deal.active_bot.logs[-1]
-    assert "exceeds 15.00bps" in deal.active_bot.logs[-1]
-
-
-def test_entry_liquidity_gate_rejects_excessive_expected_slippage():
-    deal = make_sizing_deal(multiplier=1)
-    deal.active_bot.position = Position.long
-    attach_order_book(
-        deal,
-        bids=[[99.99, 100]],
-        asks=[[100.01, 1], [100.49, 9]],
-    )
-
-    with pytest.raises(BinbotErrors, match="expected KuCoin futures slippage"):
-        deal.liquidity_gated_contracts(10, 101.0)
-
-    assert "expected_slippage=44.20bps" in deal.active_bot.logs[-1]
-    assert "exceeds 15.00bps" in deal.active_bot.logs[-1]
-
-
-def test_passive_entry_uses_candidate_instead_of_current_expected_fill():
-    deal = make_sizing_deal(multiplier=1)
-    deal.active_bot.position = Position.long
-    deal.price_precision = 2
-    deal._entry_reference_price = 100.0
-    deal._entry_allowance_pct = 0.5
-    attach_order_book(
-        deal,
-        bids=[[101.8, 100]],
-        asks=[[102.2, 3]],
-    )
-
-    contracts, entry_limit_price = deal.liquidity_gated_contracts(10, 99.5)
-
-    assert contracts == 10
-    assert entry_limit_price == 99.5
-    assert any(
-        "Futures passive entry liquidity snapshot" in log
-        and "current expected-fill slippage and displacement checks do not apply" in log
-        for log in deal.active_bot.logs
-    )
-
-
-def test_passive_short_entry_uses_candidate_instead_of_current_expected_fill():
-    deal = make_sizing_deal(multiplier=1)
-    deal.active_bot.position = Position.short
-    deal.price_precision = 2
-    deal._entry_reference_price = 100.0
-    deal._entry_allowance_pct = 0.5
-    attach_order_book(
-        deal,
-        bids=[[97.8, 3]],
-        asks=[[98.2, 100]],
-    )
-
-    contracts, entry_limit_price = deal.liquidity_gated_contracts(10, 100.5)
-
-    assert contracts == 10
-    assert entry_limit_price == 100.5
-    assert any(
-        "Futures passive entry liquidity snapshot" in log
-        and "current expected-fill slippage and displacement checks do not apply" in log
-        for log in deal.active_bot.logs
-    )
-
-
-def test_passive_entry_errors_after_candidate_exceeds_displacement_twice():
-    deal = make_sizing_deal(multiplier=1)
-    deal.active_bot.position = Position.long
-    deal._entry_reference_price = 100.0
-    deal._entry_allowance_pct = 0.5
-    saved: list[BotModel] = []
-    deal.controller = types.SimpleNamespace(save=lambda bot: saved.append(bot))
-    attach_order_book(
-        deal,
-        bids=[[101.8, 100]],
-        asks=[[102.2, 100]],
-    )
-
-    with pytest.raises(BinbotErrors, match="passive KuCoin futures limit price"):
-        deal.liquidity_gated_contracts(10, 99.0)
-
-    assert deal.active_bot.status == Status.pending
-    assert saved == [deal.active_bot]
-    assert "Entry displacement retry 1/1:" in deal.active_bot.logs[-1]
-    assert "1.00% below candle reference 100" in deal.active_bot.logs[-1]
-
-    with pytest.raises(BinbotErrors, match="passive KuCoin futures limit price"):
-        deal.liquidity_gated_contracts(10, 99.0)
-
-    assert deal.active_bot.status == Status.error
-    assert len(saved) == 2
-    assert "1.00% below candle reference 100" in deal.active_bot.logs[-1]
-
-
-def test_passive_entry_accepts_directionally_floored_reference_boundary():
-    deal = make_sizing_deal(multiplier=1)
-    deal.active_bot.position = Position.long
-    deal.price_precision = 5
-    deal._entry_reference_price = 0.03636
-    deal._entry_allowance_pct = 0.5
-    attach_order_book(
-        deal,
-        bids=[[0.03656, 100]],
-        asks=[[0.03658, 100]],
-    )
-
-    contracts, entry_limit_price = deal.liquidity_gated_contracts(10, 0.03617)
-
-    assert contracts == 10
-    assert entry_limit_price == 0.03617
-
-
-def test_entry_liquidity_gate_errors_after_long_displacement_twice():
-    deal = make_sizing_deal(multiplier=1)
-    deal.active_bot.position = Position.long
-    deal.price_precision = 7
-    deal._entry_reference_price = 0.0008543
-    deal._entry_allowance_pct = 1.37
-    saved: list[BotModel] = []
-    deal.controller = types.SimpleNamespace(save=lambda bot: saved.append(bot))
-    attach_order_book(
-        deal,
-        bids=[[0.0008056, 25_000]],
-        asks=[[0.0008059, 25_000]],
-    )
-
-    with pytest.raises(BinbotErrors, match="below candle reference"):
-        deal.liquidity_gated_contracts(92, 0.000866)
-
-    assert deal.active_bot.status == Status.pending
-    assert saved == [deal.active_bot]
-    assert "Entry displacement retry 1/1:" in deal.active_bot.logs[-1]
-    assert "5.67% below candle reference 0.0008543" in deal.active_bot.logs[-1]
-
-    with pytest.raises(BinbotErrors, match="below candle reference"):
-        deal.liquidity_gated_contracts(92, 0.000866)
-
-    assert deal.active_bot.status == Status.error
-    assert len(saved) == 2
-    assert "5.67% below candle reference 0.0008543" in deal.active_bot.logs[-1]
-    assert "maximum allowed displacement is 1.37%" in deal.active_bot.logs[-1]
-
-
-def test_entry_liquidity_gate_retries_short_displacement_then_accepts_next_tick():
-    deal = make_sizing_deal(multiplier=1)
-    deal.active_bot.position = Position.short
-    deal._entry_reference_price = 100.0
-    deal._entry_allowance_pct = 1.0
-    saved: list[BotModel] = []
-    deal.controller = types.SimpleNamespace(save=lambda bot: saved.append(bot))
-    attach_order_book(
-        deal,
-        bids=[[105.0, 100]],
-        asks=[[105.02, 100]],
-    )
-
-    with pytest.raises(BinbotErrors, match="above candle reference"):
-        deal.liquidity_gated_contracts(10, 99.0)
-
-    assert deal.active_bot.status == Status.pending
-    assert saved == [deal.active_bot]
-    assert "Entry displacement retry 1/1:" in deal.active_bot.logs[-1]
-    assert "5.00% above candle reference 100" in deal.active_bot.logs[-1]
-    assert "maximum allowed displacement is 1.00%" in deal.active_bot.logs[-1]
-
-    attach_order_book(
-        deal,
-        bids=[[99.99, 100]],
-        asks=[[100.01, 100]],
-    )
-
-    contracts, entry_limit_price = deal.liquidity_gated_contracts(10, 99.0)
-
-    assert contracts == 10
-    assert entry_limit_price == 99.99
-    assert deal.active_bot.status == Status.pending
-
-
-def test_entry_liquidity_gate_rejects_stale_book_data():
-    deal = make_sizing_deal(multiplier=1)
-    deal.active_bot.position = Position.long
-    attach_order_book(
-        deal,
-        bids=[[99.99, 100]],
-        asks=[[100.01, 100]],
-        age_ms=21_000,
-    )
-
-    with pytest.raises(BinbotErrors, match="order book is stale"):
-        deal.liquidity_gated_contracts(10, 100.0)
-
-    assert "maximum age is 20000ms" in deal.active_bot.logs[-1]
+    assert deal.active_bot.orders == []
 
 
 def test_base_order_downsizes_when_margin_size_exceeds_available_balance():
@@ -559,18 +358,19 @@ def test_base_order_downsizes_when_margin_size_exceeds_available_balance():
     )
     deal.compute_available_balance = lambda: 1000
     deal.body_capped_entry_limit_price = lambda: 10
-    deal.liquidity_gated_contracts = lambda contracts, price: (contracts, price)
+    deal.prepare_entry_limit_price = lambda price: price
 
     opened_bot = KucoinPositionDeal.base_order(deal)
 
     assert deal.kucoin_futures_api.sell_calls == [{"qty": 9, "entry_limit_price": 10}]
     assert opened_bot.deal.base_order_size == 9
-    assert opened_bot.deal.opening_qty == 9
+    assert opened_bot.deal.opening_qty == 0
+    assert opened_bot.status == Status.pending
     assert any("Futures order downsized from 15 to 9" in log for log in opened_bot.logs)
     assert any("underpowered_recovery" in log for log in opened_bot.logs)
 
 
-def test_liquidity_downsized_entry_is_revalidated_with_required_margin():
+def test_limit_entry_keeps_margin_sized_quantity_and_rechecks_required_margin():
     order = OrderBase(
         order_id="liquidity-sized-entry",
         order_type="limit",
@@ -608,7 +408,7 @@ def test_liquidity_downsized_entry_is_revalidated_with_required_margin():
     deal.compute_available_balance = lambda: 1_000
     deal.body_capped_entry_limit_price = lambda: 10
     deal.max_contracts_for_margin = lambda available_balance, price: 10
-    deal.liquidity_gated_contracts = lambda contracts, price: (4, price)
+    deal.prepare_entry_limit_price = lambda price: price
     margin_checks: list[tuple[float, float]] = []
     required_margin_for_contracts = deal.required_margin_for_contracts
 
@@ -663,11 +463,11 @@ def test_sustained_top_gainer_base_order_is_submitted_post_only():
     deal.compute_available_balance = lambda: 100
     deal.body_capped_entry_limit_price = lambda: 10
 
-    def maker_liquidity_gate(contracts, price):
+    def maker_entry_limit(price):
         deal._entry_post_only = True
-        return contracts, price
+        return price
 
-    deal.liquidity_gated_contracts = maker_liquidity_gate
+    deal.prepare_entry_limit_price = maker_entry_limit
 
     KucoinPositionDeal.base_order(deal)
 
@@ -677,7 +477,7 @@ def test_sustained_top_gainer_base_order_is_submitted_post_only():
     assert request["post_only"] is True
 
 
-def test_base_order_cancels_partial_remainder_before_freezing_entry_quantity():
+def test_base_order_defers_partial_fill_and_cancellation_to_lifecycle():
     entry_order = OrderBase(
         order_id="partial-entry",
         order_type="limit",
@@ -725,7 +525,7 @@ def test_base_order_cancels_partial_remainder_before_freezing_entry_quantity():
     deal.compute_available_balance = lambda: 100_000
     deal.body_capped_entry_limit_price = lambda: 10
     deal.max_contracts_for_margin = lambda available_balance, price: 5000
-    deal.liquidity_gated_contracts = lambda contracts, price: (contracts, price)
+    deal.prepare_entry_limit_price = lambda price: price
     deal.required_margin_for_contracts = lambda contracts, price: contracts
     deal.notional_for_contracts = lambda contracts, price: contracts * price
     saved: list[BotModel] = []
@@ -736,24 +536,14 @@ def test_base_order_cancels_partial_remainder_before_freezing_entry_quantity():
 
     opened_bot = KucoinPositionDeal.base_order(deal)
 
-    futures_api.cancel_futures_order.assert_called_once_with("partial-entry")
-    assert opened_bot.deal.opening_qty == 4522
-    assert opened_bot.deal.current_position_qty == 4522
-    assert opened_bot.deal.base_order_size == 4522
-    assert opened_bot.orders[0].qty == 4522
+    futures_api.retrieve_order.assert_not_called()
+    futures_api.cancel_futures_order.assert_not_called()
     assert opened_bot.status == Status.pending
     assert saved and saved[0].deal.entry_client_oid is not None
 
 
-def test_base_order_affordability_check_uses_post_gate_price():
-    """
-    liquidity_gated_contracts() can move entry_limit_price away from the
-    pre-gate candidate (e.g. tightening a short's floor up to the book's
-    higher worst_fill_price). required_margin_for_contracts() must be
-    checked against that final price, not the stale candidate, or an
-    account near its balance limit could pass the check and submit
-    contracts it can't actually afford at entry_limit_price.
-    """
+def test_base_order_affordability_check_uses_final_limit_price():
+    """Recheck affordability after tick rounding or strategy price adjustments."""
     order = OrderBase(
         order_id="tightened-price-entry",
         order_type="limit",
@@ -786,7 +576,7 @@ def test_base_order_affordability_check_uses_post_gate_price():
     deal.max_contracts_for_margin = lambda available_balance, price: 10
     # Simulates the gate tightening a short's price up from the affordable
     # candidate (10) to the book's worst_fill_price (20).
-    deal.liquidity_gated_contracts = lambda contracts, price: (1, 20)
+    deal.prepare_entry_limit_price = lambda price: 20
 
     with pytest.raises(BinbotErrors, match="Required futures margin"):
         KucoinPositionDeal.base_order(deal)
@@ -980,7 +770,7 @@ def test_unfilled_base_order_logs_pending_wait_queue():
     )
     deal.compute_available_balance = lambda: 100
     deal.body_capped_entry_limit_price = lambda: 10
-    deal.liquidity_gated_contracts = lambda contracts, price: (contracts, price)
+    deal.prepare_entry_limit_price = lambda price: price
 
     opened_bot = KucoinPositionDeal.base_order(deal)
 
@@ -1213,7 +1003,7 @@ def test_top_gainer_failure_reversal_anchors_prompt_entry_to_current_close(
     )
 
 
-def test_top_gainer_failure_reversal_crosses_approved_bid_depth(monkeypatch):
+def test_top_gainer_failure_reversal_uses_bounded_best_bid_limit(monkeypatch):
     deal = prepare_recovery_entry_deal(
         monkeypatch,
         position=Position.short,
@@ -1229,17 +1019,10 @@ def test_top_gainer_failure_reversal_crosses_approved_bid_depth(monkeypatch):
         asks=[[99.0, 100]],
     )
 
-    contracts, entry_limit_price = deal.liquidity_gated_contracts(
-        10,
-        candidate_limit_price,
-    )
+    entry_limit_price = deal.prepare_entry_limit_price(candidate_limit_price)
 
-    assert contracts == 10
-    assert entry_limit_price == 98.98
-    assert any(
-        "failure-reversal entry routed as a marketable limit" in log
-        for log in deal.active_bot.logs
-    )
+    assert entry_limit_price == 98.99
+    assert any("Futures entry limit prepared" in log for log in deal.active_bot.logs)
 
 
 def test_top_gainer_early_momentum_waits_for_half_percent_retest(monkeypatch):
@@ -1280,11 +1063,8 @@ def test_top_gainer_expected_fill_at_exact_retest_boundary_is_allowed(monkeypatc
         asks=[[99.5, 100]],
     )
 
-    contracts, entry_limit_price = deal.liquidity_gated_contracts(
-        10, candidate_limit_price
-    )
+    entry_limit_price = deal.prepare_entry_limit_price(candidate_limit_price)
 
-    assert contracts == 10
     assert candidate_limit_price == 99.5
     assert entry_limit_price == 99.5
 
@@ -1326,16 +1106,10 @@ def test_top_gainer_accepts_shallow_downward_displacement_during_valid_uptrend(
         asks=[[99.40, 100]],
     )
 
-    contracts, entry_limit_price = deal.liquidity_gated_contracts(10, 99.5)
+    entry_limit_price = deal.prepare_entry_limit_price(99.5)
 
-    assert contracts == 10
-    assert entry_limit_price == 99.4
-    assert any(
-        "Top-gainer shallow pullback accepted" in log
-        and "displacement=0.60%" in log
-        and "soft_limit=0.70%" in log
-        for log in deal.active_bot.logs
-    )
+    assert entry_limit_price == 99.5
+    assert not any("slippage" in line for line in deal.active_bot.logs)
 
 
 def test_top_gainer_shallow_pullback_grace_never_exceeds_one_percent(monkeypatch):
@@ -1397,12 +1171,8 @@ def test_sustained_top_gainer_joins_best_bid_inside_candle_band(monkeypatch):
         asks=[[100.10, 100]],
     )
 
-    contracts, entry_limit_price = deal.liquidity_gated_contracts(
-        10,
-        provisional_limit_price,
-    )
+    entry_limit_price = deal.prepare_entry_limit_price(provisional_limit_price)
 
-    assert contracts == 10
     assert entry_limit_price == 99.8
     assert deal._entry_post_only
     assert any(
@@ -1429,12 +1199,8 @@ def test_top_gainer_retest_uses_spread_when_it_exceeds_atr_component(monkeypatch
         asks=[[100.05, 100]],
     )
 
-    contracts, entry_limit_price = deal.liquidity_gated_contracts(
-        10,
-        provisional_limit_price,
-    )
+    entry_limit_price = deal.prepare_entry_limit_price(provisional_limit_price)
 
-    assert contracts == 10
     assert provisional_limit_price == 99.9
     assert entry_limit_price == 99.8
     assert deal._entry_allowance_pct == pytest.approx(0.2)
@@ -1465,10 +1231,7 @@ def test_top_gainer_retest_uses_exact_tick_distance(monkeypatch):
         asks=[[100.1, 100]],
     )
 
-    _, entry_limit_price = deal.liquidity_gated_contracts(
-        10,
-        provisional_limit_price,
-    )
+    entry_limit_price = deal.prepare_entry_limit_price(provisional_limit_price)
 
     assert entry_limit_price == 99.5
     assert deal._entry_allowance_pct == pytest.approx(0.5)
@@ -1510,12 +1273,8 @@ def test_top_gainer_retest_uses_cap_safe_tick_for_low_priced_contract(monkeypatc
         asks=[[0.01682, 100]],
     )
 
-    contracts, entry_limit_price = deal.liquidity_gated_contracts(
-        10,
-        provisional_limit_price,
-    )
+    entry_limit_price = deal.prepare_entry_limit_price(provisional_limit_price)
 
-    assert contracts == 10
     assert provisional_limit_price == 0.01673
     assert entry_limit_price == 0.01666
     assert deal._entry_allowance_pct == pytest.approx(0.9512485136741997)
@@ -1545,7 +1304,7 @@ def test_top_gainer_retest_rejects_when_minimum_ticks_cannot_fit_within_cap(
     )
 
     with pytest.raises(BinbotErrors, match="tick-size quantization"):
-        deal.liquidity_gated_contracts(10, provisional_limit_price)
+        deal.prepare_entry_limit_price(provisional_limit_price)
 
     assert deal.active_bot.status == Status.error
     assert saved == [deal.active_bot]

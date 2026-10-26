@@ -8,6 +8,8 @@ from pybinbot import (
     BinanceKlineIntervals,
     BotBase,
     BotModel,
+    DealType,
+    OrderStatus,
     Candles,
     DealType,
     ExchangeId,
@@ -509,6 +511,13 @@ class Lifecycle:
         self.execution.controller.save(self.execution.active_bot)
 
         if self.execution.active_bot.status == Status.pending:
+            if self.execution.active_bot.deal.opening_price == 0 and any(
+                order.deal_type == DealType.base_order
+                and order.status
+                not in {OrderStatus.CANCELED, OrderStatus.EXPIRED, OrderStatus.REJECTED}
+                for order in self.execution.active_bot.orders
+            ):
+                return self.execution.active_bot
             self.execution.active_bot.add_log(
                 "Pending bot detected on exit tick; calling open_deal to place base_order and activate."
             )
@@ -845,6 +854,12 @@ class Lifecycle:
         self.btc_df = cls.btc_df
         self.bb_metrics = cls.build_bb_metrics()
         self.execution.active_bot = cls.order_updates()
+        if self.execution.active_bot.status in {
+            Status.error,
+            Status.inactive,
+            Status.completed,
+        }:
+            return self.execution.active_bot
 
         # Fetch position AFTER order_updates so any fill-promotion is already
         # reflected. Same single call as before; close_price stays mark-price.

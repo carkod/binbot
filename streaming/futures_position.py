@@ -28,6 +28,7 @@ from api.tools.constants import (
     RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO,
     RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES,
     TOP_GAINER_EARLY_MOMENTUM_ALGO,
+    TOP_GAINER_SHORT_ALGO,
     TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES,
     TOP_GAINER_FAILURE_REVERSAL_ALGO,
     TOP_GAINER_FAILURE_REVERSAL_PENDING_ENTRY_TTL_MS,
@@ -175,7 +176,8 @@ class FuturesPosition(PositionMarket):
         self.execution.active_bot.deal.base_order_size = order.qty
         self.execution.active_bot.deal.opening_timestamp = (
             self.execution.matching_exchange_fill_timestamp(order)
-            if self.execution.active_bot.name == RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO
+            if self.execution.active_bot.name
+            in {RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO, TOP_GAINER_SHORT_ALGO}
             else order.timestamp
         )
         if log_message:
@@ -322,7 +324,7 @@ class FuturesPosition(PositionMarket):
             )
             return False
 
-        if order_book.data_age_ms > KucoinPositionDeal.ENTRY_LIQUIDITY_MAX_DATA_AGE_MS:
+        if order_book.data_age_ms > KucoinPositionDeal.ENTRY_BOOK_MAX_DATA_AGE_MS:
             logging.warning(
                 "Skipping pending top-gainer entry reprice for %s because the "
                 "order book is stale (age=%sms)",
@@ -567,7 +569,7 @@ class FuturesPosition(PositionMarket):
         order.status = OrderStatus.EXPIRED
         order.qty = 0
         self.execution.controller.update_order(order)
-        self.execution.active_bot.status = Status.inactive
+        self.execution.active_bot.status = Status.error
         pending_entry_minutes = self.PENDING_ENTRY_TTL_MS // 60_000
         if self.execution.active_bot.name == RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
             pending_entry_minutes = (
@@ -587,7 +589,7 @@ class FuturesPosition(PositionMarket):
             )
         self.execution.active_bot.add_log(
             f"Entry limit order {order.order_id} expired after {pending_entry_minutes} minutes without fill. "
-            "Order cancelled and bot set to inactive."
+            "Order cancelled, no position or fills remain, and bot set to error."
         )
         self.execution.controller.save(data=self.execution.active_bot)
 
@@ -936,10 +938,10 @@ class FuturesPosition(PositionMarket):
                         }
                     ):
                         self.execution.controller.update_order(order)
-                        self.execution.active_bot.status = Status.inactive
+                        self.execution.active_bot.status = Status.error
                         self.execution.active_bot.add_log(
                             f"Entry limit order {order.order_id} ended with status {status.value} before fill. "
-                            "Bot set to inactive."
+                            "Bot set to error."
                         )
                         self.execution.controller.save(data=self.execution.active_bot)
                         continue
