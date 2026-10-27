@@ -108,7 +108,7 @@ const userMutationQuery = async <T>(
 export const userApiSlice = createApi({
   baseQuery: binbotBaseQuery,
   reducerPath: "api",
-  tagTypes: ["grid-ladders", "grid-ladder", "users", "user"],
+  tagTypes: ["grid-ladders", "grid-ladder", "users", "user", "bots", "bot"],
   endpoints: (build) => ({
     postLogin: build.mutation<LoginResponsePayload, FormData>({
       query: (body) => ({

@@ -2,7 +2,7 @@ from time import sleep, time
 from uuid import uuid4
 
 from pybinbot.models.deal import ConditionalCloseOrder
-from typing import Any, NoReturn, Type
+from typing import Any, Callable, NoReturn, Type
 
 from kucoin_universal_sdk.generate.futures.order import GetTradeHistoryReq
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
@@ -2463,6 +2463,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         *,
         deal_type: DealType = DealType.panic_close,
         market_only: bool = False,
+        progress: Callable[[int, str], None] | None = None,
     ) -> BotModel:
         """
         Closes all open positions and cancels all orders.
@@ -2474,6 +2475,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
         """
         if algorithmic_close:
             deal_type = DealType.algorithmic_close
+        if progress:
+            progress(35, "Cancelling protective and pending orders")
         if (
             deal_type != DealType.stop_loss
             and self.active_bot.recovery_params is not None
@@ -2493,8 +2496,12 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self.controller.save(self.active_bot)
             self.kucoin_futures_api.cancel_all_futures_orders(self.kucoin_symbol)
         position = self.kucoin_futures_api.get_futures_position(self.kucoin_symbol)
+        if progress:
+            progress(55, "Checking the exchange position")
 
         if position and float(position.current_qty) != 0:
+            if progress:
+                progress(65, "Closing the exchange position")
             position_qty = float(position.current_qty)
             qty = abs(int(position_qty))
             close_side = (
@@ -2523,6 +2530,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
                     "Futures close did not confirm the full exchange position: "
                     f"confirmed={total_filled_qty}, expected={qty}."
                 )
+            if progress:
+                progress(85, "Close fills confirmed")
 
             # Both legs recorded and blended into a single weighted-average
             # close — a partial IOC fill plus market-fallback residual must
@@ -2565,9 +2574,13 @@ class KucoinPositionDeal(KucoinBaseBalance):
             self.active_bot = self.backfill_position_from_fills()
 
         self.controller.save(self.active_bot)
+        if progress:
+            progress(95, "Bot state saved")
         return self.active_bot
 
-    def open_deal(self) -> BotModel:
+    def open_deal(self, progress: Callable[[int, str], None] | None = None) -> BotModel:
+        if progress:
+            progress(35, "Preparing the futures entry")
         if (
             self.active_bot.dynamic_position_sizing
             and self.active_bot.recovery_params is not None
@@ -2585,11 +2598,15 @@ class KucoinPositionDeal(KucoinBaseBalance):
         )
 
         if not base_order:
+            if progress:
+                progress(45, "Submitting the entry order")
             self.active_bot.add_log(
                 f"Opening new future deal for {self.kucoin_symbol}..."
             )
             self.controller.save(self.active_bot)
             self.base_order()
+            if progress:
+                progress(75, "Entry order submitted")
 
         # Entry not filled yet (opening_price == 0): leave the bot pending and
         # return. order_updates() will promote it to active once KuCoin confirms
@@ -2600,6 +2617,8 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 "Entry order is live but not yet filled; bot set to pending."
             )
             self.controller.save(self.active_bot)
+            if progress:
+                progress(95, "Waiting for the exchange fill")
             return self.active_bot
 
         # Entry is filled (opening_price > 0): activate / reactivate.
@@ -2609,4 +2628,6 @@ class KucoinPositionDeal(KucoinBaseBalance):
         if self.active_bot.status != Status.completed:
             self.active_bot.status = Status.active
         self.controller.save(self.active_bot)
+        if progress:
+            progress(95, "Bot state saved")
         return self.active_bot

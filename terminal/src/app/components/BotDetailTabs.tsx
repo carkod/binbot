@@ -6,7 +6,7 @@ import {
   useCreateBotMutation,
   useDeactivateBotMutation,
   useEditBotMutation,
-  useLazyActivateBotQuery,
+  useActivateBotMutation,
 } from "../../features/bots/botsApiSlice";
 import { selectBot, setBot } from "../../features/bots/botSlice";
 import { BotStatus, MarketType, TabsKeys } from "../../utils/enums";
@@ -27,10 +27,8 @@ const BotDetailTabs: FC<{
 
   const [updateBot] = useEditBotMutation();
   const [createBot] = useCreateBotMutation();
-  const [
-    trigger,
-    { isLoading: isActivating, isError, data: activatedBot, error },
-  ] = useLazyActivateBotQuery();
+  const [trigger, { isLoading: isActivating, data: activatedBot }] =
+    useActivateBotMutation();
   const [deactivateBot, { isLoading: isDeactivating, data: deactivatedBot }] =
     useDeactivateBotMutation();
 
@@ -43,14 +41,22 @@ const BotDetailTabs: FC<{
   // Activate and get bot again
   // Deals and orders information need to come from the server
   const handleActivation = async (id: string) => {
-    const { data } = await updateBot({ body: bot, id });
-    await trigger(id);
-    if (id && data) {
-      navigate(getEditPath(id));
+    try {
+      const data = await updateBot({ body: bot, id }).unwrap();
+      if (data) {
+        await trigger(id).unwrap();
+        navigate(getEditPath(id));
+      }
+    } catch {
+      // The mutation displays the server error; keep the bot page open.
     }
   };
   const handlePanicSell = async (id: string) => {
-    await deactivateBot(id).unwrap();
+    try {
+      await deactivateBot(id).unwrap();
+    } catch {
+      // The mutation displays the server error; keep the bot page open.
+    }
   };
 
   const onSubmit = async () => {

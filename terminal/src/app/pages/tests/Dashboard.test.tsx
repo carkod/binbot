@@ -229,10 +229,11 @@ describe("Dashboard page", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("filters algorithm ranking to strategies currently in Binquant", () => {
+  it("shows current Binquant strategies and all terminal bots in the ranking", () => {
     vi.mocked(useGetAlgoRankingQuery).mockReturnValueOnce({
       data: [
         { name: "top_gainer_early_momentum", count: 3, bot_profit: 9 },
+        { name: "terminal", count: 7, bot_profit: 12 },
         { name: "retired_strategy", count: 10, bot_profit: 20 },
       ],
       isLoading: false,
@@ -253,6 +254,12 @@ describe("Dashboard page", () => {
       within(algorithmCard as HTMLElement).getByText(
         "top_gainer_early_momentum",
       ),
+    ).toBeInTheDocument();
+    expect(
+      within(algorithmCard as HTMLElement).getByText("terminal"),
+    ).toBeInTheDocument();
+    expect(
+      within(algorithmCard as HTMLElement).getByText("7"),
     ).toBeInTheDocument();
     expect(
       within(algorithmCard as HTMLElement).queryByText("retired_strategy"),

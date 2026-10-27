@@ -66,8 +66,9 @@ export const DashboardPage: FC<{}> = () => {
   const btcSharpe = benchmark?.portfolioStats?.btc_sharpe;
   const filteredAlgoRanking = useMemo(
     () =>
-      algoRanking?.filter(({ name }) =>
-        strategyNames.has(name.toLowerCase()),
+      algoRanking?.filter(
+        ({ name }) =>
+          name === "terminal" || strategyNames.has(name.toLowerCase()),
       ) ?? [],
     [algoRanking, strategyNames],
   );
@@ -412,8 +413,7 @@ export const DashboardPage: FC<{}> = () => {
                     <span>Algorithm Ranking</span>
                   </Card.Title>
                   <Card.Text className="text-body-secondary">
-                    These are the algorithms executed by Binquant through
-                    autotrade
+                    Strategies executed by Binquant and bots created in Terminal
                   </Card.Text>
                 </Card.Header>
                 <Card.Body>
