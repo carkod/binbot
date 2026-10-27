@@ -165,7 +165,7 @@ const BotCard: FC<BotCardProps> = ({
           {bot.stop_loss > 0 && (
             <Row>
               <Col md="6" xs="7">
-                <p className="small small">Stop loss</p>
+                <p>Stop loss</p>
               </Col>
               <Col md="6" xs="5">
                 <p>{roundDecimals(bot.stop_loss) + "%"}</p>

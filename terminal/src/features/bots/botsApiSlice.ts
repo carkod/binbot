@@ -199,8 +199,8 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         url: import.meta.env.VITE_GET_BOTS,
         method: "POST",
         body,
-        invalidatesTags: (result) => [{ type: "bot", id: result.id }],
       }),
+      invalidatesTags: ["bots"],
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
           notifification("error", message);
@@ -217,8 +217,11 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         url: `${import.meta.env.VITE_GET_BOTS}/${id}`,
         method: "PUT",
         body,
-        invalidatesTags: (result) => [{ type: "bot", id: result.id }],
       }),
+      invalidatesTags: (_result, _error, { id }) => [
+        "bots",
+        { type: "bot", id },
+      ],
       transformResponse: ({ botId, message, error }, meta, arg) => {
         if (error && error === 1) {
           notifification("error", message);
@@ -235,8 +238,11 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         url: `${import.meta.env.VITE_GET_BOTS}` || "/bot",
         method: "DELETE",
         body: { ids },
-        invalidatesTags: ["bots"],
       }),
+      invalidatesTags: (_result, _error, ids) => [
+        "bots",
+        ...ids.map((id) => ({ type: "bot" as const, id })),
+      ],
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
           notifification("error", message);

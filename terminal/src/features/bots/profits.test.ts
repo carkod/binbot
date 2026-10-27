@@ -62,4 +62,37 @@ describe("bot profits", () => {
     expect(computeSingleBotProfit(bot, 110)).toBe(10);
     expect(getProfit(100, 110)).toBe(10);
   });
+
+  it("averages closed price returns and changes when a closed bot is removed", () => {
+    const winner = makeBot({
+      id: "winner",
+      position: BotPosition.LONG,
+      deal: {
+        ...singleBot.deal!,
+        opening_price: 100,
+        closing_price: 110,
+      },
+    });
+    const loser = makeBot({
+      id: "loser",
+      position: BotPosition.SHORT,
+      deal: {
+        ...singleBot.deal!,
+        opening_price: 200,
+        closing_price: 210,
+      },
+    });
+    const openBot = makeBot({
+      id: "open",
+      deal: {
+        ...singleBot.deal!,
+        opening_price: 100,
+        current_price: 200,
+      },
+    });
+
+    expect(computeTotalProfit([winner, loser, openBot])).toBe(2.5);
+    expect(computeTotalProfit([loser, openBot])).toBe(-5);
+    expect(computeTotalProfit([openBot])).toBe(0);
+  });
 });

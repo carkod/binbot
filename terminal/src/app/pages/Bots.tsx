@@ -235,9 +235,14 @@ export const BotsPage: FC<{}> = () => {
           <div id="bot-profits">
             <h4>
               {data?.bots?.ids.length > 0 && (
-                <Badge bg={data.totalProfit > 0 ? "success" : "danger"}>
+                <Badge
+                  bg={data.totalProfit > 0 ? "success" : "danger"}
+                  title="Average price return of closed bots in this list"
+                >
                   <i className="fas fa-building-columns" />{" "}
-                  <span className="visually-hidden">Profit</span>
+                  <span className="visually-hidden">
+                    Average closed-bot return
+                  </span>
                   {(data.totalProfit || 0) + "%"}
                 </Badge>
               )}
