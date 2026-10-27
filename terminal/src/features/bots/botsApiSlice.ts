@@ -1,8 +1,8 @@
 import { createEntityAdapter } from "@reduxjs/toolkit";
 import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
+import { toast } from "react-toastify";
 import { buildBackUrl, notifification } from "../../utils/api";
 import { getToken } from "../../utils/login";
-import { setBotProgress } from "../layoutSlice";
 import { weekAgo } from "../../utils/time";
 import { userApiSlice } from "../userApiSlice";
 import type { Bot, BotEntity } from "./botInitialState";
@@ -49,8 +49,15 @@ type BotOperationResponse = { message: string; error: number; data: Bot };
 
 const streamBotOperation = async (
   url: string,
-  onProgress: (percent: number, message: string) => void,
+  operation: string,
 ): Promise<{ data: BotDetailsState } | { error: FetchBaseQueryError }> => {
+  const toastId = toast.info(`${operation} (0%)`, {
+    autoClose: false,
+    closeOnClick: false,
+    hideProgressBar: false,
+    progress: 0,
+    theme: "colored",
+  });
   try {
     const token = getToken();
     const response = await fetch(`${buildBackUrl()}${url}`, {
@@ -82,17 +89,13 @@ const streamBotOperation = async (
       if (!event || !data) return;
       const payload = JSON.parse(data);
       if (event === "progress") {
-        onProgress(payload.percent, payload.message);
+        const percent = Math.max(0, Math.min(100, payload.percent));
+        toast.update(toastId, {
+          render: `${payload.message} (${percent}%)`,
+          progress: percent / 100,
+        });
       } else if (event === "result") {
         result = payload.response as BotOperationResponse;
-        if (!result.error) {
-          onProgress(
-            100,
-            result.data.status === BotStatus.PENDING
-              ? "Entry order submitted; awaiting exchange fill"
-              : "Operation completed",
-          );
-        }
       } else if (event === "error") {
         throw new Error(payload.message);
       }
@@ -119,12 +122,22 @@ const streamBotOperation = async (
     if (result.error) {
       throw new Error(result.message);
     }
-    notifification("success", result.message);
+    toast.update(toastId, {
+      render: result.message,
+      type: "success",
+      progress: null,
+      autoClose: 5000,
+    });
     return { data: { bot: result.data } };
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Bot operation failed";
-    notifification("error", message);
+    toast.update(toastId, {
+      render: message,
+      type: "error",
+      progress: null,
+      autoClose: 5000,
+    });
     return { error: { status: "CUSTOM_ERROR", error: message } };
   }
 };
@@ -254,25 +267,19 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
       },
     }),
     activateBot: build.mutation<BotDetailsState, string>({
-      queryFn: (id, api) => {
-        api.dispatch(setBotProgress(null));
-        return streamBotOperation(
+      queryFn: (id) =>
+        streamBotOperation(
           `${import.meta.env.VITE_ACTIVATE_BOT}/${id}`,
-          (percent, message) =>
-            api.dispatch(setBotProgress({ botId: id, percent, message })),
-        );
-      },
+          "Activating bot",
+        ),
       invalidatesTags: ["bots", "bot"],
     }),
     deactivateBot: build.mutation<SingleBotResponse, string>({
-      queryFn: (id, api) => {
-        api.dispatch(setBotProgress(null));
-        return streamBotOperation(
+      queryFn: (id) =>
+        streamBotOperation(
           `${import.meta.env.VITE_DEACTIVATE_BOT}/${id}`,
-          (percent, message) =>
-            api.dispatch(setBotProgress({ botId: id, percent, message })),
-        );
-      },
+          "Closing bot",
+        ),
       invalidatesTags: ["bots", "bot"],
     }),
     getAlgoRanking: build.query<AlgoRankingItem[], void>({

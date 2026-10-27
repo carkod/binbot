@@ -1,5 +1,5 @@
 import { useEffect, useState, type FC } from "react";
-import { Button, Col, Nav, ProgressBar, Row, Tab } from "react-bootstrap";
+import { Button, Col, Nav, Row, Tab } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router";
 import {
   botsApiSlice,
@@ -24,7 +24,6 @@ const BotDetailTabs: FC<{
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const botProgress = useAppSelector((state) => state.layout.botProgress);
 
   const [updateBot] = useEditBotMutation();
   const [createBot] = useCreateBotMutation();
@@ -159,16 +158,6 @@ const BotDetailTabs: FC<{
           )}
         </Col>
       </Row>
-      {(isActivating || isDeactivating) && botProgress?.botId === bot.id && (
-        <div className="mt-3" aria-live="polite">
-          <div>{botProgress.message}</div>
-          <ProgressBar
-            now={botProgress.percent}
-            label={`${botProgress.percent}%`}
-            animated
-          />
-        </div>
-      )}
     </Tab.Container>
   );
 };

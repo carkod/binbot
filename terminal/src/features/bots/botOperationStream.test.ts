@@ -1,8 +1,22 @@
 import { vi } from "vitest";
+import { toast } from "react-toastify";
 import { makeStore } from "../../app/store";
 import { botsApiSlice } from "./botsApiSlice";
 
-afterEach(() => vi.unstubAllGlobals());
+vi.mock("react-toastify", () => ({
+  Bounce: vi.fn(),
+  toast: {
+    info: vi.fn(() => "bot-progress"),
+    update: vi.fn(),
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.clearAllMocks();
+});
 
 it("reads split progress events and waits for the final bot response", async () => {
   const chunks = [
@@ -31,7 +45,25 @@ it("reads split progress events and waits for the final bot response", async () 
   );
 
   expect(result.data?.bot.id).toBe("bot-1");
-  expect(store.getState().layout.botProgress?.percent).toBe(100);
+  expect(toast.info).toHaveBeenCalledWith(
+    "Activating bot (0%)",
+    expect.objectContaining({
+      autoClose: false,
+      hideProgressBar: false,
+      progress: 0,
+    }),
+  );
+  expect(toast.update).toHaveBeenCalledWith("bot-progress", {
+    render: "Submitting the entry order (45%)",
+    progress: 0.45,
+  });
+  expect(toast.update).toHaveBeenCalledWith("bot-progress", {
+    render: "Activated",
+    type: "success",
+    progress: null,
+    autoClose: 5000,
+  });
+  expect(toast.success).not.toHaveBeenCalled();
   expect(fetch).toHaveBeenCalledWith(
     expect.stringContaining("/bot-1"),
     expect.objectContaining({
@@ -55,4 +87,15 @@ it("reports an uncertain outcome when the stream ends without a result", async (
   );
 
   expect(result.error).toMatchObject({ status: "CUSTOM_ERROR" });
+  expect(toast.info).toHaveBeenCalledWith(
+    "Closing bot (0%)",
+    expect.objectContaining({ progress: 0 }),
+  );
+  expect(toast.update).toHaveBeenCalledWith(
+    "bot-progress",
+    expect.objectContaining({
+      type: "error",
+      render: expect.stringContaining("stream ended before the result"),
+    }),
+  );
 });

@@ -1,13 +1,5 @@
 import React, { useContext, useEffect, useState, type FC } from "react";
-import {
-  Badge,
-  Button,
-  Col,
-  Container,
-  ProgressBar,
-  Row,
-  Stack,
-} from "react-bootstrap";
+import { Badge, Button, Col, Container, Row, Stack } from "react-bootstrap";
 import { useImmer } from "use-immer";
 import {
   useDeactivateBotMutation,
@@ -20,7 +12,7 @@ import BotCard from "../components/BotCard";
 import BotsActions, { BulkAction } from "../components/BotsActions";
 import BotsDateFilter from "../components/BotsCalendar";
 import ConfirmModal from "../components/ConfirmModal";
-import { useAppDispatch, useAppSelector } from "../hooks";
+import { useAppDispatch } from "../hooks";
 import { BotStatus } from "../../utils/enums";
 import { SpinnerContext } from "../spinner-context";
 import SymbolSearch from "../components/SymbolSearch";
@@ -28,7 +20,6 @@ import { useGetSymbolsQuery } from "../../features/symbolsApiSlice";
 
 export const BotsPage: FC<{}> = () => {
   const dispatch = useAppDispatch();
-  const botProgress = useAppSelector((state) => state.layout.botProgress);
   const currentTs = new Date().getTime();
   const oneWeekAgo = weekAgo();
   const { spinner, setSpinner } = useContext(SpinnerContext);
@@ -221,16 +212,6 @@ export const BotsPage: FC<{}> = () => {
   return (
     <SpinnerContext.Provider value={{ spinner, setSpinner }}>
       <Container fluid>
-        {isDeactivating && botProgress && (
-          <div className="mb-3" aria-live="polite">
-            <div>{botProgress.message}</div>
-            <ProgressBar
-              now={botProgress.percent}
-              label={`${botProgress.percent}%`}
-              animated
-            />
-          </div>
-        )}
         <div className="mb-3 d-flex flex-column flex-lg-row justify-content-between align-items-center">
           <div id="bot-profits">
             <h4>
