@@ -322,12 +322,12 @@ const BaseOrderTab: FC<{
                 </InputTooltip>
               </Col>
               <Col md="6" sm="12" className="my-6">
-                {bot.market_type === MarketType.FUTURES && bot.futures_leverage ? (
+                {bot.market_type === MarketType.FUTURES ? (
                   <Form.Group controlId="futures_leverage">
                     <Form.Label>Leverage</Form.Label>
                     <Form.Select
                       name="futures_leverage"
-                      value={bot.futures_leverage}
+                      value={bot.futures_leverage ?? futuresLeverage}
                       disabled={isBusyBot || bot.status === BotStatus.PENDING}
                       onChange={(event) =>
                         dispatch(
