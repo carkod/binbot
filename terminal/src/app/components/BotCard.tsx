@@ -96,6 +96,20 @@ const BotCard: FC<BotCardProps> = ({
               <p className="capitalize">{bot.position}</p>
             </Col>
           </Row>
+          {bot.market_type === MarketType.FUTURES && (
+            <Row>
+              <Col md="6" xs="7">
+                <p>Leverage</p>
+              </Col>
+              <Col md="6" xs="5">
+                <p>
+                  {bot.futures_leverage != null
+                    ? `${bot.futures_leverage}x`
+                    : "—"}
+                </p>
+              </Col>
+            </Row>
+          )}
           <Row>
             <Col md="6" xs="7">
               <p>Open @</p>

@@ -1,7 +1,11 @@
+import asyncio
+import json
+import logging
+from collections.abc import AsyncIterator, Callable
 from time import time
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlmodel import Session
 from pybinbot import BotBase, Status, BinbotErrors, BinanceErrors, MarketType
 from api.user.models.user import UserTokenData
@@ -26,6 +30,52 @@ from api.user.services.auth import get_current_user
 from uuid import UUID
 
 bot_blueprint = APIRouter()
+logger = logging.getLogger(__name__)
+
+
+async def stream_bot_operation(
+    operation: Callable[[Callable[[int, str], None]], BotResponse],
+) -> AsyncIterator[str]:
+    """Run the trade once while sending progress on the same POST response."""
+    loop = asyncio.get_running_loop()
+    updates: asyncio.Queue[tuple[str, dict]] = asyncio.Queue()
+
+    def report(percent: int, message: str) -> None:
+        loop.call_soon_threadsafe(
+            updates.put_nowait,
+            ("progress", {"percent": percent, "message": message}),
+        )
+
+    def run() -> None:
+        try:
+            result = operation(report)
+            loop.call_soon_threadsafe(
+                updates.put_nowait,
+                ("result", {"percent": 100, "response": jsonable_encoder(result)}),
+            )
+        except Exception:
+            logger.exception("Bot operation failed after streaming started")
+            loop.call_soon_threadsafe(
+                updates.put_nowait,
+                (
+                    "error",
+                    {
+                        "message": "Bot operation failed; refresh the bot before retrying."
+                    },
+                ),
+            )
+
+    # An exchange call must finish even if the browser closes the stream.
+    loop.run_in_executor(None, run)
+    while True:
+        try:
+            event, data = await asyncio.wait_for(updates.get(), timeout=15)
+        except TimeoutError:
+            yield ": keepalive\n\n"
+            continue
+        yield f"event: {event}\ndata: {json.dumps(data)}\n\n"
+        if event in {"result", "error"}:
+            return
 
 
 @bot_blueprint.get("/bot", response_model=BotListResponse, tags=["bots"])
@@ -240,9 +290,10 @@ def delete_bots(
     return BotResponse(message="Successfully deleted bots.")
 
 
-@bot_blueprint.get("/bot/activate/{bot_id}", response_model=BotResponse, tags=["bots"])
+@bot_blueprint.post("/bot/activate/{bot_id}", response_model=BotResponse, tags=["bots"])
 def activate_bot(
     bot_id: str,
+    request: Request,
     session: Session = Depends(get_session),
     _: UserTokenData = Depends(get_current_user),
 ):
@@ -250,27 +301,42 @@ def activate_bot(
     bot_row = crud.get_one(bot_id=bot_id)
     bot_model = BotModel.dump_from_table(bot_row)
     deal_gateway = DealGateway(bot_model, db_table=BotTable)
-    try:
-        activated_bot = deal_gateway.open_deal()
-        bot_model = activated_bot
-        message = "Successfully activated bot."
-        if bot_row.status == Status.active:
-            message = "Successfully updated bot."
-        return BotResponse(message=message, data=bot_model)
-    except EntryLiquidityError as e:
-        bot_model = BotModel.dump_from_table(crud.get_one(bot_id=bot_id))
-        return BotResponse(message=str(e), data=bot_model, error=1)
-    except (BinbotErrors, BinanceErrors, RestError) as e:
-        deal_gateway.update_logs(str(e))
-        bot_model = BotModel.dump_from_table(bot_row)
-        return BotResponse(message=str(e), data=bot_model, error=1)
+
+    def run(progress: Callable[[int, str], None] | None = None) -> BotResponse:
+        if progress:
+            progress(20, "Bot loaded; preparing activation")
+        try:
+            activated_bot = deal_gateway.open_deal(progress=progress)
+            message = "Successfully activated bot."
+            if activated_bot.status == Status.pending:
+                message = "Entry order submitted; bot pending exchange fill."
+            elif bot_row.status == Status.active:
+                message = "Successfully updated bot."
+            return BotResponse(message=message, data=activated_bot)
+        except EntryLiquidityError as e:
+            updated_bot = BotModel.dump_from_table(
+                BotTableCrud().get_one(bot_id=bot_id)
+            )
+            return BotResponse(message=str(e), data=updated_bot, error=1)
+        except (BinbotErrors, BinanceErrors, RestError) as e:
+            deal_gateway.update_logs(str(e))
+            return BotResponse(message=str(e), data=bot_model, error=1)
+
+    if "text/event-stream" in request.headers.get("accept", ""):
+        return StreamingResponse(
+            stream_bot_operation(run),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+    return run()
 
 
-@bot_blueprint.delete(
+@bot_blueprint.post(
     "/bot/deactivate/{bot_id}", response_model=BotResponse, tags=["bots"]
 )
 def deactivate_bot(
     bot_id: str,
+    request: Request,
     algorithmic_close: bool = False,
     session: Session = Depends(get_session),
     _: UserTokenData = Depends(get_current_user),
@@ -290,16 +356,28 @@ def deactivate_bot(
 
     bot_model = BotModel.dump_from_table(bot_row)
     deal_gateway = DealGateway(bot_model, db_table=BotTable)
-    try:
-        deactivated_bot = deal_gateway.deactivation(algorithmic_close=algorithmic_close)
-        bot_model = deactivated_bot
-        return BotResponse(
-            message="Successfully triggered panic sell! Bot deactivated.",
-            data=bot_model,
+
+    def run(progress: Callable[[int, str], None] | None = None) -> BotResponse:
+        if progress:
+            progress(20, "Bot loaded; preparing close")
+        try:
+            deactivated_bot = deal_gateway.deactivation(
+                algorithmic_close=algorithmic_close, progress=progress
+            )
+            return BotResponse(
+                message="Successfully triggered panic sell! Bot deactivated.",
+                data=deactivated_bot,
+            )
+        except BinbotErrors as e:
+            return BotResponse(message=e.message, data=bot_model, error=1)
+
+    if "text/event-stream" in request.headers.get("accept", ""):
+        return StreamingResponse(
+            stream_bot_operation(run),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
-    except BinbotErrors as e:
-        bot_model = BotModel.dump_from_table(bot_row)
-        return BotResponse(message=e.message, data=bot_model, error=1)
+    return run()
 
 
 @bot_blueprint.post("/bot/errors/{bot_id}", response_model=BotResponse, tags=["bots"])

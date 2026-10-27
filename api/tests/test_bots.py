@@ -472,39 +472,82 @@ def test_delete_bot(client: TestClient):
 
 def test_activate_by_id(client: TestClient, mock_deal_gateway, bot_models):
     mock_activate_id = "44db75ee-15c2-4a48-a346-4ffdc3ac5506"
-    response = client.get(f"/bot/activate/{mock_activate_id}")
+    response = client.post(f"/bot/activate/{mock_activate_id}")
 
     assert response.status_code == 200
     content = response.json()
     assert content["data"]["pair"] == bot_models["epic"].pair
     assert content["data"]["fiat"] == bot_models["epic"].fiat
     assert content["data"]["fiat_order_size"] == bot_models["epic"].fiat_order_size
+    assert client.get(f"/bot/activate/{mock_activate_id}").status_code == 405
+
+
+def test_activate_stream_sends_progress_then_result(
+    client: TestClient, mock_deal_gateway, bot_models
+):
+    bot_id = "44db75ee-15c2-4a48-a346-4ffdc3ac5506"
+
+    def open_with_progress(progress):
+        progress(45, "Submitting the entry order")
+        return bot_models["epic"]
+
+    mock_deal_gateway["open"].side_effect = open_with_progress
+    response = client.post(
+        f"/bot/activate/{bot_id}", headers={"Accept": "text/event-stream"}
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    assert "event: progress" in response.text
+    assert '"percent": 45' in response.text
+    assert "event: result" in response.text
+    assert '"percent": 100' in response.text
+    mock_deal_gateway["open"].assert_called_once()
 
 
 def test_deactivate(client: TestClient, mock_deal_gateway, bot_models):
     deactivate_id = "ebda4958-837c-4544-bf97-9bf449698152"
-    response = client.delete(f"/bot/deactivate/{deactivate_id}")
+    response = client.post(f"/bot/deactivate/{deactivate_id}")
 
     assert response.status_code == 200
     content = response.json()
     assert content["data"]["pair"] == bot_models["active"].pair
     assert content["data"]["fiat"] == bot_models["active"].fiat
     assert content["data"]["fiat_order_size"] == bot_models["active"].fiat_order_size
-    mock_deal_gateway["deactivate"].assert_called_once_with(algorithmic_close=False)
+    mock_deal_gateway["deactivate"].assert_called_once_with(
+        algorithmic_close=False, progress=None
+    )
+    assert client.delete(f"/bot/deactivate/{deactivate_id}").status_code == 405
 
 
 def test_deactivate_algorithmic_close(
     client: TestClient, mock_deal_gateway, bot_models
 ):
     deactivate_id = "ebda4958-837c-4544-bf97-9bf449698152"
-    response = client.delete(f"/bot/deactivate/{deactivate_id}?algorithmic_close=true")
+    response = client.post(f"/bot/deactivate/{deactivate_id}?algorithmic_close=true")
 
     assert response.status_code == 200
     content = response.json()
     assert content["data"]["pair"] == bot_models["active"].pair
     assert content["data"]["fiat"] == bot_models["active"].fiat
     assert content["data"]["fiat_order_size"] == bot_models["active"].fiat_order_size
-    mock_deal_gateway["deactivate"].assert_called_once_with(algorithmic_close=True)
+    mock_deal_gateway["deactivate"].assert_called_once_with(
+        algorithmic_close=True, progress=None
+    )
+
+
+def test_deactivate_stream_reports_close_result(client: TestClient, mock_deal_gateway):
+    bot_id = "ebda4958-837c-4544-bf97-9bf449698152"
+    response = client.post(
+        f"/bot/deactivate/{bot_id}?algorithmic_close=true",
+        headers={"Accept": "text/event-stream"},
+    )
+
+    assert response.status_code == 200
+    assert "event: progress" in response.text
+    assert "event: result" in response.text
+    mock_deal_gateway["deactivate"].assert_called_once()
+    assert mock_deal_gateway["deactivate"].call_args.kwargs["algorithmic_close"]
 
 
 def test_post_bot_errors_str(client: TestClient):

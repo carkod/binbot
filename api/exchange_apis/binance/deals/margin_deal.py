@@ -554,11 +554,8 @@ class BinanceMarginDeal(BinanceDeal):
         # Create new bot
         created_bot = self.controller.create(new_bot)
 
-        url = self.binbot_api.bb_activate_bot_url
-
-        # to avoid circular imports make network request
-        # This class is already imported for switch_to_margin_short
-        bot_id = self.request(url=url, payload={"id": str(created_bot.id)})
+        bot_id = str(created_bot.id)
+        self.binbot_api.activate_bot(bot_id)
         self.controller.update_logs(
             f"Switched margin_short to long strategy. New bot id: {bot_id}",
             self.active_bot,

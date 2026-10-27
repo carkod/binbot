@@ -1,5 +1,8 @@
 import { createEntityAdapter } from "@reduxjs/toolkit";
-import { notifification } from "../../utils/api";
+import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
+import { buildBackUrl, notifification } from "../../utils/api";
+import { getToken } from "../../utils/login";
+import { setBotProgress } from "../layoutSlice";
 import { weekAgo } from "../../utils/time";
 import { userApiSlice } from "../userApiSlice";
 import type { Bot, BotEntity } from "./botInitialState";
@@ -42,6 +45,90 @@ export const botsAdapter = createEntityAdapter<Bot>({
   sortComparer: false,
 });
 
+type BotOperationResponse = { message: string; error: number; data: Bot };
+
+const streamBotOperation = async (
+  url: string,
+  onProgress: (percent: number, message: string) => void,
+): Promise<{ data: BotDetailsState } | { error: FetchBaseQueryError }> => {
+  try {
+    const token = getToken();
+    const response = await fetch(`${buildBackUrl()}${url}`, {
+      method: "POST",
+      headers: {
+        Accept: "text/event-stream",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (!response.ok) {
+      throw new Error(`Bot operation failed (HTTP ${response.status})`);
+    }
+    if (!response.body) {
+      throw new Error("The server did not provide a progress stream.");
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let result: BotOperationResponse | undefined;
+
+    const consumeEvent = (block: string) => {
+      const lines = block.split("\n");
+      const event = lines.find((line) => line.startsWith("event: "))?.slice(7);
+      const data = lines
+        .filter((line) => line.startsWith("data: "))
+        .map((line) => line.slice(6))
+        .join("\n");
+      if (!event || !data) return;
+      const payload = JSON.parse(data);
+      if (event === "progress") {
+        onProgress(payload.percent, payload.message);
+      } else if (event === "result") {
+        result = payload.response as BotOperationResponse;
+        if (!result.error) {
+          onProgress(
+            100,
+            result.data.status === BotStatus.PENDING
+              ? "Entry order submitted; awaiting exchange fill"
+              : "Operation completed",
+          );
+        }
+      } else if (event === "error") {
+        throw new Error(payload.message);
+      }
+    };
+
+    while (true) {
+      const { value, done } = await reader.read();
+      buffer += decoder.decode(value, { stream: !done });
+      buffer = buffer.replace(/\r\n/g, "\n");
+      let boundary = buffer.indexOf("\n\n");
+      while (boundary >= 0) {
+        consumeEvent(buffer.slice(0, boundary));
+        buffer = buffer.slice(boundary + 2);
+        boundary = buffer.indexOf("\n\n");
+      }
+      if (result || done) break;
+    }
+
+    if (!result) {
+      throw new Error(
+        "The progress stream ended before the result arrived. Refresh the bot before retrying.",
+      );
+    }
+    if (result.error) {
+      throw new Error(result.message);
+    }
+    notifification("success", result.message);
+    return { data: { bot: result.data } };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Bot operation failed";
+    notifification("error", message);
+    return { error: { status: "CUSTOM_ERROR", error: message } };
+  }
+};
+
 export const botsApiSlice = userApiSlice.injectEndpoints({
   endpoints: (build) => ({
     getBots: build.query<GetBotsResponse, Partial<GetBotsParams>>({
@@ -58,9 +145,9 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         return {
           url: `${import.meta.env.VITE_GET_BOTS}` || "/bots",
           params,
-          providesTags: ["bots"],
         };
       },
+      providesTags: ["bots"],
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
           notifification("error", message);
@@ -77,8 +164,9 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
       query: (symbol) => ({
         url: `${import.meta.env.VITE_GET_BOTS}/symbol/${symbol}`,
         method: "GET",
-        providesTags: (result) => [{ type: "bot", id: result.bot.id }],
       }),
+      providesTags: (result) =>
+        result?.bot ? [{ type: "bot", id: result.bot.id }] : [],
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
           notifification("error", message);
@@ -93,8 +181,9 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
       query: (id) => ({
         url: `${import.meta.env.VITE_GET_BOTS}/${id}`,
         method: "GET",
-        providesTags: (result) => [{ type: "bot", id: result.bot.id }],
       }),
+      providesTags: (result) =>
+        result?.bot ? [{ type: "bot", id: result.bot.id }] : [],
       transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
           notifification("error", message);
@@ -158,39 +247,27 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         return data;
       },
     }),
-    activateBot: build.query<BotDetailsState, string>({
-      query: (id) => ({
-        url: `${import.meta.env.VITE_ACTIVATE_BOT}/${id}`,
-        method: "GET",
-        invalidatesTags: (result) => [{ type: "bot", id: result.bot.id }],
-      }),
-      transformResponse: ({ data, message, error }, meta, arg) => {
-        if (error && error === 1) {
-          notifification("error", message);
-        } else {
-          notifification("success", message);
-        }
-        return {
-          bot: data,
-        };
+    activateBot: build.mutation<BotDetailsState, string>({
+      queryFn: (id, api) => {
+        api.dispatch(setBotProgress(null));
+        return streamBotOperation(
+          `${import.meta.env.VITE_ACTIVATE_BOT}/${id}`,
+          (percent, message) =>
+            api.dispatch(setBotProgress({ botId: id, percent, message })),
+        );
       },
+      invalidatesTags: ["bots", "bot"],
     }),
     deactivateBot: build.mutation<SingleBotResponse, string>({
-      query: (id: string) => ({
-        url: `${import.meta.env.VITE_DEACTIVATE_BOT}/${id}`,
-        method: "DELETE",
-        invalidatesTags: (result) => [{ type: "bot", id: result.id }],
-      }),
-      transformResponse: ({ data, message, error }, meta, arg) => {
-        if (error && error === 1) {
-          notifification("error", message);
-        } else {
-          notifification("success", message);
-        }
-        return {
-          bot: data,
-        };
+      queryFn: (id, api) => {
+        api.dispatch(setBotProgress(null));
+        return streamBotOperation(
+          `${import.meta.env.VITE_DEACTIVATE_BOT}/${id}`,
+          (percent, message) =>
+            api.dispatch(setBotProgress({ botId: id, percent, message })),
+        );
       },
+      invalidatesTags: ["bots", "bot"],
     }),
     getAlgoRanking: build.query<AlgoRankingItem[], void>({
       query: () => ({
@@ -220,7 +297,7 @@ export const {
   useCreateBotMutation,
   useEditBotMutation,
   useDeleteBotMutation,
-  useLazyActivateBotQuery,
+  useActivateBotMutation,
   useDeactivateBotMutation,
   useGetOneBySymbolQuery,
   useGetAlgoRankingQuery,

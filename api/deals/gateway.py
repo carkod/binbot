@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Type, Union
+from typing import TYPE_CHECKING, Callable, Type, Union
 
 from pybinbot import BotModel, ExchangeId, MarketType, Position
 
@@ -56,10 +56,15 @@ class DealGateway:
 
     def open_deal(
         self,
+        progress: Callable[[int, str], None] | None = None,
     ) -> BotModel:
         """
         Abstract method for opening deals during creation
         """
+        if isinstance(self.deal, KucoinPositionDeal):
+            return self.deal.open_deal(progress=progress)
+        if progress:
+            progress(40, "Submitting the entry order")
         return self.deal.open_deal()
 
     def update_logs(self, message: str | list[str]) -> BotTable:
@@ -68,10 +73,20 @@ class DealGateway:
         """
         return self.deal.controller.update_logs(bot=self.bot, log_message=message)
 
-    def deactivation(self, algorithmic_close: bool = False) -> BotModel:
+    def deactivation(
+        self,
+        algorithmic_close: bool = False,
+        progress: Callable[[int, str], None] | None = None,
+    ) -> BotModel:
         """
         Abstract method for deactivation (which is pretty much closing all deals) during bot runtime
         """
+        if isinstance(self.deal, KucoinPositionDeal):
+            return self.deal.close_all(
+                algorithmic_close=algorithmic_close, progress=progress
+            )
+        if progress:
+            progress(40, "Closing exchange position")
         return self.deal.close_all(algorithmic_close=algorithmic_close)
 
     def deal_exit_orchestration(
