@@ -1,7 +1,7 @@
 import { render } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { store } from "../../store";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import NotFoundPage from "../NotFound";
 
 describe("NotFound page", () => {

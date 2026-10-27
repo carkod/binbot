@@ -1,7 +1,7 @@
 import { useContext, type FC } from "react";
 import { useEffect } from "react";
 import { Card, Col, Container, Row } from "react-bootstrap";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { useGetSingleBotQuery } from "../../features/bots/botsApiSlice";
 import {
   resetBot,

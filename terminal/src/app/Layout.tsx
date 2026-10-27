@@ -1,5 +1,5 @@
 import { useState, type FC } from "react";
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet } from "react-router";
 import { Slide, ToastContainer } from "react-toastify";
 import { getToken } from "../utils/login";
 import Footer from "./components/Footer";

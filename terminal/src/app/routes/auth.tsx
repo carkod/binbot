@@ -1,5 +1,5 @@
-import type { LoaderFunctionArgs } from "react-router-dom";
-import { redirect } from "react-router-dom";
+import type { LoaderFunctionArgs } from "react-router";
+import { redirect } from "react-router";
 import { getToken } from "../../utils/login";
 
 export function protectedLoader({ request }: LoaderFunctionArgs) {

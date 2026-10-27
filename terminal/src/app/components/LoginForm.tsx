@@ -1,7 +1,7 @@
 import { useEffect, type FC } from "react";
 import { Button, Container, Form } from "react-bootstrap";
 import { useForm, type SubmitHandler } from "react-hook-form";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router";
 import { usePostLoginMutation } from "../../features/userApiSlice";
 import { getToken, setToken } from "../../utils/login";
 

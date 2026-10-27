@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom";
 import { render, screen as rtlScreen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import {
   describe as describeBlock,
   expect as expectValue,

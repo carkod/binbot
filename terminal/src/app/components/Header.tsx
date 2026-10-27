@@ -1,6 +1,6 @@
 import { type FC } from "react";
 import { Button, Container, Navbar } from "react-bootstrap";
-import { Link, matchPath, useLocation } from "react-router-dom";
+import { Link, matchPath, useLocation } from "react-router";
 import { routes } from "../routes";
 
 export const Header: FC<{ onExpand: () => void }> = ({ onExpand }) => {

@@ -1,4 +1,4 @@
-import { matchPath } from "react-router-dom";
+import { matchPath } from "react-router";
 
 const dataHeaders = [
   "Date",
@@ -40,10 +40,7 @@ const intervalOptions = [
 ];
 
 const matchNewRoutes = (pathname: string) => {
-  const pathnames = [
-    "/bots/futures/new/:symbol?",
-    "/bots/new/:symbol?",
-  ];
+  const pathnames = ["/bots/futures/new/:symbol?", "/bots/new/:symbol?"];
   return pathnames.some((path) =>
     Boolean(matchPath({ path, end: true }, pathname)),
   );

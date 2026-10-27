@@ -1,5 +1,5 @@
 import React from "react";
-import type { IndexRouteObject, NonIndexRouteObject } from "react-router-dom";
+import type { IndexRouteObject, NonIndexRouteObject } from "react-router";
 import AutotradePage from "./pages/Autotrade";
 import BotDetail from "./pages/BotDetail";
 import FuturesBotDetail from "./pages/FuturesBotDetail";

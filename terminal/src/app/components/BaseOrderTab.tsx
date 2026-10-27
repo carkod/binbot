@@ -30,7 +30,7 @@ import { useAppDispatch, useAppSelector, useSymbolData } from "../hooks";
 import { type AppDispatch } from "../store";
 import { InputTooltip } from "./InputTooltip";
 import SymbolSearch from "./SymbolSearch";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router";
 import { SpinnerContext } from "../spinner-context";
 import { matchNewRoutes } from "../../utils/validations";
 

@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom";
 import { screen as rtlScreen, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import { vi } from "vitest";
 import DashboardPage from "../Dashboard";
 import { renderWithProviders } from "../../../utils/test-utils";
