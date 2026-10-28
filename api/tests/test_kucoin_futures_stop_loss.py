@@ -193,28 +193,11 @@ def test_coinrule_price_tracker_closes_at_eight_completed_candles() -> None:
     assert close_calls == [True]
 
 
-def test_relative_strength_impulse_rider_closes_at_eight_completed_candles() -> None:
-    close_calls: list[bool] = []
-    deal = _make_strategy_at_holding_limit(name="relative_strength_impulse_rider")
-
-    def close_all(algorithmic_close: bool = False) -> BotModel:
-        close_calls.append(algorithmic_close)
-        return deal.execution.active_bot
-
-    deal.execution.close_all = close_all
-
-    result = Lifecycle.exit(deal, close_price=100.0)
-
-    assert result is deal.execution.active_bot
-    assert close_calls == [True]
-
-
 def test_fixed_take_profit_precedes_max_holding_close() -> None:
     for name in (
         "mean_reversion_fade",
         "liquidation_sweep_pump",
         "coinrule_price_tracker",
-        "relative_strength_impulse_rider",
     ):
         exit_calls: list[str] = []
         deal = _make_strategy_at_holding_limit(

@@ -18,9 +18,6 @@ from streaming.strategies.liquidation_sweep_pump import (
 from streaming.strategies.mean_reversion_fade import (
     MeanReversionFadeLifecycleStrategy,
 )
-from streaming.strategies.relative_strength_impulse_rider import (
-    RelativeStrengthImpulseRiderLifecycleStrategy,
-)
 from streaming.strategies.top_gainer_short import TopGainerShortLifecycleStrategy
 from streaming.strategies.top_gainer_early_momentum import (
     TopGainerEarlyMomentumLifecycleStrategy,
@@ -37,7 +34,6 @@ class LifecycleContextEvaluator:
     STRATEGY_TYPES = (
         MeanReversionFadeLifecycleStrategy,
         LiquidationSweepPumpLifecycleStrategy,
-        RelativeStrengthImpulseRiderLifecycleStrategy,
         TopGainerEarlyMomentumLifecycleStrategy,
         TopGainerShortLifecycleStrategy,
         PriceTrackerLifecycleStrategy,
