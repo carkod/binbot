@@ -7,7 +7,6 @@ import type { Bot, BotEntity } from "./botInitialState";
 import { computeTotalProfit } from "./profits";
 import { BotStatus } from "../../utils/enums";
 import type {
-  CreateBotResponse,
   DefaultBotsResponse,
   EditBotParams,
   SingleBotResponse,
@@ -126,7 +125,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         };
       },
     }),
-    editBot: build.mutation<CreateBotResponse, EditBotParams>({
+    editBot: build.mutation<SingleBotResponse | null, EditBotParams>({
       query: ({ body, id }) => ({
         url: `${import.meta.env.VITE_GET_BOTS}/${id}`,
         method: "PUT",
@@ -136,15 +135,13 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         "bots",
         { type: "bot", id },
       ],
-      transformResponse: ({ botId, message, error }, meta, arg) => {
+      transformResponse: ({ data, message, error }, meta, arg) => {
         if (error && error === 1) {
           notifification("error", message);
-          // Let UI know so we don't navigate
           return null;
-        } else {
-          notifification("success", message);
         }
-        return botId;
+        notifification("success", message);
+        return { bot: data };
       },
     }),
     deleteBot: build.mutation<DefaultBotsResponse, string[]>({
