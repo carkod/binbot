@@ -964,25 +964,6 @@ def test_non_recovery_entry_uses_body_capped_limit_price(monkeypatch):
     assert any("Body-capped entry" in log for log in deal.active_bot.logs)
 
 
-def test_relative_strength_impulse_rider_uses_prompt_body_capped_entry_after_reclaim(
-    monkeypatch,
-):
-    deal = prepare_recovery_entry_deal(
-        monkeypatch,
-        position=Position.long,
-        previous_close=100.0,
-        current_open=101.0,
-        candle_range=2.0,
-    )
-    deal.active_bot.name = "relative_strength_impulse_rider"
-    deal.active_bot.recovery_params = None
-
-    limit_price = deal.body_capped_entry_limit_price()
-
-    assert limit_price == 102.0
-    assert any("Body-capped entry" in log for log in deal.active_bot.logs)
-
-
 def test_top_gainer_failure_reversal_anchors_prompt_entry_to_current_close(
     monkeypatch,
 ):
@@ -1406,39 +1387,6 @@ def test_unfilled_capped_base_order_uses_pending_entry_ttl_not_legacy_age_expiry
 
 
 @pytest.mark.parametrize("interval_minutes", [5, 15, 60])
-def test_relative_strength_impulse_rider_pending_entry_waits_one_candle(
-    interval_minutes,
-):
-    position = cast(Any, FuturesPosition.__new__(FuturesPosition))
-    order = OrderModel(
-        order_id="impulse-retest-entry",
-        order_type="limit",
-        pair="KATUSDTM",
-        timestamp=1,
-        order_side="buy",
-        qty=150,
-        price=0.00625,
-        status=OrderStatus.NEW,
-        time_in_force="GTC",
-        deal_type=DealType.base_order,
-    )
-    position.execution = types.SimpleNamespace(
-        active_bot=BotModel(
-            pair="KATUSDTM",
-            name="relative_strength_impulse_rider",
-            status=Status.pending,
-        )
-    )
-    interval_ms = interval_minutes * 60 * 1000
-    position.base_streaming = types.SimpleNamespace(
-        interval=types.SimpleNamespace(get_ms=lambda: interval_ms)
-    )
-
-    assert position.is_pending_base_entry_expired(order, now_ms=interval_ms) is False
-    assert position.is_pending_base_entry_expired(order, now_ms=interval_ms + 2) is True
-
-
-@pytest.mark.parametrize("interval_minutes", [5, 15, 60])
 def test_top_gainer_retest_entry_waits_one_configured_candle(interval_minutes):
     position = cast(Any, FuturesPosition.__new__(FuturesPosition))
     order = OrderModel(
@@ -1496,7 +1444,7 @@ def test_top_gainer_failure_reversal_pending_entry_expires_after_two_minutes():
     assert position.is_pending_base_entry_expired(order, now_ms=120_002) is True
 
 
-def test_relative_strength_impulse_rider_delayed_fill_starts_holding_clock_at_fill(
+def test_top_gainer_short_delayed_fill_starts_holding_clock_at_fill(
     monkeypatch,
 ):
     fill_time = datetime(2026, 8, 6, 12, 0, tzinfo=timezone.utc)
@@ -1510,7 +1458,7 @@ def test_relative_strength_impulse_rider_delayed_fill_starts_holding_clock_at_fi
     execution = cast(Any, KucoinPositionDeal.__new__(KucoinPositionDeal))
     execution.active_bot = BotModel(
         pair="KATUSDTM",
-        name="relative_strength_impulse_rider",
+        name="top_gainer_short",
         status=Status.pending,
     )
     position.execution = execution
@@ -1523,7 +1471,7 @@ def test_relative_strength_impulse_rider_delayed_fill_starts_holding_clock_at_fi
                     created_at=int(observation_time.timestamp() * 1000),
                 ),
                 types.SimpleNamespace(
-                    order_id="filled-impulse-retest-entry",
+                    order_id="filled-top-gainer-short-entry",
                     trade_time=fill_timestamp_ms * 1_000_000,
                     created_at=fill_timestamp_ms,
                 ),
@@ -1532,7 +1480,7 @@ def test_relative_strength_impulse_rider_delayed_fill_starts_holding_clock_at_fi
     )
     execution.open_deal = lambda: execution.active_bot
     order = OrderModel(
-        order_id="filled-impulse-retest-entry",
+        order_id="filled-top-gainer-short-entry",
         order_type="limit",
         pair="KATUSDTM",
         timestamp=1,

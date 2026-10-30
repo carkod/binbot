@@ -1,7 +1,7 @@
 import { type OrderLine } from "./index.d";
 import { type Bot } from "../../features/bots/botInitialState";
 import { dealColors } from "../../utils/charting/index";
-import { BotStatus, DealType, QuoteAsset } from "../enums";
+import { BotStatus, DealType, MarketType, QuoteAsset } from "../enums";
 
 const getBaseOrderQuoteAsset = (bot: Bot): number => {
   let baseOrderSize = 0;
@@ -21,7 +21,7 @@ export default function spotTrading(
   let totalOrderLines: OrderLine[] = [];
   let baseOrderSize = 0;
 
-  if (quoteAsset === QuoteAsset.USDC) {
+  if (bot.market_type === MarketType.FUTURES || quoteAsset === QuoteAsset.USDC) {
     baseOrderSize =
       bot.deal.base_order_size > 0
         ? bot.deal.base_order_size

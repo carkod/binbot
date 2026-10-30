@@ -43,7 +43,7 @@ const BotDetailTabs: FC<{
   const handleActivation = async (id: string) => {
     try {
       const data = await updateBot({ body: bot, id }).unwrap();
-      if (data) {
+      if (data?.bot) {
         await trigger(id).unwrap();
         navigate(getEditPath(id));
       }
