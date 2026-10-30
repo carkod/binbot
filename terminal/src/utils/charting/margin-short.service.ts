@@ -100,35 +100,31 @@ export default function marginTrading(
         price: bot.deal.trailing_stop_loss_price,
         color: dealColors.take_profit,
       });
-    } else {
-      // Inactive bot
-      const price =
-        bot.deal?.opening_price || currentPrice || bot.deal.current_price;
+    } else if (
+      bot.status === BotStatus.INACTIVE &&
+      bot.trailing &&
+      bot.trailing_deviation > 0 &&
+      bot.trailing_profit > 0
+    ) {
+      // Preview the short's trailing levels below the base order.
       const trailingProfitPrice = price * (1 - bot.trailing_profit / 100);
-      if (bot.deal.trailing_profit_price > 0) {
-        totalOrderLines.push({
-          id: "trailing_profit",
-          text: `Take profit (trailing) ${bot.take_profit}%`,
-          tooltip: [bot.status, " Breakpoint to increase Take profit"],
-          quantity: `${qtyText} ${quoteAsset}`,
-          price: bot.deal?.trailing_profit_price || trailingProfitPrice,
-          color: dealColors.trailing_profit,
-          lineStyle: 2,
-        });
-      }
-
-      if (bot.deal.trailing_stop_loss_price > 0) {
-        totalOrderLines.push({
-          id: "trailing_stop_loss",
-          text: `Trailing stop loss -${bot.trailing_deviation}%`,
-          tooltip: [bot.status, " Sell order when prices drop here"],
-          quantity: `${bot.deal.opening_qty || baseOrderSize} ${quoteAsset}`,
-          price:
-            bot.deal?.trailing_profit_price ||
-            trailingProfitPrice * (1 + bot.trailing_deviation / 100),
-          color: dealColors.take_profit,
-        });
-      }
+      totalOrderLines.push({
+        id: "trailing_profit",
+        text: `Trailing profit ${bot.trailing_profit}%`,
+        tooltip: [bot.status, " Breakpoint to increase trailing profit"],
+        quantity: `${qtyText} ${quoteAsset}`,
+        price: trailingProfitPrice,
+        color: dealColors.trailing_profit,
+        lineStyle: 2,
+      });
+      totalOrderLines.push({
+        id: "trailing_stop_loss",
+        text: `Trailing stop loss -${bot.trailing_deviation}%`,
+        tooltip: [bot.status, " Buy back when prices rise here"],
+        quantity: `${bot.deal.opening_qty || baseOrderSize} ${quoteAsset}`,
+        price: trailingProfitPrice * (1 + bot.trailing_deviation / 100),
+        color: dealColors.take_profit,
+      });
     }
   } else {
     if (bot.status === BotStatus.COMPLETED && bot.deal.take_profit_price > 0) {
