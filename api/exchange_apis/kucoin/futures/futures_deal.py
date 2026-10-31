@@ -39,8 +39,6 @@ from api.exchange_apis.kucoin.futures.liquidity import (
     load_futures_order_book,
 )
 from api.tools.constants import (
-    RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO,
-    RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES,
     TOP_GAINER_EARLY_MOMENTUM_ALGO,
     TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES,
     TOP_GAINER_FAILURE_REVERSAL_ALGO,
@@ -1607,13 +1605,7 @@ class KucoinPositionDeal(KucoinBaseBalance):
         self.active_bot.deal.opening_timestamp = order.timestamp
         self.active_bot.status = Status.pending
         pending_entry_minutes = 5
-        if self.active_bot.name == RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
-            pending_entry_minutes = (
-                self.interval_ms
-                * RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES
-                // 60_000
-            )
-        elif self.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO:
+        if self.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO:
             pending_entry_minutes = (
                 self.interval_ms
                 * TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES

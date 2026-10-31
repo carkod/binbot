@@ -25,8 +25,6 @@ from api.exchange_apis.kucoin.futures.liquidity import (
     load_futures_order_book,
 )
 from api.tools.constants import (
-    RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO,
-    RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES,
     TOP_GAINER_EARLY_MOMENTUM_ALGO,
     TOP_GAINER_SHORT_ALGO,
     TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES,
@@ -72,12 +70,7 @@ class FuturesPosition(PositionMarket):
 
     def is_pending_base_entry_expired(self, order: OrderModel, now_ms: int) -> bool:
         pending_entry_ttl_ms = self.PENDING_ENTRY_TTL_MS
-        if self.execution.active_bot.name == RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
-            pending_entry_ttl_ms = (
-                self.base_streaming.interval.get_ms()
-                * RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES
-            )
-        elif self.execution.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO:
+        if self.execution.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO:
             pending_entry_ttl_ms = (
                 self.base_streaming.interval.get_ms()
                 * TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES
@@ -176,8 +169,7 @@ class FuturesPosition(PositionMarket):
         self.execution.active_bot.deal.base_order_size = order.qty
         self.execution.active_bot.deal.opening_timestamp = (
             self.execution.matching_exchange_fill_timestamp(order)
-            if self.execution.active_bot.name
-            in {RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO, TOP_GAINER_SHORT_ALGO}
+            if self.execution.active_bot.name == TOP_GAINER_SHORT_ALGO
             else order.timestamp
         )
         if log_message:
@@ -571,13 +563,7 @@ class FuturesPosition(PositionMarket):
         self.execution.controller.update_order(order)
         self.execution.active_bot.status = Status.error
         pending_entry_minutes = self.PENDING_ENTRY_TTL_MS // 60_000
-        if self.execution.active_bot.name == RELATIVE_STRENGTH_IMPULSE_RIDER_ALGO:
-            pending_entry_minutes = (
-                self.base_streaming.interval.get_ms()
-                * RELATIVE_STRENGTH_IMPULSE_RIDER_PENDING_ENTRY_CANDLES
-                // 60_000
-            )
-        elif self.execution.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO:
+        if self.execution.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO:
             pending_entry_minutes = (
                 self.base_streaming.interval.get_ms()
                 * TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES

@@ -38,9 +38,6 @@ from streaming.strategies.liquidation_sweep_pump import (
 from streaming.strategies.mean_reversion_fade import (
     MeanReversionFadeLifecycleStrategy,
 )
-from streaming.strategies.relative_strength_impulse_rider import (
-    RelativeStrengthImpulseRiderLifecycleStrategy,
-)
 from streaming.strategies.top_gainer_short import TopGainerShortLifecycleStrategy
 from streaming.strategies.top_gainer_early_momentum import (
     TopGainerEarlyMomentumLifecycleStrategy,
@@ -142,10 +139,6 @@ def _context(
     [
         ("mean_reversion_fade", MeanReversionFadeLifecycleStrategy),
         ("liquidation_sweep_pump", LiquidationSweepPumpLifecycleStrategy),
-        (
-            "relative_strength_impulse_rider",
-            RelativeStrengthImpulseRiderLifecycleStrategy,
-        ),
         ("top_gainer_early_momentum", TopGainerEarlyMomentumLifecycleStrategy),
         ("top_loser_early_momentum", TopGainerEarlyMomentumLifecycleStrategy),
         ("top_gainer_short", TopGainerShortLifecycleStrategy),
@@ -167,13 +160,9 @@ def test_strategy_policies_replace_lifecycle_name_branches() -> None:
     evaluator = LifecycleContextEvaluator()
 
     mean_reversion = evaluator.evaluate(_context(name="mean_reversion_fade"))
-    relative_strength = evaluator.evaluate(
-        _context(name="relative_strength_impulse_rider")
-    )
     liquidation_sweep = evaluator.evaluate(_context(name="liquidation_sweep_pump"))
 
     assert mean_reversion.policy.low_price_stop_floor_pct is None
-    assert relative_strength.policy.low_price_stop_floor_pct is None
     assert liquidation_sweep.policy.emergency_stop_bounds.minimum_pct == 0.35
     assert liquidation_sweep.policy.emergency_stop_bounds.maximum_pct == 0.75
     assert evaluator.evaluate(_context()).policy.low_price_stop_floor_pct == 4.0
@@ -199,7 +188,6 @@ def test_chop_prone_strategies_block_reversal_after_loss(
         ("liquidation_sweep_pump", Position.short, False),
         ("coinrule_price_tracker", Position.long, True),
         ("coinrule_price_tracker", Position.short, False),
-        ("relative_strength_impulse_rider", Position.long, True),
         ("another_strategy", Position.long, False),
     ],
 )
