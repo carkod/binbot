@@ -14,7 +14,11 @@ const dealColors = {
   safety_order: "#ffa534",
 };
 
-export function updateOrderLines(bot: Bot, currentPrice: number): any[] {
+export function updateOrderLines(
+  bot: Bot,
+  currentPrice: number,
+  previewTrailingSettings = false,
+): any[] {
   /**
    * Updates orderlines for the chart
    * @param bot {object: Bot} required.
@@ -22,9 +26,9 @@ export function updateOrderLines(bot: Bot, currentPrice: number): any[] {
    */
   let totalOrderLines = [];
   if (bot.position === BotPosition.SHORT) {
-    totalOrderLines = marginTrading(bot, currentPrice);
+    totalOrderLines = marginTrading(bot, currentPrice, previewTrailingSettings);
   } else {
-    totalOrderLines = spotTrading(bot, currentPrice);
+    totalOrderLines = spotTrading(bot, currentPrice, previewTrailingSettings);
   }
 
   return totalOrderLines;
@@ -35,8 +39,11 @@ export function updateTimescaleMarks(bot: Bot): TimescaleMark[] {
   const quoteAsset = bot.quote_asset;
   if (bot.orders && bot.orders.length > 0) {
     bot.orders.forEach((order) => {
-      // Skip conversion orders
-      if (order.deal_type === DealType.CONVERSION) {
+      // Skip conversion and cancelled orders
+      if (
+        order.deal_type === DealType.CONVERSION ||
+        ["CANCELED", "CANCELLED"].includes(order.status?.toUpperCase())
+      ) {
         return;
       }
       let color = dealColors.base_order;

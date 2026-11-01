@@ -31,6 +31,102 @@ function completedTrailingFuturesLong(): Bot {
 }
 
 describe("chart order lines", () => {
+  it("shows a non-trailing short take-profit below the base order", () => {
+    const bot: Bot = {
+      ...singleBot,
+      market_type: MarketType.MARGIN,
+      position: BotPosition.SHORT,
+      fiat_order_size: 25,
+      trailing: false,
+      take_profit: 6.5,
+    };
+    const inactiveLines = updateOrderLines(bot, 100);
+
+    expect(inactiveLines.find((line) => line.id === "base_order")?.price).toBe(
+      100,
+    );
+    expect(
+      inactiveLines.find((line) => line.id === "take_profit"),
+    ).toMatchObject({
+      text: "Take profit 6.5% (Margin)",
+      price: 93.5,
+    });
+
+    const activeLines = updateOrderLines(
+      {
+        ...bot,
+        status: BotStatus.ACTIVE,
+        deal: {
+          ...singleBot.deal!,
+          opening_price: 100,
+          take_profit_price: 92,
+        },
+      },
+      101,
+    );
+    expect(activeLines.find((line) => line.id === "take_profit")?.price).toBe(
+      92,
+    );
+  });
+
+  it("previews changed trailing percentages for an active long and short", () => {
+    const bot: Bot = {
+      ...singleBot,
+      status: BotStatus.ACTIVE,
+      fiat_order_size: 25,
+      trailing: true,
+      trailing_profit: 5,
+      trailing_deviation: 4,
+      deal: {
+        ...singleBot.deal!,
+        opening_price: 100,
+        trailing_profit_price: 103,
+        trailing_stop_loss_price: 101,
+      },
+    };
+    const actual = updateOrderLines(bot, 100);
+    const shortActual = updateOrderLines(
+      { ...bot, position: BotPosition.SHORT },
+      100,
+    );
+    const longPreview = updateOrderLines(bot, 100, true);
+    const shortPreview = updateOrderLines(
+      { ...bot, position: BotPosition.SHORT },
+      100,
+      true,
+    );
+    const price = (lines: ReturnType<typeof updateOrderLines>, id: string) =>
+      lines.find((line) => line.id === id)?.price;
+
+    expect(price(actual, "trailing_profit")).toBe(103);
+    expect(price(actual, "trailing_stop_loss")).toBe(101);
+    expect(
+      shortActual.find((line) => line.id === "trailing_profit")?.text,
+    ).toBe("Trail profit 5%");
+    expect(price(longPreview, "trailing_profit")).toBe(105);
+    expect(price(longPreview, "trailing_stop_loss")).toBeCloseTo(100.8);
+    expect(price(shortPreview, "trailing_profit")).toBe(95);
+    expect(price(shortPreview, "trailing_stop_loss")).toBeCloseTo(98.8);
+    expect(
+      shortPreview.find((line) => line.id === "trailing_profit")?.text,
+    ).toBe("Trail profit 5%");
+  });
+
+  it("omits cancelled orders from timescale marks", () => {
+    const orders = ["CANCELED", "CANCELLED", "FILLED"].map((status) => ({
+      order_id: status,
+      deal_type: DealType.STOP_LOSS,
+      status,
+      price: 100,
+      qty: 1,
+      timestamp: "1700000000000",
+    }));
+
+    expect(
+      updateTimescaleMarks({ ...singleBot, orders }).map((mark) => mark.id),
+    ).toEqual(["FILLED"]);
+  });
+
   it("matches stop-loss and trailing-stop colors on lines and timescale marks", () => {
     const orders = [
       DealType.STOP_LOSS,

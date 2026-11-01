@@ -7,6 +7,7 @@ from sqlmodel import Session, select
 from sqlalchemy.exc import IntegrityError
 from tests.fixtures.mock_bot_table import (
     mock_bot_data,
+    mock_bot_data_active,
     mock_bot_data_superusdt,
     make_mock_bot_model,
     make_mock_bot_active_model,
@@ -455,6 +456,26 @@ def test_edit_bot(client: TestClient):
     assert content["data"]["pair"] == mock_bot_data["pair"]
     assert content["data"]["fiat"] == mock_bot_data["fiat"]
     assert content["data"]["fiat_order_size"] == mock_bot_data["fiat_order_size"]
+
+
+def test_edit_active_bot_persists_trailing_percentages(client: TestClient):
+    bot_id = mock_bot_data_active["id"]
+    payload = {
+        **mock_bot_data_active,
+        "trailing_profit": 4.5,
+        "trailing_deviation": 1.25,
+    }
+
+    response = client.put(f"/bot/{bot_id}", json=payload)
+
+    assert response.status_code == 200
+    assert response.json()["data"]["trailing_profit"] == 4.5
+    assert response.json()["data"]["trailing_deviation"] == 1.25
+
+    refreshed = client.get(f"/bot/{bot_id}")
+    assert refreshed.status_code == 200
+    assert refreshed.json()["data"]["trailing_profit"] == 4.5
+    assert refreshed.json()["data"]["trailing_deviation"] == 1.25
 
 
 def test_delete_bot(client: TestClient):
