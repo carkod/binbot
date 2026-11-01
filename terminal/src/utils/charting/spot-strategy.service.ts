@@ -21,7 +21,10 @@ export default function spotTrading(
   let totalOrderLines: OrderLine[] = [];
   let baseOrderSize = 0;
 
-  if (bot.market_type === MarketType.FUTURES || quoteAsset === QuoteAsset.USDC) {
+  if (
+    bot.market_type === MarketType.FUTURES ||
+    quoteAsset === QuoteAsset.USDC
+  ) {
     baseOrderSize =
       bot.deal.base_order_size > 0
         ? bot.deal.base_order_size
@@ -84,7 +87,7 @@ export default function spotTrading(
           tooltip: [bot.status, " Sell when prices drop to here"],
           quantity: `${qtyText} ${quoteAsset}`,
           price: bot.deal.closing_price,
-          color: dealColors.take_profit,
+          color: dealColors.trailing_stop_loss,
         });
         totalOrderLines.push({
           id: "trailing_profit",
@@ -113,7 +116,7 @@ export default function spotTrading(
           tooltip: [bot.status, " Sell order when prices drop here"],
           quantity: `${qtyText} ${quoteAsset}`,
           price: bot.deal.trailing_stop_loss_price,
-          color: dealColors.take_profit,
+          color: dealColors.trailing_stop_loss,
         });
       } else {
         // Inactive bot
@@ -134,7 +137,7 @@ export default function spotTrading(
           tooltip: [bot.status, " Sell order when prices drop here"],
           quantity: `${bot.deal.opening_qty || baseOrderSize} ${quoteAsset}`,
           price: trailingProfitPrice * (1 - bot.trailing_deviation / 100),
-          color: dealColors.take_profit,
+          color: dealColors.trailing_stop_loss,
         });
       }
     } else {
@@ -175,7 +178,7 @@ export default function spotTrading(
         tooltip: [bot.status, " Sell Order "],
         quantity: `${qtyText} ${quoteAsset}`,
         price: stop_loss,
-        color: "red",
+        color: dealColors.stop_loss,
       });
     }
   }

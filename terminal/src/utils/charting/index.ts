@@ -9,6 +9,8 @@ const dealColors = {
   base_order: "#1f77d0",
   trailing_profit: "#9368e9",
   take_profit: "#87cb16",
+  trailing_stop_loss: "#87cb16",
+  stop_loss: "red",
   safety_order: "#ffa534",
 };
 
@@ -30,8 +32,6 @@ export function updateOrderLines(bot: Bot, currentPrice: number): any[] {
 
 export function updateTimescaleMarks(bot: Bot): TimescaleMark[] {
   let totalTimescaleMarks: TimescaleMark[] = [];
-  let color = "blue";
-  let label = "B";
   const quoteAsset = bot.quote_asset;
   if (bot.orders && bot.orders.length > 0) {
     bot.orders.forEach((order) => {
@@ -39,25 +39,28 @@ export function updateTimescaleMarks(bot: Bot): TimescaleMark[] {
       if (order.deal_type === DealType.CONVERSION) {
         return;
       }
+      let color = dealColors.base_order;
+      let label = "B";
       // If base_order and margin_short
       if (bot.position === BotPosition.SHORT) {
         label = "S";
       }
-      if (
-        order.deal_type === DealType.TAKE_PROFIT ||
-        order.deal_type === DealType.STOP_LOSS
-      ) {
+      if (order.deal_type === DealType.TAKE_PROFIT) {
         color = dealColors.take_profit;
         if (bot.position === BotPosition.SHORT) {
           label = "B";
         }
         label = "S";
       }
+      if (order.deal_type === DealType.STOP_LOSS) {
+        color = dealColors.stop_loss;
+        label = "S";
+      }
       if (order.deal_type === DealType.TRAILING_PROFIT) {
         color = dealColors.trailing_profit;
       }
       if (order.deal_type === DealType.TRAILING_STOP_LOSS) {
-        color = dealColors.take_profit;
+        color = dealColors.trailing_stop_loss;
         label = "S";
       }
       if (order.deal_type.startsWith("so")) {

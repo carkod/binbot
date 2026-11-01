@@ -75,7 +75,7 @@ export default function marginTrading(
           tooltip: [bot.status, " Sell order when prices drop here"],
           quantity: `${qtyText} ${quoteAsset}`,
           price: bot.deal.trailing_stop_loss_price,
-          color: dealColors.take_profit,
+          color: dealColors.trailing_stop_loss,
         });
       }
     } else if (
@@ -98,7 +98,7 @@ export default function marginTrading(
         tooltip: [bot.status, " Sell order when prices drop here"],
         quantity: `${bot.deal.opening_qty || baseOrderSize} ${quoteAsset}`,
         price: bot.deal.trailing_stop_loss_price,
-        color: dealColors.take_profit,
+        color: dealColors.trailing_stop_loss,
       });
     } else if (
       bot.status === BotStatus.INACTIVE &&
@@ -123,7 +123,7 @@ export default function marginTrading(
         tooltip: [bot.status, " Buy back when prices rise here"],
         quantity: `${bot.deal.opening_qty || baseOrderSize} ${quoteAsset}`,
         price: trailingProfitPrice * (1 + bot.trailing_deviation / 100),
-        color: dealColors.take_profit,
+        color: dealColors.trailing_stop_loss,
       });
     }
   } else {
@@ -161,7 +161,7 @@ export default function marginTrading(
       tooltip: [bot.status, " Buy back order "],
       quantity: `${qtyText} ${quoteAsset}`,
       price: stopLossPrice, // buy_profit * take_profit%
-      color: "red",
+      color: dealColors.stop_loss,
     });
   }
 

@@ -1,6 +1,12 @@
 import { singleBot, type Bot } from "../../features/bots/botInitialState";
-import { BotPosition, BotStatus, MarketType, QuoteAsset } from "../enums";
-import { updateOrderLines } from "./index";
+import {
+  BotPosition,
+  BotStatus,
+  DealType,
+  MarketType,
+  QuoteAsset,
+} from "../enums";
+import { updateOrderLines, updateTimescaleMarks } from "./index";
 
 function completedTrailingFuturesLong(): Bot {
   return {
@@ -25,6 +31,51 @@ function completedTrailingFuturesLong(): Bot {
 }
 
 describe("chart order lines", () => {
+  it("matches stop-loss and trailing-stop colors on lines and timescale marks", () => {
+    const orders = [
+      DealType.STOP_LOSS,
+      DealType.TRAILING_STOP_LOSS,
+      DealType.BASE_ORDER,
+    ].map((deal_type) => ({
+      order_id: deal_type,
+      deal_type,
+      price: 100,
+      qty: 1,
+      timestamp: "1700000000000",
+    }));
+
+    for (const position of [BotPosition.LONG, BotPosition.SHORT]) {
+      const bot: Bot = {
+        ...singleBot,
+        market_type: MarketType.FUTURES,
+        position,
+        fiat_order_size: 25,
+        trailing: true,
+        trailing_profit: 6,
+        trailing_deviation: 4,
+        orders,
+      };
+      const lines = updateOrderLines(bot, 100);
+      const marks = updateTimescaleMarks(bot);
+
+      expect(lines.find((line) => line.id === DealType.STOP_LOSS)?.color).toBe(
+        "red",
+      );
+      expect(marks.find((mark) => mark.id === DealType.STOP_LOSS)?.color).toBe(
+        "red",
+      );
+      expect(
+        lines.find((line) => line.id === DealType.TRAILING_STOP_LOSS)?.color,
+      ).toBe("#87cb16");
+      expect(
+        marks.find((mark) => mark.id === DealType.TRAILING_STOP_LOSS)?.color,
+      ).toBe("#87cb16");
+      expect(marks.find((mark) => mark.id === DealType.BASE_ORDER)?.color).toBe(
+        lines.find((line) => line.id === DealType.BASE_ORDER)?.color,
+      );
+    }
+  });
+
   it("flips futures order, trailing, and stop-loss previews with position", () => {
     const bot: Bot = {
       ...singleBot,
