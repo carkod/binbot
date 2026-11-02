@@ -758,6 +758,27 @@ def test_place_trailing_stop_loss_keeps_existing_exchange_stop_without_cancel():
     assert deal.active_bot.orders == []
 
 
+def test_place_trailing_stop_loss_adopts_tighter_exchange_stop_for_short():
+    calls: list[str] = []
+    deal = _make_position_deal(
+        position=Position.short,
+        trailing_stop_loss_price=99.0,
+    )
+    deal.kucoin_futures_api = types.SimpleNamespace(
+        get_futures_position=lambda symbol: _position(-1),
+        get_all_stop_loss_orders=lambda symbol: [
+            _stop_order(stop_price="97.0", id="manually-tightened-stop")
+        ],
+        batch_cancel_stop_loss_orders=lambda ids: calls.append("cancel"),
+        place_futures_order=lambda **kwargs: calls.append("place"),
+    )
+
+    KucoinPositionDeal.place_trailing_stop_loss(deal)
+
+    assert calls == []
+    assert deal.active_bot.deal.trailing_stop_loss_price == 97.0
+
+
 def test_place_trailing_stop_loss_cancels_only_tracked_trailing_order():
     cancelled_ids: list[str] = []
     now_ms = int(time() * 1000)

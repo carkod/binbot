@@ -2,6 +2,7 @@ from dataclasses import replace
 import types
 from time import time
 from typing import Any, cast
+from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
@@ -625,6 +626,123 @@ def test_top_gainer_short_lifecycle_uses_15m_candles_when_default_is_5m() -> Non
 
     assert market_interval == KucoinKlineIntervals.FIFTEEN_MINUTES
     assert benchmark_interval == BinanceKlineIntervals.fifteen_minutes
+
+
+def _confirmed_lower_high_context() -> LifecycleContext:
+    highs = [80.0 + index * 0.5 for index in range(30)]
+    highs.extend([110.0, 102.0, 95.0, 90.0, 94.0, 96.0, 97.0, 99.0, 95.0, 93.0])
+    lows = [high - 1.0 for high in highs]
+    lows[20] = 80.0
+    candles = _candles(count=40, start=1_793_550_000_000)
+    for index, candle in enumerate(candles):
+        candle[2] = highs[index]
+        candle[3] = lows[index]
+    context = _context(
+        name="top_gainer_short",
+        position=Position.short,
+        klines=candles,
+        completed_candles=candles,
+        current_price=95.0,
+        opening_timestamp=candles[32][0],
+        now_ms=candles[-1][6] + 1,
+    )
+    context.bot.deal.stop_loss_price = 102.0
+    context.bot.trailing_deviation = 4.5
+    context.bot.trailing_profit = 4.5
+    return replace(context, price_precision=2)
+
+
+def test_top_gainer_short_arms_native_trail_at_latest_confirmed_lower_high() -> None:
+    context = _confirmed_lower_high_context()
+
+    signal = TopGainerShortLifecycleStrategy().signal(context)
+
+    assert signal.parameter_update is not None
+    assert signal.parameter_update.trailing_stop_price == 99.0
+    assert signal.parameter_update.trailing_deviation == 4.2106
+    assert signal.parameter_update.trailing_profit == 4.5
+
+
+def test_top_gainer_short_rounds_low_price_pattern_stop_above_candle_high() -> None:
+    context = _confirmed_lower_high_context()
+    for candle in context.completed_candles:
+        candle[2] *= 0.00004
+        candle[3] *= 0.00004
+    context.completed_candles[37][2] = 0.0039601
+    context.bot.deal.opening_price = 0.004
+    context.bot.deal.stop_loss_price = 0.00408
+    context = replace(context, current_price=0.0038, price_precision=6)
+
+    signal = TopGainerShortLifecycleStrategy().signal(context)
+
+    assert signal.parameter_update is not None
+    assert signal.parameter_update.trailing_stop_price == 0.003961
+    assert signal.parameter_update.trailing_deviation == 4.2369
+
+
+def test_top_gainer_short_does_not_arm_unprofitable_or_looser_pattern_stop() -> None:
+    context = _confirmed_lower_high_context()
+    context.bot.deal.opening_price = 98.0
+    assert TopGainerShortLifecycleStrategy().signal(context).parameter_update is None
+
+    context.bot.deal.opening_price = 100.0
+    context.bot.deal.trailing_stop_loss_price = 98.0
+    assert TopGainerShortLifecycleStrategy().signal(context).parameter_update is None
+
+
+def test_top_gainer_short_waits_for_confirmed_completed_pattern() -> None:
+    context = _confirmed_lower_high_context()
+
+    signal = TopGainerShortLifecycleStrategy().signal(
+        replace(context, completed_candles=context.completed_candles[:-1])
+    )
+
+    assert signal.parameter_update is None
+
+
+def test_top_gainer_short_does_not_reuse_a_pattern_from_before_entry() -> None:
+    context = _confirmed_lower_high_context()
+    context.bot.deal.opening_timestamp = context.completed_candles[38][0]
+
+    assert TopGainerShortLifecycleStrategy().signal(context).parameter_update is None
+
+
+def test_top_gainer_short_keeps_existing_positions_on_their_original_stop_policy() -> (
+    None
+):
+    context = _confirmed_lower_high_context()
+    context.bot.deal.opening_timestamp = (
+        TopGainerShortLifecycleStrategy.STRUCTURAL_TRAIL_MIN_ENTRY_TIMESTAMP_MS - 1
+    )
+
+    assert TopGainerShortLifecycleStrategy().signal(context).parameter_update is None
+
+
+def test_top_gainer_short_places_structural_stop_through_native_exchange_path() -> None:
+    context = _confirmed_lower_high_context()
+    signal = TopGainerShortLifecycleStrategy().signal(context)
+    place_trailing_stop_loss = Mock()
+    save = Mock()
+    update_parameters = Mock(return_value=context.bot)
+    lifecycle = cast(Any, Lifecycle.__new__(Lifecycle))
+    lifecycle.execution = types.SimpleNamespace(
+        active_bot=context.bot,
+        update_parameters=update_parameters,
+        place_trailing_stop_loss=place_trailing_stop_loss,
+        controller=types.SimpleNamespace(save=save),
+    )
+
+    lifecycle._apply_strategy_signal(
+        LifecycleEvaluation(
+            policy=TopGainerShortLifecycleStrategy.policy, signal=signal
+        )
+    )
+
+    assert context.bot.deal.trailing_stop_loss_price == 99.0
+    assert context.bot.trailing_deviation == 4.2106
+    update_parameters.assert_called_once_with(allow_stop_loss_widening=False)
+    place_trailing_stop_loss.assert_called_once_with()
+    save.assert_called_once_with(context.bot)
 
 
 def test_position_market_generic_helpers_remain_strategy_agnostic() -> None:

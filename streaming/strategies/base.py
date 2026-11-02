@@ -44,6 +44,7 @@ class LifecycleParameterUpdate:
     enable_dynamic_trailing: bool = False
     allow_stop_loss_widening: bool = False
     trailing_stop_floor_at_entry: bool = False
+    trailing_stop_price: float | None = None
 
 
 @dataclass(frozen=True)
@@ -66,6 +67,7 @@ class LifecycleContext:
     bb_metrics: tuple[float, float] | None
     bot_profit: float
     market_breadth: MarketBreadthSeries | None = None
+    price_precision: int = 8
 
 
 class LifecycleStrategy(Protocol):

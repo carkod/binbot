@@ -16,12 +16,16 @@ const getBaseOrderQuoteAsset = (bot: Bot): number => {
 export default function spotTrading(
   bot: Bot,
   currentPrice: number = 0,
+  previewTrailingSettings = false,
 ): OrderLine[] {
   const quoteAsset = bot.quote_asset;
   let totalOrderLines: OrderLine[] = [];
   let baseOrderSize = 0;
 
-  if (bot.market_type === MarketType.FUTURES || quoteAsset === QuoteAsset.USDC) {
+  if (
+    bot.market_type === MarketType.FUTURES ||
+    quoteAsset === QuoteAsset.USDC
+  ) {
     baseOrderSize =
       bot.deal.base_order_size > 0
         ? bot.deal.base_order_size
@@ -84,7 +88,7 @@ export default function spotTrading(
           tooltip: [bot.status, " Sell when prices drop to here"],
           quantity: `${qtyText} ${quoteAsset}`,
           price: bot.deal.closing_price,
-          color: dealColors.take_profit,
+          color: dealColors.trailing_stop_loss,
         });
         totalOrderLines.push({
           id: "trailing_profit",
@@ -99,22 +103,29 @@ export default function spotTrading(
         bot.deal.opening_price > 0 &&
         bot.status === BotStatus.ACTIVE
       ) {
+        const trailingProfitPrice = previewTrailingSettings
+          ? bot.deal.opening_price * (1 + bot.trailing_profit / 100)
+          : bot.deal.trailing_profit_price;
         totalOrderLines.push({
           id: "trailing_profit",
           text: `Trail profit ${bot.trailing_profit}%`,
           tooltip: [bot.status, " Trace upward profit"],
           quantity: `${qtyText} ${quoteAsset}`,
-          price: bot.deal.trailing_profit_price,
+          price: trailingProfitPrice,
           color: dealColors.trailing_profit,
         });
-        totalOrderLines.push({
-          id: "trailing_stop_loss",
-          text: `Trailing stop loss ${bot.trailing_deviation}%`,
-          tooltip: [bot.status, " Sell order when prices drop here"],
-          quantity: `${qtyText} ${quoteAsset}`,
-          price: bot.deal.trailing_stop_loss_price,
-          color: dealColors.take_profit,
-        });
+        if (previewTrailingSettings || bot.deal.trailing_stop_loss_price > 0) {
+          totalOrderLines.push({
+            id: "trailing_stop_loss",
+            text: `Trailing stop loss ${bot.trailing_deviation}%`,
+            tooltip: [bot.status, " Sell order when prices drop here"],
+            quantity: `${qtyText} ${quoteAsset}`,
+            price: previewTrailingSettings
+              ? trailingProfitPrice * (1 - bot.trailing_deviation / 100)
+              : bot.deal.trailing_stop_loss_price,
+            color: dealColors.trailing_stop_loss,
+          });
+        }
       } else {
         // Inactive bot
         const trailingProfitPrice =
@@ -134,7 +145,7 @@ export default function spotTrading(
           tooltip: [bot.status, " Sell order when prices drop here"],
           quantity: `${bot.deal.opening_qty || baseOrderSize} ${quoteAsset}`,
           price: trailingProfitPrice * (1 - bot.trailing_deviation / 100),
-          color: dealColors.take_profit,
+          color: dealColors.trailing_stop_loss,
         });
       }
     } else {
@@ -175,7 +186,7 @@ export default function spotTrading(
         tooltip: [bot.status, " Sell Order "],
         quantity: `${qtyText} ${quoteAsset}`,
         price: stop_loss,
-        color: "red",
+        color: dealColors.stop_loss,
       });
     }
   }

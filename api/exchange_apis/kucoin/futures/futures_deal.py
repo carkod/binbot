@@ -2231,6 +2231,10 @@ class KucoinPositionDeal(KucoinBaseBalance):
                 last_replace_ts_ms=last_replace_ts_ms,
                 cooldown_ms=self.TRAILING_STOP_REPLACE_COOLDOWN_MS,
             ):
+                direction = self._direction_multiplier()
+                if (exchange_price - intended_price) * direction > 0:
+                    self.active_bot.deal.trailing_stop_loss_price = exchange_price
+                    self.controller.save(self.active_bot)
                 return self.active_bot
 
         action = "buy" if self.active_bot.position == Position.short else "sell"
