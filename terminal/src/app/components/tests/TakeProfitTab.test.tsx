@@ -10,7 +10,7 @@ import { Tab } from "react-bootstrap";
 
 import { makeStore } from "../../store";
 import TakeProfitTab from "../TakeProfitTab";
-import { TabsKeys } from "../../../utils/enums";
+import { BotStatus, TabsKeys } from "../../../utils/enums";
 import { setBot, setRecoveryParams } from "../../../features/bots/botSlice";
 import {
   defaultRecoveryParams,
@@ -56,9 +56,11 @@ describe("TakeProfitTab trailing", () => {
       fireEvent.change(testingScreen.getByLabelText(/Trail profit at/), {
         target: { value: "4.5" },
       });
+      fireEvent.blur(testingScreen.getByLabelText(/Trail profit at/));
       fireEvent.change(testingScreen.getByLabelText("Trailing deviation"), {
         target: { value: "1.25" },
       });
+      fireEvent.blur(testingScreen.getByLabelText("Trailing deviation"));
 
       expect(store.getState().bot.bot.trailing_profit).toBe(4.5);
       expect(store.getState().bot.bot.trailing_deviation).toBe(1.25);
@@ -88,9 +90,11 @@ describe("TakeProfitTab trailing", () => {
     fireEvent.change(testingScreen.getByLabelText(/Trail profit at/), {
       target: { value: "0" },
     });
+    fireEvent.blur(testingScreen.getByLabelText(/Trail profit at/));
     fireEvent.change(testingScreen.getByLabelText("Trailing deviation"), {
       target: { value: "0" },
     });
+    fireEvent.blur(testingScreen.getByLabelText("Trailing deviation"));
 
     expect(store.getState().bot.bot.trailing).toBe(true);
     expect(store.getState().bot.bot.trailing_profit).toBe(0);
@@ -123,5 +127,34 @@ describe("TakeProfitTab trailing", () => {
     ).toBeChecked();
     expect(store.getState().bot.bot.trailing_profit).toBe(4);
     expect(store.getState().bot.bot.trailing_deviation).toBe(1.5);
+  });
+
+  it("keeps both edits on an active bot and commits each value on blur", () => {
+    const store = renderTakeProfitTab({
+      id: "active-bot",
+      status: BotStatus.ACTIVE,
+      trailing: true,
+      trailing_profit: 2.3,
+      trailing_deviation: 0.63,
+    });
+    const profit = testingScreen.getByLabelText(/Trail profit at/);
+    const deviation = testingScreen.getByLabelText("Trailing deviation");
+
+    fireEvent.change(profit, { target: { value: "4.5" } });
+    expect(store.getState().bot.bot.trailing_profit).toBe(2.3);
+    fireEvent.blur(profit);
+    expect(store.getState().bot.bot.trailing_profit).toBe(4.5);
+
+    fireEvent.change(deviation, { target: { value: "1.25" } });
+    expect(profit).toHaveValue(4.5);
+    expect(store.getState().bot.bot.trailing_deviation).toBe(0.63);
+    fireEvent.blur(deviation);
+
+    expect(profit).toHaveValue(4.5);
+    expect(deviation).toHaveValue(1.25);
+    expect(store.getState().bot.bot).toMatchObject({
+      trailing_profit: 4.5,
+      trailing_deviation: 1.25,
+    });
   });
 });

@@ -18,7 +18,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-it("reads split progress events and waits for the final bot response", async () => {
+it("activates without a percentage toast and waits for the final bot response", async () => {
   const chunks = [
     'event: progress\ndata: {"percent": 45, "message": "Submitting',
     ' the entry order"}\n\nevent: result\ndata: {"percent": 100, "response":',
@@ -45,25 +45,9 @@ it("reads split progress events and waits for the final bot response", async () 
   );
 
   expect(result.data?.bot.id).toBe("bot-1");
-  expect(toast.info).toHaveBeenCalledWith(
-    "Activating bot (0%)",
-    expect.objectContaining({
-      autoClose: false,
-      hideProgressBar: false,
-      progress: 0,
-    }),
-  );
-  expect(toast.update).toHaveBeenCalledWith("bot-progress", {
-    render: "Submitting the entry order (45%)",
-    progress: 0.45,
-  });
-  expect(toast.update).toHaveBeenCalledWith("bot-progress", {
-    render: "Activated",
-    type: "success",
-    progress: null,
-    autoClose: 5000,
-  });
-  expect(toast.success).not.toHaveBeenCalled();
+  expect(toast.info).not.toHaveBeenCalled();
+  expect(toast.update).not.toHaveBeenCalled();
+  expect(toast.success).toHaveBeenCalledWith("Activated");
   expect(fetch).toHaveBeenCalledWith(
     expect.stringContaining("/bot-1"),
     expect.objectContaining({
@@ -71,6 +55,21 @@ it("reads split progress events and waits for the final bot response", async () 
       headers: expect.objectContaining({ Accept: "text/event-stream" }),
     }),
   );
+});
+
+it("shows activation errors without creating a progress toast", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockRejectedValue(new Error("Network failed")),
+  );
+
+  const result = await makeStore().dispatch(
+    botsApiSlice.endpoints.activateBot.initiate("bot-1"),
+  );
+
+  expect(result.error).toMatchObject({ status: "CUSTOM_ERROR" });
+  expect(toast.info).not.toHaveBeenCalled();
+  expect(toast.error).toHaveBeenCalledWith("Network failed");
 });
 
 it("reports an uncertain outcome when the stream ends without a result", async () => {

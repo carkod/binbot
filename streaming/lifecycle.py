@@ -138,6 +138,7 @@ class Lifecycle:
             bb_metrics=self.bb_metrics,
             bot_profit=bot_profit,
             market_breadth=None,
+            price_precision=self.execution.price_precision,
         )
         return self.context_evaluator.evaluate(context)
 
@@ -158,6 +159,10 @@ class Lifecycle:
             or bot.trailing_profit != update.trailing_profit
             or bot.trailing_deviation != update.trailing_deviation
         )
+        stop_price_changed = (
+            update.trailing_stop_price is not None
+            and update.trailing_stop_price != bot.deal.trailing_stop_loss_price
+        )
         dynamic_trailing_changed = (
             update.enable_dynamic_trailing and not bot.dynamic_trailing
         )
@@ -165,6 +170,7 @@ class Lifecycle:
             not parameters_changed
             and not dynamic_trailing_changed
             and not update.allow_stop_loss_widening
+            and not stop_price_changed
         ):
             if signal.log_messages:
                 self.execution.controller.save(bot)
@@ -175,9 +181,19 @@ class Lifecycle:
         bot.trailing_deviation = update.trailing_deviation
         if update.enable_dynamic_trailing:
             bot.dynamic_trailing = True
-        self.execution.active_bot = self.execution.update_parameters(
-            allow_stop_loss_widening=update.allow_stop_loss_widening,
-        )
+        if (
+            parameters_changed
+            or dynamic_trailing_changed
+            or update.allow_stop_loss_widening
+        ):
+            self.execution.active_bot = self.execution.update_parameters(
+                allow_stop_loss_widening=update.allow_stop_loss_widening,
+            )
+        if stop_price_changed and update.trailing_stop_price is not None:
+            self.execution.active_bot.deal.trailing_stop_loss_price = (
+                update.trailing_stop_price
+            )
+            self.execution.place_trailing_stop_loss()
         self.execution.controller.save(self.execution.active_bot)
 
     def _recovery_atr_pct(self, reference_price: float) -> float | None:

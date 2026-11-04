@@ -1,11 +1,10 @@
-import { useEffect, useState, type FC } from "react";
+import { useEffect, useMemo, useState, type FC } from "react";
 import { Badge, Card, Col, Row } from "react-bootstrap";
-import { useAppDispatch, useSymbolData } from "../hooks";
+import { useAppDispatch, useAppSelector, useSymbolData } from "../hooks";
 import { computeSingleBotProfit } from "../../features/bots/profits";
 import { roundDecimals } from "../../utils/math";
 import { useImmer } from "use-immer";
 import { updateOrderLines } from "../../utils/charting/index";
-import { type OrderLine } from "../../utils/charting/index.d";
 import { updateTimescaleMarks } from "../../utils/charting";
 import TVChartContainer, { Exchange } from "binbot-charts";
 import { type ResolutionString } from "../../../charting_library/charting_library";
@@ -15,6 +14,7 @@ import { type PayloadActionCreator } from "@reduxjs/toolkit";
 import { BotStatus, MarketType } from "../../utils/enums";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 import { capitalizeFirst } from "../../utils/strings";
+import { selectBot } from "../../features/bots/botSlice";
 
 const ChartContainer: FC<{
   bot: Bot;
@@ -22,11 +22,11 @@ const ChartContainer: FC<{
   marketType: MarketType;
 }> = ({ bot, setCurrentPrice, marketType }) => {
   const dispatch: AppDispatch = useAppDispatch();
+  const { previewTrailingSettings } = useAppSelector(selectBot);
   const { quoteAsset } = useSymbolData();
   const [currentChartPrice, setCurrentChartPrice] = useImmer<number | null>(
     null,
   );
-  const [currentOrderLines, setCurrentOrderLines] = useImmer<OrderLine[]>([]);
   const [exchangeSymbol, setExchangeSymbol] = useImmer<string>(bot.pair);
   const [botProfit, setBotProfit] = useState<number>(Number(0));
   const { data: autotradeSettings } = useGetSettingsQuery();
@@ -35,13 +35,18 @@ const ChartContainer: FC<{
     autotradeSettings?.exchange_id?.toLowerCase() === "kucoin"
       ? Exchange.KUCOIN
       : Exchange.BINANCE;
+  const orderLinePrice =
+    currentChartPrice ??
+    (bot.deal.current_price || bot.deal.opening_price || 0);
+  const currentOrderLines = useMemo(
+    () => updateOrderLines(bot, orderLinePrice, previewTrailingSettings),
+    [bot, orderLinePrice, previewTrailingSettings],
+  );
 
   const updatedPrice = (price: number) => {
     price = roundDecimals(price, 4);
     const roundedPrice = parseFloat(price.toString());
     if (currentChartPrice !== roundedPrice) {
-      const newOrderLines = updateOrderLines(bot, roundedPrice);
-      setCurrentOrderLines(newOrderLines);
       setCurrentChartPrice(roundedPrice);
     }
   };
@@ -50,21 +55,11 @@ const ChartContainer: FC<{
     if (!bot.deal.opening_price && bot.status !== BotStatus.ACTIVE) {
       setCurrentChartPrice(price);
     }
-    const newOrderLines = updateOrderLines(bot, price);
-    setCurrentOrderLines(newOrderLines);
   };
 
   useEffect(() => {
     if (currentChartPrice === null) {
       return;
-    }
-
-    const newOrderLines = updateOrderLines(bot, currentChartPrice);
-    const hasDifferentOrderLines =
-      JSON.stringify(newOrderLines) !== JSON.stringify(currentOrderLines);
-
-    if (hasDifferentOrderLines) {
-      setCurrentOrderLines(newOrderLines);
     }
 
     const nextBotProfit = computeSingleBotProfit(bot, currentChartPrice);
@@ -73,7 +68,7 @@ const ChartContainer: FC<{
     if (bot.deal?.current_price !== currentChartPrice) {
       dispatch(setCurrentPrice(currentChartPrice));
     }
-  }, [bot, currentChartPrice, currentOrderLines, dispatch, setCurrentPrice]);
+  }, [bot, currentChartPrice, dispatch, setCurrentPrice]);
 
   useEffect(() => {
     if (bot.id && bot.deal.opening_price > 0) {

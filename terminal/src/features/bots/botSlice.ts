@@ -11,11 +11,18 @@ export const botSlice = createAppSlice({
   name: "bot",
   initialState: {
     bot: singleBot,
+    previewTrailingSettings: false,
   },
   reducers: (create) => ({
     setField: create.reducer(
       (state, { payload }: PayloadAction<BotDetailsFormField>) => {
         state.bot[payload.name] = payload.value;
+        if (
+          payload.name === "trailing_profit" ||
+          payload.name === "trailing_deviation"
+        ) {
+          state.previewTrailingSettings = true;
+        }
       },
     ),
     setToggle: create.reducer(
@@ -35,6 +42,7 @@ export const botSlice = createAppSlice({
     setBot: create.reducer(
       (state, { payload }: PayloadAction<BotDetailsState>) => {
         state.bot = { ...payload.bot };
+        state.previewTrailingSettings = false;
       },
     ),
     setCurrentPrice: create.reducer(
@@ -49,6 +57,7 @@ export const botSlice = createAppSlice({
         ...singleBot,
         ...(action?.payload || {}),
       };
+      state.previewTrailingSettings = false;
     }),
   }),
   selectors: {

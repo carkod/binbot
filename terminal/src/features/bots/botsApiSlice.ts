@@ -169,6 +169,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         streamBotOperation(
           `${import.meta.env.VITE_ACTIVATE_BOT}/${id}`,
           "Activating bot",
+          false,
         ),
       invalidatesTags: ["bots", "bot"],
     }),

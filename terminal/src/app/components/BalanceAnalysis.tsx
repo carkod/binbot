@@ -56,21 +56,6 @@ const BalanceAnalysis: FC<{
             ))}
           </Col>
         </Row>
-        <hr />
-        <Row>
-          <Col md="8" sm="12">
-            Free fiat left
-          </Col>
-          <Col md="4" sm="12">
-            <div className="u-primary-color">
-              <strong>{`${
-                accountData.fiat_available > 0
-                  ? accountData.fiat_available.toFixed(8)
-                  : 0
-              } ${accountData.fiat_currency}`}</strong>
-            </div>
-          </Col>
-        </Row>
       </Card.Body>
     </Card>
   );

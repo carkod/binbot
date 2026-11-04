@@ -21,7 +21,6 @@ const TakeProfit: FC = () => {
 
   const {
     register,
-    watch,
     reset,
     formState: { errors },
   } = useForm({
@@ -35,29 +34,24 @@ const TakeProfit: FC = () => {
   });
 
   useEffect(() => {
-    const { unsubscribe } = watch((values, { name }) => {
-      const value = name ? values[name] : undefined;
-      if (name && typeof value === "number" && Number.isFinite(value)) {
-        dispatch(setField({ name, value }));
-      }
-    });
-
-    return () => unsubscribe();
-  }, [watch, dispatch]);
-
-  useEffect(() => {
     reset({
       take_profit: bot.take_profit,
       trailing_deviation: bot.trailing_deviation,
       trailing_profit: bot.trailing_profit,
     });
-  }, [
-    bot.id,
-    bot.take_profit,
-    bot.trailing_deviation,
-    bot.trailing_profit,
-    reset,
-  ]);
+    // A new bot needs new defaults; local field edits must not reset the form.
+  }, [bot.id, reset]);
+
+  const commitPercentage = (
+    name: "take_profit" | "trailing_profit" | "trailing_deviation",
+    value: string,
+  ) => {
+    if (value === "") return;
+    const percentage = Number(value);
+    if (Number.isFinite(percentage)) {
+      dispatch(setField({ name, value: percentage }));
+    }
+  };
 
   return (
     <Tab.Pane eventKey={TabsKeys.TAKEPROFIT}>
@@ -85,6 +79,8 @@ const TakeProfit: FC = () => {
                       value: 100,
                       message: "Maximum trailing profit is 100",
                     },
+                    onBlur: (event) =>
+                      commitPercentage("trailing_profit", event.target.value),
                   })}
                 />
                 <InputGroupText>%</InputGroupText>
@@ -110,6 +106,8 @@ const TakeProfit: FC = () => {
                       value: 100,
                       message: "Maximum take profit is 100",
                     },
+                    onBlur: (event) =>
+                      commitPercentage("take_profit", event.target.value),
                   })}
                 />
                 <InputGroupText>%</InputGroupText>
@@ -204,6 +202,11 @@ const TakeProfit: FC = () => {
                       value: 100,
                       message: "Maximum trailing deviation is 100",
                     },
+                    onBlur: (event) =>
+                      commitPercentage(
+                        "trailing_deviation",
+                        event.target.value,
+                      ),
                   })}
                 />
                 <InputGroupText>%</InputGroupText>

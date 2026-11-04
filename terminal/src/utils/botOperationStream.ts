@@ -9,14 +9,17 @@ import { getToken } from "./login";
 export const streamBotOperation = async (
   url: string,
   operation: string,
+  showProgressToast = true,
 ): Promise<BotOperationStreamResult> => {
-  const toastId = toast.info(`${operation} (0%)`, {
-    autoClose: false,
-    closeOnClick: false,
-    hideProgressBar: false,
-    progress: 0,
-    theme: "colored",
-  });
+  const toastId = showProgressToast
+    ? toast.info(`${operation} (0%)`, {
+        autoClose: false,
+        closeOnClick: false,
+        hideProgressBar: false,
+        progress: 0,
+        theme: "colored",
+      })
+    : null;
   try {
     const token = getToken();
     const response = await fetch(`${buildBackUrl()}${url}`, {
@@ -49,10 +52,12 @@ export const streamBotOperation = async (
       const payload = JSON.parse(data);
       if (event === "progress") {
         const percent = Math.max(0, Math.min(100, payload.percent));
-        toast.update(toastId, {
-          render: `${payload.message} (${percent}%)`,
-          progress: percent / 100,
-        });
+        if (toastId !== null) {
+          toast.update(toastId, {
+            render: `${payload.message} (${percent}%)`,
+            progress: percent / 100,
+          });
+        }
       } else if (event === "result") {
         result = payload.response as BotOperationResponse;
       } else if (event === "error") {
@@ -81,22 +86,30 @@ export const streamBotOperation = async (
     if (result.error) {
       throw new Error(result.message);
     }
-    toast.update(toastId, {
-      render: result.message,
-      type: "success",
-      progress: null,
-      autoClose: 5000,
-    });
+    if (toastId !== null) {
+      toast.update(toastId, {
+        render: result.message,
+        type: "success",
+        progress: null,
+        autoClose: 5000,
+      });
+    } else {
+      toast.success(result.message);
+    }
     return { data: { bot: result.data } };
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Bot operation failed";
-    toast.update(toastId, {
-      render: message,
-      type: "error",
-      progress: null,
-      autoClose: 5000,
-    });
+    if (toastId !== null) {
+      toast.update(toastId, {
+        render: message,
+        type: "error",
+        progress: null,
+        autoClose: 5000,
+      });
+    } else {
+      toast.error(message);
+    }
     return { error: { status: "CUSTOM_ERROR", error: message } };
   }
 };
