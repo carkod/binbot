@@ -1,5 +1,3 @@
-from typing import Type
-
 from kucoin_universal_sdk.internal.infra.default_transport import RestError
 from pybinbot import (
     BotBase,
@@ -13,12 +11,11 @@ from pybinbot import (
     round_timestamp,
 )
 
-from api.databases.tables.bot_table import BotTable
-from api.exchange_apis.kucoin.deals.margin_deal import KucoinMarginDeal
-from api.exchange_apis.kucoin.deals.spot_deal import KucoinSpotDeal
+from api.exchange_apis.kucoin.deals.margin_deal import MarginDeal
+from api.exchange_apis.kucoin.deals.spot_deal import SpotDeal
 
 
-class KucoinLongDeal(KucoinSpotDeal):
+class KucoinLongDeal(SpotDeal):
     """
     Long deal implementation for Kucoin spot trading.
 
@@ -26,11 +23,6 @@ class KucoinLongDeal(KucoinSpotDeal):
     formerly known as streaming updates
     these operations are triggered by websockets
     """
-
-    def __init__(self, bot: BotModel, db_table: Type[BotTable]) -> None:
-        super().__init__(bot=bot, db_table=db_table)
-        self.active_bot: BotModel = bot
-        self.symbol = self.get_symbol(bot.pair, bot.quote_asset)
 
     def clean_fiat_currency(self) -> BotModel:
         """
@@ -61,11 +53,7 @@ class KucoinLongDeal(KucoinSpotDeal):
             1 + (float(self.active_bot.take_profit) / 100)
         ) * float(deal_buy_price)
 
-        qty = self.kucoin_api.get_single_spot_balance(self.symbol_info.base_asset)
-
         qty = round_numbers(buy_total_qty, self.qty_precision)
-
-        qty = round_numbers(qty, self.qty_precision)
         system_order = self.kucoin_api.sell_order(symbol=self.symbol, qty=qty)
 
         price = float(system_order.price)
@@ -132,7 +120,7 @@ class KucoinLongDeal(KucoinSpotDeal):
 
         # Activate bot
         bot_model = BotModel.dump_from_table(created_bot)
-        margin_strategy_deal = KucoinMarginDeal(bot=bot_model, db_table=self.db_table)
+        margin_strategy_deal = MarginDeal(bot=bot_model, db_table=self.db_table)
         self.active_bot = margin_strategy_deal.open_deal()
         self.controller.update_logs(
             f"Switched to margin_short strategy. New bot id: {bot_model.id}",

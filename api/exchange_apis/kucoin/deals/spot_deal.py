@@ -29,7 +29,7 @@ from api.databases.tables.bot_table import BotTable
 from api.exchange_apis.kucoin.deals.base import KucoinBaseBalance
 
 
-class KucoinSpotDeal(KucoinBaseBalance):
+class SpotDeal(KucoinBaseBalance):
     """
     Spot deal implementation matching BinanceSpotDeal interface.
 
@@ -65,7 +65,7 @@ class KucoinSpotDeal(KucoinBaseBalance):
         if not result_balances:
             return False
 
-        quote_asset = self.active_bot.quote_asset.value
+        quote_asset = self.active_bot.quote_asset
 
         if ("main" in result_balances and quote_asset in result_balances["main"]) or (
             "trade" in result_balances and quote_asset in result_balances["trade"]
@@ -121,17 +121,14 @@ class KucoinSpotDeal(KucoinBaseBalance):
             The response from the KuCoin API after placing the buy order.
         """
         result_balances, _, _ = self.compute_balance()
-        quote_asset = self.active_bot.quote_asset.value
-        last_ticker_price = self.kucoin_api.get_ticker_price(self.symbol)
-
-        if quote_asset in result_balances:
-            available_balance = float(result_balances["trade"][quote_asset])
-            if available_balance > 0:
-                qty = round_numbers(
-                    available_balance / last_ticker_price, self.qty_precision
-                )
-                order = self.kucoin_api.buy_order(symbol=self.symbol, qty=qty)
-                return order
+        quote_asset = self.active_bot.quote_asset
+        available_balance = result_balances.get("trade", {}).get(quote_asset, 0)
+        if available_balance > 0:
+            last_ticker_price = self.kucoin_api.get_ticker_price(self.symbol)
+            qty = round_numbers(
+                available_balance / last_ticker_price, self.qty_precision
+            )
+            return self.kucoin_api.buy_order(symbol=self.symbol, qty=qty)
         return None
 
     def long_open_deal_trailing_parameters(self) -> BotModel:
@@ -255,7 +252,7 @@ class KucoinSpotDeal(KucoinBaseBalance):
                     bot=self.active_bot, log_message="Quote asset purchase successful."
                 )
                 self.active_bot.deal.base_order_size = float(system_order.size)
-                if self.active_bot.quote_asset.is_fiat():
+                if QuoteAssets(self.active_bot.quote_asset).is_fiat():
                     self.active_bot.deal.base_order_size = float(order.qty) * float(
                         order.price
                     )
