@@ -5,6 +5,7 @@ from typing import Any, cast
 
 import pandas as pd
 import pytest
+from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
 from kucoin_universal_sdk.model.common import RestError
 from pybinbot import (
     BinanceErrors,
@@ -15,6 +16,7 @@ from pybinbot import (
     MarketType,
     OrderModel,
     OrderStatus,
+    OrderType,
     Position,
     Status,
 )
@@ -147,7 +149,7 @@ class TestPositionManager:
             return DummySymbolInfo()
 
         monkeypatch.setattr(
-            "api.exchange_apis.kucoin.futures.futures_deal.KucoinFutures.get_symbol_info",
+            "api.exchange_apis.kucoin.futures.order_execution.KucoinFutures.get_symbol_info",
             dummy_get_symbol_info,
         )
 
@@ -1064,8 +1066,13 @@ class TestPositionManager:
         base.kucoin_futures_api.get_futures_position = lambda symbol: None
         submitted: list[tuple[str, float, float, bool]] = []
 
-        def buy(symbol, qty, entry_limit_price, post_only, leverage):
-            submitted.append((symbol, qty, entry_limit_price, post_only))
+        def place_futures_order(
+            symbol, side, size, price, leverage, order_type, time_in_force, post_only
+        ):
+            assert side == AddOrderReq.SideEnum.BUY
+            assert order_type == OrderType.limit
+            assert time_in_force == AddOrderReq.TimeInForceEnum.GOOD_TILL_CANCELED
+            submitted.append((symbol, size, price, post_only))
             return OrderModel(
                 order_id="replacement-entry",
                 order_type="limit",
@@ -1073,13 +1080,13 @@ class TestPositionManager:
                 timestamp=now_ms,
                 order_side="buy",
                 qty=0,
-                price=entry_limit_price,
+                price=price,
                 status=OrderStatus.NEW,
                 time_in_force="GTC",
                 deal_type=DealType.base_order,
             )
 
-        base.kucoin_futures_api.buy = buy
+        base.kucoin_futures_api.place_futures_order = place_futures_order
         updated: list[str] = []
         saved: list[Any] = []
         base.bot_controller.update_order = lambda order: updated.append(
@@ -1277,7 +1284,9 @@ class TestPositionManager:
             get_futures_position=lambda symbol: None,
         )
 
-        def buy(symbol, qty, entry_limit_price, post_only, leverage):
+        def place_futures_order(
+            symbol, side, size, price, leverage, order_type, time_in_force, post_only
+        ):
             assert post_only
             return OrderModel(
                 order_id="second-reprice",
@@ -1286,13 +1295,13 @@ class TestPositionManager:
                 timestamp=now_ms,
                 order_side="buy",
                 qty=0,
-                price=entry_limit_price,
+                price=price,
                 status=OrderStatus.NEW,
                 time_in_force="GTC",
                 deal_type=DealType.base_order,
             )
 
-        api.buy = buy
+        api.place_futures_order = place_futures_order
         controller = types.SimpleNamespace(
             update_order=lambda order: None,
             save=lambda *args, **kwargs: None,

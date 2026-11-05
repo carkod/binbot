@@ -1,3 +1,4 @@
+from time import time
 from typing import cast
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -20,7 +21,7 @@ from sqlalchemy import create_engine, inspect, text
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from alembic.script import ScriptDirectory
-from pybinbot.models.deal import PositionSizeOrder
+from pybinbot.models.deal import ConditionalCloseOrder, PositionSizeOrder
 
 from api.alembic.versions import a7b4e9c261f0_dynamic_position_sizing as migration
 from api.databases.crud.bot_crud import BotTableCrud
@@ -94,6 +95,35 @@ def execution(*, short=False):
     return result
 
 
+def _arm_native_stop(engine, stop_price: float, deal_type: DealType) -> None:
+    """A live native stop-limit that the last closed candle settled past."""
+    engine.active_bot.deal.conditional_close_order = ConditionalCloseOrder(
+        client_oid="native-stop",
+        order_id="native-stop-id",
+        requested_qty=100,
+        stop_price=stop_price,
+        deal_type=deal_type,
+    )
+    engine.stop_limit_missed.return_value = True
+
+
+def _closed_candle_klines(closed_close: float) -> list[list[float]]:
+    interval_ms = BinanceKlineIntervals.fifteen_minutes.get_ms()
+    current_open = (int(time() * 1000) // interval_ms) * interval_ms
+    return [
+        [current_open - interval_ms, 100, 110, 90, closed_close, 1, current_open - 1],
+        [
+            current_open,
+            closed_close,
+            110,
+            90,
+            closed_close,
+            1,
+            current_open + interval_ms - 1,
+        ],
+    ]
+
+
 def make_lifecycle(engine, monkeypatch):
     lifecycle = Lifecycle(
         engine,
@@ -112,12 +142,13 @@ def make_lifecycle(engine, monkeypatch):
 
 
 @pytest.mark.parametrize("short,price", [(False, 94), (True, 106)])
-def test_stop_hit_closes_whole_position_without_sizing_reductions(
+def test_tick_beyond_stop_leaves_exit_to_native_stop_without_sizing_reductions(
     monkeypatch, short, price
 ):
+    """KuCoin's stop-limit owns the exit; a live tick never closes bot-side."""
     engine = execution(short=short)
     make_lifecycle(engine, monkeypatch).exit(price)
-    engine.close_all.assert_called_once_with(deal_type=DealType.stop_loss)
+    engine.close_all.assert_not_called()
     engine.kucoin_futures_api.futures_order_api.add_order.assert_not_called()
 
 
@@ -534,18 +565,23 @@ def test_stop_filled_during_trailing_placement_prevents_same_tick_scale_in(
 
 
 @pytest.mark.parametrize("short", [False, True])
-def test_trailing_deviation_closes_full_position_even_with_pending_increase(
+def test_missed_trailing_stop_limit_closes_full_position_even_with_pending_increase(
     monkeypatch, short
 ):
     engine = execution(short=short)
     stop = 95 if short else 105
     engine.active_bot.deal.trailing_stop_loss_price = stop
     engine.active_bot.deal.position_size_order = pending_order()
-    # Equality triggers the exit and an unresolved lookup cannot block it.
+    _arm_native_stop(engine, stop, DealType.trailing_profit)
+    # An unresolved increase lookup cannot block the missed-stop close.
     api = engine.kucoin_futures_api.futures_order_api
     api.get_order_by_client_oid.side_effect = missing_order_error()
-    make_lifecycle(engine, monkeypatch).exit(stop)
-    engine.close_all.assert_called_once_with(deal_type=DealType.trailing_profit)
+    lifecycle = make_lifecycle(engine, monkeypatch)
+    lifecycle.klines = _closed_candle_klines(stop)
+    lifecycle.exit(stop)
+    engine.close_all.assert_called_once_with(
+        deal_type=DealType.trailing_profit, market_only=True
+    )
     api.add_order.assert_not_called()
     api.get_order_by_client_oid.assert_not_called()
 
@@ -556,7 +592,8 @@ def test_trailing_stop_never_loosens_on_rebound(monkeypatch, short):
     engine.active_bot.deal.trailing_stop_loss_price = 96 if short else 104
     engine.active_bot.deal.trailing_profit_price = 90 if short else 110
     make_lifecycle(engine, monkeypatch).exit(97 if short else 103)
-    engine.close_all.assert_called_once_with(deal_type=DealType.trailing_profit)
+    # The native trailing stop-limit fills on KuCoin; nothing moves it back.
+    engine.close_all.assert_not_called()
     engine.place_trailing_stop_loss.assert_not_called()
 
 
@@ -590,7 +627,9 @@ def test_sand_rebound_closes_in_profit_instead_of_partially_buying_back(monkeypa
     assert bot.deal.trailing_stop_loss_price == 0.05917
     assert bot.deal.trailing_stop_loss_price < bot.deal.opening_price
     lifecycle.exit(0.06083)
-    engine.close_all.assert_called_once_with(deal_type=DealType.trailing_profit)
+    # The rebound crosses the native trailing stop at 0.05917, still in profit;
+    # KuCoin closes the full position and the bot never buys back partially.
+    engine.close_all.assert_not_called()
     assert api.add_order.call_count == 2
     assert all(not call.args[0].reduce_only for call in api.add_order.call_args_list)
 
@@ -604,8 +643,13 @@ def test_pending_lookup_failure_does_not_block_full_stop_loss(monkeypatch):
             response=SimpleNamespace(code="500000", message="failed"),
         )
     )
-    make_lifecycle(engine, monkeypatch).exit(94)
-    engine.close_all.assert_called_once_with(deal_type=DealType.stop_loss)
+    _arm_native_stop(engine, 95, DealType.stop_loss)
+    lifecycle = make_lifecycle(engine, monkeypatch)
+    lifecycle.klines = _closed_candle_klines(94)
+    lifecycle.exit(94)
+    engine.close_all.assert_called_once_with(
+        deal_type=DealType.stop_loss, market_only=True
+    )
 
 
 def test_pending_intent_serializes_through_bot_crud():

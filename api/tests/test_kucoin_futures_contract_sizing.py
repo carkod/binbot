@@ -26,6 +26,7 @@ from pybinbot import (
 )
 
 from api.exchange_apis.kucoin.deals.base import KucoinBaseBalance
+from api.exchange_apis.kucoin.futures.entry_pricing import normalize_entry_klines
 from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from streaming.futures_position import FuturesPosition
 
@@ -139,15 +140,15 @@ def test_constructor_reuses_injected_exchange_dependencies(monkeypatch):
 
     monkeypatch.setattr(KucoinBaseBalance, "__init__", base_balance_init)
     monkeypatch.setattr(
-        "api.exchange_apis.kucoin.futures.futures_deal.KucoinFutures",
+        "api.exchange_apis.kucoin.futures.order_execution.KucoinFutures",
         DummyFuturesApi,
     )
     monkeypatch.setattr(
-        "api.exchange_apis.kucoin.futures.futures_deal.SymbolsCrud",
+        "api.exchange_apis.kucoin.futures.order_execution.SymbolsCrud",
         DummySymbolsCrud,
     )
     monkeypatch.setattr(
-        "api.exchange_apis.kucoin.futures.futures_deal.BotTableCrud",
+        "api.exchange_apis.kucoin.futures.order_execution.BotTableCrud",
         DummyBotCrud,
     )
     bot = BotModel(pair="SIRENUSDTM", position=Position.short, futures_leverage=5)
@@ -266,9 +267,9 @@ def test_limit_entry_retries_stale_book_then_uses_fresh_snapshot(monkeypatch):
     loader = Mock(side_effect=[stale, TimeoutError("transient timeout"), fresh])
     sleeper = Mock()
     monkeypatch.setattr(
-        "api.exchange_apis.kucoin.futures.futures_deal.load_futures_order_book", loader
+        "api.exchange_apis.kucoin.futures.entry_pricing.load_futures_order_book", loader
     )
-    monkeypatch.setattr("api.exchange_apis.kucoin.futures.futures_deal.sleep", sleeper)
+    monkeypatch.setattr("api.exchange_apis.kucoin.futures.entry_pricing.sleep", sleeper)
     assert deal.prepare_entry_limit_price(100) == 100
     assert loader.call_count == 3
     assert sleeper.call_count == 2
@@ -278,10 +279,10 @@ def test_limit_entry_stops_after_three_failed_book_reads(monkeypatch):
     deal = make_sizing_deal(multiplier=1)
     loader = Mock(side_effect=TimeoutError("timeout"))
     monkeypatch.setattr(
-        "api.exchange_apis.kucoin.futures.futures_deal.load_futures_order_book", loader
+        "api.exchange_apis.kucoin.futures.entry_pricing.load_futures_order_book", loader
     )
     monkeypatch.setattr(
-        "api.exchange_apis.kucoin.futures.futures_deal.sleep", lambda _: None
+        "api.exchange_apis.kucoin.futures.entry_pricing.sleep", lambda _: None
     )
     with pytest.raises(BinbotErrors, match="after 3 attempts"):
         deal.prepare_entry_limit_price(100)
@@ -297,9 +298,6 @@ def test_base_order_downsizes_when_margin_size_exceeds_available_balance():
 
         def __init__(self):
             self.sell_calls: list[dict[str, float]] = []
-
-        def matching_engine(self, symbol, side, size):
-            return 10
 
         def place_futures_order(self, symbol, size, leverage, price=None, **kwargs):
             qty = size
@@ -604,8 +602,14 @@ def test_close_all_blends_partial_ioc_fill_with_market_fallback():
         def get_futures_position(self, symbol):
             return types.SimpleNamespace(current_qty=10)
 
-        def matching_engine(self, symbol, size, side):
-            return 100.0
+        # Best bid 100.01 → the IOC crosses one tick lower at 100.0.
+        futures_market_api = types.SimpleNamespace(
+            get_full_order_book=lambda request: types.SimpleNamespace(
+                bids=[["100.01", "50"]],
+                asks=[["100.02", "50"]],
+                ts=time_ns() // 1_000_000,
+            )
+        )
 
         def place_futures_order(self, **kwargs):
             self.place_calls.append(kwargs)
@@ -659,8 +663,12 @@ def test_close_all_falls_back_to_market_using_live_position_direction():
             # stale bot record below says short.
             return types.SimpleNamespace(current_qty=5)
 
-        def matching_engine(self, symbol: str, size: float, side: Any) -> float:
-            raise RuntimeError("book unavailable")
+        @property
+        def futures_market_api(self) -> types.SimpleNamespace:
+            def unavailable(request: Any) -> None:
+                raise RuntimeError("book unavailable")
+
+            return types.SimpleNamespace(get_full_order_book=unavailable)
 
         def place_futures_order(self, **kwargs: Any) -> OrderBase:
             self.place_calls.append(kwargs)
@@ -833,7 +841,7 @@ def prepare_recovery_entry_deal(
 ) -> Any:
     event_time = datetime(2026, 6, 9, 23, 4, 7, tzinfo=timezone.utc)
     monkeypatch.setattr(
-        "api.exchange_apis.kucoin.futures.futures_deal.time",
+        "api.exchange_apis.kucoin.futures.entry_pricing.time",
         lambda: event_time.timestamp(),
     )
     deal = make_sizing_deal(multiplier=1)
@@ -1321,11 +1329,13 @@ def test_top_gainer_places_exchange_native_emergency_backstop():
 
     place_order.assert_called_once()
     request = place_order.call_args.kwargs
-    assert request["order_type"] == OrderType.market
+    assert request["order_type"] == OrderType.limit
     assert request["reduce_only"] is True
     assert request["size"] == 3
     assert request["stop_price"] == 98
-    assert request["allow_market_fallback"] is False
+    # Long stop 98 on a 0.00001 tick: the sell limit rests 0.5% lower.
+    assert request["price"] == 97.51
+    assert request["price"] < 98
     assert (
         request["client_oid"] == deal.active_bot.deal.conditional_close_order.client_oid
     )
@@ -1344,7 +1354,7 @@ def test_entry_klines_normalizes_kucoin_dashboard_ohlc_order():
         "5000",
     ]
 
-    normalized = KucoinPositionDeal.normalize_entry_klines([dashboard_candle])
+    normalized = normalize_entry_klines([dashboard_candle])
 
     assert normalized == [
         [
@@ -1609,12 +1619,14 @@ def test_market_only_close_skips_ioc_and_market_closes_whole_live_position(short
         deal_type=DealType.algorithmic_close,
     )
     place = Mock(return_value=order)
-    matching = Mock(side_effect=AssertionError("Market exit must not use IOC pricing"))
+    order_book = Mock(
+        side_effect=AssertionError("Market exit must not use IOC pricing")
+    )
     deal.kucoin_futures_api = types.SimpleNamespace(
         get_futures_position=lambda symbol: types.SimpleNamespace(
             current_qty=-37 if short else 37
         ),
-        matching_engine=matching,
+        futures_market_api=types.SimpleNamespace(get_full_order_book=order_book),
         place_futures_order=place,
     )
     deal._cleanup_native_protection_after_close = Mock()
@@ -1622,7 +1634,7 @@ def test_market_only_close_skips_ioc_and_market_closes_whole_live_position(short
         save=lambda bot: bot, update_logs=lambda **kwargs: None
     )
     result = deal.close_all(algorithmic_close=True, market_only=True)
-    matching.assert_not_called()
+    order_book.assert_not_called()
     place.assert_called_once()
     request = place.call_args.kwargs
     assert request["order_type"] == OrderType.market

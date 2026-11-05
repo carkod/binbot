@@ -1,29 +1,31 @@
 import logging
 from datetime import datetime
+from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
 from kucoin_universal_sdk.generate.futures.order.model_get_order_by_order_id_resp import (
     GetOrderByOrderIdResp,
 )
 from kucoin_universal_sdk.model.common import RestError
 from pybinbot import (
+    ema,
     BotModel,
     Candles,
     DealType,
     ExchangeId,
     OrderModel,
     OrderStatus,
+    OrderType,
     Position,
     Status,
     convert_to_kucoin_symbol,
+    floor_price_to_tick,
     round_numbers,
 )
 
 from api.databases.tables.signals_table import SignalsTable
 from api.databases.utils import get_db_session
+from api.exchange_apis.kucoin.futures.entry_pricing import normalize_entry_klines
 from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
-from api.exchange_apis.kucoin.futures.liquidity import (
-    floor_price_to_tick,
-    load_futures_order_book,
-)
+from api.exchange_apis.kucoin.futures.liquidity import load_futures_order_book
 from api.tools.constants import (
     TOP_GAINER_EARLY_MOMENTUM_ALGO,
     TOP_GAINER_SHORT_ALGO,
@@ -381,11 +383,14 @@ class FuturesPosition(PositionMarket):
                 self.execution.controller.save(data=bot)
                 return True
 
-            replacement = self.base_streaming.kucoin_futures_api.buy(
+            replacement = self.base_streaming.kucoin_futures_api.place_futures_order(
                 symbol=kucoin_symbol,
-                qty=bot.deal.base_order_size,
+                side=AddOrderReq.SideEnum.BUY,
+                size=bot.deal.base_order_size,
+                price=target_price,
                 leverage=bot.futures_leverage,
-                entry_limit_price=target_price,
+                order_type=OrderType.limit,
+                time_in_force=AddOrderReq.TimeInForceEnum.GOOD_TILL_CANCELED,
                 post_only=True,
             )
         except Exception as exc:
@@ -433,14 +438,6 @@ class FuturesPosition(PositionMarket):
         self.execution.controller.save(data=bot)
         return True
 
-    @staticmethod
-    def _ema(values: list[float], span: int) -> float:
-        multiplier = 2 / (span + 1)
-        ema = values[0]
-        for value in values[1:]:
-            ema = value * multiplier + ema * (1 - multiplier)
-        return ema
-
     def _top_gainer_reprice_validation(self, now_ms: int) -> tuple[bool, str]:
         bot = self.execution.active_bot
         if bot.signal_id is None:
@@ -483,7 +480,7 @@ class FuturesPosition(PositionMarket):
             )
 
         try:
-            normalized_klines = KucoinPositionDeal.normalize_entry_klines(self.klines)
+            normalized_klines = normalize_entry_klines(self.klines)
             completed_candles, current_candle = Candles.partition_closed_candles(
                 normalized_klines,
                 now_ms=now_ms,
@@ -509,8 +506,8 @@ class FuturesPosition(PositionMarket):
         except (TypeError, ValueError, ZeroDivisionError):
             return False, "live continuation inputs are invalid"
 
-        ema20 = self._ema(closes, 20)
-        ema50 = self._ema(closes, 50)
+        ema20 = ema(closes, 20)[-1]
+        ema50 = ema(closes, 50)[-1]
         if not current_close > ema20 > ema50:
             return (
                 False,

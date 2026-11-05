@@ -22,6 +22,7 @@ from pybinbot import (
     OrderType,
     round_numbers,
 )
+from api.exchange_apis.kucoin.futures.liquidity import load_futures_order_book
 from api.grid_ladders.sizing import round_price_to_precision
 from kucoin_universal_sdk.generate.futures.order.model_get_order_by_order_id_resp import (
     GetOrderByOrderIdResp,
@@ -264,25 +265,16 @@ class BaseLifecycle(ABC):
     def _current_market_price(self, symbol: str) -> float | None:
         symbol_row = self._symbol_row(symbol)
         futures_symbol = symbol_row.get_futures_symbol()
-        prices: list[float] = []
-        for side in (AddOrderReq.SideEnum.BUY, AddOrderReq.SideEnum.SELL):
-            try:
-                raw_price = self.base_streaming.kucoin_futures_api.matching_engine(
-                    futures_symbol,
-                    size=1,
-                    side=side,
-                )
-            except Exception:
-                continue
-            price = float(raw_price or 0)
-            if price > 0:
-                prices.append(price)
-
-        if not prices:
+        try:
+            book = load_futures_order_book(
+                self.base_streaming.kucoin_futures_api, futures_symbol
+            )
+        except Exception:
             return None
 
         precision = SymbolsCrud.get_price_precision(symbol_row, ExchangeId.KUCOIN)
-        return round_numbers(sum(prices) / len(prices), precision or 8)
+        midpoint = (book.bids[0].price + book.asks[0].price) / 2
+        return round_numbers(midpoint, precision or 8)
 
     def _arm_level_entry(
         self,

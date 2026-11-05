@@ -20,7 +20,7 @@ from sqlmodel import Session, SQLModel, create_engine
 from api.databases.crud.bot_crud import BotTableCrud
 from api.databases.tables.bot_table import BotTable
 from api.databases.tables.deal_table import DealTable
-from api.exchange_apis.kucoin.futures.futures_deal import EntryLiquidityError
+from api.exchange_apis.kucoin.futures.entry_pricing import EntryLiquidityError
 from streaming.base import BaseStreaming
 from streaming.lifecycle import Lifecycle
 

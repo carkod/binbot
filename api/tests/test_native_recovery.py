@@ -13,6 +13,7 @@ from pybinbot import (
     OrderBase,
     OrderModel,
     OrderStatus,
+    OrderType,
     Position,
     RecoveryBotModel,
     RecoveryParams,
@@ -43,6 +44,7 @@ def execution(*, position=Position.long):
     engine.active_bot.deal.opening_price = 100
     engine.price_precision = 4
     engine.kucoin_symbol = "TESTUSDTM"
+    engine.kucoin_symbol_data = SimpleNamespace(tick_size=0.0001, multiplier=1)
     engine.controller = Mock()
     engine.kucoin_futures_api = Mock()
     engine.matching_exchange_fill_timestamp = lambda order, **kwargs: kwargs.get(
@@ -68,7 +70,7 @@ def test_conditional_close_persists_identity_before_submission_and_never_doubles
         assert engine.controller.save.called
         assert kwargs["size"] == 101
         assert kwargs["reduce_only"] is True
-        assert kwargs["allow_market_fallback"] is False
+        assert kwargs["order_type"] == OrderType.limit
         assert kwargs["side"].value == side
         assert kwargs["stop"].value == stop
         return OrderBase(
@@ -459,7 +461,7 @@ def test_persisted_full_fill_respects_recovery_policy_after_worker_restart(
             fp.order_updates()
         assert engine.active_bot.deal.closing_price == 98
 
-        engine.kucoin_symbol_data = SimpleNamespace(multiplier=1)
+        engine.kucoin_symbol_data = SimpleNamespace(tick_size=0.0001, multiplier=1)
         lifecycle = Lifecycle(
             engine,
             cast(
@@ -554,7 +556,7 @@ def test_unacknowledged_conditional_retry_preserves_client_oid_and_original_trig
     intent.not_found_count = 2
     intent.not_found_since_ms = 1
     monkeypatch.setattr(
-        "api.exchange_apis.kucoin.futures.futures_deal.time", lambda: 100
+        "api.exchange_apis.kucoin.futures.order_execution.time", lambda: 100
     )
     engine.kucoin_futures_api.retrieve_order_by_client_oid.side_effect = RestError(
         msg="missing",
@@ -578,7 +580,6 @@ def test_unacknowledged_conditional_retry_preserves_client_oid_and_original_trig
     assert req["stop_price"] == 98
     assert req["size"] == 101
     assert req["reduce_only"] is True
-    assert req["allow_market_fallback"] is False
 
 
 def test_confirmed_native_close_creates_opposite_pending_bot_then_uses_normal_entry(
@@ -615,7 +616,7 @@ def test_confirmed_native_close_creates_opposite_pending_bot_then_uses_normal_en
             )
         ]
         engine.controller = crud
-        engine.kucoin_symbol_data = SimpleNamespace(multiplier=1)
+        engine.kucoin_symbol_data = SimpleNamespace(tick_size=0.0001, multiplier=1)
         lifecycle = Lifecycle(
             engine,
             cast(
