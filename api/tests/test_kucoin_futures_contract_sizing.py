@@ -882,7 +882,7 @@ def test_recovery_long_entry_caps_kat_wick_with_atr_allowance(monkeypatch):
         candle_range=0.000135,
     )
 
-    limit_price = deal.recovery_entry_limit_price()
+    limit_price = deal.body_capped_entry_limit_price()
 
     assert limit_price == 0.00625
     assert any("Recovery body-capped entry" in log for log in deal.active_bot.logs)
@@ -898,7 +898,7 @@ def test_recovery_short_entry_uses_lower_body_anchor(monkeypatch):
         candle_range=0.00001,
     )
 
-    limit_price = deal.recovery_entry_limit_price()
+    limit_price = deal.body_capped_entry_limit_price()
 
     assert limit_price == 0.00609
     assert any("allowance=0.50%" in log for log in deal.active_bot.logs)
@@ -915,7 +915,7 @@ def test_recovery_entry_atr_allowance_is_capped_at_one_and_a_half_percent(
         candle_range=0.001,
     )
 
-    limit_price = deal.recovery_entry_limit_price()
+    limit_price = deal.body_capped_entry_limit_price()
 
     assert limit_price == 0.00628
     assert any("allowance=1.50%" in log for log in deal.active_bot.logs)
@@ -933,7 +933,7 @@ def test_recovery_entry_uses_fallback_allowance_without_enough_atr_data(
         completed_count=2,
     )
 
-    limit_price = deal.recovery_entry_limit_price()
+    limit_price = deal.body_capped_entry_limit_price()
 
     assert limit_price == 0.00623
     assert any("allowance=0.75% (fallback)" in log for log in deal.active_bot.logs)
@@ -951,7 +951,7 @@ def test_recovery_entry_rejects_activation_without_current_candle(monkeypatch):
     deal.kucoin_futures_api.get_ui_klines = lambda **kwargs: completed_only
 
     with pytest.raises(BinbotErrors, match="Reliable current and completed candles"):
-        deal.recovery_entry_limit_price()
+        deal.body_capped_entry_limit_price()
 
 
 def test_non_recovery_entry_uses_body_capped_limit_price(monkeypatch):
