@@ -29,7 +29,7 @@ from api.databases.tables.bot_table import BotTable
 from api.exchange_apis.kucoin.deals.base import KucoinBaseBalance
 
 
-class KucoinMarginDeal(KucoinBaseBalance):
+class MarginDeal(KucoinBaseBalance):
     """Stub KuCoin margin deal implementation matching Binance margin deal interface.
 
     Provides method signatures for polymorphic delegation; implementations pending.
@@ -43,7 +43,6 @@ class KucoinMarginDeal(KucoinBaseBalance):
         super().__init__()
         self.active_bot = bot
         self.db_table = db_table
-        self.symbols_crud = SymbolsCrud()
         # Provide controller attribute for parity with Binance implementations
         self.controller: BotTableCrud
         self.controller = BotTableCrud()
@@ -293,7 +292,7 @@ class KucoinMarginDeal(KucoinBaseBalance):
         not out of sync with the bot parameters
         """
 
-        if self.active_bot.position == Position.short:
+        if self.active_bot.position == Position.long:
             logging.error("Bot executing wrong short_update_deal_trailing_parameters")
             return self.active_bot
 
@@ -355,24 +354,12 @@ class KucoinMarginDeal(KucoinBaseBalance):
         # Bot has trailing set
         # trailing_profit must also be set
         if self.active_bot.trailing:
-            if self.active_bot.position == Position.short:
-                price = self.active_bot.deal.opening_price
-                trailing_profit = price - (
-                    price * (self.active_bot.trailing_profit / 100)
-                )
-                self.active_bot.deal.trailing_profit_price = round_numbers(
-                    trailing_profit, self.price_precision
-                )
-                # do not set trailing_stop_loss_price until trailing_profit_price is broken
-            else:
-                price = self.active_bot.deal.opening_price
-                trailing_profit = price + (
-                    price * (self.active_bot.trailing_profit / 100)
-                )
-                self.active_bot.deal.trailing_profit_price = round_numbers(
-                    trailing_profit, self.price_precision
-                )
-                # do not set trailing_stop_loss_price until trailing_profit_price is broken
+            price = self.active_bot.deal.opening_price
+            trailing_profit = price - (price * (self.active_bot.trailing_profit / 100))
+            self.active_bot.deal.trailing_profit_price = round_numbers(
+                trailing_profit, self.price_precision
+            )
+            # Do not set trailing_stop_loss_price until trailing_profit_price is broken.
 
         if self.active_bot.status == Status.inactive:
             self.active_bot.add_log("Bot activated")

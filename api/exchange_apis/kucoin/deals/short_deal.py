@@ -1,5 +1,6 @@
-from typing import Type
-
+from kucoin_universal_sdk.generate.spot.order.model_get_order_by_order_id_resp import (
+    GetOrderByOrderIdResp,
+)
 from pybinbot import (
     BotBase,
     BotModel,
@@ -11,12 +12,11 @@ from pybinbot import (
     round_timestamp,
 )
 
-from api.databases.tables.bot_table import BotTable
-from api.exchange_apis.kucoin.deals.margin_deal import KucoinMarginDeal
-from api.exchange_apis.kucoin.deals.spot_deal import KucoinSpotDeal
+from api.exchange_apis.kucoin.deals.margin_deal import MarginDeal
+from api.exchange_apis.kucoin.deals.spot_deal import SpotDeal
 
 
-class KucoinShortDeal(KucoinMarginDeal):
+class KucoinShortDeal(MarginDeal):
     """
     Short position deal implementation for Kucoin exchange.
 
@@ -25,23 +25,17 @@ class KucoinShortDeal(KucoinMarginDeal):
     these operations are triggered by websockets
     """
 
-    def __init__(self, bot: BotModel, db_table: Type[BotTable]) -> None:
-        super().__init__(bot=bot, db_table=db_table)
-        self.active_bot: BotModel = bot
-        self.symbol = self.get_symbol(self.active_bot.pair, self.active_bot.quote_asset)
-
-    def execute_stop_loss(self) -> BotModel:
-        """
-        Execute stop loss when price is hit
-        This is used during streaming updates
-        """
-        # Margin buy (buy back)
-        system_order = self.margin_liquidation()
+    def _record_margin_close(
+        self,
+        system_order: GetOrderByOrderIdResp,
+        deal_type: DealType,
+        completion_log: str,
+    ) -> BotModel:
+        """Record a completed margin buyback in the bot and persist it."""
         price = float(system_order.price)
-
-        stop_loss_order = OrderModel(
+        order = OrderModel(
             timestamp=int(system_order.created_at),
-            deal_type=DealType.stop_loss,
+            deal_type=deal_type,
             order_id=str(system_order.id),
             pair=system_order.symbol,
             order_side=system_order.side,
@@ -54,20 +48,26 @@ class KucoinShortDeal(KucoinMarginDeal):
 
         self.active_bot.deal.total_commissions += float(system_order.fee)
 
-        self.active_bot.orders.append(stop_loss_order)
-
-        self.active_bot.deal.closing_price = float(price)
+        self.active_bot.orders.append(order)
+        self.active_bot.deal.closing_price = price
         self.active_bot.deal.closing_qty = float(system_order.size)
         self.active_bot.deal.closing_timestamp = round_timestamp(
             system_order.created_at
         )
 
         self.active_bot.status = Status.completed
-        self.active_bot.add_log("Completed Stop loss order")
+        self.active_bot.add_log(completion_log)
 
         self.controller.save(self.active_bot)
 
         return self.active_bot
+
+    def execute_stop_loss(self) -> BotModel:
+        """Buy back the short position when its stop loss is hit."""
+        system_order = self.margin_liquidation()
+        return self._record_margin_close(
+            system_order, DealType.stop_loss, "Completed Stop loss order"
+        )
 
     def execute_take_profit(
         self, take_profit_type: DealType = DealType.take_profit
@@ -87,36 +87,9 @@ class KucoinShortDeal(KucoinMarginDeal):
         self.controller.update_logs("Attempting to liquidate loan", self.active_bot)
         system_order = self.margin_liquidation()
 
-        price = float(system_order.price)
-
-        # No res means it wasn't properly closed/completed
-        take_profit_order = OrderModel(
-            timestamp=system_order.created_at,
-            deal_type=take_profit_type,
-            order_id=str(system_order.id),
-            pair=system_order.symbol,
-            order_side=system_order.side,
-            order_type=system_order.type,
-            price=price,
-            qty=float(system_order.size),
-            time_in_force=system_order.time_in_force,
-            status=OrderStatus.NEW if system_order.active else OrderStatus.FILLED,
+        return self._record_margin_close(
+            system_order, take_profit_type, "Completed Take profit!"
         )
-
-        self.active_bot.deal.total_commissions += float(system_order.fee)
-
-        self.active_bot.orders.append(take_profit_order)
-        self.active_bot.deal.closing_price = price
-        self.active_bot.deal.closing_timestamp = round_timestamp(
-            system_order.created_at
-        )
-        self.active_bot.deal.closing_qty = float(system_order.size)
-        self.active_bot.add_log("Completed Take profit!")
-        self.active_bot.status = Status.completed
-
-        self.controller.save(self.active_bot)
-
-        return self.active_bot
 
     def switch_to_long_bot(self) -> BotModel:
         """
@@ -147,7 +120,7 @@ class KucoinShortDeal(KucoinMarginDeal):
         # Create new bot
         created_bot = self.controller.create(new_bot)
         bot_model = BotModel.dump_from_table(created_bot)
-        spot_deal = KucoinSpotDeal(bot=bot_model, db_table=self.db_table)
+        spot_deal = SpotDeal(bot=bot_model, db_table=self.db_table)
 
         # to avoid circular imports make network request
         # This class is already imported for switch_to_margin_short
