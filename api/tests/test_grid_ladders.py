@@ -189,7 +189,6 @@ class FakeFuturesApi:
         self.position_qty = 0
         self.position_unrealized_pnl: float = 0
         self.position_mark_price: float | None = None
-        self.market_price: float | None = None
         self.raise_on_order = False
         self.fail_on_call: int | None = None
         self.fail_once_on_call: int | None = None
@@ -206,9 +205,12 @@ class FakeFuturesApi:
         self.book_asks: list[list[float]] = [[100.01, 10_000]]
 
     def get_full_order_book(self, request):
+        # The book follows the simulated market (mark price, default 100);
+        # book_bids/book_asks control the depth at the touch.
+        mid = self.position_mark_price or 100
         return SimpleNamespace(
-            bids=self.book_bids,
-            asks=self.book_asks,
+            bids=[[mid - 0.01, contracts] for _, contracts in self.book_bids],
+            asks=[[mid + 0.01, contracts] for _, contracts in self.book_asks],
             ts=int(time() * 1_000_000_000),
         )
 
@@ -267,9 +269,6 @@ class FakeFuturesApi:
             unrealized_pnl=self.position_unrealized_pnl,
             mark_price=self.position_mark_price,
         )
-
-    def matching_engine(self, symbol: str, size: float, side):
-        return self.market_price or self.position_mark_price or 100
 
     def get_symbol_info(self, symbol: str):
         return SimpleNamespace(
@@ -2251,7 +2250,7 @@ def test_grid_lifecycle_closes_unfilled_ladder_after_one_breach_candle(
     assert detail["logs"][-2]["has_exchange_position"] is False
 
 
-def test_grid_lifecycle_uses_matching_engine_price_for_range_break(
+def test_grid_lifecycle_uses_order_book_midpoint_for_range_break(
     client, monkeypatch, create_test_tables
 ):
     _patch_balance(monkeypatch, 10_000)
@@ -2260,7 +2259,6 @@ def test_grid_lifecycle_uses_matching_engine_price_for_range_break(
     ladder_id = created.json()["detail"]["id"]
     fake_api = FakeFuturesApi()
     fake_api.position_mark_price = 0
-    fake_api.market_price = 100
 
     with Session(create_test_tables) as session:
         lifecycle = GridLadderLifecycle(_grid_base(fake_api), session)

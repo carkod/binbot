@@ -22,9 +22,7 @@ from api.databases.crud.grid_ladder_crud import GridLadderCrud
 from api.databases.utils import get_session
 from api.deals.gateway import DealGateway
 from api.databases.tables.bot_table import BotTable
-from api.exchange_apis.kucoin.futures.futures_deal import (
-    EntryLiquidityError,
-)
+from api.exchange_apis.kucoin.futures.entry_pricing import EntryLiquidityError
 from kucoin_universal_sdk.model.common import RestError
 from api.user.services.auth import get_current_user
 from uuid import UUID

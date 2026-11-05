@@ -1,98 +1,81 @@
 """
-Tests for anti-wick exit execution improvements (Phase 1).
-
-Phase 1: reference_price threading through execute_stop_loss / reverse_position
-  so that SL closes use the band-capped IOC escalation path instead of a raw
-  1-tick cross into a hollow book.
+Stop losses are KuCoin-native stop-limit orders; the bot never exits on a wick.
 
 Regression fixture: FHEUSDTM 2026-05-31
-  Long opened 0.02343, SL 0.02249 (4% floored).
-  14:18 1m candle: low 0.02233, close 0.02235 (wick).
-  Actual fill was 0.02235 (the wick low).  With reference_price anchored to the
-  last closed 15m candle (0.02252), the band-cap is 0.02247 — a meaningfully
-  better fill price.
+  Long opened 0.02343, SL 0.02249 (4% floored), tick 0.00001.
+  A 1m wick traded down to 0.02233 and the old stop-market filled at 0.02235
+  (the wick low). With a 0.5% stop-limit, KuCoin rests the close at 0.02237,
+  so no fill can land deeper in the wick than that.
 
-Note: closed-candle trigger confirmation (Phase 2 / SL_CONFIRM_MODE) was
-evaluated via simulation over 14 historical SL exits and found to worsen
-aggregate outcomes by ~2.1% (1 clear wick saved, 6 delayed breakdowns).
-The phase-2 gate was removed; SL fires on mark-price breach as before.
+The trigger itself stays on KuCoin's mark price, inside the candle. An earlier
+simulation over 14 historical SL exits found that delaying the *trigger* to a
+closed candle worsened outcomes (~2.1%), so only the market fallback for a
+stop-limit that the price ran past waits for a closed candle.
 """
 
 import types
-from uuid import uuid4
-from pybinbot import RecoveryBotModel
+from time import time
 from typing import Any, cast
 
 import pytest
+from kucoin_universal_sdk.generate.futures.order.model_add_order_req import (
+    AddOrderReq,
+)
 from pybinbot import (
     BotModel,
     DealModel,
     DealType,
     MarketType,
     OrderBase,
+    OrderModel,
     OrderStatus,
+    OrderType,
     Position,
 )
+from pybinbot.models.deal import ConditionalCloseOrder
 
 from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from streaming.base import BaseStreaming
 from streaming.lifecycle import Lifecycle
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-# Raw kline row: [open_time_ms, open, high, low, close, volume, close_time_ms]
-# 14:15 15m candle (last fully closed):  close=0.02252 (above SL 0.02249)
-_CLOSED_CANDLE_NORMAL = [
-    1780236900000,
-    0.02279,
-    0.02288,
-    0.02233,
-    0.02252,
-    1000,
-    1780237799999,
-]
-# 14:30 15m candle (in-progress at time of SL trigger):
-_IN_PROGRESS_CANDLE = [
-    1780237800000,
-    0.02252,
-    0.02255,
-    0.02233,
-    0.02235,
-    500,
-    1780238699999,
-]
-
-# A klines list where klines[-2] is above the SL (wick scenario)
-KLINES_WICK = [_CLOSED_CANDLE_NORMAL, _IN_PROGRESS_CANDLE]
-
-# A klines list where klines[-2] is below the SL (genuine breakdown)
-_CLOSED_CANDLE_BREAKDOWN = [
-    1780236900000,
-    0.02300,
-    0.02310,
-    0.02200,
-    0.02230,
-    1000,
-    1780237799999,
-]
-KLINES_BREAKDOWN = [_CLOSED_CANDLE_BREAKDOWN, _IN_PROGRESS_CANDLE]
+FHEU_STOP = 0.02249
+FHEU_STOP_LIMIT = 0.02237  # floor(0.02249 * 0.995) on a 0.00001 tick
+WICK_LOW = 0.02233
+INTERVAL_MS = 15 * 60 * 1000
 
 
-def _make_fheusdtm_deal(
-    *,
-    klines=None,
-    stop_loss_price: float = 0.02249,
-    opening_price: float = 0.02343,
-    stop_loss: float = 4.0,
-    recovery_source: bool = False,
-    position: Position = Position.long,
-) -> Any:
-    """Minimal Lifecycle stub shaped after the FHEUSDTM production case."""
+def _klines(closed_close: float) -> list[list[float]]:
+    """One closed 15m candle and the forming candle that holds the wick."""
+    current_open = (int(time() * 1000) // INTERVAL_MS) * INTERVAL_MS
+    return [
+        [
+            current_open - INTERVAL_MS,
+            0.02279,
+            0.02288,
+            0.02233,
+            closed_close,
+            1000,
+            current_open - 1,
+        ],
+        [
+            current_open,
+            closed_close,
+            0.02255,
+            WICK_LOW,
+            0.02235,
+            500,
+            current_open + INTERVAL_MS - 1,
+        ],
+    ]
+
+
+def _make_fheusdtm_lifecycle(*, closed_close: float) -> Lifecycle:
     execution = cast(Any, KucoinPositionDeal.__new__(KucoinPositionDeal))
     execution.price_precision = 5
     execution.kucoin_symbol = "FHEUSDTM"
+    execution.kucoin_symbol_data = types.SimpleNamespace(
+        tick_size=0.00001, multiplier=1
+    )
     execution.symbol_info = types.SimpleNamespace(
         futures_leverage=2,
         qty_precision=0,
@@ -100,129 +83,118 @@ def _make_fheusdtm_deal(
     execution.active_bot = BotModel(
         pair="FHEUSDTM",
         market_type=MarketType.FUTURES,
-        position=position,
-        stop_loss=stop_loss,
+        position=Position.long,
+        stop_loss=4.0,
         take_profit=0.0,
         trailing=False,
-        recovery_params=RecoveryBotModel(id=uuid4(), created_at=1, updated_at=1)
-        if recovery_source
-        else None,
         deal=DealModel(
-            opening_price=opening_price,
+            opening_price=0.02343,
             opening_qty=8.0,
-            stop_loss_price=stop_loss_price,
-            opening_timestamp=1780232436000,  # 14:00 UTC
+            current_position_qty=8.0,
+            stop_loss_price=FHEU_STOP,
+            opening_timestamp=int(time() * 1000) - 2 * INTERVAL_MS,
+            conditional_close_order=ConditionalCloseOrder(
+                client_oid="native-stop",
+                order_id="native-stop-id",
+                requested_qty=8,
+                stop_price=FHEU_STOP,
+                deal_type=DealType.stop_loss,
+            ),
         ),
     )
-    # Pydantic may serialise the enum to its value string; re-assign the
-    # enum object so exit() can call .value on it without AttributeError.
-    execution.active_bot.position = position
     execution.controller = types.SimpleNamespace(
-        save=lambda bot: None,
+        save=lambda *args, **kwargs: None,
         update_logs=lambda *args, **kwargs: None,
     )
-    deal = Lifecycle(
+    lifecycle = Lifecycle(
         execution=execution,
         base_streaming=cast(
             BaseStreaming,
             types.SimpleNamespace(
-                interval=types.SimpleNamespace(get_ms=lambda: 15 * 60 * 1000)
+                interval=types.SimpleNamespace(get_ms=lambda: INTERVAL_MS)
             ),
         ),
     )
-    deal.klines = klines if klines is not None else KLINES_WICK
-    return deal
-
-
-# ---------------------------------------------------------------------------
-# Phase 1 — reference_price flows through to buy/sell in execute_stop_loss
-# ---------------------------------------------------------------------------
-
-
-def test_execute_stop_loss_passes_reference_price_to_sell():
-    """
-    Phase 1: execute_stop_loss(reference_price=X) must pass reference_price
-    through to kucoin_futures_api.sell() for a long position.
-    """
-    captured: dict = {}
-
-    def fake_sell(symbol, qty, reduce_only, leverage, reference_price=None):
-        captured["reference_price"] = reference_price
-        return OrderBase(
-            order_id="sl-test",
-            order_type="limit",
-            pair=symbol,
-            timestamp=1780237000000,
+    # KuCoin accepted the stop when the closed candle opened.
+    execution.active_bot.orders = [
+        OrderModel(
+            order_id="native-stop-id",
+            client_oid="native-stop",
+            pair="FHEUSDTM",
+            order_type=OrderType.limit,
             order_side="sell",
-            qty=qty,
-            price=0.02247,
-            status=OrderStatus.FILLED,
-            time_in_force="IOC",
+            time_in_force="GTC",
+            timestamp=_klines(closed_close)[0][0],
+            qty=0,
+            price=0,
+            requested_qty=8,
+            stop_price=FHEU_STOP,
+            status=OrderStatus.NEW,
             deal_type=DealType.stop_loss,
         )
-
-    deal = _make_fheusdtm_deal()
-    deal.execution.kucoin_futures_api = types.SimpleNamespace(sell=fake_sell)
-
-    deal.execution.execute_stop_loss(reference_price=0.02252)
-
-    assert captured.get("reference_price") == pytest.approx(0.02252, abs=1e-6)
+    ]
+    lifecycle.klines = _klines(closed_close)
+    return lifecycle
 
 
-def test_execute_stop_loss_passes_reference_price_to_buy_for_short():
-    """
-    Phase 1: execute_stop_loss(reference_price=X) for a SHORT position must
-    pass reference_price through to kucoin_futures_api.buy().
-    """
-    captured: dict = {}
+def test_native_stop_is_a_stop_limit_capped_above_the_wick():
+    lifecycle = _make_fheusdtm_lifecycle(closed_close=0.02252)
+    execution = cast(Any, lifecycle.execution)
+    execution.active_bot.deal.conditional_close_order = None
+    submitted: dict[str, Any] = {}
 
-    def fake_buy(symbol, qty, reduce_only, reference_price=None, leverage=None):
-        captured["reference_price"] = reference_price
+    def place_futures_order(**kwargs) -> OrderBase:
+        submitted.update(kwargs)
         return OrderBase(
-            order_id="sl-test",
+            order_id="native-stop-id",
             order_type="limit",
-            pair=symbol,
-            timestamp=1780237000000,
-            order_side="buy",
-            qty=qty,
-            price=0.02260,
-            status=OrderStatus.FILLED,
-            time_in_force="IOC",
-            deal_type=DealType.stop_loss,
-        )
-
-    deal = _make_fheusdtm_deal(position=Position.short, stop_loss_price=0.02334)
-    deal.execution.kucoin_futures_api = types.SimpleNamespace(buy=fake_buy)
-
-    deal.execution.execute_stop_loss(reference_price=0.02245)
-
-    assert captured.get("reference_price") == pytest.approx(0.02245, abs=1e-6)
-
-
-def test_canceled_exit_stop_does_not_replace_confirmed_closing_values():
-    def fake_sell(symbol, qty, reduce_only, leverage, reference_price=None):
-        return OrderBase(
-            order_id="canceled-exit-stop",
-            order_type="market",
-            pair=symbol,
-            timestamp=1788529592422,
+            pair="FHEUSDTM",
+            timestamp=1,
             order_side="sell",
             qty=0,
             price=0,
-            status=OrderStatus.CANCELED,
+            status=OrderStatus.NEW,
             time_in_force="GTC",
             deal_type=DealType.stop_loss,
         )
 
-    deal = _make_fheusdtm_deal()
-    deal.execution.kucoin_futures_api = types.SimpleNamespace(sell=fake_sell)
-    deal.execution.active_bot.deal.closing_price = 0.0007861
-    deal.execution.active_bot.deal.closing_qty = 92
-    deal.execution.active_bot.deal.closing_timestamp = 1788529590286
+    execution.kucoin_futures_api = types.SimpleNamespace(
+        place_futures_order=place_futures_order
+    )
 
-    deal.execution.execute_stop_loss(reference_price=0.000789)
+    execution.place_conditional_close(FHEU_STOP, 8, DealType.stop_loss)
 
-    assert deal.execution.active_bot.deal.closing_price == 0.0007861
-    assert deal.execution.active_bot.deal.closing_qty == 92
-    assert deal.execution.active_bot.deal.closing_timestamp == 1788529590286
-    assert deal.execution.active_bot.orders[-1].status == OrderStatus.CANCELED
+    assert submitted["order_type"] == OrderType.limit
+    assert submitted["stop"] == AddOrderReq.StopEnum.DOWN
+    assert submitted["stop_price"] == FHEU_STOP
+    assert submitted["price"] == FHEU_STOP_LIMIT
+    assert submitted["price"] > WICK_LOW
+    assert submitted["reduce_only"] is True
+
+
+def test_wick_through_stop_with_closed_candle_above_limit_keeps_native_stop():
+    lifecycle = _make_fheusdtm_lifecycle(closed_close=0.02252)
+    close_calls: list[Any] = []
+    cast(Any, lifecycle.execution).close_all = lambda **kwargs: close_calls.append(
+        kwargs
+    )
+
+    Lifecycle.exit(lifecycle, 0.02235)
+
+    assert close_calls == []
+
+
+@pytest.mark.parametrize("closed_close", [0.02236, 0.02230])
+def test_closed_candle_below_stop_limit_closes_at_market(closed_close):
+    lifecycle = _make_fheusdtm_lifecycle(closed_close=closed_close)
+    close_calls: list[Any] = []
+
+    def close_all(**kwargs) -> BotModel:
+        close_calls.append(kwargs)
+        return lifecycle.execution.active_bot
+
+    cast(Any, lifecycle.execution).close_all = close_all
+
+    Lifecycle.exit(lifecycle, closed_close)
+
+    assert close_calls == [{"deal_type": DealType.stop_loss, "market_only": True}]

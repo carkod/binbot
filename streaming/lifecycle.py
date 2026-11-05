@@ -23,10 +23,11 @@ from pybinbot import (
 )
 
 from api.databases.crud.autotrade_crud import AutotradeCrud
-from api.exchange_apis.kucoin.futures.futures_deal import (
+from api.exchange_apis.kucoin.futures.entry_pricing import (
     EntryLiquidityError,
-    KucoinPositionDeal,
+    closed_candle_atr,
 )
+from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from api.exchange_apis.kucoin.futures.position_sizing import DynamicPositionSizing
 from streaming.base import BaseStreaming
 from streaming.context_evaluator import (
@@ -204,7 +205,7 @@ class Lifecycle:
             self.klines,
             now_ms=int(time() * 1000),
         )
-        atr = self.execution.closed_candle_atr(closed_candles)
+        atr = closed_candle_atr(closed_candles)
         if atr is None:
             return None
 
@@ -540,34 +541,43 @@ class Lifecycle:
             return self.execution.active_bot
 
         direction = self.execution._direction_multiplier()
-        trailing_stop = self.execution.active_bot.deal.trailing_stop_loss_price
-        if trailing_stop > 0 and (current_price - trailing_stop) * direction <= 0:
-            self.execution.controller.update_logs(
-                f"Trailing deviation reached at {trailing_stop}; closing the full position.",
-                self.execution.active_bot,
-            )
-            return self.execution.close_all(deal_type=DealType.trailing_profit)
 
-        position_name = getattr(
-            self.execution.active_bot.position,
-            "value",
-            self.execution.active_bot.position,
-        )
-
-        # Anchor exit execution and recovery decisions to timestamp-confirmed
-        # completed candles rather than list position.
+        # Anchor exit decisions to timestamp-confirmed completed candles
+        # rather than list position.
         completed_candles: list = []
-        exit_reference_price: float | None = None
         now_ms = int(time() * 1000)
         if self.klines is not None:
             completed_candles, _ = Candles.partition_closed_candles(
                 self.klines,
                 now_ms=now_ms,
             )
-        if completed_candles:
-            closed_close = float(completed_candles[-1][4])
-            if closed_close > 0:
-                exit_reference_price = closed_close
+
+        # Stop loss and trailing stop are KuCoin-native stop-limit orders.
+        # The bot only acts when a closed candle settles beyond the limit
+        # price: the stop-limit missed and the position needs a market close.
+        intent = self.execution.active_bot.deal.conditional_close_order
+        if (
+            intent is not None
+            and completed_candles
+            and self.execution.stop_limit_missed(
+                float(completed_candles[-1][4]), int(completed_candles[-1][6])
+            )
+        ):
+            self.execution.controller.update_logs(
+                f"Closed candle settled beyond the stop-limit price of the "
+                f"{intent.deal_type.value} stop at {intent.stop_price}; "
+                "closing the position at market.",
+                self.execution.active_bot,
+            )
+            return self.execution.close_all(
+                deal_type=intent.deal_type, market_only=True
+            )
+
+        position_name = getattr(
+            self.execution.active_bot.position,
+            "value",
+            self.execution.active_bot.position,
+        )
 
         # panic close low activity assets
         opening_price = self.execution.active_bot.deal.opening_price
@@ -666,26 +676,6 @@ class Lifecycle:
                 entry_price - (delta * direction),
                 self.execution.price_precision,
             )
-
-        if (
-            sl_pct > 0
-            and (
-                (current_price - self.execution.active_bot.deal.stop_loss_price)
-                * direction
-            )
-            < 0
-        ):
-            if recovery_params is not None:
-                # KuCoin owns execution. A tick beyond the threshold is not
-                # evidence of a fill; it must never open the recovery entry.
-                self.execution.reconcile_exchange_sl()
-                return self.execution.active_bot
-            if self.execution.active_bot.dynamic_position_sizing:
-                return self.execution.close_all(deal_type=DealType.stop_loss)
-            self.execution.active_bot = self.execution.execute_stop_loss(
-                reference_price=exit_reference_price
-            )
-            return self.execution.active_bot
 
         # Trailing profit (price going down)
         if (

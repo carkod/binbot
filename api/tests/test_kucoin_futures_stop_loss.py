@@ -4,7 +4,6 @@ from typing import Any, cast
 from uuid import uuid4
 
 import pytest
-from kucoin_universal_sdk.model.common import RestError
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import (
     AddOrderReq,
 )
@@ -27,6 +26,8 @@ from pybinbot import (
     RecoveryBotModel,
     Status,
 )
+
+from pybinbot.models.deal import ConditionalCloseOrder
 
 from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from streaming.base import BaseStreaming
@@ -54,6 +55,7 @@ def _make_deal(
     deal = cast(Any, KucoinPositionDeal.__new__(KucoinPositionDeal))
     deal.price_precision = 2
     deal.kucoin_symbol = "BEATUSDTM"
+    deal.kucoin_symbol_data = types.SimpleNamespace(tick_size=0.01, multiplier=1)
     deal.symbol_info = types.SimpleNamespace(futures_leverage=1, qty_precision=0)
     deal.active_bot = BotModel(
         pair="BEATUSDT",
@@ -245,6 +247,7 @@ def test_place_stop_loss_for_margin_short_uses_price_above_entry():
     deal = cast(Any, KucoinPositionDeal.__new__(KucoinPositionDeal))
     deal.price_precision = 4
     deal.kucoin_symbol = "BEATUSDTM"
+    deal.kucoin_symbol_data = types.SimpleNamespace(tick_size=0.0001, multiplier=1)
     deal.symbol_info = types.SimpleNamespace(futures_leverage=1)
     deal.kucoin_futures_api = types.SimpleNamespace(
         place_futures_order=fake_place_futures_order
@@ -993,8 +996,9 @@ def test_place_trailing_stop_loss_logs_new_status_as_armed_stop():
     KucoinPositionDeal.place_trailing_stop_loss(deal)
 
     assert len(calls) == 1
-    assert calls[0]["order_type"] == OrderType.market
-    assert "price" not in calls[0]
+    assert calls[0]["order_type"] == OrderType.limit
+    # Long trailing stop 99.0: the sell limit rests 0.5% lower, on the tick.
+    assert calls[0]["price"] == 98.5
     assert any(
         "Trailing stop armed on exchange with status" in log
         for log in deal.active_bot.logs
@@ -1157,46 +1161,6 @@ def test_top_gainer_short_ignores_recovery_configuration_for_native_stop(
     assert calls == ["cancel", "place"]
 
 
-def test_top_gainer_short_ignores_legacy_recovery_settings_at_stop():
-    deal = _make_lifecycle(
-        stop_loss=2.0,
-        stop_loss_price=102.0,
-        recovery_source=True,
-        position=Position.short,
-    )
-    deal.execution.active_bot.name = "top_gainer_short"
-    deal.execution.active_bot.trailing = False
-    recovery_id = uuid4()
-    deal.execution.active_bot.recovery_mode_id = recovery_id
-    deal.execution.active_bot.recovery_params = RecoveryBotModel(
-        id=recovery_id,
-        reversal_path="source",
-        source_contracts=0,
-        source_loss_fiat=0,
-        stop_loss_pct=0,
-        created_at=1,
-        updated_at=1,
-    )
-    deal.klines = None
-    stop_calls: list[float | None] = []
-    reconcile_calls: list[bool] = []
-
-    def execute_stop_loss(reference_price: float | None = None) -> BotModel:
-        stop_calls.append(reference_price)
-        return deal.execution.active_bot
-
-    def reconcile_exchange_sl() -> None:
-        reconcile_calls.append(True)
-
-    cast(Any, deal.execution).execute_stop_loss = execute_stop_loss
-    cast(Any, deal.execution).reconcile_exchange_sl = reconcile_exchange_sl
-
-    Lifecycle.exit(deal, 103.0)
-
-    assert stop_calls == [None]
-    assert reconcile_calls == []
-
-
 def test_top_gainer_short_low_price_stop_is_not_widened():
     deal = _make_lifecycle(
         stop_loss=2.0,
@@ -1214,109 +1178,123 @@ def test_top_gainer_short_low_price_stop_is_not_widened():
     assert deal.execution.active_bot.deal.stop_loss_price == 0.0408
 
 
-def test_top_gainer_hard_stop_executes_without_liquidity_precheck():
-    deal = _make_lifecycle(stop_loss=2.0, stop_loss_price=98.0)
-    deal.execution.active_bot.name = "top_gainer_early_momentum"
+def _stop_limit_lifecycle(
+    *, position: Position, closed_close: float, stop_placed_ago_ms: int = 180_000
+) -> Lifecycle:
+    """A bot whose native stop-limit is live, with one closed candle.
+
+    The closed candle closes 60s ago; by default the stop was placed before it.
+    """
+    stop_price = 102.0 if position == Position.short else 98.0
+    lifecycle = _make_lifecycle(
+        stop_loss=2.0, stop_loss_price=stop_price, position=position
+    )
+    lifecycle.execution.active_bot.trailing = False
+    lifecycle.execution.active_bot.deal.conditional_close_order = ConditionalCloseOrder(
+        client_oid="native-stop",
+        order_id="native-stop-id",
+        requested_qty=1,
+        stop_price=stop_price,
+        deal_type=DealType.stop_loss,
+    )
     now_ms = int(time() * 1000)
-    deal.klines = [
-        [
-            now_ms - 120_000,
-            100.0,
-            101.0,
-            98.0,
-            99.0,
-            1.0,
-            now_ms - 60_001,
-        ],
-        [
-            now_ms - 60_000,
-            99.0,
-            99.0,
-            97.0,
-            97.5,
-            1.0,
-            now_ms + 1,
-        ],
-    ]
-    stop_calls: list[float | None] = []
-
-    def execute_stop_loss(reference_price: float | None = None) -> BotModel:
-        stop_calls.append(reference_price)
-        return deal.execution.active_bot
-
-    cast(Any, deal.execution).execute_stop_loss = execute_stop_loss
-
-    Lifecycle.exit(deal, 97.5)
-
-    assert stop_calls == [99.0]
-
-
-def test_top_mover_hard_stop_cleans_native_backstop_after_reduce_only_close():
-    events: list[str] = []
-    deal = _make_deal()
-    deal.active_bot.name = "top_gainer_early_momentum"
-    deal.current_position_quantity = lambda: 1
-    deal.cancel_current_sl = lambda **kwargs: events.append("cancel_backstop")
-
-    def sell(**kwargs) -> OrderBase:
-        events.append("sell")
-        return OrderBase(
-            order_id="bot-side-hard-stop",
-            order_type="limit",
-            pair=kwargs["symbol"],
-            timestamp=1,
-            order_side="sell",
-            qty=kwargs["qty"],
-            price=97.9,
-            status=OrderStatus.FILLED,
-            time_in_force="IOC",
+    lifecycle.execution.active_bot.orders = [
+        OrderModel(
+            order_id="native-stop-id",
+            client_oid="native-stop",
+            pair="BEATUSDTM",
+            order_type=OrderType.limit,
+            order_side="buy" if position == Position.short else "sell",
+            time_in_force="GTC",
+            timestamp=now_ms - stop_placed_ago_ms,
+            qty=0,
+            price=0,
+            requested_qty=1,
+            stop_price=stop_price,
+            status=OrderStatus.NEW,
             deal_type=DealType.stop_loss,
         )
-
-    deal.kucoin_futures_api = types.SimpleNamespace(sell=sell)
-
-    result = deal.execute_stop_loss(reference_price=99.0)
-
-    assert events == ["sell", "cancel_backstop"]
-    assert result.status == Status.completed
-    assert result.deal.closing_price == 97.9
+    ]
+    lifecycle.klines = [
+        [now_ms - 120_000, 100.0, 100.0, 90.0, closed_close, 1.0, now_ms - 60_001],
+        [now_ms - 60_000, closed_close, 100.0, 90.0, 99.0, 1.0, now_ms + 1],
+    ]
+    return lifecycle
 
 
-def test_top_mover_hard_stop_keeps_native_backstop_when_position_lookup_fails():
-    events: list[str] = []
-    deal = _make_deal()
-    deal.active_bot.name = "top_gainer_early_momentum"
-    deal.cancel_current_sl = lambda **kwargs: events.append("cancel_backstop")
-    deal.current_position_quantity = lambda: (_ for _ in ()).throw(
-        RuntimeError("position lookup failed")
+@pytest.mark.parametrize(
+    "position,wick_price", [(Position.long, 90.0), (Position.short, 110.0)]
+)
+def test_wick_beyond_stop_never_closes_at_market(position, wick_price):
+    """KuCoin owns the stop: a live tick deep in a wick is not a bot-side exit."""
+    closed_close = 99.0 if position == Position.long else 101.0
+    lifecycle = _stop_limit_lifecycle(position=position, closed_close=closed_close)
+    close_calls: list[Any] = []
+    cast(Any, lifecycle.execution).close_all = lambda **kwargs: close_calls.append(
+        kwargs
     )
 
-    with pytest.raises(RuntimeError, match="position lookup failed"):
-        deal.execute_stop_loss(reference_price=99.0)
+    Lifecycle.exit(lifecycle, wick_price)
 
-    assert events == []
+    assert close_calls == []
 
 
-def test_top_mover_hard_stop_keeps_native_backstop_when_close_fails():
-    events: list[str] = []
-    deal = _make_deal()
-    deal.active_bot.name = "top_gainer_early_momentum"
-    deal.current_position_quantity = lambda: 1
-    deal.cancel_current_sl = lambda **kwargs: events.append("cancel_backstop")
+@pytest.mark.parametrize(
+    "position,closed_close", [(Position.long, 97.0), (Position.short, 103.0)]
+)
+def test_closed_candle_beyond_stop_limit_closes_missed_stop_at_market(
+    position, closed_close
+):
+    """Stop 98/102 with a 0.5% limit gives 97.51/102.51; a close past it missed."""
+    lifecycle = _stop_limit_lifecycle(position=position, closed_close=closed_close)
+    close_calls: list[Any] = []
 
-    def sell(**kwargs):
-        events.append("sell")
-        raise RestError(
-            msg="close failed",
-            response=types.SimpleNamespace(code=400100, message="close failed"),
-        )
+    def close_all(**kwargs):
+        close_calls.append(kwargs)
+        return lifecycle.execution.active_bot
 
-    deal.kucoin_futures_api = types.SimpleNamespace(sell=sell)
+    cast(Any, lifecycle.execution).close_all = close_all
 
-    result = deal.execute_stop_loss(reference_price=99.0)
+    Lifecycle.exit(lifecycle, closed_close)
 
-    assert events == ["sell"]
-    assert result.status == Status.error
+    assert close_calls == [{"deal_type": DealType.stop_loss, "market_only": True}]
+
+
+@pytest.mark.parametrize(
+    "position,closed_close", [(Position.long, 97.0), (Position.short, 103.0)]
+)
+def test_candle_that_closed_before_the_stop_existed_never_closes_at_market(
+    position, closed_close
+):
+    """A breakout entry or fresh trailing stop can sit past the prior close."""
+    lifecycle = _stop_limit_lifecycle(
+        position=position, closed_close=closed_close, stop_placed_ago_ms=30_000
+    )
+    close_calls: list[Any] = []
+    cast(Any, lifecycle.execution).close_all = lambda **kwargs: close_calls.append(
+        kwargs
+    )
+
+    Lifecycle.exit(lifecycle, 100.0)
+
+    assert close_calls == []
+
+
+@pytest.mark.parametrize(
+    "position,closed_close", [(Position.long, 97.6), (Position.short, 102.4)]
+)
+def test_closed_candle_between_stop_and_limit_leaves_stop_limit_to_fill(
+    position, closed_close
+):
+    lifecycle = _stop_limit_lifecycle(position=position, closed_close=closed_close)
+    close_calls: list[Any] = []
+    cast(Any, lifecycle.execution).close_all = lambda **kwargs: close_calls.append(
+        kwargs
+    )
+
+    Lifecycle.exit(lifecycle, closed_close)
+
+    assert close_calls == []
 
 
 def test_reconcile_exchange_sl_places_when_exchange_missing():
@@ -1686,7 +1664,7 @@ def test_trailing_stop_resizes_after_scale_in_even_during_replace_cooldown(posit
     assert len(placed) == 1
     assert placed[0]["size"] == 125
     assert placed[0]["reduce_only"] is True
-    assert placed[0]["order_type"] == OrderType.market
+    assert placed[0]["order_type"] == OrderType.limit
     # Quantity replacement preserves a tighter manually adjusted stop.
     assert placed[0]["stop_price"] == exchange_price
     assert deal.active_bot.deal.trailing_stop_loss_price == exchange_price

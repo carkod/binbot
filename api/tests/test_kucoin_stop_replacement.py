@@ -18,6 +18,7 @@ from pybinbot import (
     OrderBase,
     OrderModel,
     OrderStatus,
+    OrderType,
     Position,
     Status,
 )
@@ -39,6 +40,7 @@ def replacement(request):
     )
     engine.kucoin_symbol = "APLDUSDTM"
     engine.price_precision = 2
+    engine.kucoin_symbol_data = SimpleNamespace(tick_size=0.01, multiplier=1)
     engine.symbol_info = SimpleNamespace(qty_precision=0)
     engine.active_bot.deal.opening_price = 100
     engine.active_bot.deal.opening_qty = 18
@@ -131,7 +133,8 @@ def test_missing_cancelled_order_preserves_tighter_native_stop_without_recreatio
     assert submitted["stop_price"] == target
     assert submitted["size"] == 18
     assert submitted["reduce_only"] is True
-    assert submitted["allow_market_fallback"] is False
+    assert submitted["order_type"] == OrderType.limit
+    assert submitted["price"] > 0
     api.get_order_execution.assert_called_once_with("old-stop")
 
     # Restart with persisted state and repeat after the replacement cooldown.
@@ -152,8 +155,7 @@ def test_missing_cancelled_order_preserves_tighter_native_stop_without_recreatio
         "filled",
         "unrelated_error",
         "history_unavailable",
-        "persisted_partial_fill",
-        "triggered_partial_fill",
+        "unrecorded_partial_fill",
     ],
 )
 def test_ambiguous_cancellation_cannot_submit_another_stop(replacement, outcome):
@@ -177,18 +179,9 @@ def test_ambiguous_cancellation_cannot_submit_another_stop(replacement, outcome)
         )
     elif outcome == "history_unavailable":
         api.get_order_execution.side_effect = TimeoutError("history unavailable")
-    elif outcome == "persisted_partial_fill":
-        engine.active_bot.orders[0].qty = 6
     else:
-        live.clear()
-        missing = api.retrieve_order.side_effect
-        api.retrieve_order.side_effect = [
-            SimpleNamespace(is_active=True, filled_size=6),
-            missing,
-        ]
-        api.cancel_futures_order.return_value = CancelOrderByIdResp(
-            cancelled_order_ids=["old-stop"]
-        )
+        # The stop executed 6 contracts that order_updates has not recorded.
+        api.get_order_execution.return_value = (6, target, 1000)
 
     with pytest.raises((RestError, BinbotErrors, TimeoutError)):
         engine.place_trailing_stop_loss()
@@ -222,3 +215,62 @@ def test_stop_list_outage_never_cancels_working_native_protection(replacement):
     api.batch_cancel_stop_loss_orders.assert_not_called()
     api.place_futures_order.assert_not_called()
     assert len(live) == 1
+
+
+def test_triggered_stop_limit_waiting_at_its_limit_is_not_replaced(replacement):
+    """KuCoin drops a triggered stop from the stop list; it still protects."""
+    engine, api, live, snapshots, target = replacement
+    live.clear()
+    api.retrieve_order.side_effect = None
+    api.retrieve_order.return_value = SimpleNamespace(
+        stop_triggered=True, is_active=True, filled_size=6
+    )
+
+    engine.place_trailing_stop_loss()
+    engine.reconcile_trailing_stop_loss(position_qty=12)
+
+    api.batch_cancel_stop_loss_orders.assert_not_called()
+    api.cancel_futures_order.assert_not_called()
+    api.place_futures_order.assert_not_called()
+    assert engine.active_bot.orders[0].status == OrderStatus.NEW
+
+
+def test_recorded_partial_stop_fill_does_not_block_cancelling_the_rest(replacement):
+    """A missed stop-limit must stay closable after a partial fill."""
+    engine, api, live, snapshots, target = replacement
+    live.clear()
+    engine.active_bot.orders[0].qty = 6
+    engine.active_bot.orders[0].price = target
+    engine.active_bot.orders[0].status = OrderStatus.PARTIALLY_FILLED
+    api.retrieve_order.side_effect = [
+        SimpleNamespace(is_active=True, filled_size=6),
+        SimpleNamespace(is_active=False, filled_size=6),
+    ]
+    api.cancel_futures_order.return_value = CancelOrderByIdResp(
+        cancelled_order_ids=["old-stop"]
+    )
+
+    engine.cancel_current_sl()
+
+    api.cancel_futures_order.assert_called_once_with("old-stop")
+    stop = engine.active_bot.orders[0]
+    assert stop.status == OrderStatus.CANCELED
+    assert (stop.qty, stop.price) == (6, target)
+    assert engine.active_bot.deal.conditional_close_order is None
+
+
+def test_fill_racing_the_cancel_beyond_recorded_quantity_still_blocks(replacement):
+    engine, api, live, snapshots, target = replacement
+    live.clear()
+    engine.active_bot.orders[0].qty = 6
+    engine.active_bot.orders[0].status = OrderStatus.PARTIALLY_FILLED
+    api.retrieve_order.side_effect = [
+        SimpleNamespace(is_active=True, filled_size=6),
+        SimpleNamespace(is_active=False, filled_size=8),
+    ]
+    api.cancel_futures_order.return_value = CancelOrderByIdResp(
+        cancelled_order_ids=["old-stop"]
+    )
+
+    with pytest.raises(BinbotErrors, match="filled during cancellation"):
+        engine.cancel_current_sl()

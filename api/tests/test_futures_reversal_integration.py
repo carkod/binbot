@@ -315,7 +315,11 @@ def set_lifecycle_time(monkeypatch, when: datetime) -> None:
         lambda: timestamp_seconds,
     )
     monkeypatch.setattr(
-        "api.exchange_apis.kucoin.futures.futures_deal.time",
+        "api.exchange_apis.kucoin.futures.entry_pricing.time",
+        lambda: timestamp_seconds,
+    )
+    monkeypatch.setattr(
+        "api.exchange_apis.kucoin.futures.order_execution.time",
         lambda: timestamp_seconds,
     )
 
