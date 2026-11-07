@@ -13,11 +13,13 @@ import {
   useGetAlgoRankingQuery,
   useGetBotsQuery,
 } from "../../../features/bots/botsApiSlice";
-import { useMarketBreadthSeriesQuery } from "../../../features/marketApiSlice";
+import {
+  useFastestMoversQuery,
+  useMarketBreadthSeriesQuery,
+} from "../../../features/marketApiSlice";
 import { useBtcCloseSeriesQuery } from "../../../features/kucoinApiSlice";
 import { useBinquantStrategyNames } from "../../hooks/useBinquantStrategyNames";
 import { useFilteredFuturesRankings } from "../../hooks/useFilteredFuturesRankings";
-import { useFilteredGainerLosers } from "../../hooks/useFilteredGainerLosers";
 
 vi.mock("../../../features/balanceApiSlice", () => ({
   useGetBalanceQuery: vi.fn(() => ({
@@ -68,6 +70,16 @@ vi.mock("../../../features/bots/botsApiSlice", () => ({
 }));
 
 vi.mock("../../../features/marketApiSlice", () => ({
+  useFastestMoversQuery: vi.fn(() => ({
+    data: {
+      source: "kucoin_futures",
+      recorded_at: "2026-08-10T10:00:00Z",
+      comparison_at: "2026-08-10T09:00:00Z",
+      gainers: [],
+      losers: [],
+    },
+    isLoading: false,
+  })),
   useMarketBreadthSeriesQuery: vi.fn(() => ({
     data: {
       timestamp: ["2026-08-10T10:00:00Z"],
@@ -99,13 +111,6 @@ vi.mock("../../../features/signalsApiSlice", () => ({
   })),
 }));
 
-vi.mock("../../hooks/useFilteredGainerLosers", () => ({
-  useFilteredGainerLosers: vi.fn(() => ({
-    combined: [],
-    isLoading: false,
-  })),
-}));
-
 vi.mock("../../hooks/useFilteredFuturesRankings", () => ({
   useFilteredFuturesRankings: vi.fn(() => ({
     combined: [],
@@ -123,6 +128,10 @@ vi.mock("../../hooks/useBinquantStrategyNames", () => ({
 
 vi.mock("../../components/GainersLosers", () => ({
   default: () => <div>GainersLosers</div>,
+}));
+
+vi.mock("../../components/FastestMovers", () => ({
+  default: () => <div>FastestMovers</div>,
 }));
 
 vi.mock("../../components/PortfolioBenchmark", () => ({
@@ -179,12 +188,9 @@ describe("Dashboard page", () => {
     vi.mocked(useGetAlgoRankingQuery).mockReturnValueOnce({
       isLoading: true,
     } as unknown as ReturnType<typeof useGetAlgoRankingQuery>);
-    vi.mocked(useFilteredGainerLosers).mockReturnValueOnce({
-      combined: [],
+    vi.mocked(useFastestMoversQuery).mockReturnValueOnce({
       isLoading: true,
-      futuresRankings: [],
-      loadingFutures: true,
-    });
+    } as unknown as ReturnType<typeof useFastestMoversQuery>);
     vi.mocked(useFilteredFuturesRankings).mockReturnValueOnce({
       combined: [],
       isLoading: true,

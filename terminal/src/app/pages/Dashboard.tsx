@@ -8,20 +8,23 @@ import {
   useGetBotsQuery,
   useGetAlgoRankingQuery,
 } from "../../features/bots/botsApiSlice";
-import { useMarketBreadthSeriesQuery } from "../../features/marketApiSlice";
+import {
+  useFastestMoversQuery,
+  useMarketBreadthSeriesQuery,
+} from "../../features/marketApiSlice";
 import { useBtcCloseSeriesQuery } from "../../features/kucoinApiSlice";
 import { useGetSignalsQuery } from "../../features/signalsApiSlice";
 import { BotStatus, MarketType } from "../../utils/enums";
 import { roundDecimals } from "../../utils/math";
 import { formatTimestamp } from "../../utils/time";
 import GainersLosers from "../components/GainersLosers";
+import FastestMovers from "../components/FastestMovers";
 import PortfolioBenchmarkChart from "../components/PortfolioBenchmark";
 import MarketBreadthCard from "../components/MarketBreadthCard";
 import BitcoinPriceCard from "../components/BitcoinPriceCard";
 import CardLoadingSpinner from "../components/CardLoadingSpinner";
 import { useBinquantStrategyNames } from "../hooks/useBinquantStrategyNames";
 import { useFilteredFuturesRankings } from "../hooks/useFilteredFuturesRankings";
-import { useFilteredGainerLosers } from "../hooks/useFilteredGainerLosers";
 import { usePortfolioPnlDetails } from "../hooks/usePortfolioPnlDetails";
 
 export const DashboardPage: FC<{}> = () => {
@@ -34,8 +37,8 @@ export const DashboardPage: FC<{}> = () => {
   const { data: benchmark, isLoading: loadingBenchmark } =
     useGetBenchmarkQuery();
 
-  const { combined: combinedGainersLosers, isLoading: loadingCombined } =
-    useFilteredGainerLosers();
+  const { data: fastestMovers, isLoading: loadingFastestMovers } =
+    useFastestMoversQuery(undefined, { pollingInterval: 5 * 60 * 1000 });
 
   const {
     combined: combinedFuturesRankings,
@@ -344,12 +347,10 @@ export const DashboardPage: FC<{}> = () => {
       </Row>
       <Row>
         <Col lg="6" md="12" className="dashboard-movers">
-          {loadingCombined ? (
-            <CardLoadingSpinner label="spot gainers and losers" />
+          {loadingFastestMovers ? (
+            <CardLoadingSpinner label="fastest futures movers" />
           ) : (
-            combinedGainersLosers?.length > 0 && (
-              <GainersLosers data={combinedGainersLosers} />
-            )
+            <FastestMovers data={fastestMovers} />
           )}
         </Col>
         <Col lg="6" md="12" className="dashboard-movers">

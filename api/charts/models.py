@@ -110,6 +110,27 @@ class GainersLosersSeriesResponse(StandardResponse):
     data: list[GainersLosersSnapshot]
 
 
+class FastestMoverEntry(BaseModel):
+    symbol: str
+    price_change_1h_percent: float
+    price_change_3h_percent: float | None = None
+    price_change_percent: float
+    last_price: float
+    turnover_24h: float
+
+
+class FastestMoversSnapshot(BaseModel):
+    source: str
+    recorded_at: datetime.datetime | None
+    comparison_at: datetime.datetime | None
+    gainers: list[FastestMoverEntry]
+    losers: list[FastestMoverEntry]
+
+
+class FastestMoversResponse(StandardResponse):
+    data: FastestMoversSnapshot
+
+
 class MarketBreadthSample(BaseModel):
     """
     Ingest payload for one market-breadth sample before it is mapped to the

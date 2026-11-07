@@ -7,6 +7,7 @@ from sqlmodel import Session, delete, select
 
 from api.charts.controllers import MarketDominationController
 from api.databases.tables.autotrade_table import AutotradeTable
+from api.databases.tables.futures_price_sample_table import FuturesPriceSampleTable
 from api.databases.tables.market_breadth_table import MarketBreadthTable
 from pybinbot import BinanceApi, ExchangeId, KucoinFutures
 from tests import conftest
@@ -33,10 +34,12 @@ def _make_controller(
 def _clean_market_breadth():
     with _make_session() as session:
         session.execute(delete(MarketBreadthTable))
+        session.execute(delete(FuturesPriceSampleTable))
         session.commit()
     yield
     with _make_session() as session:
         session.execute(delete(MarketBreadthTable))
+        session.execute(delete(FuturesPriceSampleTable))
         session.commit()
 
 
@@ -146,6 +149,8 @@ def test_ingest_market_breadth_uses_kucoin_futures_contracts():
     assert inserted["total_volume"] == 700.0
     assert inserted["strength_index"] == pytest.approx(1 / 3)
     assert inserted["market_breadth"] == 0.0
+    price_samples = session.exec(select(FuturesPriceSampleTable)).all()
+    assert {sample.symbol for sample in price_samples} == {"BTCUSDTM", "ETHUSDTM"}
     assert inserted["source"] == ExchangeId.KUCOIN.value
 
 
