@@ -18,19 +18,30 @@ function MoverList({
       <Card.Title>{title}</Card.Title>
       <ListGroup className="list-group-flush">
         {movers.map((mover) => (
-          <ListGroup.Item key={mover.symbol}>
-            <span className="text-break">{mover.symbol}</span>
-            <Badge
-              bg={mover.price_change_1h_percent > 0 ? "success" : "danger"}
-              className="u-float-right"
+          <ListGroup.Item
+            key={mover.symbol}
+            className="d-flex justify-content-between align-items-start gap-2"
+          >
+            <Card.Link
+              href={`/bots/futures/new/${mover.symbol}`}
+              className="text-break"
             >
-              {roundDecimals(mover.price_change_1h_percent, 2)}% in 1h
-            </Badge>
-            {mover.price_change_3h_percent !== null && (
-              <div className="text-body-secondary small">
-                3h: {roundDecimals(mover.price_change_3h_percent, 2)}%
-              </div>
-            )}
+              {mover.symbol}
+            </Card.Link>
+            <div className="d-flex flex-column align-items-end gap-1 flex-shrink-0">
+              <Badge
+                bg={mover.price_change_1h_percent > 0 ? "success" : "danger"}
+              >
+                {roundDecimals(mover.price_change_1h_percent, 2)}% in 1h
+              </Badge>
+              {mover.price_change_3h_percent !== null && (
+                <Badge
+                  bg={mover.price_change_3h_percent > 0 ? "success" : "danger"}
+                >
+                  {roundDecimals(mover.price_change_3h_percent, 2)}% in 3h
+                </Badge>
+              )}
+            </div>
           </ListGroup.Item>
         ))}
       </ListGroup>
@@ -56,10 +67,10 @@ export default function FastestMovers({
       {data?.comparison_at ? (
         <Row className="g-0">
           <Col>
-            <MoverList title="Rising (1h)" movers={data.gainers} />
+            <MoverList title="Rising" movers={data.gainers} />
           </Col>
           <Col>
-            <MoverList title="Falling (1h)" movers={data.losers} />
+            <MoverList title="Falling" movers={data.losers} />
           </Col>
         </Row>
       ) : (
