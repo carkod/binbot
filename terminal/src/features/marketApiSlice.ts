@@ -38,6 +38,23 @@ export interface GainersLosersSnapshot {
   top_losers: TopMover[];
 }
 
+export interface FastestMover {
+  symbol: string;
+  price_change_1h_percent: number;
+  price_change_3h_percent: number | null;
+  price_change_percent: number;
+  last_price: number;
+  turnover_24h: number;
+}
+
+export interface FastestMoversSnapshot {
+  source: string;
+  recorded_at: string | null;
+  comparison_at: string | null;
+  gainers: FastestMover[];
+  losers: FastestMover[];
+}
+
 /**
  * Difference between balanceApiSlice and marketApiSlice
  * is one comes from market the other comes from binance account.
@@ -47,6 +64,15 @@ export interface GainersLosersSnapshot {
  */
 export const marketApiSlice = userApiSlice.injectEndpoints({
   endpoints: (build) => ({
+    fastestMovers: build.query<FastestMoversSnapshot, void>({
+      query: () => ({ url: "/charts/fastest_movers?limit=10" }),
+      transformResponse: ({ data, message, error }) => {
+        if (error === 1) {
+          notifification("error", message);
+        }
+        return data;
+      },
+    }),
     marketBreadthSeries: build.query<MarketBreadthData, void>({
       query: () => ({
         url: `${import.meta.env.VITE_MARKET_BREADTH}?size=100`,
@@ -75,5 +101,8 @@ export const marketApiSlice = userApiSlice.injectEndpoints({
   }),
 });
 
-export const { useGainersLosersSeriesQuery, useMarketBreadthSeriesQuery } =
-  marketApiSlice;
+export const {
+  useFastestMoversQuery,
+  useGainersLosersSeriesQuery,
+  useMarketBreadthSeriesQuery,
+} = marketApiSlice;
