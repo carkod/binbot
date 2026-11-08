@@ -8,6 +8,7 @@ from api.charts.models import MarketBreadthSample
 from api.charts.utils import fetch_market_breadth_series
 from api.databases.crud.autotrade_crud import AutotradeCrud
 from api.databases.crud.symbols_crud import SymbolsCrud
+from api.databases.crud.top_gainers_losers_series_crud import TopGainersLosersSeriesCrud
 from api.databases.tables.market_breadth_table import MarketBreadthTable
 from api.databases.utils import independent_session
 from pybinbot import BinanceApi, ExchangeId, KucoinFutures
@@ -163,6 +164,17 @@ class MarketDominationController:
         )
         self.session.add(row)
         try:
+            if self.exchange == ExchangeId.KUCOIN:
+                active_contracts = [
+                    contract
+                    for contract in market_tickers
+                    if TopGainersLosersSeriesCrud._has_active_market(
+                        contract, self.autotrade_settings.fiat
+                    )
+                ]
+                TopGainersLosersSeriesCrud.record_futures_prices(
+                    self.session, active_contracts, market_breadth_sample.timestamp
+                )
             self.session.commit()
         except IntegrityError as exc:
             # (timestamp, source) already exists — duplicate cron tick.
