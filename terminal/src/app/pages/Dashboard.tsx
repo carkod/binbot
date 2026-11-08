@@ -371,10 +371,9 @@ export const DashboardPage: FC<{}> = () => {
           {loadingMarketBreadthSeries ? (
             <CardLoadingSpinner label="market breadth trend" />
           ) : (
-            marketBreadthSeries?.market_breadth && (
+            marketBreadthSeries?.timestamp && (
               <MarketBreadthCard
-                marketBreadth={marketBreadthSeries.market_breadth}
-                marketBreadthMa={marketBreadthSeries.market_breadth_ma}
+                medianReturn15m={marketBreadthSeries.median_return_15m}
                 medianReturn1h={marketBreadthSeries.median_return_1h}
                 medianReturn3h={marketBreadthSeries.median_return_3h}
                 fallingShare1h={marketBreadthSeries.falling_share_1h}

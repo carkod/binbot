@@ -196,7 +196,8 @@ class MarketDominationController:
     ) -> dict[str, list] | None:
         """
         Return newest-first 24h breadth for the selected exchange, plus
-        one- and three-hour futures movement when KuCoin prices are available.
+        15-minute, one-hour, and three-hour futures movement when KuCoin prices
+        are available.
         The EMA and recent movement fields are computed from stored samples.
         """
         selected_exchange = exchange or self.exchange
@@ -215,6 +216,7 @@ class MarketDominationController:
                 {
                     key: [None] * len(series.timestamp)
                     for key in (
+                        "median_return_15m",
                         "median_return_1h",
                         "median_return_3h",
                         "falling_share_1h",

@@ -22,6 +22,7 @@ export interface MarketBreadthData {
   market_breadth_ma: number[];
   total_volume: number[];
   strength_index: number[];
+  median_return_15m?: Array<number | null>;
   median_return_1h?: Array<number | null>;
   median_return_3h?: Array<number | null>;
   falling_share_1h?: Array<number | null>;

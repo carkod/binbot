@@ -1,5 +1,5 @@
 from unittest.mock import Mock
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 import pytest
@@ -234,6 +234,7 @@ def test_get_market_breadth_series_returns_parallel_arrays_newest_first():
         "avg_loss",
         "total_volume",
         "strength_index",
+        "median_return_15m",
         "median_return_1h",
         "median_return_3h",
         "falling_share_1h",
@@ -246,6 +247,7 @@ def test_get_market_breadth_series_returns_parallel_arrays_newest_first():
         reversed(_ema(chronological_market_breadth, window=2))
     )[:4]
     assert result["market_breadth_ma"] == pytest.approx(expected_ema_newest_first)
+    assert result["median_return_15m"] == [None] * 4
     assert result["median_return_1h"] == [None] * 4
 
 
@@ -281,15 +283,16 @@ def test_recent_futures_returns_detect_falling_assets_while_24h_breadth_stays_po
             strength_index=1.0,
         )
     )
-    for hours_ago, prices in (
-        (3, {"JCTUSDTM": 423.0, "AIOTUSDTM": 144.0}),
-        (1, {"JCTUSDTM": 420.0, "AIOTUSDTM": 140.0}),
+    for minutes_ago, prices in (
+        (180, {"JCTUSDTM": 423.0, "AIOTUSDTM": 144.0}),
+        (60, {"JCTUSDTM": 420.0, "AIOTUSDTM": 140.0}),
+        (15, {"JCTUSDTM": 419.0, "AIOTUSDTM": 138.0}),
         (0, {"JCTUSDTM": 418.0, "AIOTUSDTM": 136.0}),
     ):
         session.add_all(
             FuturesPriceSampleTable(
                 source="kucoin_futures",
-                recorded_at=now.replace(hour=now.hour - hours_ago),
+                recorded_at=now - timedelta(minutes=minutes_ago),
                 symbol=symbol,
                 last_price=price,
                 price_change_percent=318.0 if symbol == "JCTUSDTM" else 36.0,
@@ -307,6 +310,9 @@ def test_recent_futures_returns_detect_falling_assets_while_24h_breadth_stays_po
     assert result["strength_index"] == [1.0]
     assert result["falling_share_1h"] == [1.0]
     assert result["falling_share_3h"] == [1.0]
+    assert result["median_return_15m"][0] == pytest.approx(
+        ((418 / 419 - 1) + (136 / 138 - 1)) * 50
+    )
     assert result["median_return_1h"][0] == pytest.approx(
         ((418 / 420 - 1) + (136 / 140 - 1)) * 50
     )
@@ -326,6 +332,7 @@ def test_market_breadth_endpoint_exposes_recent_returns(client, monkeypatch):
         "avg_loss": [0.0],
         "total_volume": [2000.0],
         "strength_index": [1.0],
+        "median_return_15m": [-0.84],
         "median_return_1h": [-1.67],
         "median_return_3h": [-3.37],
         "falling_share_1h": [1.0],

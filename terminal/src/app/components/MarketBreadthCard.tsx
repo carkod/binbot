@@ -5,8 +5,7 @@ import { roundDecimals } from "../../utils/math";
 import type { FC } from "react";
 
 type MarketBreadthCardProps = {
-  marketBreadth: number[];
-  marketBreadthMa?: Array<number | null>;
+  medianReturn15m?: Array<number | null>;
   medianReturn1h?: Array<number | null>;
   medianReturn3h?: Array<number | null>;
   fallingShare1h?: Array<number | null>;
@@ -14,49 +13,30 @@ type MarketBreadthCardProps = {
   timestamps: string[];
 };
 
-const resolveDeltaBadge = (marketBreadthMa?: Array<number | null>) => {
-  const latest = marketBreadthMa?.[0];
-  const previous = marketBreadthMa?.[1];
-
-  if (
-    latest === null ||
-    latest === undefined ||
-    previous === null ||
-    previous === undefined ||
-    !Number.isFinite(latest) ||
-    !Number.isFinite(previous)
-  ) {
-    return { bg: "secondary", label: "N/A" };
+const resolveMedianBadge = (latest?: number | null) => {
+  if (latest === null || latest === undefined || !Number.isFinite(latest)) {
+    return { bg: "secondary", label: "15m: N/A" };
   }
 
-  const roundedDeltaPoints = roundDecimals((latest - previous) * 100, 1);
-
-  if (roundedDeltaPoints > 0) {
-    return { bg: "success", label: `+${roundedDeltaPoints.toFixed(1)} pts` };
-  }
-
-  if (roundedDeltaPoints < 0) {
-    return { bg: "danger", label: `${roundedDeltaPoints.toFixed(1)} pts` };
-  }
-
-  return { bg: "secondary", label: "0.0 pts" };
+  const rounded = roundDecimals(latest, 2);
+  return {
+    bg: latest > 0 ? "success" : latest < 0 ? "danger" : "secondary",
+    label: `15m: ${rounded > 0 ? "+" : ""}${rounded.toFixed(2)}%`,
+  };
 };
 
 const MarketBreadthCard: FC<MarketBreadthCardProps> = ({
-  marketBreadth,
-  marketBreadthMa,
+  medianReturn15m,
   medianReturn1h,
   medianReturn3h,
   fallingShare1h,
   fallingShare3h,
   timestamps,
 }) => {
-  const marketBreadthIsPositive = marketBreadth[0] > 0;
-  const deltaBadge = resolveDeltaBadge(marketBreadthMa);
+  const medianBadge = resolveMedianBadge(medianReturn15m?.[0]);
   const chartTimestamps = [...timestamps].reverse();
-  const chartMarketBreadth = [...marketBreadth].reverse();
-  const chartMarketBreadthMa = marketBreadthMa
-    ? [...marketBreadthMa].reverse()
+  const chartMedianReturn15m = medianReturn15m
+    ? [...medianReturn15m].reverse()
     : [];
   const chartMedianReturn1h = medianReturn1h
     ? [...medianReturn1h].reverse()
@@ -65,6 +45,7 @@ const MarketBreadthCard: FC<MarketBreadthCardProps> = ({
     ? [...medianReturn3h].reverse()
     : [];
   const hasRecentReturns =
+    chartMedianReturn15m.some((value) => value !== null) ||
     chartMedianReturn1h.some((value) => value !== null) ||
     chartMedianReturn3h.some((value) => value !== null);
 
@@ -73,9 +54,7 @@ const MarketBreadthCard: FC<MarketBreadthCardProps> = ({
       <Card.Header>
         <Row>
           <Col lg="1" md="1" sm="1">
-            <i
-              className={`fs-2 fa fa-suitcase ${marketBreadthIsPositive ? "text-success" : "text-danger"}`}
-            />
+            <i className={`fs-2 fa fa-suitcase text-${medianBadge.bg}`} />
           </Col>
           <Col lg="11" md="11" sm="11">
             <Card.Title
@@ -83,14 +62,11 @@ const MarketBreadthCard: FC<MarketBreadthCardProps> = ({
               className="mt-0 d-flex align-items-center gap-2"
             >
               <span>Market Breadth Trend</span>
-              <Badge bg={deltaBadge.bg}>{deltaBadge.label}</Badge>
+              <Badge bg={medianBadge.bg}>{medianBadge.label}</Badge>
             </Card.Title>
             <p className="u-text-left">
-              The 24h line shows the Advancers-Decliners ratio. Recent lines
-              show the median futures price return over 1h and 3h.
-              <br />
-              Above 0 means more assets are up over 24h; below 0 means more are
-              down.
+              Median futures price returns over 15m, 1h, and 3h. Below zero
+              means the typical contract fell during that window.
             </p>
             {fallingShare1h?.[0] != null && medianReturn1h?.[0] != null && (
               <div className="small text-body-secondary">
@@ -108,98 +84,88 @@ const MarketBreadthCard: FC<MarketBreadthCardProps> = ({
         </Row>
       </Card.Header>
       <Card.Body>
-        <PlotlyChart
-          data={[
-            {
-              x: chartTimestamps,
-              y: chartMarketBreadth,
-              type: "scatter",
-              mode: "lines+markers",
-              name: "Market Breadth",
-              line: { color: "#007bff", width: 2 },
-              marker: { size: 6 },
-              fill: "tozeroy",
-              fillcolor: marketBreadthIsPositive ? "#28a74533" : "#dc354533",
-            },
-            ...(chartMarketBreadthMa.some((value) => value !== null)
-              ? [
-                  {
-                    x: chartTimestamps,
-                    y: chartMarketBreadthMa,
-                    type: "scatter",
-                    mode: "lines+markers",
-                    name: "Breadth Trend",
-                    line: { color: "#20c997", width: 3 },
-                    marker: { size: 5 },
-                    fill: "none",
-                  },
-                ]
-              : []),
-            ...(chartMedianReturn1h.some((value) => value !== null)
-              ? [
-                  {
-                    x: chartTimestamps,
-                    y: chartMedianReturn1h,
-                    type: "scatter",
-                    mode: "lines+markers",
-                    name: "Median return (1h)",
-                    line: { color: "#ff9900", width: 2, dash: "dot" },
-                    marker: { size: 6 },
-                    fill: "none",
-                    yaxis: "y2",
-                  },
-                ]
-              : []),
-            ...(chartMedianReturn3h.some((value) => value !== null)
-              ? [
-                  {
-                    x: chartTimestamps,
-                    y: chartMedianReturn3h,
-                    type: "scatter",
-                    mode: "lines+markers",
-                    name: "Median return (3h)",
-                    line: { color: "#6f42c1", width: 2, dash: "dot" },
-                    marker: { size: 6 },
-                    fill: "none",
-                    yaxis: "y2",
-                  },
-                ]
-              : []),
-          ]}
-          layout={{
-            autosize: true,
-            height: 380,
-            margin: { t: 30, l: 40, r: 70, b: 40 },
-            xaxis: {
-              title: "Time",
-              tickformat: "%d/%m %H:%M",
-              showgrid: false,
-            },
-            yaxis: {
-              title: "24h breadth",
-              showgrid: true,
-              zeroline: true,
-              zerolinecolor: "#6c757d",
-              zerolinewidth: 1,
-            },
-            ...(hasRecentReturns
-              ? {
-                  yaxis2: {
-                    title: "Median return (%)",
-                    overlaying: "y",
-                    side: "right",
-                    ticksuffix: "%",
-                    zeroline: true,
-                    zerolinecolor: "#6c757d",
-                  },
-                }
-              : {}),
-            legend: { orientation: "h", y: -0.2 },
-          }}
-          config={{ responsive: true, displayModeBar: false }}
-          style={{ width: "100%", height: "100%" }}
-          useResizeHandler={true}
-        />
+        {hasRecentReturns ? (
+          <PlotlyChart
+            data={[
+              ...(chartMedianReturn15m.some((value) => value !== null)
+                ? [
+                    {
+                      x: chartTimestamps,
+                      y: chartMedianReturn15m,
+                      type: "scatter",
+                      mode: "lines+markers",
+                      name: "Median return (15m)",
+                      line: { color: "#007bff", width: 2 },
+                      marker: { size: 5 },
+                      fill: "none",
+                    },
+                  ]
+                : []),
+              ...(chartMedianReturn1h.some((value) => value !== null)
+                ? [
+                    {
+                      x: chartTimestamps,
+                      y: chartMedianReturn1h,
+                      type: "scatter",
+                      mode: "lines+markers",
+                      name: "Median return (1h)",
+                      line: { color: "#ff9900", width: 2, dash: "dot" },
+                      marker: { size: 6 },
+                      fill: "none",
+                    },
+                  ]
+                : []),
+              ...(chartMedianReturn3h.some((value) => value !== null)
+                ? [
+                    {
+                      x: chartTimestamps,
+                      y: chartMedianReturn3h,
+                      type: "scatter",
+                      mode: "lines+markers",
+                      name: "Median return (3h)",
+                      line: { color: "#6f42c1", width: 2, dash: "dot" },
+                      marker: { size: 6 },
+                      fill: "none",
+                    },
+                  ]
+                : []),
+            ]}
+            layout={{
+              autosize: true,
+              height: 460,
+              margin: { t: 30, l: 90, r: 20, b: 135 },
+              xaxis: {
+                title: { text: "Time", standoff: 14 },
+                automargin: true,
+                tickformat: "%d/%m %H:%M",
+                showgrid: false,
+              },
+              yaxis: {
+                title: { text: "Median return (%)", standoff: 14 },
+                automargin: true,
+                ticksuffix: "%",
+                showgrid: true,
+                zeroline: true,
+                zerolinecolor: "#6c757d",
+                zerolinewidth: 1,
+              },
+              legend: {
+                orientation: "h",
+                x: 0.5,
+                xanchor: "center",
+                y: -0.31,
+                yanchor: "top",
+              },
+            }}
+            config={{ responsive: true, displayModeBar: false }}
+            style={{ width: "100%", height: "100%" }}
+            useResizeHandler={true}
+          />
+        ) : (
+          <div className="text-body-secondary">
+            Waiting for futures price snapshots.
+          </div>
+        )}
       </Card.Body>
       <Card.Footer className="text-muted">
         <hr />

@@ -18,7 +18,7 @@ type PlotlyProps = {
   data: PlotlyTrace[];
   layout: {
     yaxis?: {
-      title?: string;
+      title?: { text?: string; standoff?: number };
     };
   };
 };
@@ -88,7 +88,10 @@ describeBlock("BitcoinPriceCard", () => {
       "2026-08-10T10:15:04Z",
     ]);
     expectValue(props.data[0].y).toEqual([64800, 65000, 65125.5]);
-    expectValue(props.layout.yaxis?.title).toBe("Close price");
+    expectValue(props.layout.yaxis?.title).toEqual({
+      text: "Close price",
+      standoff: 14,
+    });
   });
 
   testCase(

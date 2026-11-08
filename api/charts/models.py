@@ -132,6 +132,7 @@ class FastestMoversResponse(StandardResponse):
 
 
 class MarketBreadthWithRecentMoves(MarketBreadthSeries):
+    median_return_15m: list[float | None]
     median_return_1h: list[float | None]
     median_return_3h: list[float | None]
     falling_share_1h: list[float | None]

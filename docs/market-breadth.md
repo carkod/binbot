@@ -14,18 +14,20 @@ remaining positive over 24 hours, so ADP may remain high during a broad pullback
 
 For KuCoin futures, the same ingest also stores prices for the active contracts.
 The market-breadth response compares each snapshot with the closest stored price
-snapshot one and three hours earlier (within ten minutes). For contracts present
-in both snapshots, it returns the median price return in percent and the share
-with negative returns for each window. The four newest-first arrays are
-`median_return_1h`, `median_return_3h`, `falling_share_1h`, and
-`falling_share_3h`; missing comparisons are `null`. Price samples are retained
-for 36 hours so the dashboard's 100-point chart can show these recent-return
-lines alongside the existing 24-hour breadth and its EMA trend.
+snapshot 15 minutes earlier (within five minutes), and one and three hours
+earlier (within ten minutes). For contracts present in both snapshots, it
+returns the median price return in percent for all three windows and the share
+with negative returns for one and three hours. The newest-first arrays are
+`median_return_15m`, `median_return_1h`, `median_return_3h`,
+`falling_share_1h`, and `falling_share_3h`; missing comparisons are `null`.
+Price samples are retained for 36 hours so the dashboard's 100-point chart can
+show these recent-return lines.
 
-The strength index remains in the database and API response. The dashboard
-plots the median 1-hour and 3-hour returns on a separate percent axis in its
-place, and shows the latest falling shares above the chart. No additional
-exchange request or table is needed.
+The 24-hour breadth, its EMA trend, and the strength index remain in the
+database and API response. The dashboard plots only the median 15-minute,
+1-hour, and 3-hour returns on a single percent axis and shows the latest
+falling shares above the chart. No additional exchange request or table is
+needed.
 
 ## History
 

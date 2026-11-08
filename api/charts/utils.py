@@ -79,6 +79,7 @@ def fetch_recent_futures_movement_series(
 ) -> dict[str, list[float | None]]:
     """Median price returns and falling shares for each breadth snapshot."""
     result: dict[str, list[float | None]] = {
+        "median_return_15m": [],
         "median_return_1h": [],
         "median_return_3h": [],
         "falling_share_1h": [],
@@ -126,22 +127,26 @@ def fetch_recent_futures_movement_series(
             default=None,
         )
         current_prices = snapshots.get(current_time, {}) if current_time else {}
-        for hours in (1, 3):
-            return_key = f"median_return_{hours}h"
-            share_key = f"falling_share_{hours}h"
+        for label, duration, tolerance in (
+            ("15m", timedelta(minutes=15), timedelta(minutes=5)),
+            ("1h", timedelta(hours=1), timedelta(minutes=10)),
+            ("3h", timedelta(hours=3), timedelta(minutes=10)),
+        ):
+            return_key = f"median_return_{label}"
+            share_key = f"falling_share_{label}" if label != "15m" else None
             if current_time is None:
                 result[return_key].append(None)
-                result[share_key].append(None)
+                if share_key is not None:
+                    result[share_key].append(None)
                 continue
-            target = current_time - timedelta(hours=hours)
+            target = current_time - duration
             position = bisect_left(snapshot_times, target)
             candidates = snapshot_times[max(0, position - 1) : position + 1]
             comparison = min(
                 (
                     timestamp
                     for timestamp in candidates
-                    if timestamp < current_time
-                    and abs(timestamp - target) <= timedelta(minutes=10)
+                    if timestamp < current_time and abs(timestamp - target) <= tolerance
                 ),
                 key=lambda timestamp: abs(timestamp - target),
                 default=None,
@@ -155,8 +160,11 @@ def fetch_recent_futures_movement_series(
                 and previous_prices[symbol] > 0
             ]
             result[return_key].append(median(returns) if returns else None)
-            result[share_key].append(
-                sum(value < 0 for value in returns) / len(returns) if returns else None
-            )
+            if share_key is not None:
+                result[share_key].append(
+                    sum(value < 0 for value in returns) / len(returns)
+                    if returns
+                    else None
+                )
 
     return result
