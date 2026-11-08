@@ -13,6 +13,7 @@ from pybinbot import (
     Position,
     round_numbers,
 )
+from pybinbot.shared.telegram_delivery import TelegramDelivery
 
 from api.databases.crud.autotrade_crud import AutotradeCrud
 from api.databases.crud.bot_crud import BotTableCrud
@@ -30,6 +31,7 @@ class BaseStreaming:
 
     def __init__(self) -> None:
         self.config = Config()
+        self.telegram_delivery = TelegramDelivery()
         self.binance_api = BinanceApi(
             key=self.config.binance_key, secret=self.config.binance_secret
         )

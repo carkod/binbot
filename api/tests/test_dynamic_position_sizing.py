@@ -852,6 +852,9 @@ def test_process_tick_cleans_pending_increase_after_native_protective_fill(
         def build_bb_metrics(self):
             return None
 
+        def notify_stop_condition_hits(self, mark_price):
+            pass
+
         def order_updates(self):
             bot.deal.closing_qty = bot.deal.opening_qty
             bot.deal.current_position_qty = 0

@@ -50,13 +50,9 @@ const GridLadderCard: FC<GridLadderCardProps> = ({
   const closeAdjustmentPnl = calculateCloseAdjustmentPnl(ladder);
   const hasCloseAdjustment = Math.abs(closeAdjustmentPnl) >= 0.00005;
   const firstBreachAt = ladder.context.first_breach_at as
-    | number
-    | null
-    | undefined;
+    number | null | undefined;
   const firstBreachUpAt = ladder.context.first_breach_up_at as
-    | number
-    | null
-    | undefined;
+    number | null | undefined;
   const showAlgorithmName = ladder.algorithm_name !== "grid_ladder";
 
   return (
