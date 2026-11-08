@@ -234,6 +234,10 @@ def test_get_market_breadth_series_returns_parallel_arrays_newest_first():
         "avg_loss",
         "total_volume",
         "strength_index",
+        "median_return_1h",
+        "median_return_3h",
+        "falling_share_1h",
+        "falling_share_3h",
     ):
         assert key in result
         assert len(result[key]) == 4
@@ -242,6 +246,7 @@ def test_get_market_breadth_series_returns_parallel_arrays_newest_first():
         reversed(_ema(chronological_market_breadth, window=2))
     )[:4]
     assert result["market_breadth_ma"] == pytest.approx(expected_ema_newest_first)
+    assert result["median_return_1h"] == [None] * 4
 
 
 def test_get_market_breadth_series_filters_by_exchange():
@@ -258,6 +263,83 @@ def test_get_market_breadth_series_filters_by_exchange():
     assert result is not None
     assert len(result["timestamp"]) == 3
     assert result["market_breadth_ma"] == pytest.approx(result["market_breadth"])
+
+
+def test_recent_futures_returns_detect_falling_assets_while_24h_breadth_stays_positive():
+    session = _make_session()
+    now = datetime(2026, 11, 8, 12, 0, 0, 500000, tzinfo=timezone.utc)
+    session.add(
+        MarketBreadthTable(
+            timestamp=now,
+            source=ExchangeId.KUCOIN.value,
+            advancers=2,
+            decliners=0,
+            adp=1.0,
+            avg_gain=177.0,
+            avg_loss=0.0,
+            total_volume=2000.0,
+            strength_index=1.0,
+        )
+    )
+    for hours_ago, prices in (
+        (3, {"JCTUSDTM": 423.0, "AIOTUSDTM": 144.0}),
+        (1, {"JCTUSDTM": 420.0, "AIOTUSDTM": 140.0}),
+        (0, {"JCTUSDTM": 418.0, "AIOTUSDTM": 136.0}),
+    ):
+        session.add_all(
+            FuturesPriceSampleTable(
+                source="kucoin_futures",
+                recorded_at=now.replace(hour=now.hour - hours_ago),
+                symbol=symbol,
+                last_price=price,
+                price_change_percent=318.0 if symbol == "JCTUSDTM" else 36.0,
+                turnover_24h=1000.0,
+            )
+            for symbol, price in prices.items()
+        )
+    session.commit()
+
+    controller = _make_controller(ExchangeId.KUCOIN, session, fiat="USDT")
+    result = controller.get_market_breadth_series(size=1, window=1)
+
+    assert result is not None
+    assert result["market_breadth"] == [1.0]
+    assert result["strength_index"] == [1.0]
+    assert result["falling_share_1h"] == [1.0]
+    assert result["falling_share_3h"] == [1.0]
+    assert result["median_return_1h"][0] == pytest.approx(
+        ((418 / 420 - 1) + (136 / 140 - 1)) * 50
+    )
+    assert result["median_return_3h"][0] == pytest.approx(
+        ((418 / 423 - 1) + (136 / 144 - 1)) * 50
+    )
+
+
+def test_market_breadth_endpoint_exposes_recent_returns(client, monkeypatch):
+    data = {
+        "timestamp": ["2026-11-08 12:00:00+00:00"],
+        "advancers": [2],
+        "decliners": [0],
+        "market_breadth": [1.0],
+        "market_breadth_ma": [1.0],
+        "avg_gain": [177.0],
+        "avg_loss": [0.0],
+        "total_volume": [2000.0],
+        "strength_index": [1.0],
+        "median_return_1h": [-1.67],
+        "median_return_3h": [-3.37],
+        "falling_share_1h": [1.0],
+        "falling_share_3h": [1.0],
+    }
+    monkeypatch.setattr(
+        "api.charts.routes.MarketDominationController",
+        lambda session: SimpleNamespace(get_market_breadth_series=lambda size: data),
+    )
+
+    response = client.get("/charts/market-breadth?size=1")
+
+    assert response.status_code == 200
+    assert response.json()["data"] == data
 
 
 def test_get_market_breadth_series_returns_none_when_empty():

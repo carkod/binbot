@@ -1,8 +1,12 @@
+from bisect import bisect_left
+from datetime import datetime, timedelta, timezone
+from statistics import median
 from typing import cast
 
-from sqlalchemy import Table
+from sqlalchemy import Table, select
 from sqlmodel import Session
 
+from api.databases.tables.futures_price_sample_table import FuturesPriceSampleTable
 from api.databases.tables.market_breadth_table import MarketBreadthTable
 from pybinbot import ExchangeId, MarketBreadthSeries, ema
 from api.tools.utils import datetime_to_iso
@@ -68,3 +72,91 @@ def fetch_market_breadth_series(
         total_volume=[float(r["total_volume"]) for r, _ in output_rows],
         strength_index=[float(r["strength_index"]) for r, _ in output_rows],
     )
+
+
+def fetch_recent_futures_movement_series(
+    session: Session, timestamps: list[str]
+) -> dict[str, list[float | None]]:
+    """Median price returns and falling shares for each breadth snapshot."""
+    result: dict[str, list[float | None]] = {
+        "median_return_1h": [],
+        "median_return_3h": [],
+        "falling_share_1h": [],
+        "falling_share_3h": [],
+    }
+    if not timestamps:
+        return result
+
+    breadth_times: list[datetime] = []
+    for value in timestamps:
+        parsed = datetime.fromisoformat(value)
+        breadth_times.append(
+            parsed.replace(tzinfo=timezone.utc)
+            if parsed.tzinfo is None
+            else parsed.astimezone(timezone.utc)
+        )
+    prices = cast(Table, getattr(FuturesPriceSampleTable, "__table__"))
+    rows = session.execute(
+        select(prices.c.recorded_at, prices.c.symbol, prices.c.last_price).where(
+            prices.c.source == "kucoin_futures",
+            prices.c.recorded_at >= min(breadth_times) - timedelta(hours=3, minutes=10),
+            prices.c.recorded_at <= max(breadth_times) + timedelta(seconds=1),
+        )
+    ).all()
+    snapshots: dict[datetime, dict[str, float]] = {}
+    for recorded_at, symbol, last_price in rows:
+        timestamp = (
+            recorded_at.astimezone(timezone.utc).replace(tzinfo=None)
+            if recorded_at.tzinfo is not None
+            else recorded_at
+        )
+        snapshots.setdefault(timestamp, {})[symbol] = last_price
+    snapshot_times = sorted(snapshots)
+
+    for breadth_time in breadth_times:
+        point_time = breadth_time.replace(tzinfo=None)
+        position = bisect_left(snapshot_times, point_time)
+        current_time = min(
+            (
+                timestamp
+                for timestamp in snapshot_times[max(0, position - 1) : position + 1]
+                if abs(timestamp - point_time) <= timedelta(seconds=1)
+            ),
+            key=lambda timestamp: abs(timestamp - point_time),
+            default=None,
+        )
+        current_prices = snapshots.get(current_time, {}) if current_time else {}
+        for hours in (1, 3):
+            return_key = f"median_return_{hours}h"
+            share_key = f"falling_share_{hours}h"
+            if current_time is None:
+                result[return_key].append(None)
+                result[share_key].append(None)
+                continue
+            target = current_time - timedelta(hours=hours)
+            position = bisect_left(snapshot_times, target)
+            candidates = snapshot_times[max(0, position - 1) : position + 1]
+            comparison = min(
+                (
+                    timestamp
+                    for timestamp in candidates
+                    if timestamp < current_time
+                    and abs(timestamp - target) <= timedelta(minutes=10)
+                ),
+                key=lambda timestamp: abs(timestamp - target),
+                default=None,
+            )
+            previous_prices = snapshots.get(comparison, {}) if comparison else {}
+            returns = [
+                (current_price / previous_prices[symbol] - 1) * 100
+                for symbol, current_price in current_prices.items()
+                if current_price > 0
+                and symbol in previous_prices
+                and previous_prices[symbol] > 0
+            ]
+            result[return_key].append(median(returns) if returns else None)
+            result[share_key].append(
+                sum(value < 0 for value in returns) / len(returns) if returns else None
+            )
+
+    return result

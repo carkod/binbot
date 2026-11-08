@@ -7,7 +7,10 @@ import type { FC } from "react";
 type MarketBreadthCardProps = {
   marketBreadth: number[];
   marketBreadthMa?: Array<number | null>;
-  strengthIndex?: number[];
+  medianReturn1h?: Array<number | null>;
+  medianReturn3h?: Array<number | null>;
+  fallingShare1h?: Array<number | null>;
+  fallingShare3h?: Array<number | null>;
   timestamps: string[];
 };
 
@@ -42,7 +45,10 @@ const resolveDeltaBadge = (marketBreadthMa?: Array<number | null>) => {
 const MarketBreadthCard: FC<MarketBreadthCardProps> = ({
   marketBreadth,
   marketBreadthMa,
-  strengthIndex,
+  medianReturn1h,
+  medianReturn3h,
+  fallingShare1h,
+  fallingShare3h,
   timestamps,
 }) => {
   const marketBreadthIsPositive = marketBreadth[0] > 0;
@@ -52,7 +58,15 @@ const MarketBreadthCard: FC<MarketBreadthCardProps> = ({
   const chartMarketBreadthMa = marketBreadthMa
     ? [...marketBreadthMa].reverse()
     : [];
-  const chartStrengthIndex = strengthIndex ? [...strengthIndex].reverse() : [];
+  const chartMedianReturn1h = medianReturn1h
+    ? [...medianReturn1h].reverse()
+    : [];
+  const chartMedianReturn3h = medianReturn3h
+    ? [...medianReturn3h].reverse()
+    : [];
+  const hasRecentReturns =
+    chartMedianReturn1h.some((value) => value !== null) ||
+    chartMedianReturn3h.some((value) => value !== null);
 
   return (
     <Card className="card-chart">
@@ -72,11 +86,24 @@ const MarketBreadthCard: FC<MarketBreadthCardProps> = ({
               <Badge bg={deltaBadge.bg}>{deltaBadge.label}</Badge>
             </Card.Title>
             <p className="u-text-left">
-              Shows the Advancers-Decliners ratio (market breadth).
+              The 24h line shows the Advancers-Decliners ratio. Recent lines
+              show the median futures price return over 1h and 3h.
               <br />
-              Over 0 indicates positive reversal Under 0 indicates negative
-              reversal.
+              Above 0 means more assets are up over 24h; below 0 means more are
+              down.
             </p>
+            {fallingShare1h?.[0] != null && medianReturn1h?.[0] != null && (
+              <div className="small text-body-secondary">
+                1h: {roundDecimals(fallingShare1h[0] * 100, 1)}% falling ·
+                median {roundDecimals(medianReturn1h[0], 2)}%
+              </div>
+            )}
+            {fallingShare3h?.[0] != null && medianReturn3h?.[0] != null && (
+              <div className="small text-body-secondary">
+                3h: {roundDecimals(fallingShare3h[0] * 100, 1)}% falling ·
+                median {roundDecimals(medianReturn3h[0], 2)}%
+              </div>
+            )}
           </Col>
         </Row>
       </Card.Header>
@@ -108,17 +135,33 @@ const MarketBreadthCard: FC<MarketBreadthCardProps> = ({
                   },
                 ]
               : []),
-            ...(strengthIndex && strengthIndex.length > 0
+            ...(chartMedianReturn1h.some((value) => value !== null)
               ? [
                   {
                     x: chartTimestamps,
-                    y: chartStrengthIndex,
+                    y: chartMedianReturn1h,
                     type: "scatter",
                     mode: "lines+markers",
-                    name: "Strength Index",
+                    name: "Median return (1h)",
                     line: { color: "#ff9900", width: 2, dash: "dot" },
                     marker: { size: 6 },
                     fill: "none",
+                    yaxis: "y2",
+                  },
+                ]
+              : []),
+            ...(chartMedianReturn3h.some((value) => value !== null)
+              ? [
+                  {
+                    x: chartTimestamps,
+                    y: chartMedianReturn3h,
+                    type: "scatter",
+                    mode: "lines+markers",
+                    name: "Median return (3h)",
+                    line: { color: "#6f42c1", width: 2, dash: "dot" },
+                    marker: { size: 6 },
+                    fill: "none",
+                    yaxis: "y2",
                   },
                 ]
               : []),
@@ -126,19 +169,31 @@ const MarketBreadthCard: FC<MarketBreadthCardProps> = ({
           layout={{
             autosize: true,
             height: 380,
-            margin: { t: 30, l: 40, r: 55, b: 40 },
+            margin: { t: 30, l: 40, r: 70, b: 40 },
             xaxis: {
               title: "Time",
               tickformat: "%d/%m %H:%M",
               showgrid: false,
             },
             yaxis: {
-              title: "Market Breadth",
+              title: "24h breadth",
               showgrid: true,
               zeroline: true,
               zerolinecolor: "#6c757d",
               zerolinewidth: 1,
             },
+            ...(hasRecentReturns
+              ? {
+                  yaxis2: {
+                    title: "Median return (%)",
+                    overlaying: "y",
+                    side: "right",
+                    ticksuffix: "%",
+                    zeroline: true,
+                    zerolinecolor: "#6c757d",
+                  },
+                }
+              : {}),
             legend: { orientation: "h", y: -0.2 },
           }}
           config={{ responsive: true, displayModeBar: false }}

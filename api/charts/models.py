@@ -1,6 +1,6 @@
 import datetime
 from pydantic import BaseModel, field_validator
-from pybinbot import StandardResponse
+from pybinbot import MarketBreadthSeries, StandardResponse
 
 
 class CandlestickItemRequest(BaseModel):
@@ -129,6 +129,17 @@ class FastestMoversSnapshot(BaseModel):
 
 class FastestMoversResponse(StandardResponse):
     data: FastestMoversSnapshot
+
+
+class MarketBreadthWithRecentMoves(MarketBreadthSeries):
+    median_return_1h: list[float | None]
+    median_return_3h: list[float | None]
+    falling_share_1h: list[float | None]
+    falling_share_3h: list[float | None]
+
+
+class MarketBreadthWithRecentMovesResponse(StandardResponse):
+    data: MarketBreadthWithRecentMoves
 
 
 class MarketBreadthSample(BaseModel):

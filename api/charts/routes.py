@@ -9,8 +9,11 @@ from api.tools.handle_error import (
     json_response_error,
 )
 from api.charts.controllers import MarketDominationController
-from api.charts.models import FastestMoversResponse, GainersLosersSeriesResponse
-from pybinbot import MarketBreadthSeriesResponse
+from api.charts.models import (
+    FastestMoversResponse,
+    GainersLosersSeriesResponse,
+    MarketBreadthWithRecentMovesResponse,
+)
 
 charts_blueprint = APIRouter()
 
@@ -43,8 +46,8 @@ def get_fastest_movers(
 @charts_blueprint.get(
     "/market-breadth",
     tags=["charts"],
-    summary="Market breadth time-series (advancers/decliners ratio)",
-    response_model=MarketBreadthSeriesResponse,
+    summary="24h market breadth with recent futures returns",
+    response_model=MarketBreadthWithRecentMovesResponse,
 )
 def get_market_breadth(size: int = 14, session: Session = Depends(get_session)):
     try:

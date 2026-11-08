@@ -12,6 +12,7 @@ type PlotlyTrace = {
   name?: string;
   x?: string[];
   y?: Array<number | null>;
+  yaxis?: string;
 };
 
 type PlotlyProps = {
@@ -19,6 +20,9 @@ type PlotlyProps = {
   layout: {
     yaxis?: {
       zeroline?: boolean;
+    };
+    yaxis2?: {
+      title?: string;
     };
   };
 };
@@ -50,7 +54,10 @@ const timestamps = [
 const defaultProps = {
   marketBreadth: [0.12, 0.08, 0.03],
   marketBreadthMa: [0.171, 0.137, 0.1],
-  strengthIndex: [0.3, 0.2, 0.1],
+  medianReturn1h: [-0.8, -0.4, 0.1],
+  medianReturn3h: [-1.7, -1.2, -0.2],
+  fallingShare1h: [0.6, 0.5, 0.3],
+  fallingShare3h: [0.8, 0.7, 0.6],
   timestamps,
 };
 
@@ -113,7 +120,7 @@ describeBlock("MarketBreadthCard", () => {
   );
 
   testCase(
-    "adds market breadth, breadth trend, and strength index traces",
+    "shows recent falling shares and plots median returns on a percent axis",
     () => {
       render(<MarketBreadthCard {...defaultProps} />);
 
@@ -122,9 +129,15 @@ describeBlock("MarketBreadthCard", () => {
       expectValue(props.data.map((trace) => trace.name)).toEqual([
         "Market Breadth",
         "Breadth Trend",
-        "Strength Index",
+        "Median return (1h)",
+        "Median return (3h)",
       ]);
       expectValue(props.layout.yaxis?.zeroline).toBe(true);
+      expectValue(props.layout.yaxis2?.title).toBe("Median return (%)");
+      expectValue(props.data[2].yaxis).toBe("y2");
+      expectValue(props.data[3].yaxis).toBe("y2");
+      expectValue(rtlScreen.getByText(/1h: 60% falling/)).toBeInTheDocument();
+      expectValue(rtlScreen.getByText(/3h: 80% falling/)).toBeInTheDocument();
     },
   );
 
@@ -132,12 +145,17 @@ describeBlock("MarketBreadthCard", () => {
     render(<MarketBreadthCard {...defaultProps} />);
 
     const props = latestPlotlyProps();
-    const [marketBreadthTrace, breadthTrendTrace, strengthIndexTrace] =
-      props.data;
+    const [
+      marketBreadthTrace,
+      breadthTrendTrace,
+      oneHourTrace,
+      threeHourTrace,
+    ] = props.data;
 
     expectValue(marketBreadthTrace.x).toEqual([...timestamps].reverse());
     expectValue(marketBreadthTrace.y).toEqual([0.03, 0.08, 0.12]);
     expectValue(breadthTrendTrace.y).toEqual([0.1, 0.137, 0.171]);
-    expectValue(strengthIndexTrace.y).toEqual([0.1, 0.2, 0.3]);
+    expectValue(oneHourTrace.y).toEqual([0.1, -0.4, -0.8]);
+    expectValue(threeHourTrace.y).toEqual([-0.2, -1.2, -1.7]);
   });
 });

@@ -375,7 +375,10 @@ export const DashboardPage: FC<{}> = () => {
               <MarketBreadthCard
                 marketBreadth={marketBreadthSeries.market_breadth}
                 marketBreadthMa={marketBreadthSeries.market_breadth_ma}
-                strengthIndex={marketBreadthSeries.strength_index}
+                medianReturn1h={marketBreadthSeries.median_return_1h}
+                medianReturn3h={marketBreadthSeries.median_return_3h}
+                fallingShare1h={marketBreadthSeries.falling_share_1h}
+                fallingShare3h={marketBreadthSeries.falling_share_3h}
                 timestamps={marketBreadthSeries.timestamp}
               />
             )
