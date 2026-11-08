@@ -856,6 +856,14 @@ class Lifecycle:
         self.df = cls.df
         self.btc_df = cls.btc_df
         self.bb_metrics = cls.build_bb_metrics()
+        if (
+            isinstance(cls, FuturesPosition)
+            and self.execution.active_bot.status == Status.active
+        ):
+            close_price = self.base_streaming.kucoin_futures_api.get_mark_price(
+                self.execution.active_bot.pair
+            )
+            cls.notify_stop_condition_hits(close_price)
         self.execution.active_bot = cls.order_updates()
         bot = self.execution.active_bot
         if bot.status in {Status.error, Status.inactive}:
@@ -871,9 +879,10 @@ class Lifecycle:
                 position = self.base_streaming.kucoin_futures_api.get_futures_position(
                     bot.pair
                 )
-                close_price = self.base_streaming.kucoin_futures_api.get_mark_price(
-                    bot.pair
-                )
+                if close_price <= 0:
+                    close_price = self.base_streaming.kucoin_futures_api.get_mark_price(
+                        bot.pair
+                    )
 
             if self.execution.awaiting_close_confirmation():
                 return bot

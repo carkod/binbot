@@ -42,6 +42,19 @@ flowchart LR
     Cronjobs -->|maintenance| Postgres
 ```
 
+## Telegram alerts
+
+Active futures bots send ephemeral Telegram alerts when mark price reaches an
+armed stop-loss or trailing-stop threshold. Each qualifying sweep attempts a
+message before order reconciliation; completed bots do not notify. Messages
+contain the bot name, symbol, stop type, threshold, and dashboard link. Delivery
+does not confirm an exchange fill and is neither stored nor retried.
+
+Set `TELEGRAM_BOT_KEY` and `TELEGRAM_USER_ID` in the streaming environment.
+`TelegramDelivery` in pybinbot loads these from the application's `.env` during
+initialization. Deploy pybinbot 1.13.7 with these changes; publish that release
+and refresh the application lockfile before a registry-based deployment.
+
 ## KuCoin futures recovery
 
 Recovery is configured through `recovery_params`; `margin_short_reversal` has

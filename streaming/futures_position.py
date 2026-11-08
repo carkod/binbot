@@ -1,5 +1,7 @@
 import logging
 from datetime import datetime
+from html import escape
+from math import isfinite
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
 from kucoin_universal_sdk.generate.futures.order.model_get_order_by_order_id_resp import (
     GetOrderByOrderIdResp,
@@ -69,6 +71,46 @@ class FuturesPosition(PositionMarket):
         self.qty_precision = execution.symbol_info.qty_precision
         self.kucoin_benchmark_symbol = "XBTUSDTM"
         self.api = self.base_streaming.kucoin_futures_api
+
+    def notify_stop_condition_hits(self, mark_price: float) -> None:
+        """Report armed stop conditions before reconciliation can retire the bot."""
+        bot = self.execution.active_bot
+        if (
+            bot.status != Status.active
+            or bot.deal.opening_price <= 0
+            or not isfinite(mark_price)
+            or mark_price <= 0
+        ):
+            return
+
+        direction = 1 if bot.position == Position.long else -1
+        dashboard_link = (
+            f"{self.base_streaming.config.frontend_domain.rstrip('/')}"
+            f"/bots/futures/edit/{bot.id}"
+        )
+        for order in bot.orders:
+            if (
+                order.deal_type not in {DealType.stop_loss, DealType.trailing_profit}
+                or order.status in self.TERMINAL_ORDER_STATUSES
+            ):
+                continue
+            trailing = order.deal_type == DealType.trailing_profit
+            # Legacy order rows may predate the stored trigger-price field.
+            threshold = order.stop_price
+            if threshold <= 0:
+                threshold = (
+                    bot.deal.trailing_stop_loss_price
+                    if trailing
+                    else bot.deal.stop_loss_price
+                )
+            if threshold <= 0 or (mark_price - threshold) * direction > 0:
+                continue
+            stop_type = "Trailing stop loss" if trailing else "Stop loss"
+            self.base_streaming.telegram_delivery.send_once(
+                f"<strong>{escape(bot.name)}</strong> #{escape(bot.pair)}\n"
+                f"{stop_type} condition hit @ {threshold}\n"
+                f'<a href="{escape(dashboard_link, quote=True)}">Dashboard</a>'
+            )
 
     def is_pending_base_entry_expired(self, order: OrderModel, now_ms: int) -> bool:
         pending_entry_ttl_ms = self.PENDING_ENTRY_TTL_MS

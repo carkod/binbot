@@ -3,11 +3,14 @@ import { Card, Col, Row } from "react-bootstrap";
 import { type BalanceData } from "../../features/features.types";
 import { type MarketType } from "../../utils/enums";
 import { roundDecimals } from "../../utils/math";
+import { useRiskBeta } from "../hooks/useRiskBeta";
 
 const BalanceAnalysis: FC<{
   accountData: BalanceData;
   marketType: MarketType;
-}> = ({ accountData }) => {
+}> = ({ accountData, marketType }) => {
+  const { beta, isLoading: loadingBeta } = useRiskBeta(accountData, marketType);
+
   return (
     <Card>
       <Card.Header className="d-flex justify-content-between align-items-center">
@@ -39,6 +42,22 @@ const BalanceAnalysis: FC<{
                   ? accountData.estimated_total_fiat.toFixed(2)
                   : 0
               } ${accountData.fiat_currency}`}</strong>
+            </div>
+          </Col>
+        </Row>
+        <Row className="u-margin-bottom">
+          <Col md="8" sm="12">
+            Risk beta (BTC)
+          </Col>
+          <Col md="4" sm="12">
+            <div className="u-primary-color">
+              <strong>
+                {loadingBeta
+                  ? "Calculating..."
+                  : beta === null
+                    ? "—"
+                    : beta.toFixed(2)}
+              </strong>
             </div>
           </Col>
         </Row>

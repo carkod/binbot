@@ -43,6 +43,15 @@ from api.user.services.auth import get_current_user
 _test_engine = None
 
 
+@pytest.fixture(autouse=True)
+def mock_telegram_delivery():
+    with patch(
+        "pybinbot.shared.telegram_delivery.TelegramDelivery.send_once",
+        return_value=False,
+    ):
+        yield
+
+
 @pytest.fixture(scope="module")
 def vcr_config():
     cassette_dir = Path(__file__).parent / "cassettes"
