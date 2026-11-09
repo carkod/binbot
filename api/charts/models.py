@@ -131,16 +131,13 @@ class FastestMoversResponse(StandardResponse):
     data: FastestMoversSnapshot
 
 
-class MarketBreadthWithRecentMoves(MarketBreadthSeries):
-    median_return_15m: list[float | None]
-    median_return_1h: list[float | None]
-    median_return_3h: list[float | None]
-    falling_share_1h: list[float | None]
-    falling_share_3h: list[float | None]
+class MarketBreadthWithCumulativeBreadth(MarketBreadthSeries):
+    cumulative_breadth: list[float | None]
+    cumulative_breadth_ema: list[float | None]
 
 
-class MarketBreadthWithRecentMovesResponse(StandardResponse):
-    data: MarketBreadthWithRecentMoves
+class MarketBreadthWithCumulativeBreadthResponse(StandardResponse):
+    data: MarketBreadthWithCumulativeBreadth
 
 
 class MarketBreadthSample(BaseModel):

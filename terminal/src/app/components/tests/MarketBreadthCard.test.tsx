@@ -13,6 +13,7 @@ type PlotlyTrace = {
   x?: string[];
   y?: Array<number | null>;
   yaxis?: string;
+  line?: { color?: string };
 };
 
 type PlotlyProps = {
@@ -21,6 +22,7 @@ type PlotlyProps = {
     yaxis?: {
       title?: { text?: string; standoff?: number };
       zeroline?: boolean;
+      range?: number[];
     };
     yaxis2?: unknown;
   };
@@ -48,14 +50,14 @@ const timestamps = [
   "2026-07-04 11:10:02",
   "2026-07-04 10:55:02",
   "2026-07-04 10:40:02",
+  "2026-07-04 10:25:02",
+  "2026-07-04 10:10:02",
 ];
 
+// Newest first: the total rose 85 points over the last hour (4 samples).
 const defaultProps = {
-  medianReturn15m: [-0.3, -0.1, 0.2],
-  medianReturn1h: [-0.8, -0.4, 0.1],
-  medianReturn3h: [-1.7, -1.2, -0.2],
-  fallingShare1h: [0.6, 0.5, 0.3],
-  fallingShare3h: [0.8, 0.7, 0.6],
+  cumulativeBreadth: [60, 40, 10, -5, -25],
+  cumulativeBreadthEma: [12.4, 5.1, -2.3, -6.0, -8.0],
   timestamps,
 };
 
@@ -72,75 +74,85 @@ describeBlock("MarketBreadthCard", () => {
     plotlyChartMock.mockClear();
   });
 
-  testCase("uses the latest 15-minute median return for the badge", () => {
+  testCase("shows a rising trend when the total is above its EMA", () => {
     render(<MarketBreadthCard {...defaultProps} />);
 
-    expectValue(rtlScreen.getByText("15m: -0.30%")).toHaveClass("bg-danger");
+    expectValue(rtlScreen.getByText("Trend: rising")).toHaveClass("bg-success");
   });
 
-  testCase("shows a positive 15-minute median return", () => {
-    render(<MarketBreadthCard {...defaultProps} medianReturn15m={[0.4567]} />);
+  testCase("shows a falling trend when the total is below its EMA", () => {
+    render(
+      <MarketBreadthCard
+        {...defaultProps}
+        cumulativeBreadth={[-40, 40, 10, -5, -25]}
+      />,
+    );
 
-    expectValue(rtlScreen.getByText("15m: +0.46%")).toHaveClass("bg-success");
+    expectValue(rtlScreen.getByText("Trend: falling")).toHaveClass("bg-danger");
   });
 
-  testCase("shows unavailable when no 15-minute comparison exists", () => {
-    render(<MarketBreadthCard {...defaultProps} medianReturn15m={[null]} />);
+  testCase("shows the change of the total over the last hour", () => {
+    render(<MarketBreadthCard {...defaultProps} />);
 
-    expectValue(rtlScreen.getByText("15m: N/A")).toHaveClass("bg-secondary");
+    expectValue(rtlScreen.getByText("Last 1h: +85")).toBeInTheDocument();
   });
 
-  testCase("plots only recent median returns on one percentage axis", () => {
+  testCase("hides the last hour change without a sample one hour ago", () => {
+    render(
+      <MarketBreadthCard
+        {...defaultProps}
+        cumulativeBreadth={[60, 40]}
+        timestamps={timestamps.slice(0, 2)}
+      />,
+    );
+
+    expectValue(rtlScreen.queryByText(/Last 1h/)).not.toBeInTheDocument();
+  });
+
+  testCase("shows unavailable when there is no cumulative breadth", () => {
+    render(<MarketBreadthCard {...defaultProps} cumulativeBreadth={[null]} />);
+
+    expectValue(rtlScreen.getByText("Trend: N/A")).toHaveClass("bg-secondary");
+  });
+
+  testCase("plots the cumulative breadth and its EMA as separate lines", () => {
     render(<MarketBreadthCard {...defaultProps} />);
 
     const props = latestPlotlyProps();
 
     expectValue(props.data.map((trace) => trace.name)).toEqual([
-      "Median return (15m)",
-      "Median return (1h)",
-      "Median return (3h)",
+      "Cumulative breadth",
+      "EMA (4h)",
     ]);
-    expectValue(props.layout.yaxis?.zeroline).toBe(true);
-    expectValue(props.layout.yaxis?.title).toEqual({
-      text: "Median return (%)",
-      standoff: 14,
-    });
-    expectValue(props.layout.yaxis2).toBeUndefined();
-    expectValue(props.data.every((trace) => trace.yaxis === undefined)).toBe(
-      true,
+    expectValue(props.data[0].line?.color).not.toEqual(
+      props.data[1].line?.color,
     );
-    expectValue(rtlScreen.getByText(/1h: 60% falling/)).toBeInTheDocument();
-    expectValue(rtlScreen.getByText(/3h: 80% falling/)).toBeInTheDocument();
+    expectValue(props.layout.yaxis?.range).toBeUndefined();
+    expectValue(props.layout.yaxis2).toBeUndefined();
   });
 
   testCase("plots chart data oldest-to-newest", () => {
     render(<MarketBreadthCard {...defaultProps} />);
 
-    const props = latestPlotlyProps();
-    const [fifteenMinuteTrace, oneHourTrace, threeHourTrace] = props.data;
+    const [cumulativeTrace, emaTrace] = latestPlotlyProps().data;
 
-    expectValue(fifteenMinuteTrace.x).toEqual([...timestamps].reverse());
-    expectValue(fifteenMinuteTrace.y).toEqual([0.2, -0.1, -0.3]);
-    expectValue(oneHourTrace.y).toEqual([0.1, -0.4, -0.8]);
-    expectValue(threeHourTrace.y).toEqual([-0.2, -1.2, -1.7]);
+    expectValue(cumulativeTrace.x).toEqual([...timestamps].reverse());
+    expectValue(cumulativeTrace.y).toEqual([-25, -5, 10, 40, 60]);
+    expectValue(emaTrace.y).toEqual([-8.0, -6.0, -2.3, 5.1, 12.4]);
   });
 
-  testCase(
-    "waits for futures prices when no return window is available",
-    () => {
-      render(
-        <MarketBreadthCard
-          {...defaultProps}
-          medianReturn15m={[null]}
-          medianReturn1h={[null]}
-          medianReturn3h={[null]}
-        />,
-      );
+  testCase("waits for futures prices when no breadth is available", () => {
+    render(
+      <MarketBreadthCard
+        {...defaultProps}
+        cumulativeBreadth={[null]}
+        cumulativeBreadthEma={[null]}
+      />,
+    );
 
-      expectValue(
-        rtlScreen.getByText("Waiting for futures price snapshots."),
-      ).toBeInTheDocument();
-      expectValue(plotlyChartMock).not.toHaveBeenCalled();
-    },
-  );
+    expectValue(
+      rtlScreen.getByText("Waiting for futures price snapshots."),
+    ).toBeInTheDocument();
+    expectValue(plotlyChartMock).not.toHaveBeenCalled();
+  });
 });

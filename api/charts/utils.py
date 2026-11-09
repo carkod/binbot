@@ -1,6 +1,6 @@
 from bisect import bisect_left
+from math import sqrt
 from datetime import datetime, timedelta, timezone
-from statistics import median
 from typing import cast
 
 from sqlalchemy import Table, select
@@ -74,16 +74,46 @@ def fetch_market_breadth_series(
     )
 
 
-def fetch_recent_futures_movement_series(
+# Sixteen 15-minute samples smooth the cumulative breadth over four hours.
+CUMULATIVE_BREADTH_EMA_SPAN = 16
+
+
+def closest_snapshot_time(
+    snapshot_times: list[datetime], target: datetime, tolerance: timedelta
+) -> datetime | None:
+    """Nearest sorted snapshot time to `target`, if it is within `tolerance`."""
+    position = bisect_left(snapshot_times, target)
+    return min(
+        (
+            timestamp
+            for timestamp in snapshot_times[max(0, position - 1) : position + 1]
+            if abs(timestamp - target) <= tolerance
+        ),
+        key=lambda timestamp: abs(timestamp - target),
+        default=None,
+    )
+
+
+def fetch_cumulative_breadth_series(
     session: Session, timestamps: list[str]
 ) -> dict[str, list[float | None]]:
-    """Median price returns and falling shares for each breadth snapshot."""
+    """
+    Cumulative net breadth of KuCoin futures for each breadth snapshot, newest
+    first, plus its four-hour EMA.
+
+    Each step compares every contract's price with the snapshot 15 minutes
+    earlier, not with its rolling 24h change, so a moving 24h comparison point
+    cannot turn a rising contract into a loser. The step value is
+    (gainers' weight - losers' weight) / total weight * 100, with each
+    contract weighted by the square root of its 24h turnover so liquid
+    contracts count more but BTC and ETH cannot dominate. The steps do not
+    overlap, so the running total counts each move once: noise cancels out and
+    persistent breadth adds up. The total starts at the oldest snapshot, so
+    only its direction has meaning, not its level.
+    """
     result: dict[str, list[float | None]] = {
-        "median_return_15m": [],
-        "median_return_1h": [],
-        "median_return_3h": [],
-        "falling_share_1h": [],
-        "falling_share_3h": [],
+        "cumulative_breadth": [],
+        "cumulative_breadth_ema": [],
     }
     if not timestamps:
         return result
@@ -98,73 +128,77 @@ def fetch_recent_futures_movement_series(
         )
     prices = cast(Table, getattr(FuturesPriceSampleTable, "__table__"))
     rows = session.execute(
-        select(prices.c.recorded_at, prices.c.symbol, prices.c.last_price).where(
+        select(
+            prices.c.recorded_at,
+            prices.c.symbol,
+            prices.c.last_price,
+            prices.c.turnover_24h,
+        ).where(
             prices.c.source == "kucoin_futures",
-            prices.c.recorded_at >= min(breadth_times) - timedelta(hours=3, minutes=10),
+            prices.c.recorded_at >= min(breadth_times) - timedelta(minutes=20),
             prices.c.recorded_at <= max(breadth_times) + timedelta(seconds=1),
         )
     ).all()
-    snapshots: dict[datetime, dict[str, float]] = {}
-    for recorded_at, symbol, last_price in rows:
+    snapshots: dict[datetime, dict[str, tuple[float, float]]] = {}
+    for recorded_at, symbol, last_price, turnover_24h in rows:
         timestamp = (
             recorded_at.astimezone(timezone.utc).replace(tzinfo=None)
             if recorded_at.tzinfo is not None
             else recorded_at
         )
-        snapshots.setdefault(timestamp, {})[symbol] = last_price
+        snapshots.setdefault(timestamp, {})[symbol] = (last_price, turnover_24h)
     snapshot_times = sorted(snapshots)
 
-    for breadth_time in breadth_times:
-        point_time = breadth_time.replace(tzinfo=None)
-        position = bisect_left(snapshot_times, point_time)
-        current_time = min(
-            (
-                timestamp
-                for timestamp in snapshot_times[max(0, position - 1) : position + 1]
-                if abs(timestamp - point_time) <= timedelta(seconds=1)
-            ),
-            key=lambda timestamp: abs(timestamp - point_time),
-            default=None,
+    # Missing steps stay as gaps; the total and its EMA carry over them.
+    alpha = 2 / (CUMULATIVE_BREADTH_EMA_SPAN + 1)
+    cumulative: float | None = None
+    ema_value: float | None = None
+    for breadth_time in sorted(breadth_times):
+        current_time = closest_snapshot_time(
+            snapshot_times, breadth_time.replace(tzinfo=None), timedelta(seconds=1)
         )
-        current_prices = snapshots.get(current_time, {}) if current_time else {}
-        for label, duration, tolerance in (
-            ("15m", timedelta(minutes=15), timedelta(minutes=5)),
-            ("1h", timedelta(hours=1), timedelta(minutes=10)),
-            ("3h", timedelta(hours=3), timedelta(minutes=10)),
-        ):
-            return_key = f"median_return_{label}"
-            share_key = f"falling_share_{label}" if label != "15m" else None
-            if current_time is None:
-                result[return_key].append(None)
-                if share_key is not None:
-                    result[share_key].append(None)
-                continue
-            target = current_time - duration
-            position = bisect_left(snapshot_times, target)
-            candidates = snapshot_times[max(0, position - 1) : position + 1]
-            comparison = min(
-                (
-                    timestamp
-                    for timestamp in candidates
-                    if timestamp < current_time and abs(timestamp - target) <= tolerance
-                ),
-                key=lambda timestamp: abs(timestamp - target),
-                default=None,
+        previous_time = (
+            closest_snapshot_time(
+                snapshot_times,
+                current_time - timedelta(minutes=15),
+                timedelta(minutes=5),
             )
-            previous_prices = snapshots.get(comparison, {}) if comparison else {}
-            returns = [
-                (current_price / previous_prices[symbol] - 1) * 100
-                for symbol, current_price in current_prices.items()
-                if current_price > 0
-                and symbol in previous_prices
-                and previous_prices[symbol] > 0
-            ]
-            result[return_key].append(median(returns) if returns else None)
-            if share_key is not None:
-                result[share_key].append(
-                    sum(value < 0 for value in returns) / len(returns)
-                    if returns
-                    else None
-                )
+            if current_time is not None
+            else None
+        )
+        if current_time is None or previous_time is None:
+            result["cumulative_breadth"].append(None)
+            result["cumulative_breadth_ema"].append(None)
+            continue
 
+        previous_prices = snapshots[previous_time]
+        net_weight = 0.0
+        total_weight = 0.0
+        for symbol, (current_price, turnover_24h) in snapshots[current_time].items():
+            previous_price = previous_prices.get(symbol, (0.0, 0.0))[0]
+            if current_price <= 0 or previous_price <= 0 or turnover_24h <= 0:
+                continue
+            weight = sqrt(turnover_24h)
+            total_weight += weight
+            if current_price > previous_price:
+                net_weight += weight
+            elif current_price < previous_price:
+                net_weight -= weight
+        if total_weight == 0:
+            result["cumulative_breadth"].append(None)
+            result["cumulative_breadth_ema"].append(None)
+            continue
+
+        step = net_weight / total_weight * 100
+        cumulative = step if cumulative is None else cumulative + step
+        ema_value = (
+            cumulative
+            if ema_value is None
+            else alpha * cumulative + (1 - alpha) * ema_value
+        )
+        result["cumulative_breadth"].append(cumulative)
+        result["cumulative_breadth_ema"].append(ema_value)
+
+    result["cumulative_breadth"].reverse()
+    result["cumulative_breadth_ema"].reverse()
     return result

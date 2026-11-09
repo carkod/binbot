@@ -6,28 +6,43 @@ The main concept of market breadth in Binbot is calculating advancers (gainers) 
 
 In my research, I've found out that although most assets do have a positive correlation with BTC, it's not always the case. To find out more you can query the btc-correlation endpoint.
 
-## Recent futures movement
+## Cumulative net breadth
 
 The breadth cron records a sample every 15 minutes, but its ADP value still uses
-each asset's rolling 24-hour change. An asset can fall over the last hour while
-remaining positive over 24 hours, so ADP may remain high during a broad pullback.
+each asset's rolling 24-hour change. The 24-hour change is a speed, not a
+position: when the 24-hour comparison point moves, a contract that keeps rising
+can show a smaller 24-hour change and look like it fell.
 
-For KuCoin futures, the same ingest also stores prices for the active contracts.
-The market-breadth response compares each snapshot with the closest stored price
-snapshot 15 minutes earlier (within five minutes), and one and three hours
-earlier (within ten minutes). For contracts present in both snapshots, it
-returns the median price return in percent for all three windows and the share
-with negative returns for one and three hours. The newest-first arrays are
-`median_return_15m`, `median_return_1h`, `median_return_3h`,
-`falling_share_1h`, and `falling_share_3h`; missing comparisons are `null`.
-Price samples are retained for 36 hours so the dashboard's 100-point chart can
-show these recent-return lines.
+For KuCoin futures, the same ingest also stores prices and 24-hour turnover for
+the active contracts. For each breadth snapshot, the market-breadth response
+compares every contract's price with the stored price snapshot 15 minutes
+earlier (within five minutes). A contract is a gainer if its price rose and a
+loser if it fell. The step value is
+
+    (weight of gainers - weight of losers) / total weight * 100
+
+on a -100..+100 scale. Each contract weighs the square root of its 24-hour
+turnover. Liquid contracts count more, but BTC and ETH cannot dominate: with
+full turnover weight, BTC and ETH alone were about 28% of the weight and the top
+ten contracts about 52%. Turnover is only a weight; the difference between two
+rolling 24-hour turnover values is not the volume of a 15-minute step.
+
+`cumulative_breadth` is the running total of the steps, starting at the oldest
+snapshot in the response. The steps do not overlap, so each move counts once:
+noise cancels out and persistent breadth adds up. Read it like a price chart:
+its direction is the trend, its level has no meaning. `cumulative_breadth_ema`
+is its EMA over 16 samples (four hours). Missing steps are `null`, and the total
+and its EMA carry over them. Price samples are retained for 36 hours, which
+covers the dashboard's 100-point chart.
+
+Earlier versions plotted the net breadth level itself, over 15-minute and then
+one-hour windows. Crypto contracts move together with BTC, so the level was
+mostly BTC's direction (beyond ±50 most of the time) and crossed zero about as
+often as BTC's own one-hour return. Only the running total showed a trend.
 
 The 24-hour breadth, its EMA trend, and the strength index remain in the
-database and API response. The dashboard plots only the median 15-minute,
-1-hour, and 3-hour returns on a single percent axis and shows the latest
-falling shares above the chart. No additional exchange request or table is
-needed.
+database and API response. The dashboard plots only the cumulative breadth and
+its EMA.
 
 ## History
 

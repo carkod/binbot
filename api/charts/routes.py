@@ -12,7 +12,7 @@ from api.charts.controllers import MarketDominationController
 from api.charts.models import (
     FastestMoversResponse,
     GainersLosersSeriesResponse,
-    MarketBreadthWithRecentMovesResponse,
+    MarketBreadthWithCumulativeBreadthResponse,
 )
 
 charts_blueprint = APIRouter()
@@ -46,8 +46,8 @@ def get_fastest_movers(
 @charts_blueprint.get(
     "/market-breadth",
     tags=["charts"],
-    summary="24h market breadth with recent futures returns",
-    response_model=MarketBreadthWithRecentMovesResponse,
+    summary="24h market breadth with cumulative 15m futures breadth",
+    response_model=MarketBreadthWithCumulativeBreadthResponse,
 )
 def get_market_breadth(size: int = 14, session: Session = Depends(get_session)):
     try:

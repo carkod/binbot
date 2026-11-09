@@ -7,7 +7,7 @@ from sqlmodel import Session
 from api.charts.models import MarketBreadthSample
 from api.charts.utils import (
     fetch_market_breadth_series,
-    fetch_recent_futures_movement_series,
+    fetch_cumulative_breadth_series,
 )
 from api.databases.crud.autotrade_crud import AutotradeCrud
 from api.databases.crud.symbols_crud import SymbolsCrud
@@ -195,10 +195,10 @@ class MarketDominationController:
         self, size: int = 7, window: int = 8, exchange: ExchangeId | None = None
     ) -> dict[str, list] | None:
         """
-        Return newest-first 24h breadth for the selected exchange, plus
-        15-minute, one-hour, and three-hour futures movement when KuCoin prices
-        are available.
-        The EMA and recent movement fields are computed from stored samples.
+        Return newest-first 24h breadth for the selected exchange, plus the
+        cumulative 15-minute net breadth of KuCoin futures and its EMA when
+        KuCoin prices are available.
+        The EMA fields are computed from stored samples.
         """
         selected_exchange = exchange or self.exchange
         series = fetch_market_breadth_series(
@@ -208,20 +208,12 @@ class MarketDominationController:
             return None
         data = series.model_dump()
         if selected_exchange == ExchangeId.KUCOIN:
-            data.update(
-                fetch_recent_futures_movement_series(self.session, series.timestamp)
-            )
+            data.update(fetch_cumulative_breadth_series(self.session, series.timestamp))
         else:
             data.update(
                 {
                     key: [None] * len(series.timestamp)
-                    for key in (
-                        "median_return_15m",
-                        "median_return_1h",
-                        "median_return_3h",
-                        "falling_share_1h",
-                        "falling_share_3h",
-                    )
+                    for key in ("cumulative_breadth", "cumulative_breadth_ema")
                 }
             )
         return data

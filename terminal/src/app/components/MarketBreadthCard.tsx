@@ -4,57 +4,64 @@ import PlotlyChart from "./PlotlyChart";
 import { roundDecimals } from "../../utils/math";
 import type { FC } from "react";
 
+// Olive gold: a mix of the gainers (green) and losers (red) ranking colours,
+// darkened so the line keeps 3:1 contrast on the card surface.
+const CUMULATIVE_BREADTH_COLOR = "#9a8500";
+const CUMULATIVE_BREADTH_EMA_COLOR = "#2563eb";
+// Samples are 15 minutes apart, so four samples back is one hour.
+const SAMPLES_PER_HOUR = 4;
+
 type MarketBreadthCardProps = {
-  medianReturn15m?: Array<number | null>;
-  medianReturn1h?: Array<number | null>;
-  medianReturn3h?: Array<number | null>;
-  fallingShare1h?: Array<number | null>;
-  fallingShare3h?: Array<number | null>;
+  cumulativeBreadth?: Array<number | null>;
+  cumulativeBreadthEma?: Array<number | null>;
   timestamps: string[];
 };
 
-const resolveMedianBadge = (latest?: number | null) => {
-  if (latest === null || latest === undefined || !Number.isFinite(latest)) {
-    return { bg: "secondary", label: "15m: N/A" };
-  }
+const isNumber = (value?: number | null): value is number =>
+  value !== null && value !== undefined && Number.isFinite(value);
 
-  const rounded = roundDecimals(latest, 2);
-  return {
-    bg: latest > 0 ? "success" : latest < 0 ? "danger" : "secondary",
-    label: `15m: ${rounded > 0 ? "+" : ""}${rounded.toFixed(2)}%`,
-  };
+const resolveTrend = (latest?: number | null, latestEma?: number | null) => {
+  if (!isNumber(latest) || !isNumber(latestEma)) {
+    return { bg: "secondary", label: "Trend: N/A" };
+  }
+  if (latest > latestEma) {
+    return { bg: "success", label: "Trend: rising" };
+  }
+  if (latest < latestEma) {
+    return { bg: "danger", label: "Trend: falling" };
+  }
+  return { bg: "secondary", label: "Trend: flat" };
 };
 
 const MarketBreadthCard: FC<MarketBreadthCardProps> = ({
-  medianReturn15m,
-  medianReturn1h,
-  medianReturn3h,
-  fallingShare1h,
-  fallingShare3h,
+  cumulativeBreadth,
+  cumulativeBreadthEma,
   timestamps,
 }) => {
-  const medianBadge = resolveMedianBadge(medianReturn15m?.[0]);
+  const latest = cumulativeBreadth?.[0];
+  const hourAgo = cumulativeBreadth?.[SAMPLES_PER_HOUR];
+  const trend = resolveTrend(latest, cumulativeBreadthEma?.[0]);
+  const lastHourChange =
+    isNumber(latest) && isNumber(hourAgo)
+      ? roundDecimals(latest - hourAgo, 0)
+      : null;
   const chartTimestamps = [...timestamps].reverse();
-  const chartMedianReturn15m = medianReturn15m
-    ? [...medianReturn15m].reverse()
+  const chartCumulativeBreadth = cumulativeBreadth
+    ? [...cumulativeBreadth].reverse()
     : [];
-  const chartMedianReturn1h = medianReturn1h
-    ? [...medianReturn1h].reverse()
+  const chartCumulativeBreadthEma = cumulativeBreadthEma
+    ? [...cumulativeBreadthEma].reverse()
     : [];
-  const chartMedianReturn3h = medianReturn3h
-    ? [...medianReturn3h].reverse()
-    : [];
-  const hasRecentReturns =
-    chartMedianReturn15m.some((value) => value !== null) ||
-    chartMedianReturn1h.some((value) => value !== null) ||
-    chartMedianReturn3h.some((value) => value !== null);
+  const hasCumulativeBreadth = chartCumulativeBreadth.some(
+    (value) => value !== null,
+  );
 
   return (
     <Card className="card-chart">
       <Card.Header>
         <Row>
           <Col lg="1" md="1" sm="1">
-            <i className={`fs-2 fa fa-suitcase text-${medianBadge.bg}`} />
+            <i className={`fs-2 fa fa-suitcase text-${trend.bg}`} />
           </Col>
           <Col lg="11" md="11" sm="11">
             <Card.Title
@@ -62,70 +69,45 @@ const MarketBreadthCard: FC<MarketBreadthCardProps> = ({
               className="mt-0 d-flex align-items-center gap-2"
             >
               <span>Market Breadth Trend</span>
-              <Badge bg={medianBadge.bg}>{medianBadge.label}</Badge>
+              <Badge bg={trend.bg}>{trend.label}</Badge>
             </Card.Title>
             <p className="u-text-left">
-              Median futures price returns over 15m, 1h, and 3h. Below zero
-              means the typical contract fell during that window.
+              Running total of the futures market&apos;s net breadth. Every 15
+              minutes, it adds the share of contracts that rose minus the share
+              that fell, weighted by √turnover. Read it like a price chart: the
+              direction is the trend, the level has no meaning.
             </p>
-            {fallingShare1h?.[0] != null && medianReturn1h?.[0] != null && (
+            {lastHourChange !== null && (
               <div className="small text-body-secondary">
-                1h: {roundDecimals(fallingShare1h[0] * 100, 1)}% falling ·
-                median {roundDecimals(medianReturn1h[0], 2)}%
-              </div>
-            )}
-            {fallingShare3h?.[0] != null && medianReturn3h?.[0] != null && (
-              <div className="small text-body-secondary">
-                3h: {roundDecimals(fallingShare3h[0] * 100, 1)}% falling ·
-                median {roundDecimals(medianReturn3h[0], 2)}%
+                {`Last 1h: ${lastHourChange > 0 ? "+" : ""}${lastHourChange.toFixed(0)}`}
               </div>
             )}
           </Col>
         </Row>
       </Card.Header>
       <Card.Body>
-        {hasRecentReturns ? (
+        {hasCumulativeBreadth ? (
           <PlotlyChart
             data={[
-              ...(chartMedianReturn15m.some((value) => value !== null)
+              {
+                x: chartTimestamps,
+                y: chartCumulativeBreadth,
+                type: "scatter",
+                mode: "lines",
+                name: "Cumulative breadth",
+                line: { color: CUMULATIVE_BREADTH_COLOR, width: 2 },
+                hovertemplate: "%{y:+.0f}<extra>Cumulative breadth</extra>",
+              },
+              ...(chartCumulativeBreadthEma.some((value) => value !== null)
                 ? [
                     {
                       x: chartTimestamps,
-                      y: chartMedianReturn15m,
+                      y: chartCumulativeBreadthEma,
                       type: "scatter",
-                      mode: "lines+markers",
-                      name: "Median return (15m)",
-                      line: { color: "#007bff", width: 2 },
-                      marker: { size: 5 },
-                      fill: "none",
-                    },
-                  ]
-                : []),
-              ...(chartMedianReturn1h.some((value) => value !== null)
-                ? [
-                    {
-                      x: chartTimestamps,
-                      y: chartMedianReturn1h,
-                      type: "scatter",
-                      mode: "lines+markers",
-                      name: "Median return (1h)",
-                      line: { color: "#ff9900", width: 2, dash: "dot" },
-                      marker: { size: 6 },
-                      fill: "none",
-                    },
-                  ]
-                : []),
-              ...(chartMedianReturn3h.some((value) => value !== null)
-                ? [
-                    {
-                      x: chartTimestamps,
-                      y: chartMedianReturn3h,
-                      type: "scatter",
-                      mode: "lines+markers",
-                      name: "Median return (3h)",
-                      line: { color: "#6f42c1", width: 2, dash: "dot" },
-                      marker: { size: 6 },
-                      fill: "none",
+                      mode: "lines",
+                      name: "EMA (4h)",
+                      line: { color: CUMULATIVE_BREADTH_EMA_COLOR, width: 2 },
+                      hovertemplate: "%{y:+.0f}<extra>EMA (4h)</extra>",
                     },
                   ]
                 : []),
@@ -134,6 +116,7 @@ const MarketBreadthCard: FC<MarketBreadthCardProps> = ({
               autosize: true,
               height: 460,
               margin: { t: 30, l: 90, r: 20, b: 135 },
+              hovermode: "x unified",
               xaxis: {
                 title: { text: "Time", standoff: 14 },
                 automargin: true,
@@ -141,13 +124,11 @@ const MarketBreadthCard: FC<MarketBreadthCardProps> = ({
                 showgrid: false,
               },
               yaxis: {
-                title: { text: "Median return (%)", standoff: 14 },
+                title: { text: "Cumulative net breadth", standoff: 14 },
                 automargin: true,
-                ticksuffix: "%",
+                tickformat: "+d",
                 showgrid: true,
-                zeroline: true,
-                zerolinecolor: "#6c757d",
-                zerolinewidth: 1,
+                zeroline: false,
               },
               legend: {
                 orientation: "h",

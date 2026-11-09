@@ -234,11 +234,8 @@ def test_get_market_breadth_series_returns_parallel_arrays_newest_first():
         "avg_loss",
         "total_volume",
         "strength_index",
-        "median_return_15m",
-        "median_return_1h",
-        "median_return_3h",
-        "falling_share_1h",
-        "falling_share_3h",
+        "cumulative_breadth",
+        "cumulative_breadth_ema",
     ):
         assert key in result
         assert len(result[key]) == 4
@@ -247,8 +244,8 @@ def test_get_market_breadth_series_returns_parallel_arrays_newest_first():
         reversed(_ema(chronological_market_breadth, window=2))
     )[:4]
     assert result["market_breadth_ma"] == pytest.approx(expected_ema_newest_first)
-    assert result["median_return_15m"] == [None] * 4
-    assert result["median_return_1h"] == [None] * 4
+    assert result["cumulative_breadth"] == [None] * 4
+    assert result["cumulative_breadth_ema"] == [None] * 4
 
 
 def test_get_market_breadth_series_filters_by_exchange():
@@ -267,61 +264,178 @@ def test_get_market_breadth_series_filters_by_exchange():
     assert result["market_breadth_ma"] == pytest.approx(result["market_breadth"])
 
 
-def test_recent_futures_returns_detect_falling_assets_while_24h_breadth_stays_positive():
-    session = _make_session()
-    now = datetime(2026, 11, 8, 12, 0, 0, 500000, tzinfo=timezone.utc)
+def _seed_kucoin_breadth_row(session: Session, timestamp: datetime) -> None:
     session.add(
         MarketBreadthTable(
-            timestamp=now,
+            timestamp=timestamp,
             source=ExchangeId.KUCOIN.value,
             advancers=2,
-            decliners=0,
-            adp=1.0,
-            avg_gain=177.0,
-            avg_loss=0.0,
-            total_volume=2000.0,
-            strength_index=1.0,
+            decliners=1,
+            adp=1 / 3,
+            avg_gain=15.0,
+            avg_loss=5.0,
+            total_volume=5000.0,
+            strength_index=0.5,
         )
     )
-    for minutes_ago, prices in (
-        (180, {"JCTUSDTM": 423.0, "AIOTUSDTM": 144.0}),
-        (60, {"JCTUSDTM": 420.0, "AIOTUSDTM": 140.0}),
-        (15, {"JCTUSDTM": 419.0, "AIOTUSDTM": 138.0}),
-        (0, {"JCTUSDTM": 418.0, "AIOTUSDTM": 136.0}),
-    ):
-        session.add_all(
-            FuturesPriceSampleTable(
-                source="kucoin_futures",
-                recorded_at=now - timedelta(minutes=minutes_ago),
-                symbol=symbol,
-                last_price=price,
-                price_change_percent=318.0 if symbol == "JCTUSDTM" else 36.0,
-                turnover_24h=1000.0,
-            )
-            for symbol, price in prices.items()
+
+
+def _seed_futures_prices(
+    session: Session,
+    recorded_at: datetime,
+    contracts: dict[str, tuple[float, float, float]],
+) -> None:
+    """contracts maps symbol -> (last_price, 24h change percent, 24h turnover)."""
+    session.add_all(
+        FuturesPriceSampleTable(
+            source="kucoin_futures",
+            recorded_at=recorded_at,
+            symbol=symbol,
+            last_price=last_price,
+            price_change_percent=price_change_percent,
+            turnover_24h=turnover_24h,
         )
+        for symbol, (
+            last_price,
+            price_change_percent,
+            turnover_24h,
+        ) in contracts.items()
+    )
+
+
+def test_cumulative_breadth_counts_rising_price_as_gainer_when_rolling_24h_change_shrinks():
+    """
+    IDOL's rolling 24h change drops from +20% to +10% only because the 24h
+    comparison point moved. Its price still rose over the 15-minute step, so
+    it must count as a gainer. Each contract weighs sqrt(24h turnover).
+    """
+    session = _make_session()
+    now = datetime(2026, 11, 9, 12, 0, 0, tzinfo=timezone.utc)
+    _seed_kucoin_breadth_row(session, now)
+    _seed_futures_prices(
+        session,
+        now - timedelta(minutes=15),
+        {
+            "IDOLUSDTM": (1.00, 20.0, 100.0),
+            "JCTUSDTM": (2.00, 44.0, 900.0),
+            "XYZUSDTM": (5.00, -3.0, 100.0),
+        },
+    )
+    _seed_futures_prices(
+        session,
+        now,
+        {
+            "IDOLUSDTM": (1.01, 10.0, 100.0),
+            "JCTUSDTM": (2.02, 24.0, 900.0),
+            "XYZUSDTM": (4.90, -5.0, 100.0),
+        },
+    )
     session.commit()
 
     controller = _make_controller(ExchangeId.KUCOIN, session, fiat="USDT")
     result = controller.get_market_breadth_series(size=1, window=1)
 
     assert result is not None
-    assert result["market_breadth"] == [1.0]
-    assert result["strength_index"] == [1.0]
-    assert result["falling_share_1h"] == [1.0]
-    assert result["falling_share_3h"] == [1.0]
-    assert result["median_return_15m"][0] == pytest.approx(
-        ((418 / 419 - 1) + (136 / 138 - 1)) * 50
-    )
-    assert result["median_return_1h"][0] == pytest.approx(
-        ((418 / 420 - 1) + (136 / 140 - 1)) * 50
-    )
-    assert result["median_return_3h"][0] == pytest.approx(
-        ((418 / 423 - 1) + (136 / 144 - 1)) * 50
-    )
+    # sqrt weights 10, 30, 10: (10 + 30 - 10) / 50, scaled to -100..+100
+    assert result["cumulative_breadth"] == [pytest.approx(60.0)]
+    assert result["cumulative_breadth_ema"] == [pytest.approx(60.0)]
 
 
-def test_market_breadth_endpoint_exposes_recent_returns(client, monkeypatch):
+def test_sqrt_turnover_weight_stops_one_large_contract_dominating_breadth():
+    """
+    BTC has 81% of the turnover but falls while the other two contracts rise.
+    With full turnover weight the step would be -62; sqrt weights cut BTC's
+    effect to about -19.
+    """
+    session = _make_session()
+    now = datetime(2026, 11, 9, 12, 0, 0, tzinfo=timezone.utc)
+    _seed_kucoin_breadth_row(session, now)
+    _seed_futures_prices(
+        session,
+        now - timedelta(minutes=15),
+        {
+            "XBTUSDTM": (75000.0, 1.0, 8100.0),
+            "IDOLUSDTM": (1.00, 1.0, 900.0),
+            "JCTUSDTM": (2.00, 1.0, 1000.0),
+        },
+    )
+    _seed_futures_prices(
+        session,
+        now,
+        {
+            "XBTUSDTM": (74900.0, 1.0, 8100.0),
+            "IDOLUSDTM": (1.01, 1.0, 900.0),
+            "JCTUSDTM": (2.02, 1.0, 1000.0),
+        },
+    )
+    session.commit()
+
+    controller = _make_controller(ExchangeId.KUCOIN, session, fiat="USDT")
+    result = controller.get_market_breadth_series(size=1, window=1)
+
+    assert result is not None
+    weights = (90.0, 30.0, 1000.0**0.5)
+    expected = (weights[1] + weights[2] - weights[0]) / sum(weights) * 100
+    assert result["cumulative_breadth"] == [pytest.approx(expected)]
+    assert -20 < expected < 0
+
+
+def test_cumulative_breadth_adds_non_overlapping_15m_steps_with_a_4h_ema():
+    session = _make_session()
+    now = datetime(2026, 11, 9, 12, 0, 0, tzinfo=timezone.utc)
+    for minutes_ago in (30, 15, 0):
+        _seed_kucoin_breadth_row(session, now - timedelta(minutes=minutes_ago))
+    # Steps: rise (+100), fall (-100), rise (+100).
+    for minutes_ago, price in ((45, 1.00), (30, 1.10), (15, 1.05), (0, 1.08)):
+        _seed_futures_prices(
+            session,
+            now - timedelta(minutes=minutes_ago),
+            {"IDOLUSDTM": (price, 10.0, 1000.0)},
+        )
+    session.commit()
+
+    controller = _make_controller(ExchangeId.KUCOIN, session, fiat="USDT")
+    result = controller.get_market_breadth_series(size=3, window=1)
+
+    assert result is not None
+    assert result["cumulative_breadth"] == [
+        pytest.approx(100.0),
+        pytest.approx(0.0),
+        pytest.approx(100.0),
+    ]
+    # EMA span 16 (four hours of 15-minute samples), seeded with the oldest value.
+    alpha = 2 / 17
+    first = 100.0
+    second = alpha * 0.0 + (1 - alpha) * first
+    third = alpha * 100.0 + (1 - alpha) * second
+    assert result["cumulative_breadth_ema"] == [
+        pytest.approx(third),
+        pytest.approx(second),
+        pytest.approx(first),
+    ]
+
+
+def test_cumulative_breadth_is_missing_without_a_15m_earlier_price_snapshot():
+    session = _make_session()
+    now = datetime(2026, 11, 9, 12, 0, 0, tzinfo=timezone.utc)
+    _seed_kucoin_breadth_row(session, now)
+    _seed_futures_prices(
+        session,
+        now - timedelta(minutes=30),
+        {"IDOLUSDTM": (1.00, 10.0, 1000.0)},
+    )
+    _seed_futures_prices(session, now, {"IDOLUSDTM": (1.05, 10.0, 1000.0)})
+    session.commit()
+
+    controller = _make_controller(ExchangeId.KUCOIN, session, fiat="USDT")
+    result = controller.get_market_breadth_series(size=1, window=1)
+
+    assert result is not None
+    assert result["cumulative_breadth"] == [None]
+    assert result["cumulative_breadth_ema"] == [None]
+
+
+def test_market_breadth_endpoint_exposes_cumulative_breadth(client, monkeypatch):
     data = {
         "timestamp": ["2026-11-08 12:00:00+00:00"],
         "advancers": [2],
@@ -332,11 +446,8 @@ def test_market_breadth_endpoint_exposes_recent_returns(client, monkeypatch):
         "avg_loss": [0.0],
         "total_volume": [2000.0],
         "strength_index": [1.0],
-        "median_return_15m": [-0.84],
-        "median_return_1h": [-1.67],
-        "median_return_3h": [-3.37],
-        "falling_share_1h": [1.0],
-        "falling_share_3h": [1.0],
+        "cumulative_breadth": [-120.0],
+        "cumulative_breadth_ema": [-85.5],
     }
     monkeypatch.setattr(
         "api.charts.routes.MarketDominationController",
