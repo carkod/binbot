@@ -17,7 +17,11 @@ type PlotlyTrace = {
 };
 
 type PlotlyProps = {
-  data: PlotlyTrace[];
+  data: Array<{
+    name?: string;
+    x?: string[];
+    y?: Array<number | null>;
+  }>;
   layout: {
     yaxis?: {
       title?: { text?: string; standoff?: number };
@@ -29,15 +33,7 @@ type PlotlyProps = {
 };
 
 const plotlyChartMock = vi.hoisted(() =>
-  vi.fn((props: PlotlyProps) => (
-    <div
-      data-testid="plotly-chart"
-      data-chart-props={JSON.stringify({
-        data: props.data,
-        layout: props.layout,
-      })}
-    />
-  )),
+  vi.fn((props: PlotlyProps) => <div data-testid="plotly-chart" />),
 );
 
 vi.mock("../PlotlyChart", () => ({
@@ -61,11 +57,9 @@ const defaultProps = {
   timestamps,
 };
 
-const latestPlotlyProps = () => {
-  const call =
-    plotlyChartMock.mock.calls[plotlyChartMock.mock.calls.length - 1];
+const chartProps = (index: number): PlotlyProps => {
+  const call = plotlyChartMock.mock.calls[index];
   expectValue(call).toBeDefined();
-
   return call[0] as PlotlyProps;
 };
 

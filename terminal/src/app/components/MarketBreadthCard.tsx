@@ -1,7 +1,6 @@
 import { Badge, Card, Row, Col } from "react-bootstrap";
 import moment from "moment";
 import PlotlyChart from "./PlotlyChart";
-import { roundDecimals } from "../../utils/math";
 import type { FC } from "react";
 
 // Olive gold: a mix of the gainers (green) and losers (red) ranking colours,
@@ -150,8 +149,7 @@ const MarketBreadthCard: FC<MarketBreadthCardProps> = ({
       </Card.Body>
       <Card.Footer className="text-muted">
         <hr />
-
-        {timestamps && (
+        {timestamps.length > 0 && (
           <div className="card-stats">
             <i className="fa fa-check" /> Last updated{" "}
             {moment(timestamps[0]).format("DD/MM/YYYY HH:mm")}
