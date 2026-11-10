@@ -11,11 +11,37 @@ from api.tools.handle_error import (
 from api.charts.controllers import MarketDominationController
 from api.charts.models import (
     FastestMoversResponse,
+    GainersLosersAggregateResponse,
     GainersLosersSeriesResponse,
-    MarketBreadthWithCumulativeBreadthResponse,
 )
+from pybinbot import MarketBreadthSeriesResponse
 
 charts_blueprint = APIRouter()
+
+
+@charts_blueprint.get(
+    "/gainers-losers-aggregate",
+    tags=["charts"],
+    summary="Registered KuCoin futures gain and loss magnitude from stored samples",
+    response_model=GainersLosersAggregateResponse,
+)
+def get_gainers_losers_aggregate(
+    limit: int = Query(default=168, ge=1, le=500),
+    session: Session = Depends(get_session),
+):
+    try:
+        data = TopGainersLosersSeriesCrud(session=session).query_aggregate_series(
+            limit=limit
+        )
+        return json_response(
+            {
+                "data": data,
+                "message": "Successfully retrieved futures gain/loss history.",
+                "error": 0,
+            }
+        )
+    except Exception as error:
+        return json_response_error(f"Failed to retrieve gain/loss history: {error}")
 
 
 @charts_blueprint.get(
@@ -46,8 +72,8 @@ def get_fastest_movers(
 @charts_blueprint.get(
     "/market-breadth",
     tags=["charts"],
-    summary="24h market breadth with cumulative 15m futures breadth",
-    response_model=MarketBreadthWithCumulativeBreadthResponse,
+    summary="24h market breadth history for strategy consumers",
+    response_model=MarketBreadthSeriesResponse,
 )
 def get_market_breadth(size: int = 14, session: Session = Depends(get_session)):
     try:

@@ -44,7 +44,7 @@ and shared `pybinbot` client, every application table has an active code path:
 | `grid_ladder`, `grid_level`, `grid_order` | Grid trading lifecycle and order tracking. |
 | `symbol`, `symbol_exchange`, `autotrade` | Exchange symbol metadata and trading settings. |
 | `consolidated_balances`, `balances` | Scheduled balance snapshots and portfolio history. |
-| `market_breadth`, `top_gainers_losers_series`, `futures_price_sample` | Market breadth, historical rankings, and the dashboard's fastest movers. The rankings also have an API endpoint used by `pybinbot`. |
+| `market_breadth`, `top_gainers_losers_series`, `futures_price_sample` | Market breadth for binquant strategies; hourly ranking timestamps and full registered-futures price snapshots for the dashboard's seven-day gain/loss trend; price samples also support fastest movers. |
 | `binbot_user`, `inquirytable`, `web3_candidates` | Authentication, brochure site contact inquiries, and scheduled Web3 candidate ingestion/API. |
 | `alembic_version` | Alembic migration state; it must be retained. |
 

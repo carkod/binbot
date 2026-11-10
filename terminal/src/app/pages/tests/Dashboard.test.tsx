@@ -15,7 +15,7 @@ import {
 } from "../../../features/bots/botsApiSlice";
 import {
   useFastestMoversQuery,
-  useMarketBreadthSeriesQuery,
+  useGainersLosersAggregateQuery,
 } from "../../../features/marketApiSlice";
 import { useBtcCloseSeriesQuery } from "../../../features/kucoinApiSlice";
 import { useBinquantStrategyNames } from "../../hooks/useBinquantStrategyNames";
@@ -80,15 +80,16 @@ vi.mock("../../../features/marketApiSlice", () => ({
     },
     isLoading: false,
   })),
-  useMarketBreadthSeriesQuery: vi.fn(() => ({
-    data: {
-      timestamp: ["2026-08-10T10:00:00Z"],
-      market_breadth: [0.2],
-      market_breadth_ma: [0.15],
-      strength_index: [0.1],
-      cumulative_breadth: [-120],
-      cumulative_breadth_ema: [-85.5],
-    },
+  useGainersLosersAggregateQuery: vi.fn(() => ({
+    data: [
+      {
+        timestamp: "2026-08-10T10:00:00Z",
+        gainer_magnitude: 30,
+        loser_magnitude: 10,
+        advancers: 30,
+        decliners: 10,
+      },
+    ],
     isLoading: false,
   })),
 }));
@@ -140,8 +141,8 @@ vi.mock("../../components/PortfolioBenchmark", () => ({
   default: () => <div>PortfolioBenchmarkChart</div>,
 }));
 
-vi.mock("../../components/MarketBreadthCard", () => ({
-  default: () => <div>MarketBreadthCard</div>,
+vi.mock("../../components/GainersLosersHistoryCard", () => ({
+  default: () => <div>GainersLosersHistoryCard</div>,
 }));
 
 vi.mock("../../components/BitcoinPriceCard", () => ({
@@ -170,7 +171,7 @@ describe("Dashboard page", () => {
     renderDashboard();
 
     expect(
-      rtlScreen.getByText("MarketBreadthCard").closest(".col-lg-6"),
+      rtlScreen.getByText("GainersLosersHistoryCard").closest(".col-lg-6"),
     ).toBeInTheDocument();
     expect(
       rtlScreen.getByText("BitcoinPriceCard").closest(".col-lg-6"),
@@ -197,9 +198,9 @@ describe("Dashboard page", () => {
       combined: [],
       isLoading: true,
     });
-    vi.mocked(useMarketBreadthSeriesQuery).mockReturnValueOnce({
+    vi.mocked(useGainersLosersAggregateQuery).mockReturnValueOnce({
       isLoading: true,
-    } as unknown as ReturnType<typeof useMarketBreadthSeriesQuery>);
+    } as unknown as ReturnType<typeof useGainersLosersAggregateQuery>);
     vi.mocked(useBtcCloseSeriesQuery).mockReturnValueOnce({
       isLoading: true,
     } as unknown as ReturnType<typeof useBtcCloseSeriesQuery>);
