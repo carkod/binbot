@@ -12,14 +12,19 @@ type PlotlyTrace = {
   name?: string;
   x?: string[];
   y?: Array<number | null>;
+  yaxis?: string;
+  line?: { color?: string };
 };
 
 type PlotlyProps = {
   data: PlotlyTrace[];
   layout: {
     yaxis?: {
+      title?: { text?: string; standoff?: number };
       zeroline?: boolean;
+      range?: number[];
     };
+    yaxis2?: unknown;
   };
 };
 
@@ -45,12 +50,14 @@ const timestamps = [
   "2026-07-04 11:10:02",
   "2026-07-04 10:55:02",
   "2026-07-04 10:40:02",
+  "2026-07-04 10:25:02",
+  "2026-07-04 10:10:02",
 ];
 
+// Newest first: the total rose 85 points over the last hour (4 samples).
 const defaultProps = {
-  marketBreadth: [0.12, 0.08, 0.03],
-  marketBreadthMa: [0.171, 0.137, 0.1],
-  strengthIndex: [0.3, 0.2, 0.1],
+  cumulativeBreadth: [60, 40, 10, -5, -25],
+  cumulativeBreadthEma: [12.4, 5.1, -2.3, -6.0, -8.0],
   timestamps,
 };
 
@@ -67,77 +74,85 @@ describeBlock("MarketBreadthCard", () => {
     plotlyChartMock.mockClear();
   });
 
-  testCase("shows a positive smoothed delta badge", () => {
+  testCase("shows a rising trend when the total is above its EMA", () => {
     render(<MarketBreadthCard {...defaultProps} />);
 
-    expectValue(rtlScreen.getByText("+3.4 pts").className).toContain(
-      "bg-success",
-    );
+    expectValue(rtlScreen.getByText("Trend: rising")).toHaveClass("bg-success");
   });
 
-  testCase("shows a negative smoothed delta badge", () => {
+  testCase("shows a falling trend when the total is below its EMA", () => {
     render(
       <MarketBreadthCard
         {...defaultProps}
-        marketBreadthMa={[0.13, 0.171, 0.1]}
+        cumulativeBreadth={[-40, 40, 10, -5, -25]}
       />,
     );
 
-    expectValue(rtlScreen.getByText("-4.1 pts").className).toContain(
-      "bg-danger",
-    );
+    expectValue(rtlScreen.getByText("Trend: falling")).toHaveClass("bg-danger");
   });
 
-  testCase("shows a neutral badge for zero smoothed delta", () => {
+  testCase("shows the change of the total over the last hour", () => {
+    render(<MarketBreadthCard {...defaultProps} />);
+
+    expectValue(rtlScreen.getByText("Last 1h: +85")).toBeInTheDocument();
+  });
+
+  testCase("hides the last hour change without a sample one hour ago", () => {
     render(
       <MarketBreadthCard
         {...defaultProps}
-        marketBreadthMa={[0.13, 0.13, 0.1]}
+        cumulativeBreadth={[60, 40]}
+        timestamps={timestamps.slice(0, 2)}
       />,
     );
 
-    expectValue(rtlScreen.getByText("0.0 pts").className).toContain(
-      "bg-secondary",
-    );
+    expectValue(rtlScreen.queryByText(/Last 1h/)).not.toBeInTheDocument();
   });
 
-  testCase(
-    "shows an unavailable badge when smoothed data is insufficient",
-    () => {
-      render(<MarketBreadthCard {...defaultProps} marketBreadthMa={[0.13]} />);
+  testCase("shows unavailable when there is no cumulative breadth", () => {
+    render(<MarketBreadthCard {...defaultProps} cumulativeBreadth={[null]} />);
 
-      expectValue(rtlScreen.getByText("N/A").className).toContain(
-        "bg-secondary",
-      );
-    },
-  );
+    expectValue(rtlScreen.getByText("Trend: N/A")).toHaveClass("bg-secondary");
+  });
 
-  testCase(
-    "adds market breadth, breadth trend, and strength index traces",
-    () => {
-      render(<MarketBreadthCard {...defaultProps} />);
+  testCase("plots the cumulative breadth and its EMA as separate lines", () => {
+    render(<MarketBreadthCard {...defaultProps} />);
 
-      const props = latestPlotlyProps();
+    const props = latestPlotlyProps();
 
-      expectValue(props.data.map((trace) => trace.name)).toEqual([
-        "Market Breadth",
-        "Breadth Trend",
-        "Strength Index",
-      ]);
-      expectValue(props.layout.yaxis?.zeroline).toBe(true);
-    },
-  );
+    expectValue(props.data.map((trace) => trace.name)).toEqual([
+      "Cumulative breadth",
+      "EMA (4h)",
+    ]);
+    expectValue(props.data[0].line?.color).not.toEqual(
+      props.data[1].line?.color,
+    );
+    expectValue(props.layout.yaxis?.range).toBeUndefined();
+    expectValue(props.layout.yaxis2).toBeUndefined();
+  });
 
   testCase("plots chart data oldest-to-newest", () => {
     render(<MarketBreadthCard {...defaultProps} />);
 
-    const props = latestPlotlyProps();
-    const [marketBreadthTrace, breadthTrendTrace, strengthIndexTrace] =
-      props.data;
+    const [cumulativeTrace, emaTrace] = latestPlotlyProps().data;
 
-    expectValue(marketBreadthTrace.x).toEqual([...timestamps].reverse());
-    expectValue(marketBreadthTrace.y).toEqual([0.03, 0.08, 0.12]);
-    expectValue(breadthTrendTrace.y).toEqual([0.1, 0.137, 0.171]);
-    expectValue(strengthIndexTrace.y).toEqual([0.1, 0.2, 0.3]);
+    expectValue(cumulativeTrace.x).toEqual([...timestamps].reverse());
+    expectValue(cumulativeTrace.y).toEqual([-25, -5, 10, 40, 60]);
+    expectValue(emaTrace.y).toEqual([-8.0, -6.0, -2.3, 5.1, 12.4]);
+  });
+
+  testCase("waits for futures prices when no breadth is available", () => {
+    render(
+      <MarketBreadthCard
+        {...defaultProps}
+        cumulativeBreadth={[null]}
+        cumulativeBreadthEma={[null]}
+      />,
+    );
+
+    expectValue(
+      rtlScreen.getByText("Waiting for futures price snapshots."),
+    ).toBeInTheDocument();
+    expectValue(plotlyChartMock).not.toHaveBeenCalled();
   });
 });

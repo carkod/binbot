@@ -5,7 +5,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
 from api.charts.models import MarketBreadthSample
-from api.charts.utils import fetch_market_breadth_series
+from api.charts.utils import (
+    fetch_market_breadth_series,
+    fetch_cumulative_breadth_series,
+)
 from api.databases.crud.autotrade_crud import AutotradeCrud
 from api.databases.crud.symbols_crud import SymbolsCrud
 from api.databases.crud.top_gainers_losers_series_crud import TopGainersLosersSeriesCrud
@@ -192,14 +195,28 @@ class MarketDominationController:
         self, size: int = 7, window: int = 8, exchange: ExchangeId | None = None
     ) -> dict[str, list] | None:
         """
-        Return parallel arrays (newest-first). Every field is read straight from
-        storage except market_breadth_ma, which is an EMA-smoothed market
-        breadth level computed over chronological samples.
+        Return newest-first 24h breadth for the selected exchange, plus the
+        cumulative 15-minute net breadth of KuCoin futures and its EMA when
+        KuCoin prices are available.
+        The EMA fields are computed from stored samples.
         """
+        selected_exchange = exchange or self.exchange
         series = fetch_market_breadth_series(
-            self.session, size=size, window=window, exchange=exchange
+            self.session, size=size, window=window, exchange=selected_exchange
         )
-        return series.model_dump() if series is not None else None
+        if series is None:
+            return None
+        data = series.model_dump()
+        if selected_exchange == ExchangeId.KUCOIN:
+            data.update(fetch_cumulative_breadth_series(self.session, series.timestamp))
+        else:
+            data.update(
+                {
+                    key: [None] * len(series.timestamp)
+                    for key in ("cumulative_breadth", "cumulative_breadth_ema")
+                }
+            )
+        return data
 
     def gainers_losers(self) -> tuple[Iterable[Any], Iterable[Any]]:
         """

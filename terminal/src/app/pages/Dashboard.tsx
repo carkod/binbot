@@ -371,11 +371,12 @@ export const DashboardPage: FC<{}> = () => {
           {loadingMarketBreadthSeries ? (
             <CardLoadingSpinner label="market breadth trend" />
           ) : (
-            marketBreadthSeries?.market_breadth && (
+            marketBreadthSeries?.timestamp && (
               <MarketBreadthCard
-                marketBreadth={marketBreadthSeries.market_breadth}
-                marketBreadthMa={marketBreadthSeries.market_breadth_ma}
-                strengthIndex={marketBreadthSeries.strength_index}
+                cumulativeBreadth={marketBreadthSeries.cumulative_breadth}
+                cumulativeBreadthEma={
+                  marketBreadthSeries.cumulative_breadth_ema
+                }
                 timestamps={marketBreadthSeries.timestamp}
               />
             )

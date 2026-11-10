@@ -86,6 +86,8 @@ vi.mock("../../../features/marketApiSlice", () => ({
       market_breadth: [0.2],
       market_breadth_ma: [0.15],
       strength_index: [0.1],
+      cumulative_breadth: [-120],
+      cumulative_breadth_ema: [-85.5],
     },
     isLoading: false,
   })),

@@ -79,14 +79,16 @@ const BitcoinPriceCard: FC<BitcoinPriceCardProps> = ({
           layout={{
             autosize: true,
             height: 380,
-            margin: { t: 30, l: 65, r: 20, b: 40 },
+            margin: { t: 30, l: 85, r: 20, b: 60 },
             xaxis: {
-              title: "Time",
+              title: { text: "Time", standoff: 14 },
+              automargin: true,
               tickformat: "%d/%m %H:%M",
               showgrid: false,
             },
             yaxis: {
-              title: "Close price",
+              title: { text: "Close price", standoff: 14 },
+              automargin: true,
               showgrid: true,
               tickformat: ",.2f",
             },

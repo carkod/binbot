@@ -22,6 +22,8 @@ export interface MarketBreadthData {
   market_breadth_ma: number[];
   total_volume: number[];
   strength_index: number[];
+  cumulative_breadth?: Array<number | null>;
+  cumulative_breadth_ema?: Array<number | null>;
 }
 
 export interface TopMover {

@@ -21,7 +21,9 @@ class TopGainersLosersSeriesCrud:
 
     SOURCE = "kucoin_futures"
     HISTORY_RETENTION_DAYS = 365
-    PRICE_HISTORY_HOURS = 5
+    # Dashboard requests 100 breadth samples plus EMA warmup (~27h at 15m).
+    # Keep the extra 3h comparison window and room for delayed cron samples.
+    PRICE_HISTORY_HOURS = 36
 
     def __init__(self, session: Session | None = None):
         self._external_session = session
@@ -239,9 +241,15 @@ class TopGainersLosersSeriesCrud:
                 ),
                 default=None,
             )
+            selected_timestamps = [
+                timestamp
+                for timestamp in (latest_at, previous_at, three_hours_at)
+                if timestamp is not None
+            ]
             rows = session.exec(
                 select(FuturesPriceSampleTable).where(
-                    FuturesPriceSampleTable.source == self.SOURCE
+                    FuturesPriceSampleTable.source == self.SOURCE,
+                    col(FuturesPriceSampleTable.recorded_at).in_(selected_timestamps),
                 )
             ).all()
 
