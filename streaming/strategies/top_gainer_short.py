@@ -1,6 +1,6 @@
 from decimal import ROUND_CEILING, Decimal
 from math import isfinite
-from typing import ClassVar
+from typing import ClassVar, NamedTuple
 
 from pybinbot import BinanceKlineIntervals, Position
 from pybinbot.shared.price_crossings import price_crossings_six_hours
@@ -14,6 +14,13 @@ from streaming.strategies.base import (
     LifecycleSignal,
 )
 from streaming.strategies.default import DefaultLifecycleStrategy
+
+
+class LowerHighSwing(NamedTuple):
+    """Confirmed lower-high peak and the candle swing range that led into it."""
+
+    peak: float
+    swing_range_pct: float
 
 
 class TopGainerShortLifecycleStrategy(DefaultLifecycleStrategy):
@@ -31,6 +38,9 @@ class TopGainerShortLifecycleStrategy(DefaultLifecycleStrategy):
     LOWER_HIGH_FRACTAL_WING = 2
     LOWER_HIGH_MIN_RISE_PCT = 2.0
     LOWER_HIGH_MIN_DROP_PCT = 2.5
+    # trailing_profit - trailing_deviation equals the candle swing range, so the
+    # deviation never drops below this floor on very large swings.
+    MIN_TRAILING_DEVIATION_PCT = 0.5
     # Existing positions retain their original stop policy. This feature only
     # manages positions opened after the 2026-11-01 16:00 UTC rollout boundary.
     STRUCTURAL_TRAIL_MIN_ENTRY_TIMESTAMP_MS = 1_793_548_800_000
@@ -45,8 +55,12 @@ class TopGainerShortLifecycleStrategy(DefaultLifecycleStrategy):
     )
 
     @classmethod
-    def latest_lower_high_peak(cls, context: LifecycleContext) -> float | None:
-        """Match binquant's confirmed 15m lower-high structure on closed bars."""
+    def latest_lower_high(cls, context: LifecycleContext) -> LowerHighSwing | None:
+        """Match binquant's confirmed 15m lower-high structure on closed bars.
+
+        The swing range is the rise from the preceding swing low to the first
+        peak, as binquant's lower-high pattern reports it.
+        """
         candles = context.completed_candles[-cls.LOWER_HIGH_LOOKBACK_BARS :]
         if len(candles) < cls.LOWER_HIGH_LOOKBACK_BARS:
             return None
@@ -88,11 +102,13 @@ class TopGainerShortLifecycleStrategy(DefaultLifecycleStrategy):
         earlier_high = highs[earlier]
         later_high = highs[later]
         swing_low = lows[swing_lows[-1]]
-        if (earlier_high / swing_low - 1) * 100 < cls.LOWER_HIGH_MIN_RISE_PCT or (
-            1 - later_high / earlier_high
-        ) * 100 < cls.LOWER_HIGH_MIN_DROP_PCT:
+        swing_range_pct = (earlier_high / swing_low - 1) * 100
+        if (
+            swing_range_pct < cls.LOWER_HIGH_MIN_RISE_PCT
+            or (1 - later_high / earlier_high) * 100 < cls.LOWER_HIGH_MIN_DROP_PCT
+        ):
             return None
-        return later_high
+        return LowerHighSwing(peak=later_high, swing_range_pct=swing_range_pct)
 
     def signal(self, context: LifecycleContext) -> LifecycleSignal:
         opening_timestamp = context.bot.deal.opening_timestamp
@@ -133,11 +149,11 @@ class TopGainerShortLifecycleStrategy(DefaultLifecycleStrategy):
         ):
             return default_signal
 
-        peak = self.latest_lower_high_peak(context)
-        if peak is None:
+        lower_high = self.latest_lower_high(context)
+        if lower_high is None:
             return default_signal
         stop_price = float(
-            Decimal(str(peak)).quantize(
+            Decimal(str(lower_high.peak)).quantize(
                 Decimal(1).scaleb(-context.price_precision), rounding=ROUND_CEILING
             )
         )
@@ -154,10 +170,13 @@ class TopGainerShortLifecycleStrategy(DefaultLifecycleStrategy):
             or (current_stop > 0 and stop_price >= current_stop)
         ):
             return default_signal
+        # Keep the deviation below trailing profit by the candle swing range
+        # instead of the peak-to-price distance, which can exceed 4%.
         trailing_deviation = float(
-            (
-                (Decimal(str(stop_price)) / Decimal(str(context.current_price)) - 1)
-                * 100
+            max(
+                Decimal(str(bot.trailing_profit))
+                - Decimal(str(lower_high.swing_range_pct)),
+                Decimal(str(self.MIN_TRAILING_DEVIATION_PCT)),
             ).quantize(Decimal("0.0001"), rounding=ROUND_CEILING)
         )
         if not 0 < trailing_deviation < 100:
@@ -171,6 +190,9 @@ class TopGainerShortLifecycleStrategy(DefaultLifecycleStrategy):
             ),
             log_messages=(
                 f"[top_gainer_short] Confirmed lower-high peak {stop_price} is "
-                "below entry; tightening the exchange trailing stop.",
+                "below entry; tightening the exchange trailing stop with "
+                f"{trailing_deviation}% deviation (trailing profit "
+                f"{bot.trailing_profit}% minus {lower_high.swing_range_pct:.4f}% "
+                "candle swing range).",
             ),
         )

@@ -39,7 +39,10 @@ from streaming.strategies.liquidation_sweep_pump import (
 from streaming.strategies.mean_reversion_fade import (
     MeanReversionFadeLifecycleStrategy,
 )
-from streaming.strategies.top_gainer_short import TopGainerShortLifecycleStrategy
+from streaming.strategies.top_gainer_short import (
+    LowerHighSwing,
+    TopGainerShortLifecycleStrategy,
+)
 from streaming.strategies.top_gainer_early_momentum import (
     TopGainerEarlyMomentumLifecycleStrategy,
 )
@@ -659,8 +662,32 @@ def test_top_gainer_short_arms_native_trail_at_latest_confirmed_lower_high() -> 
 
     assert signal.parameter_update is not None
     assert signal.parameter_update.trailing_stop_price == 99.0
-    assert signal.parameter_update.trailing_deviation == 4.2106
+    # The 37.5% swing exceeds trailing profit, so the deviation floors.
+    assert (
+        signal.parameter_update.trailing_deviation
+        == TopGainerShortLifecycleStrategy.MIN_TRAILING_DEVIATION_PCT
+    )
     assert signal.parameter_update.trailing_profit == 4.5
+
+
+def test_top_gainer_short_trailing_gap_equals_candle_swing_range(monkeypatch) -> None:
+    context = _confirmed_lower_high_context()
+    monkeypatch.setattr(
+        TopGainerShortLifecycleStrategy,
+        "latest_lower_high",
+        classmethod(lambda cls, _context: LowerHighSwing(99.0, 3.0)),
+    )
+
+    signal = TopGainerShortLifecycleStrategy().signal(context)
+
+    assert signal.parameter_update is not None
+    assert signal.parameter_update.trailing_stop_price == 99.0
+    assert signal.parameter_update.trailing_deviation == 1.5
+    assert (
+        signal.parameter_update.trailing_profit
+        - signal.parameter_update.trailing_deviation
+        == 3.0
+    )
 
 
 def test_top_gainer_short_rounds_low_price_pattern_stop_above_candle_high() -> None:
@@ -677,7 +704,6 @@ def test_top_gainer_short_rounds_low_price_pattern_stop_above_candle_high() -> N
 
     assert signal.parameter_update is not None
     assert signal.parameter_update.trailing_stop_price == 0.003961
-    assert signal.parameter_update.trailing_deviation == 4.2369
 
 
 def test_top_gainer_short_does_not_arm_unprofitable_or_looser_pattern_stop() -> None:
@@ -739,7 +765,10 @@ def test_top_gainer_short_places_structural_stop_through_native_exchange_path() 
     )
 
     assert context.bot.deal.trailing_stop_loss_price == 99.0
-    assert context.bot.trailing_deviation == 4.2106
+    assert (
+        context.bot.trailing_deviation
+        == TopGainerShortLifecycleStrategy.MIN_TRAILING_DEVIATION_PCT
+    )
     update_parameters.assert_called_once_with(allow_stop_loss_widening=False)
     place_trailing_stop_loss.assert_called_once_with()
     save.assert_called_once_with(context.bot)
