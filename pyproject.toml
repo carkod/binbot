@@ -1,7 +1,7 @@
 [project]
 name = "Binbot"
 version = "2.0.0"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "fastapi[standard]>=0.136.3",
     "sqlmodel>=0.0.37",
@@ -16,7 +16,9 @@ dependencies = [
     "sqlalchemy>=2.0.30",
     "alembic>=1.18.4",
     "alembic-postgresql-enum",
-    "pybinbot>=1.14.0",
+    "numpy==2.5.4",
+    "pandas==3.1.1",
+    "pybinbot==2.0.0",
 ]
 
 [project.urls]
