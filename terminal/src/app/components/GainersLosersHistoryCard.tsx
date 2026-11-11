@@ -71,10 +71,10 @@ const GainersLosersHistoryCard: FC<GainersLosersHistoryCardProps> = ({
               )}
             </Card.Title>
             <p className="u-text-left mb-0">
-              Hourly snapshots of all registered, active KuCoin futures
-              contracts. The line shows gain magnitude minus loss magnitude as a
-              percentage of their combined magnitude. Above zero, gainers lead;
-              below zero, losers lead.
+              Every 15 minutes, this samples the rolling 24h moves of all
+              registered, active KuCoin futures contracts. The line shows gain
+              magnitude minus loss magnitude as a percentage of their combined
+              magnitude. Above zero, gainers lead; below zero, losers lead.
             </p>
           </Col>
         </Row>
@@ -128,7 +128,7 @@ const GainersLosersHistoryCard: FC<GainersLosersHistoryCardProps> = ({
           />
         ) : (
           <div className="text-body-secondary">
-            Waiting for hourly futures price snapshots.
+            Waiting for 15-minute futures price snapshots.
           </div>
         )}
       </Card.Body>

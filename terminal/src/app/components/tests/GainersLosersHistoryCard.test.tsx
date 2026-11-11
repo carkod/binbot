@@ -44,7 +44,7 @@ const points: GainersLosersAggregatePoint[] = [
     decliners: 10,
   },
   {
-    timestamp: "2026-11-10T10:00:00Z",
+    timestamp: "2026-11-10T10:45:00Z",
     gainer_magnitude: 5,
     loser_magnitude: 15,
     advancers: 25,
@@ -65,7 +65,7 @@ describeBlock("GainersLosersHistoryCard", () => {
       "Gain/loss balance",
     ]);
     expectValue(chart.data[0].x).toEqual([
-      "2026-11-10T10:00:00Z",
+      "2026-11-10T10:45:00Z",
       "2026-11-10T11:00:00Z",
     ]);
     expectValue(chart.data[0].y).toEqual([-50, 50]);
@@ -84,7 +84,7 @@ describeBlock("GainersLosersHistoryCard", () => {
     render(<GainersLosersHistoryCard points={[]} />);
 
     expectValue(
-      rtlScreen.getByText("Waiting for hourly futures price snapshots."),
+      rtlScreen.getByText("Waiting for 15-minute futures price snapshots."),
     ).toBeInTheDocument();
     expectValue(plotlyChartMock).not.toHaveBeenCalled();
   });
@@ -105,7 +105,7 @@ describeBlock("GainersLosersHistoryCard", () => {
     );
 
     expectValue(
-      rtlScreen.getByText("Waiting for hourly futures price snapshots."),
+      rtlScreen.getByText("Waiting for 15-minute futures price snapshots."),
     ).toBeInTheDocument();
     expectValue(plotlyChartMock).not.toHaveBeenCalled();
   });

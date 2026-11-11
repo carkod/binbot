@@ -46,7 +46,9 @@ export const DashboardPage: FC<{}> = () => {
   } = useFilteredFuturesRankings();
 
   const { data: gainersLosersHistory, isLoading: loadingGainersLosersHistory } =
-    useGainersLosersAggregateQuery();
+    useGainersLosersAggregateQuery(undefined, {
+      pollingInterval: 15 * 60 * 1000,
+    });
   const { data: btcCloseSeries, isLoading: loadingBtcCloseSeries } =
     useBtcCloseSeriesQuery();
 

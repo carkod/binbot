@@ -26,7 +26,7 @@ charts_blueprint = APIRouter()
     response_model=GainersLosersAggregateResponse,
 )
 def get_gainers_losers_aggregate(
-    limit: int = Query(default=168, ge=1, le=500),
+    limit: int = Query(default=672, ge=1, le=672),
     session: Session = Depends(get_session),
 ):
     try:

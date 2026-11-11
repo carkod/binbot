@@ -59,7 +59,7 @@ export const marketApiSlice = userApiSlice.injectEndpoints({
     }),
     gainersLosersAggregate: build.query<GainersLosersAggregatePoint[], void>({
       query: () => ({
-        url: "/charts/gainers-losers-aggregate?limit=168",
+        url: "/charts/gainers-losers-aggregate?limit=672",
       }),
       transformResponse: ({ data, message, error }) => {
         if (error && error === 1) {

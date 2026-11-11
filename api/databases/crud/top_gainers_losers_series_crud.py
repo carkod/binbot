@@ -7,6 +7,7 @@ from sqlmodel import Session, col, delete, select
 
 from api.databases.crud.autotrade_crud import AutotradeCrud
 from api.databases.tables.futures_price_sample_table import FuturesPriceSampleTable
+from api.databases.tables.market_breadth_table import MarketBreadthTable
 from api.databases.tables.symbol_exchange_table import SymbolExchangeTable
 from api.databases.tables.top_gainers_losers_series_table import (
     TopGainersLosersSeriesTable,
@@ -198,22 +199,21 @@ class TopGainersLosersSeriesCrud:
 
     @classmethod
     def query_aggregate_series(
-        cls, session: Session, limit: int = 168
+        cls, session: Session, limit: int = 672
     ) -> list[dict[str, Any]]:
-        """Gain/loss magnitude for registered KuCoin futures from stored snapshots."""
+        """Gain/loss magnitude at 15-minute KuCoin futures breadth snapshots."""
         prices = cast(Table, getattr(FuturesPriceSampleTable, "__table__"))
         symbol_exchanges = cast(Table, getattr(SymbolExchangeTable, "__table__"))
-        rankings = cast(Table, getattr(TopGainersLosersSeriesTable, "__table__"))
+        breadth = cast(Table, getattr(MarketBreadthTable, "__table__"))
         registered_symbols = sa_select(symbol_exchanges.c.symbol_id).where(
             symbol_exchanges.c.exchange_id == ExchangeId.KUCOIN
         )
-        # Rankings identify the hourly snapshot times; the aggregation below reads
-        # every registered contract's price sample at those times, not the top 10.
+        # The breadth cron stores full futures price snapshots every 15 minutes.
+        # Its timestamps exclude the separate hourly top-gainers fetches.
         recent_timestamps = (
-            sa_select(rankings.c.recorded_at)
-            .where(rankings.c.source == cls.SOURCE)
-            .distinct()
-            .order_by(rankings.c.recorded_at.desc())
+            sa_select(breadth.c.timestamp)
+            .where(breadth.c.source == ExchangeId.KUCOIN.value)
+            .order_by(breadth.c.timestamp.desc())
             .limit(limit)
             .subquery()
         )
@@ -248,7 +248,7 @@ class TopGainersLosersSeriesCrud:
                 )
                 .join(
                     recent_timestamps,
-                    prices.c.recorded_at == recent_timestamps.c.recorded_at,
+                    prices.c.recorded_at == recent_timestamps.c.timestamp,
                 )
                 .where(
                     prices.c.source == cls.SOURCE,
