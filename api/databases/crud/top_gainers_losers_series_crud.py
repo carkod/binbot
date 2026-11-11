@@ -1,11 +1,13 @@
 from datetime import datetime, timedelta, timezone
-from typing import Any, Iterable
+from typing import Any, Iterable, cast
 
-from pybinbot import KucoinFutures
+from pybinbot import ExchangeId, KucoinFutures
+from sqlalchemy import Table, case, func, select as sa_select
 from sqlmodel import Session, col, delete, select
 
 from api.databases.crud.autotrade_crud import AutotradeCrud
 from api.databases.tables.futures_price_sample_table import FuturesPriceSampleTable
+from api.databases.tables.symbol_exchange_table import SymbolExchangeTable
 from api.databases.tables.top_gainers_losers_series_table import (
     TopGainersLosersSeriesTable,
 )
@@ -21,9 +23,8 @@ class TopGainersLosersSeriesCrud:
 
     SOURCE = "kucoin_futures"
     HISTORY_RETENTION_DAYS = 365
-    # Dashboard requests 100 breadth samples plus EMA warmup (~27h at 15m).
-    # Keep the extra 3h comparison window and room for delayed cron samples.
-    PRICE_HISTORY_HOURS = 36
+    # Keep full-contract snapshots for the dashboard's seven-day hourly trend.
+    PRICE_HISTORY_HOURS = 168
 
     def __init__(self, session: Session | None = None):
         self._external_session = session
@@ -194,6 +195,83 @@ class TopGainersLosersSeriesCrud:
                 snapshot["top_losers"].append(entry)
 
         return sorted(snapshots.values(), key=lambda s: s["recorded_at"], reverse=True)
+
+    @classmethod
+    def query_aggregate_series(
+        cls, session: Session, limit: int = 168
+    ) -> list[dict[str, Any]]:
+        """Gain/loss magnitude for registered KuCoin futures from stored snapshots."""
+        prices = cast(Table, getattr(FuturesPriceSampleTable, "__table__"))
+        symbol_exchanges = cast(Table, getattr(SymbolExchangeTable, "__table__"))
+        rankings = cast(Table, getattr(TopGainersLosersSeriesTable, "__table__"))
+        registered_symbols = sa_select(symbol_exchanges.c.symbol_id).where(
+            symbol_exchanges.c.exchange_id == ExchangeId.KUCOIN
+        )
+        # Rankings identify the hourly snapshot times; the aggregation below reads
+        # every registered contract's price sample at those times, not the top 10.
+        recent_timestamps = (
+            sa_select(rankings.c.recorded_at)
+            .where(rankings.c.source == cls.SOURCE)
+            .distinct()
+            .order_by(rankings.c.recorded_at.desc())
+            .limit(limit)
+            .subquery()
+        )
+        rows = (
+            session.execute(
+                sa_select(
+                    prices.c.recorded_at,
+                    func.sum(
+                        case(
+                            (
+                                prices.c.price_change_percent > 0,
+                                prices.c.price_change_percent,
+                            ),
+                            else_=0.0,
+                        )
+                    ).label("gainer_magnitude"),
+                    func.sum(
+                        case(
+                            (
+                                prices.c.price_change_percent < 0,
+                                -prices.c.price_change_percent,
+                            ),
+                            else_=0.0,
+                        )
+                    ).label("loser_magnitude"),
+                    func.sum(
+                        case((prices.c.price_change_percent > 0, 1), else_=0)
+                    ).label("advancers"),
+                    func.sum(
+                        case((prices.c.price_change_percent < 0, 1), else_=0)
+                    ).label("decliners"),
+                )
+                .join(
+                    recent_timestamps,
+                    prices.c.recorded_at == recent_timestamps.c.recorded_at,
+                )
+                .where(
+                    prices.c.source == cls.SOURCE,
+                    prices.c.symbol.in_(registered_symbols),
+                )
+                .group_by(prices.c.recorded_at)
+                .order_by(prices.c.recorded_at.desc())
+            )
+            .mappings()
+            .all()
+        )
+        return [
+            {
+                "timestamp": row["recorded_at"].replace(tzinfo=timezone.utc)
+                if row["recorded_at"].tzinfo is None
+                else row["recorded_at"],
+                "gainer_magnitude": row["gainer_magnitude"],
+                "loser_magnitude": row["loser_magnitude"],
+                "advancers": row["advancers"],
+                "decliners": row["decliners"],
+            }
+            for row in rows
+        ]
 
     def query_fastest_movers(self, limit: int = 10) -> dict[str, Any]:
         """Rank actual one-hour price moves across the stored futures universe."""

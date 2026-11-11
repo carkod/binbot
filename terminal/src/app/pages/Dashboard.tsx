@@ -10,7 +10,7 @@ import {
 } from "../../features/bots/botsApiSlice";
 import {
   useFastestMoversQuery,
-  useMarketBreadthSeriesQuery,
+  useGainersLosersAggregateQuery,
 } from "../../features/marketApiSlice";
 import { useBtcCloseSeriesQuery } from "../../features/kucoinApiSlice";
 import { useGetSignalsQuery } from "../../features/signalsApiSlice";
@@ -20,7 +20,7 @@ import { formatTimestamp } from "../../utils/time";
 import GainersLosers from "../components/GainersLosers";
 import FastestMovers from "../components/FastestMovers";
 import PortfolioBenchmarkChart from "../components/PortfolioBenchmark";
-import MarketBreadthCard from "../components/MarketBreadthCard";
+import GainersLosersHistoryCard from "../components/GainersLosersHistoryCard";
 import BitcoinPriceCard from "../components/BitcoinPriceCard";
 import CardLoadingSpinner from "../components/CardLoadingSpinner";
 import { useBinquantStrategyNames } from "../hooks/useBinquantStrategyNames";
@@ -45,8 +45,8 @@ export const DashboardPage: FC<{}> = () => {
     isLoading: loadingFuturesRankings,
   } = useFilteredFuturesRankings();
 
-  const { data: marketBreadthSeries, isLoading: loadingMarketBreadthSeries } =
-    useMarketBreadthSeriesQuery();
+  const { data: gainersLosersHistory, isLoading: loadingGainersLosersHistory } =
+    useGainersLosersAggregateQuery();
   const { data: btcCloseSeries, isLoading: loadingBtcCloseSeries } =
     useBtcCloseSeriesQuery();
 
@@ -368,30 +368,20 @@ export const DashboardPage: FC<{}> = () => {
       </Row>
       <Row>
         <Col lg="6" md="12" className="dashboard-trend">
-          {loadingMarketBreadthSeries ? (
-            <CardLoadingSpinner label="market breadth trend" />
+          {loadingGainersLosersHistory ? (
+            <CardLoadingSpinner label="gainers versus losers trend" />
           ) : (
-            marketBreadthSeries?.timestamp && (
-              <MarketBreadthCard
-                cumulativeBreadth={marketBreadthSeries.cumulative_breadth}
-                cumulativeBreadthEma={
-                  marketBreadthSeries.cumulative_breadth_ema
-                }
-                timestamps={marketBreadthSeries.timestamp}
-              />
+            gainersLosersHistory && (
+              <GainersLosersHistoryCard points={gainersLosersHistory} />
             )
           )}
         </Col>
         <Col lg="6" md="12" className="dashboard-trend">
-          {loadingBtcCloseSeries || loadingMarketBreadthSeries ? (
+          {loadingBtcCloseSeries ? (
             <CardLoadingSpinner label="Bitcoin price trend" />
           ) : (
-            btcCloseSeries &&
-            marketBreadthSeries?.timestamp && (
-              <BitcoinPriceCard
-                btcCloseSeries={btcCloseSeries}
-                marketBreadthTimestamps={marketBreadthSeries.timestamp}
-              />
+            btcCloseSeries && (
+              <BitcoinPriceCard btcCloseSeries={btcCloseSeries} />
             )
           )}
         </Col>

@@ -1,4 +1,4 @@
-import { Badge, Card, Col, ListGroup, Row } from "react-bootstrap";
+import { Alert, Badge, Card, Col, ListGroup, Row } from "react-bootstrap";
 import type {
   FastestMover,
   FastestMoversSnapshot,
@@ -63,6 +63,10 @@ export default function FastestMovers({
             As of {formatTimestamp(data.recorded_at)}
           </small>
         )}
+        <Alert variant="warning" className="alert-subtle mt-2 mb-0 py-2">
+          When gainers dominate losers, look at Rising. When losers dominate
+          gainers, look at Falling.
+        </Alert>
       </Card.Header>
       {data?.comparison_at ? (
         <Row className="g-0">

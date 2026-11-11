@@ -1,6 +1,6 @@
 import datetime
 from pydantic import BaseModel, field_validator
-from pybinbot import MarketBreadthSeries, StandardResponse
+from pybinbot import StandardResponse
 
 
 class CandlestickItemRequest(BaseModel):
@@ -110,6 +110,18 @@ class GainersLosersSeriesResponse(StandardResponse):
     data: list[GainersLosersSnapshot]
 
 
+class GainersLosersAggregatePoint(BaseModel):
+    timestamp: datetime.datetime
+    gainer_magnitude: float
+    loser_magnitude: float
+    advancers: int
+    decliners: int
+
+
+class GainersLosersAggregateResponse(StandardResponse):
+    data: list[GainersLosersAggregatePoint]
+
+
 class FastestMoverEntry(BaseModel):
     symbol: str
     price_change_1h_percent: float
@@ -129,15 +141,6 @@ class FastestMoversSnapshot(BaseModel):
 
 class FastestMoversResponse(StandardResponse):
     data: FastestMoversSnapshot
-
-
-class MarketBreadthWithCumulativeBreadth(MarketBreadthSeries):
-    cumulative_breadth: list[float | None]
-    cumulative_breadth_ema: list[float | None]
-
-
-class MarketBreadthWithCumulativeBreadthResponse(StandardResponse):
-    data: MarketBreadthWithCumulativeBreadth
 
 
 class MarketBreadthSample(BaseModel):

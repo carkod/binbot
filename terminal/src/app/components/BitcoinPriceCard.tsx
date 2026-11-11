@@ -2,35 +2,14 @@ import moment from "moment";
 import { type FC } from "react";
 import { Badge, Card, Col, Row } from "react-bootstrap";
 import type { BtcCloseSeries } from "../../features/kucoinApiSlice";
-import { timestampBucket } from "../../utils/math";
 import PlotlyChart from "./PlotlyChart";
 
 type BitcoinPriceCardProps = {
   btcCloseSeries: BtcCloseSeries;
-  marketBreadthTimestamps: string[];
 };
 
-const FIFTEEN_MINUTES_MS = 15 * 60 * 1000;
-
-const BitcoinPriceCard: FC<BitcoinPriceCardProps> = ({
-  btcCloseSeries,
-  marketBreadthTimestamps,
-}) => {
-  const closeByTimestamp = new Map(
-    btcCloseSeries.timestamp.map((timestamp, index) => [
-      timestampBucket(timestamp, FIFTEEN_MINUTES_MS),
-      btcCloseSeries.close[index],
-    ]),
-  );
-  const timestamps = [...marketBreadthTimestamps].reverse();
-  const closePrices = timestamps.map(
-    (timestamp) =>
-      closeByTimestamp.get(timestampBucket(timestamp, FIFTEEN_MINUTES_MS)) ??
-      null,
-  );
-  const latestClose = [...closePrices]
-    .reverse()
-    .find((close): close is number => close !== null);
+const BitcoinPriceCard: FC<BitcoinPriceCardProps> = ({ btcCloseSeries }) => {
+  const latestClose = btcCloseSeries.close.at(-1);
 
   return (
     <Card className="card-chart">
@@ -55,8 +34,6 @@ const BitcoinPriceCard: FC<BitcoinPriceCardProps> = ({
             </Card.Title>
             <p className="u-text-left">
               {btcCloseSeries.symbol} 15-minute candlestick close price.
-              <br />
-              Timestamps are aligned with the Market Breadth Trend.
             </p>
           </Col>
         </Row>
@@ -65,8 +42,8 @@ const BitcoinPriceCard: FC<BitcoinPriceCardProps> = ({
         <PlotlyChart
           data={[
             {
-              x: timestamps,
-              y: closePrices,
+              x: btcCloseSeries.timestamp,
+              y: btcCloseSeries.close,
               type: "scatter",
               mode: "lines+markers",
               name: "BTC close",
@@ -101,10 +78,12 @@ const BitcoinPriceCard: FC<BitcoinPriceCardProps> = ({
       </Card.Body>
       <Card.Footer className="text-muted">
         <hr />
-        <div className="card-stats">
-          <i className="fa fa-check" /> Last updated{" "}
-          {moment(marketBreadthTimestamps[0]).format("DD/MM/YYYY HH:mm")}
-        </div>
+        {btcCloseSeries.timestamp.length > 0 && (
+          <div className="card-stats">
+            <i className="fa fa-check" /> Last updated{" "}
+            {moment(btcCloseSeries.timestamp.at(-1)).format("DD/MM/YYYY HH:mm")}
+          </div>
+        )}
       </Card.Footer>
     </Card>
   );

@@ -14,30 +14,12 @@ export interface GainerLosersData {
   adr_ma: number[];
 }
 
-export interface MarketBreadthData {
-  timestamp: string[];
-  advancers: number[];
-  decliners: number[];
-  market_breadth: number[];
-  market_breadth_ma: number[];
-  total_volume: number[];
-  strength_index: number[];
-  cumulative_breadth?: Array<number | null>;
-  cumulative_breadth_ema?: Array<number | null>;
-}
-
-export interface TopMover {
-  symbol: string;
-  price_change_percent: number;
-  last_price: number | null;
-  turnover_24h: number | null;
-}
-
-export interface GainersLosersSnapshot {
-  source: string;
-  recorded_at: string;
-  top_gainers: TopMover[];
-  top_losers: TopMover[];
+export interface GainersLosersAggregatePoint {
+  timestamp: string;
+  gainer_magnitude: number;
+  loser_magnitude: number;
+  advancers: number;
+  decliners: number;
 }
 
 export interface FastestMover {
@@ -75,22 +57,9 @@ export const marketApiSlice = userApiSlice.injectEndpoints({
         return data;
       },
     }),
-    marketBreadthSeries: build.query<MarketBreadthData, void>({
+    gainersLosersAggregate: build.query<GainersLosersAggregatePoint[], void>({
       query: () => ({
-        url: `${import.meta.env.VITE_MARKET_BREADTH}?size=100`,
-        providesTags: ["market-breadth-series"],
-      }),
-      transformResponse: ({ data, message, error }, meta, arg) => {
-        if (error && error === 1) {
-          notifification("error", message);
-        }
-
-        return data;
-      },
-    }),
-    gainersLosersSeries: build.query<GainersLosersSnapshot[], void>({
-      query: () => ({
-        url: `${import.meta.env.VITE_GAINERS_LOSERS_SERIES || "/charts/gainers-losers-series"}?limit=168`,
+        url: "/charts/gainers-losers-aggregate?limit=168",
       }),
       transformResponse: ({ data, message, error }) => {
         if (error && error === 1) {
@@ -103,8 +72,5 @@ export const marketApiSlice = userApiSlice.injectEndpoints({
   }),
 });
 
-export const {
-  useFastestMoversQuery,
-  useGainersLosersSeriesQuery,
-  useMarketBreadthSeriesQuery,
-} = marketApiSlice;
+export const { useFastestMoversQuery, useGainersLosersAggregateQuery } =
+  marketApiSlice;

@@ -52,12 +52,6 @@ const btcCloseSeries = {
   close: [64800, 65000, 65125.5],
 };
 
-const marketBreadthTimestamps = [
-  "2026-08-10T10:15:04Z",
-  "2026-08-10T10:00:03Z",
-  "2026-08-10T09:45:02Z",
-];
-
 const latestPlotlyProps = () => {
   const call = plotlyChartMock.mock.calls.at(-1);
   expectValue(call).toBeDefined();
@@ -70,23 +64,14 @@ describeBlock("BitcoinPriceCard", () => {
     plotlyChartMock.mockClear();
   });
 
-  testCase("plots only BTC close prices on market-breadth timestamps", () => {
-    render(
-      <BitcoinPriceCard
-        btcCloseSeries={btcCloseSeries}
-        marketBreadthTimestamps={marketBreadthTimestamps}
-      />,
-    );
+  testCase("plots BTC close prices on their candle timestamps", () => {
+    render(<BitcoinPriceCard btcCloseSeries={btcCloseSeries} />);
 
     const props = latestPlotlyProps();
 
     expectValue(props.data).toHaveLength(1);
     expectValue(props.data[0].name).toBe("BTC close");
-    expectValue(props.data[0].x).toEqual([
-      "2026-08-10T09:45:02Z",
-      "2026-08-10T10:00:03Z",
-      "2026-08-10T10:15:04Z",
-    ]);
+    expectValue(props.data[0].x).toEqual(btcCloseSeries.timestamp);
     expectValue(props.data[0].y).toEqual([64800, 65000, 65125.5]);
     expectValue(props.layout.yaxis?.title).toEqual({
       text: "Close price",
@@ -94,35 +79,8 @@ describeBlock("BitcoinPriceCard", () => {
     });
   });
 
-  testCase(
-    "leaves a gap when a breadth timestamp has no matching candle",
-    () => {
-      render(
-        <BitcoinPriceCard
-          btcCloseSeries={{
-            ...btcCloseSeries,
-            timestamp: btcCloseSeries.timestamp.slice(1),
-            close: btcCloseSeries.close.slice(1),
-          }}
-          marketBreadthTimestamps={marketBreadthTimestamps}
-        />,
-      );
-
-      expectValue(latestPlotlyProps().data[0].y).toEqual([
-        null,
-        65000,
-        65125.5,
-      ]);
-    },
-  );
-
   testCase("shows the latest close price", () => {
-    render(
-      <BitcoinPriceCard
-        btcCloseSeries={btcCloseSeries}
-        marketBreadthTimestamps={marketBreadthTimestamps}
-      />,
-    );
+    render(<BitcoinPriceCard btcCloseSeries={btcCloseSeries} />);
 
     expectValue(rtlScreen.getByText("65,125.5")).toBeInTheDocument();
   });

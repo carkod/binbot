@@ -141,6 +141,30 @@ def test_ingest_persists_rows():
     assert {sample.symbol for sample in price_samples} == {"AUSDCM", "BUSDCM"}
 
 
+def test_futures_price_samples_keep_seven_days_of_full_market_history():
+    session = _make_session()
+    now = datetime.now(timezone.utc)
+    session.add_all(
+        FuturesPriceSampleTable(
+            source="kucoin_futures",
+            recorded_at=now - timedelta(hours=hours_ago),
+            symbol=symbol,
+            last_price=1.0,
+            price_change_percent=2.0,
+            turnover_24h=100.0,
+        )
+        for hours_ago, symbol in ((167, "RECENTUSDCM"), (169, "EXPIREDUSDCM"))
+    )
+    session.commit()
+
+    TopGainersLosersSeriesCrud.record_futures_prices(session, [], now)
+    session.commit()
+
+    assert {
+        sample.symbol for sample in session.exec(select(FuturesPriceSampleTable))
+    } == {"RECENTUSDCM"}
+
+
 def test_fastest_movers_ranks_hourly_price_moves_outside_top_gainers():
     session = _make_session()
     now = datetime.now(timezone.utc).replace(microsecond=0)

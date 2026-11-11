@@ -21,6 +21,11 @@
     background-color: color.adjust($warning-color, $lightness: 5%);
   }
 
+  &.alert-warning.alert-subtle {
+    background-color: $light-orange;
+    color: $dark-color;
+  }
+
   &.alert-info {
     background-color: color.adjust($info-color, $lightness: 5%);
   }

@@ -69,11 +69,6 @@ const floatSafe = (value: unknown): number => {
     : 0;
 };
 
-const timestampBucket = (
-  timestamp: string | number,
-  bucketSizeMs: number,
-): number => Math.floor(new Date(timestamp).getTime() / bucketSizeMs);
-
 export {
   checkValue,
   checkMinValue,
@@ -84,5 +79,4 @@ export {
   replaceZeros,
   roundDecimals,
   floatSafe,
-  timestampBucket,
 };

@@ -35,6 +35,11 @@ describe("FastestMovers", () => {
     );
 
     expect(rtlScreen.getByText("Fastest futures movers")).toBeInTheDocument();
+    expect(
+      rtlScreen.getByText(
+        "When gainers dominate losers, look at Rising. When losers dominate gainers, look at Falling.",
+      ),
+    ).toHaveClass("alert-warning", "alert-subtle");
     expect(rtlScreen.getByText("Rising")).toBeInTheDocument();
     expect(rtlScreen.getByText("Falling")).toBeInTheDocument();
     expect(
