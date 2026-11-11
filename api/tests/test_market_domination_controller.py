@@ -1,5 +1,5 @@
 from unittest.mock import Mock
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 import pytest
@@ -266,7 +266,9 @@ def test_get_market_breadth_series_filters_by_exchange():
     assert result["market_breadth_ma"] == pytest.approx(result["market_breadth"])
 
 
-def test_gainers_losers_aggregate_uses_every_registered_futures_contract(client):
+def test_gainers_losers_aggregate_uses_registered_contracts_at_15_minute_snapshots(
+    client,
+):
     session = _make_session()
     symbols = [f"AGGTEST{i:02d}USDTM" for i in range(12)]
     other_exchange_symbol = "AGGBINANCEUSDTM"
@@ -283,6 +285,21 @@ def test_gainers_losers_aggregate_uses_every_registered_futures_contract(client)
         )
     )
     now = datetime(2026, 11, 10, 11, tzinfo=timezone.utc)
+    previous = now - timedelta(minutes=15)
+    session.add_all(
+        MarketBreadthTable(
+            timestamp=recorded_at,
+            source=ExchangeId.KUCOIN.value,
+            advancers=1,
+            decliners=0,
+            adp=1.0,
+            avg_gain=1.0,
+            avg_loss=0.0,
+            total_volume=100.0,
+            strength_index=1.0,
+        )
+        for recorded_at in (now, previous)
+    )
     session.add_all(
         TopGainersLosersSeriesTable(
             source="kucoin_futures",
@@ -333,10 +350,18 @@ def test_gainers_losers_aggregate_uses_every_registered_futures_contract(client)
             ),
             FuturesPriceSampleTable(
                 source="kucoin_futures",
-                recorded_at=now.replace(hour=10),
+                recorded_at=previous,
                 symbol=symbols[0],
                 last_price=1.0,
                 price_change_percent=1.0,
+                turnover_24h=100.0,
+            ),
+            FuturesPriceSampleTable(
+                source="kucoin_futures",
+                recorded_at=now.replace(hour=10),
+                symbol=symbols[0],
+                last_price=1.0,
+                price_change_percent=100.0,
                 turnover_24h=100.0,
             ),
         ]
@@ -344,7 +369,7 @@ def test_gainers_losers_aggregate_uses_every_registered_futures_contract(client)
     session.commit()
 
     try:
-        response = client.get("/charts/gainers-losers-aggregate?limit=1")
+        response = client.get("/charts/gainers-losers-aggregate?limit=2")
         assert response.status_code == 200
         assert response.json()["data"] == [
             {
@@ -353,7 +378,14 @@ def test_gainers_losers_aggregate_uses_every_registered_futures_contract(client)
                 "loser_magnitude": 8.0,
                 "advancers": 8,
                 "decliners": 4,
-            }
+            },
+            {
+                "timestamp": "2026-11-10T10:45:00+00:00",
+                "gainer_magnitude": 1.0,
+                "loser_magnitude": 0.0,
+                "advancers": 1,
+                "decliners": 0,
+            },
         ]
     finally:
         session.execute(
