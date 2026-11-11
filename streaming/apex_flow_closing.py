@@ -1,5 +1,5 @@
-import numpy as np
-from pandas import Series
+from pybinbot import numpy as np
+from pybinbot import Series
 from pandera.typing import DataFrame as TypedDataFrame
 from pybinbot import BotModel, Indicators, KlineSchema
 

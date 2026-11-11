@@ -1,6 +1,6 @@
 from typing import Union
 
-from pandas import DataFrame
+from pybinbot import DataFrame
 from pybinbot import (
     BinanceApi,
     BotModel,

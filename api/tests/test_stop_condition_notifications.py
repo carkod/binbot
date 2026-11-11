@@ -3,7 +3,7 @@ from typing import Any, cast
 from unittest.mock import Mock
 
 import pytest
-from pandas import DataFrame
+from pybinbot import DataFrame
 from pybinbot import (
     BinanceKlineIntervals,
     BotModel,

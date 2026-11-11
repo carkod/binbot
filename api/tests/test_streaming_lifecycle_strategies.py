@@ -6,7 +6,7 @@ from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
-from pandas import DataFrame
+from pybinbot import DataFrame
 from pybinbot import (
     BinanceKlineIntervals,
     BotModel,

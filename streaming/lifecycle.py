@@ -3,7 +3,7 @@ from time import time
 from typing import Union
 
 from kucoin_universal_sdk.model.common import RestError
-from pandas import DataFrame
+from pybinbot import DataFrame
 from pybinbot import (
     BinanceKlineIntervals,
     BotBase,
