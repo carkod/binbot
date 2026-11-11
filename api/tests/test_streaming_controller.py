@@ -3,7 +3,7 @@ import types
 from contextlib import nullcontext
 from typing import Any, cast
 
-from pybinbot import pandas as pd
+import pandas as pd
 import pytest
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
 from kucoin_universal_sdk.model.common import RestError

@@ -1,4 +1,4 @@
-from pybinbot import Series
+from pandas import Series
 from pybinbot import MarketType, Position, round_numbers
 
 from api.tools.utils import clamp

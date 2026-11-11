@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import ClassVar, Protocol
 
-from pybinbot import DataFrame
+from pandas import DataFrame
 from pybinbot import BinanceKlineIntervals, BotModel, MarketBreadthSeries, Position
 
 
