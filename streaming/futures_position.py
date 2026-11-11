@@ -545,7 +545,7 @@ class FuturesPosition(PositionMarket):
             if raw_reference_price is None:
                 return False, "the signal reference price is unavailable"
             reference_price = float(raw_reference_price)
-        except (TypeError, ValueError, ZeroDivisionError):
+        except TypeError, ValueError, ZeroDivisionError:
             return False, "live continuation inputs are invalid"
 
         ema20 = ema(closes, 20)[-1]

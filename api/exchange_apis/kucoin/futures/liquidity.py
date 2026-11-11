@@ -41,7 +41,7 @@ def _levels(raw_levels: Any, *, descending: bool) -> tuple[OrderBookLevel, ...]:
         try:
             price = float(raw_level[0])
             contracts = float(raw_level[1])
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             continue
         if price <= 0 or contracts <= 0:
             continue

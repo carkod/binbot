@@ -73,7 +73,7 @@ def normalize_entry_klines(klines: list) -> list:
             dashboard_close = float(candle[2])
             dashboard_high = float(candle[3])
             dashboard_low = float(candle[4])
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             normalized_klines.append(candle)
             continue
 
@@ -277,7 +277,7 @@ class EntryPricing(OrderExecution):
             current_low = float(current_candle[3])
             current_close = float(current_candle[4])
             closes.append(current_close)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return False, "live pullback validation inputs are invalid", soft_limit_pct
 
         if (

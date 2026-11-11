@@ -49,7 +49,7 @@ class TopGainersLosersSeriesCrud:
                 and float(contract.turnover_of24h) > 0
                 and contract.price_chg_pct is not None
             )
-        except (AttributeError, TypeError, ValueError):
+        except AttributeError, TypeError, ValueError:
             return False
 
     @classmethod

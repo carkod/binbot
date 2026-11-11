@@ -51,7 +51,7 @@ class MarketDominationController:
                     and float(item.last_trade_price) > 0
                     and float(item.turnover_of24h) > 0
                 )
-            except (AttributeError, TypeError, ValueError):
+            except AttributeError, TypeError, ValueError:
                 return None
             if not is_active_usdt_perpetual:
                 return None

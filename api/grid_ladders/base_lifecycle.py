@@ -170,7 +170,7 @@ class BaseLifecycle(ABC):
         for raw_price in (details.avg_deal_price, details.price, fallback):
             try:
                 price = float(raw_price)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 continue
             if price > 0:
                 return price
