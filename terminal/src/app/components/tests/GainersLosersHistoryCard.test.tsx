@@ -14,11 +14,15 @@ type PlotlyProps = {
     name?: string;
     x?: string[];
     y?: Array<number | null>;
-    stackgroup?: string;
     customdata?: Array<Array<number>>;
+    hovertemplate?: string;
   }>;
   layout: {
-    yaxis?: { title?: { text?: string }; range?: number[] };
+    yaxis?: {
+      title?: { text?: string };
+      range?: number[];
+      zeroline?: boolean;
+    };
     yaxis2?: unknown;
   };
 };
@@ -51,40 +55,54 @@ const points: GainersLosersAggregatePoint[] = [
 describeBlock("GainersLosersHistoryCard", () => {
   beforeEachTest(() => plotlyChartMock.mockClear());
 
-  testCase(
-    "shows the hourly gain/loss magnitude share and preserves the absolute scale",
-    () => {
-      render(<GainersLosersHistoryCard points={points} />);
+  testCase("shows one signed balance line for gain and loss magnitude", () => {
+    render(<GainersLosersHistoryCard points={points} />);
 
-      expectValue(rtlScreen.getByText("Gainers 75.0%")).toBeInTheDocument();
-      expectValue(plotlyChartMock).toHaveBeenCalledTimes(1);
-      const chart = plotlyChartMock.mock.calls[0][0] as PlotlyProps;
-      expectValue(chart.data.map((trace) => trace.name)).toEqual([
-        "Gainers",
-        "Losers",
-      ]);
-      expectValue(chart.data[0].x).toEqual([
-        "2026-11-10T10:00:00Z",
-        "2026-11-10T11:00:00Z",
-      ]);
-      expectValue(chart.data[0].y).toEqual([5, 30]);
-      expectValue(chart.data[1].y).toEqual([15, 10]);
-      expectValue(chart.data[0].stackgroup).toBe("one");
-      expectValue(chart.data[1].stackgroup).toBe("one");
-      expectValue(chart.data[0].customdata).toEqual([
-        [25, 75, 20, 25, 15],
-        [75, 25, 40, 30, 10],
-      ]);
-      expectValue(chart.layout.yaxis?.title?.text).toBe(
-        "Combined 24h magnitude (pts)",
-      );
-      expectValue(chart.layout.yaxis?.range).toBeUndefined();
-      expectValue(chart.layout.yaxis2).toBeUndefined();
-    },
-  );
+    expectValue(rtlScreen.getByText("Balance +50.0%")).toBeInTheDocument();
+    expectValue(plotlyChartMock).toHaveBeenCalledTimes(1);
+    const chart = plotlyChartMock.mock.calls[0][0] as PlotlyProps;
+    expectValue(chart.data.map((trace) => trace.name)).toEqual([
+      "Gain/loss balance",
+    ]);
+    expectValue(chart.data[0].x).toEqual([
+      "2026-11-10T10:00:00Z",
+      "2026-11-10T11:00:00Z",
+    ]);
+    expectValue(chart.data[0].y).toEqual([-50, 50]);
+    expectValue(chart.data[0].customdata).toEqual([
+      [25, 75, 25, 15],
+      [75, 25, 30, 10],
+    ]);
+    expectValue(chart.data[0].hovertemplate).toContain("Balance %{y:+.1f}%");
+    expectValue(chart.layout.yaxis?.title?.text).toBe("Gain/loss balance (%)");
+    expectValue(chart.layout.yaxis?.range).toEqual([-100, 100]);
+    expectValue(chart.layout.yaxis?.zeroline).toBe(true);
+    expectValue(chart.layout.yaxis2).toBeUndefined();
+  });
 
   testCase("shows a placeholder without ranked moves", () => {
     render(<GainersLosersHistoryCard points={[]} />);
+
+    expectValue(
+      rtlScreen.getByText("Waiting for hourly futures price snapshots."),
+    ).toBeInTheDocument();
+    expectValue(plotlyChartMock).not.toHaveBeenCalled();
+  });
+
+  testCase("shows a placeholder when both sides have zero magnitude", () => {
+    render(
+      <GainersLosersHistoryCard
+        points={[
+          {
+            timestamp: "2026-11-10T11:00:00Z",
+            gainer_magnitude: 0,
+            loser_magnitude: 0,
+            advancers: 0,
+            decliners: 0,
+          },
+        ]}
+      />,
+    );
 
     expectValue(
       rtlScreen.getByText("Waiting for hourly futures price snapshots."),

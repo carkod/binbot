@@ -196,7 +196,10 @@ class TopGainersLosersSeriesCrud:
 
         return sorted(snapshots.values(), key=lambda s: s["recorded_at"], reverse=True)
 
-    def query_aggregate_series(self, limit: int = 168) -> list[dict[str, Any]]:
+    @classmethod
+    def query_aggregate_series(
+        cls, session: Session, limit: int = 168
+    ) -> list[dict[str, Any]]:
         """Gain/loss magnitude for registered KuCoin futures from stored snapshots."""
         prices = cast(Table, getattr(FuturesPriceSampleTable, "__table__"))
         symbol_exchanges = cast(Table, getattr(SymbolExchangeTable, "__table__"))
@@ -208,56 +211,55 @@ class TopGainersLosersSeriesCrud:
         # every registered contract's price sample at those times, not the top 10.
         recent_timestamps = (
             sa_select(rankings.c.recorded_at)
-            .where(rankings.c.source == self.SOURCE)
+            .where(rankings.c.source == cls.SOURCE)
             .distinct()
             .order_by(rankings.c.recorded_at.desc())
             .limit(limit)
             .subquery()
         )
-        with get_db_session(self._external_session) as session:
-            rows = (
-                session.execute(
-                    sa_select(
-                        prices.c.recorded_at,
-                        func.sum(
-                            case(
-                                (
-                                    prices.c.price_change_percent > 0,
-                                    prices.c.price_change_percent,
-                                ),
-                                else_=0.0,
-                            )
-                        ).label("gainer_magnitude"),
-                        func.sum(
-                            case(
-                                (
-                                    prices.c.price_change_percent < 0,
-                                    -prices.c.price_change_percent,
-                                ),
-                                else_=0.0,
-                            )
-                        ).label("loser_magnitude"),
-                        func.sum(
-                            case((prices.c.price_change_percent > 0, 1), else_=0)
-                        ).label("advancers"),
-                        func.sum(
-                            case((prices.c.price_change_percent < 0, 1), else_=0)
-                        ).label("decliners"),
-                    )
-                    .join(
-                        recent_timestamps,
-                        prices.c.recorded_at == recent_timestamps.c.recorded_at,
-                    )
-                    .where(
-                        prices.c.source == self.SOURCE,
-                        prices.c.symbol.in_(registered_symbols),
-                    )
-                    .group_by(prices.c.recorded_at)
-                    .order_by(prices.c.recorded_at.desc())
+        rows = (
+            session.execute(
+                sa_select(
+                    prices.c.recorded_at,
+                    func.sum(
+                        case(
+                            (
+                                prices.c.price_change_percent > 0,
+                                prices.c.price_change_percent,
+                            ),
+                            else_=0.0,
+                        )
+                    ).label("gainer_magnitude"),
+                    func.sum(
+                        case(
+                            (
+                                prices.c.price_change_percent < 0,
+                                -prices.c.price_change_percent,
+                            ),
+                            else_=0.0,
+                        )
+                    ).label("loser_magnitude"),
+                    func.sum(
+                        case((prices.c.price_change_percent > 0, 1), else_=0)
+                    ).label("advancers"),
+                    func.sum(
+                        case((prices.c.price_change_percent < 0, 1), else_=0)
+                    ).label("decliners"),
                 )
-                .mappings()
-                .all()
+                .join(
+                    recent_timestamps,
+                    prices.c.recorded_at == recent_timestamps.c.recorded_at,
+                )
+                .where(
+                    prices.c.source == cls.SOURCE,
+                    prices.c.symbol.in_(registered_symbols),
+                )
+                .group_by(prices.c.recorded_at)
+                .order_by(prices.c.recorded_at.desc())
             )
+            .mappings()
+            .all()
+        )
         return [
             {
                 "timestamp": row["recorded_at"].replace(tzinfo=timezone.utc)

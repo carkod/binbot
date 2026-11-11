@@ -8,8 +8,7 @@ type GainersLosersHistoryCardProps = {
   points: GainersLosersAggregatePoint[];
 };
 
-const GAINER_COLOR = "#28a745";
-const LOSER_COLOR = "#dc3545";
+const BALANCE_COLOR = "#51cbce";
 
 const GainersLosersHistoryCard: FC<GainersLosersHistoryCardProps> = ({
   points,
@@ -26,21 +25,19 @@ const GainersLosersHistoryCard: FC<GainersLosersHistoryCardProps> = ({
       const magnitude = gain + loss;
       return {
         timestamp: point.timestamp,
-        gain,
-        loss,
         gainShare: magnitude > 0 ? (gain / magnitude) * 100 : null,
         lossShare: magnitude > 0 ? (loss / magnitude) * 100 : null,
+        balance: magnitude > 0 ? ((gain - loss) / magnitude) * 100 : null,
         advancers: point.advancers,
         decliners: point.decliners,
       };
     });
   const latest = history.at(-1);
-  const hasHistory = history.some((point) => point.gainShare !== null);
+  const hasHistory = history.some((point) => point.balance !== null);
   const timestamps = history.map((point) => point.timestamp);
   const hoverData = history.map((point) => [
     point.gainShare ?? 0,
     point.lossShare ?? 0,
-    point.gain + point.loss,
     point.advancers,
     point.decliners,
   ]);
@@ -58,17 +55,26 @@ const GainersLosersHistoryCard: FC<GainersLosersHistoryCardProps> = ({
               className="mt-0 d-flex align-items-center gap-2"
             >
               <span>Gainers vs Losers Trend</span>
-              {latest?.gainShare !== null &&
-                latest?.gainShare !== undefined && (
-                  <Badge bg={latest.gainShare >= 50 ? "success" : "danger"}>
-                    Gainers {latest.gainShare.toFixed(1)}%
-                  </Badge>
-                )}
+              {latest?.balance !== null && latest?.balance !== undefined && (
+                <Badge
+                  bg={
+                    latest.balance > 0
+                      ? "success"
+                      : latest.balance < 0
+                        ? "danger"
+                        : "secondary"
+                  }
+                >
+                  Balance {latest.balance > 0 ? "+" : ""}
+                  {latest.balance.toFixed(1)}%
+                </Badge>
+              )}
             </Card.Title>
             <p className="u-text-left mb-0">
               Hourly snapshots of all registered, active KuCoin futures
-              contracts. The total height sums their rolling 24h changes; each
-              color shows that side&apos;s share.
+              contracts. The line shows gain magnitude minus loss magnitude as a
+              percentage of their combined magnitude. Above zero, gainers lead;
+              below zero, losers lead.
             </p>
           </Col>
         </Row>
@@ -79,29 +85,14 @@ const GainersLosersHistoryCard: FC<GainersLosersHistoryCardProps> = ({
             data={[
               {
                 x: timestamps,
-                y: history.map((point) => point.gain),
+                y: history.map((point) => point.balance),
                 type: "scatter",
                 mode: "lines",
-                stackgroup: "one",
-                name: "Gainers",
-                line: { color: GAINER_COLOR, width: 2 },
-                fillcolor: "rgba(40,167,69,0.68)",
+                name: "Gain/loss balance",
+                line: { color: BALANCE_COLOR, width: 3 },
                 customdata: hoverData,
                 hovertemplate:
-                  "+%{y:.1f} summed pts (%{customdata[0]:.1f}% share)<br>%{customdata[3]:.0f} rising contracts<br>Combined magnitude: %{customdata[2]:.1f} pts<extra>Gainers</extra>",
-              },
-              {
-                x: timestamps,
-                y: history.map((point) => point.loss),
-                type: "scatter",
-                mode: "lines",
-                stackgroup: "one",
-                name: "Losers",
-                line: { color: LOSER_COLOR, width: 2 },
-                fillcolor: "rgba(220,53,69,0.68)",
-                customdata: hoverData,
-                hovertemplate:
-                  "−%{y:.1f} summed pts (%{customdata[1]:.1f}% share)<br>%{customdata[4]:.0f} falling contracts<extra>Losers</extra>",
+                  "Balance %{y:+.1f}%<br>Gainers: %{customdata[0]:.1f}% share (%{customdata[2]:.0f} contracts)<br>Losers: %{customdata[1]:.1f}% share (%{customdata[3]:.0f} contracts)<extra></extra>",
               },
             ]}
             layout={{
@@ -116,9 +107,11 @@ const GainersLosersHistoryCard: FC<GainersLosersHistoryCardProps> = ({
                 showgrid: false,
               },
               yaxis: {
-                title: { text: "Combined 24h magnitude (pts)", standoff: 14 },
+                title: { text: "Gain/loss balance (%)", standoff: 14 },
                 automargin: true,
-                rangemode: "tozero",
+                range: [-100, 100],
+                zeroline: true,
+                zerolinecolor: "#6c757d",
                 showgrid: true,
               },
               legend: {

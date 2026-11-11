@@ -30,9 +30,7 @@ def get_gainers_losers_aggregate(
     session: Session = Depends(get_session),
 ):
     try:
-        data = TopGainersLosersSeriesCrud(session=session).query_aggregate_series(
-            limit=limit
-        )
+        data = TopGainersLosersSeriesCrud.query_aggregate_series(session, limit=limit)
         return json_response(
             {
                 "data": data,
