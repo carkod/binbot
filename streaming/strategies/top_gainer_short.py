@@ -68,7 +68,7 @@ class TopGainerShortLifecycleStrategy(DefaultLifecycleStrategy):
             timestamps = [int(candle[0]) for candle in candles]
             highs = [float(candle[2]) for candle in candles]
             lows = [float(candle[3]) for candle in candles]
-        except (IndexError, TypeError, ValueError):
+        except IndexError, TypeError, ValueError:
             return None
         if any(
             later - earlier != context.interval_ms

@@ -106,7 +106,7 @@ class KucoinRateLimiter(Interceptor):
                 limit = int(resp.headers.get("gw-ratelimit-limit", "-1"))
                 remaining = int(resp.headers.get("gw-ratelimit-remaining", "-1"))
                 reset_ms = int(resp.headers.get("gw-ratelimit-reset", "-1"))
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 limit = remaining = reset_ms = -1
 
             if limit > 0 and remaining >= 0:
