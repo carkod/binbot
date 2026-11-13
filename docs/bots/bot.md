@@ -152,9 +152,8 @@ never use strategy repricing or market fallback.
 Conditional-entry failures are timestamped on the bot and appended to its stored
 logs before the exception stops the attempt. Repeated identical failure messages
 are suppressed during retries. Logging updates only the logs, preserving newer
-position state. Deleted candidates retain their reason on the in-memory model
-and in the activation response or streaming logs; they are never saved again just
-to retain a log message.
+position state. Closed candidates persist their reason with their terminal status
+and return the same reason in the activation response or streaming logs.
 
 Candidates compete for available futures funds and `max_active_autotrade_bots`.
 Waiting conditional candidates do not occupy execution slots; active bots,
@@ -182,6 +181,11 @@ and logs for analysis. Bot GET endpoints exclude them by default, including
 `status=all`. Use `GET /bot?status=closed` for archived candidates only, or
 `include_closed=true` to include them in lists, ID/symbol lookups, and algorithm
 rankings. They do not occupy active bot slots and cannot be reactivated.
+
+Deactivation retires a waiting candidate under the same lock used for entry
+submission. If submission has already started, deactivation reports that the stop
+is unconfirmed and requires reconciliation before retrying; it does not claim
+success while an entry can still fill.
 The deadline stops governing the position after entry fills. Immediate strategies
 retain their existing strategy-specific order timeouts.
 
