@@ -25,7 +25,7 @@ from pybinbot import (
     round_numbers,
 )
 
-from api.deals.conditional_entry import ConditionalEntryDeleted
+from api.deals.conditional_entry import ConditionalEntryClosed
 from api.databases.crud.autotrade_crud import AutotradeCrud
 from api.exchange_apis.kucoin.futures.entry_pricing import (
     EntryLiquidityError,
@@ -831,6 +831,8 @@ class Lifecycle:
 
     def process_tick(self) -> BotModel:
         bot = self.execution.active_bot
+        if bot.status == Status.closed:
+            return bot
         if (
             bot.status == Status.pending
             and bot.entry_mode == EntryMode.conditional_limit
@@ -839,11 +841,9 @@ class Lifecycle:
         ):
             try:
                 return self.execution.open_deal(trigger_entry=True)
-            except ConditionalEntryDeleted as error:
+            except ConditionalEntryClosed as error:
                 logging.info("Conditional entry %s: %s", bot.id, error)
-                bot = self.execution.active_bot
-                bot.status = Status.inactive
-                return bot
+                return self.execution.active_bot
             except (BinbotErrors, ValueError, RestError) as error:
                 logging.warning("Conditional entry %s deferred: %s", bot.id, error)
                 return self.execution.active_bot
@@ -889,7 +889,7 @@ class Lifecycle:
             cls.notify_stop_condition_hits(close_price)
         self.execution.active_bot = cls.order_updates()
         bot = self.execution.active_bot
-        if bot.status in {Status.error, Status.inactive}:
+        if bot.status in {Status.error, Status.inactive, Status.closed}:
             return bot
         if bot.status == Status.completed and bot.deal.position_size_order is None:
             return bot

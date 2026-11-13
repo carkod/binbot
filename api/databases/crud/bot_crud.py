@@ -158,6 +158,7 @@ class BotTableCrud:
         limit: int = 200,
         offset: int = 0,
         bot_name: str | None = None,
+        include_closed: bool = False,
     ) -> Sequence[BotTable]:
 
         stmt = select(BotTable).options(
@@ -168,6 +169,8 @@ class BotTableCrud:
 
         if status and status != Status.all:
             stmt = stmt.where(BotTable.status == status)
+        elif not include_closed:
+            stmt = stmt.where(BotTable.status != Status.closed)
 
         if start_date:
             stmt = stmt.where(BotTable.created_at >= int(start_date))
@@ -201,6 +204,7 @@ class BotTableCrud:
         symbol: str | None = None,
         status: Status | None = None,
         position: Position | None = None,
+        include_closed: bool = False,
     ) -> BotTable:
 
         with get_db_session(self._external_session) as s:
@@ -216,13 +220,16 @@ class BotTableCrud:
             elif symbol:
                 stmt = stmt.where(BotTable.pair == symbol)
 
-                if status and status != Status.all:
-                    stmt = stmt.where(BotTable.status == status)
-                elif position:
+                if position and (not status or status == Status.all):
                     stmt = stmt.where(BotTable.position == position)
 
             else:
                 raise BinbotErrors("Invalid bot id or symbol")
+
+            if status and status != Status.all:
+                stmt = stmt.where(BotTable.status == status)
+            elif not include_closed:
+                stmt = stmt.where(BotTable.status != Status.closed)
 
             bot = s.exec(stmt).first()
 
@@ -459,7 +466,7 @@ class BotTableCrud:
     # Utility
     # --------------------------------------------------
 
-    def get_list_algo(self) -> list[AlgoRankingItem]:
+    def get_list_algo(self, include_closed: bool = False) -> list[AlgoRankingItem]:
         """
         Query all bots, group by name, and return a list of AlgoRankingItem
         with non-repeating bot names, their counts, and aggregated profit,
@@ -481,6 +488,8 @@ class BotTableCrud:
             .group_by(BotTable.name)
             .order_by(desc("bot_profit"))
         )
+        if not include_closed:
+            stmt = stmt.where(BotTable.status != Status.closed)
 
         with get_db_session(self._external_session) as s:
             rows = s.exec(stmt).all()

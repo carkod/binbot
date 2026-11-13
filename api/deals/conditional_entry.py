@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Generator
 from contextlib import contextmanager
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NoReturn
 
 from kucoin_universal_sdk.model.common import RestError
 from pybinbot import (
@@ -37,8 +37,8 @@ class EntryCapacityError(BinbotErrors):
     """The candidate may retry when an execution slot becomes available."""
 
 
-class ConditionalEntryDeleted(BinbotErrors):
-    """An unfunded or expired candidate was deleted before exchange submission."""
+class ConditionalEntryClosed(BinbotErrors):
+    """An unfunded or expired candidate was archived before exchange submission."""
 
 
 class ConditionalEntry:
@@ -46,6 +46,14 @@ class ConditionalEntry:
 
     def __init__(self, execution: KucoinPositionDeal) -> None:
         self.execution = execution
+
+    def close(self, bot: BotModel, reason: str) -> NoReturn:
+        """Preserve a failed candidate and its closure reason for analysis."""
+        bot.status = Status.closed
+        message = f"Conditional entry closed: {reason}"
+        bot.add_log(message)
+        self.execution.controller.save(bot)
+        raise ConditionalEntryClosed(message)
 
     @contextmanager
     def entry_submission(self, *, check_capacity: bool = True) -> Generator[BotModel]:
@@ -81,9 +89,8 @@ class ConditionalEntry:
                     if occupied >= settings.max_active_autotrade_bots:
                         raise EntryCapacityError("Waiting for an available bot slot")
                 yield bot
-            except ConditionalEntryDeleted as error:
-                # Keep the reason on the returned model without recreating its row.
-                bot.add_log(str(error))
+            except ConditionalEntryClosed as error:
+                # Closure already saved the reason and terminal status together.
                 raise
             except (BinbotErrors, ValueError, RestError) as error:
                 message = f"Conditional entry deferred: {error}"
@@ -116,14 +123,14 @@ class ConditionalEntry:
         """Manual activation waits for streaming rather than submitting an order."""
         with self.entry_submission(check_capacity=False) as bot:
             self.execution.active_bot = bot
-            if bot.entry_mode != EntryMode.conditional_limit:
+            if (
+                bot.entry_mode != EntryMode.conditional_limit
+                or bot.status == Status.closed
+            ):
                 return bot
             if bot.deal.entry_client_oid is None and not bot.orders:
                 if timestamp() >= bot.entry_expires_at:
-                    self.execution.controller.delete([str(bot.id)])
-                    raise ConditionalEntryDeleted(
-                        "Conditional entry deleted: expired before activation"
-                    )
+                    self.close(bot, "expired before activation")
                 bot.status = Status.pending
                 bot.add_log("Conditional entry waiting for its limit price")
                 self.execution.controller.save(bot)
@@ -149,10 +156,7 @@ class ConditionalEntry:
                 order, contracts, limit_price = restored
             else:
                 if timestamp() >= bot.entry_expires_at:
-                    execution.controller.delete([str(bot.id)])
-                    raise ConditionalEntryDeleted(
-                        "Conditional entry deleted: expired before submission"
-                    )
+                    self.close(bot, "expired before submission")
                 if bot.entry_price is None:
                     raise BinbotErrors("Conditional entry requires an entry price")
                 tick_size = float(execution.kucoin_symbol_data.tick_size)
@@ -183,18 +187,12 @@ class ConditionalEntry:
                     available_balance, limit_price
                 )
                 if sized_contracts <= 0:
-                    execution.controller.delete([str(bot.id)])
-                    raise ConditionalEntryDeleted(
-                        "Conditional entry deleted: insufficient futures funds"
-                    )
+                    self.close(bot, "insufficient futures funds")
                 execution.validate_entry_margin(
                     sized_contracts, limit_price, available_balance
                 )
                 if timestamp() >= bot.entry_expires_at:
-                    execution.controller.delete([str(bot.id)])
-                    raise ConditionalEntryDeleted(
-                        "Conditional entry deleted: expired before submission"
-                    )
+                    self.close(bot, "expired before submission")
                 contracts = sized_contracts
                 order = execution.submit_entry_order(
                     sized_contracts, limit_price, post_only=False

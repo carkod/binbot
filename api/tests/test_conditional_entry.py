@@ -26,7 +26,7 @@ from api.databases.tables.bot_table import BotTable
 from api.databases.tables.deal_table import DealTable
 from api.deals.conditional_entry import (
     ConditionalEntry,
-    ConditionalEntryDeleted,
+    ConditionalEntryClosed,
     EntryCapacityError,
 )
 from .test_kucoin_futures_contract_sizing import make_sizing_deal
@@ -134,53 +134,78 @@ def test_manual_activation_arms_without_submitting(conditional_deal):
     balance.assert_not_called()
 
 
-def test_insufficient_funds_deletes_only_unsubmitted_candidate(conditional_deal):
+@pytest.mark.parametrize("trigger_entry", [False, True])
+def test_closed_candidate_cannot_be_reactivated(conditional_deal, trigger_entry):
+    execution, _, balance = conditional_deal
+    execution.active_bot.status = Status.closed
+    result = execution.open_deal(trigger_entry=trigger_entry)
+    assert result.status == Status.closed
+    execution.controller.save.assert_not_called()
+    execution.kucoin_futures_api.place_futures_order.assert_not_called()
+    balance.assert_not_called()
+
+
+def test_closed_candidate_is_not_processed_by_streaming(conditional_deal):
+    execution, _, balance = conditional_deal
+    execution.active_bot.status = Status.closed
+    lifecycle = Lifecycle.__new__(Lifecycle)
+    lifecycle.execution = execution
+    assert lifecycle.process_tick() is execution.active_bot
+    execution.controller.save.assert_not_called()
+    balance.assert_not_called()
+
+
+def test_insufficient_funds_archives_unsubmitted_candidate(conditional_deal):
     execution, _, balance = conditional_deal
     balance.return_value = ({}, 0, 0)
-    with pytest.raises(ConditionalEntryDeleted):
+    with pytest.raises(ConditionalEntryClosed):
         execution.open_deal(trigger_entry=True)
-    execution.controller.delete.assert_called_once_with([str(execution.active_bot.id)])
+    execution.controller.delete.assert_not_called()
+    execution.controller.save.assert_called_once_with(execution.active_bot)
+    assert execution.active_bot.status == Status.closed
     assert execution.active_bot.deal.entry_client_oid is None
     execution.kucoin_futures_api.place_futures_order.assert_not_called()
 
 
 @pytest.mark.parametrize("trigger_entry", [False, True])
-def test_expired_candidate_is_deleted_without_submission(
+def test_expired_candidate_is_closed_without_submission(
     conditional_deal, trigger_entry
 ):
     execution, _, balance = conditional_deal
     execution.active_bot.entry_expires_at = 2000
-    with pytest.raises(ConditionalEntryDeleted, match="expired before"):
+    with pytest.raises(ConditionalEntryClosed, match="expired before"):
         execution.open_deal(trigger_entry=trigger_entry)
-    execution.controller.delete.assert_called_once_with([str(execution.active_bot.id)])
-    execution.controller.save.assert_not_called()
+    execution.controller.delete.assert_not_called()
+    execution.controller.save.assert_called_once_with(execution.active_bot)
+    assert execution.active_bot.status == Status.closed
     balance.assert_not_called()
     execution.kucoin_futures_api.place_futures_order.assert_not_called()
 
 
-def test_candidate_expiring_during_sizing_is_deleted_before_submission(
+def test_candidate_expiring_during_sizing_is_closed_before_submission(
     conditional_deal, monkeypatch
 ):
     execution, _, balance = conditional_deal
     times = iter([2000, 2000, 2000, 100_000])
     monkeypatch.setattr("api.deals.conditional_entry.timestamp", lambda: next(times))
-    with pytest.raises(ConditionalEntryDeleted, match="expired before submission"):
+    with pytest.raises(ConditionalEntryClosed, match="expired before submission"):
         execution.open_deal(trigger_entry=True)
     balance.assert_called_once()
-    execution.controller.delete.assert_called_once_with([str(execution.active_bot.id)])
-    execution.controller.save.assert_not_called()
+    execution.controller.delete.assert_not_called()
+    execution.controller.save.assert_called_once_with(execution.active_bot)
+    assert execution.active_bot.status == Status.closed
     execution.kucoin_futures_api.place_futures_order.assert_not_called()
 
 
-def test_lifecycle_does_not_save_a_deleted_expired_candidate(conditional_deal):
+def test_lifecycle_returns_persisted_closed_candidate(conditional_deal):
     execution, _, _ = conditional_deal
     execution.active_bot.entry_expires_at = 2000
     lifecycle = Lifecycle.__new__(Lifecycle)
     lifecycle.execution = execution
     result = lifecycle.process_tick()
-    assert result.status == Status.inactive
-    execution.controller.delete.assert_called_once_with([str(result.id)])
-    execution.controller.save.assert_not_called()
+    assert result.status == Status.closed
+    execution.controller.delete.assert_not_called()
+    execution.controller.save.assert_called_once_with(result)
 
 
 def test_stale_quote_does_not_trigger(conditional_deal):
@@ -261,7 +286,7 @@ def test_expiry_retains_bot_when_cancellation_finds_exposure(
 
 
 @pytest.mark.parametrize(
-    "exchange_status, filled_size, fill_price, position_qty, actual_fill, deleted",
+    "exchange_status, filled_size, fill_price, position_qty, actual_fill, closed",
     [
         (OrderStatus.CANCELED, 0, 0, 0, (0, 0), True),
         (OrderStatus.CANCELED, 2, 10, 2, (2, 10), False),
@@ -272,7 +297,7 @@ def test_expiry_retains_bot_when_cancellation_finds_exposure(
         (None, 0, 0, 0, (0, 0), False),
     ],
 )
-def test_submitted_expiry_deletes_only_after_confirming_no_fills_or_position(
+def test_submitted_expiry_closes_only_after_confirming_no_fills_or_position(
     conditional_deal,
     monkeypatch,
     exchange_status,
@@ -280,7 +305,7 @@ def test_submitted_expiry_deletes_only_after_confirming_no_fills_or_position(
     fill_price,
     position_qty,
     actual_fill,
-    deleted,
+    closed,
 ):
     execution, _, _ = conditional_deal
     execution.open_deal(trigger_entry=True)
@@ -325,15 +350,14 @@ def test_submitted_expiry_deletes_only_after_confirming_no_fills_or_position(
     position._expire_unfilled_base_order(order, execution.kucoin_symbol)
 
     api.cancel_futures_order.assert_called_once_with(str(order.order_id))
-    if deleted:
-        execution.controller.delete.assert_called_once_with(
-            [str(execution.active_bot.id)]
-        )
-        execution.controller.save.assert_not_called()
-        assert execution.active_bot.status == Status.inactive
+    if closed:
+        execution.controller.delete.assert_not_called()
+        execution.controller.save.assert_called_once_with(execution.active_bot)
+        assert execution.active_bot.status == Status.closed
+        assert order.status == OrderStatus.EXPIRED
+        assert order.qty == 0
         assert any(
-            "Deleted expired conditional bot" in log
-            for log in execution.active_bot.logs
+            "Closed expired conditional bot" in log for log in execution.active_bot.logs
         )
     else:
         execution.controller.delete.assert_not_called()
@@ -551,7 +575,7 @@ def test_deleted_candidate_keeps_timestamped_reason_without_being_saved(
 ):
     execution, _, _ = conditional_deal
     execution.active_bot.entry_expires_at = 2000
-    with pytest.raises(ConditionalEntryDeleted):
+    with pytest.raises(ConditionalEntryClosed):
         execution.open_deal(trigger_entry=trigger_entry)
     assert execution.active_bot.logs[-1].startswith("[")
     assert "Conditional entry deleted: expired before" in execution.active_bot.logs[-1]

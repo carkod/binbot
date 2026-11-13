@@ -617,10 +617,12 @@ class FuturesPosition(PositionMarket):
 
         if self.execution.active_bot.entry_mode == EntryMode.conditional_limit:
             self.execution.active_bot.add_log(
-                f"Deleted expired conditional bot after confirming entry {order.order_id} has no fills or position."
+                f"Closed expired conditional bot after confirming entry {order.order_id} has no fills or position."
             )
-            self.execution.controller.delete([str(self.execution.active_bot.id)])
-            self.execution.active_bot.status = Status.inactive
+            order.status = OrderStatus.EXPIRED
+            order.qty = 0
+            self.execution.active_bot.status = Status.closed
+            self.execution.controller.save(self.execution.active_bot)
             return
 
         order.status = OrderStatus.EXPIRED
@@ -1004,12 +1006,10 @@ class FuturesPosition(PositionMarket):
                         ):
                             # Fill history and the exchange position were checked above.
                             self.execution.active_bot.add_log(
-                                f"Deleted expired conditional bot: entry {order.order_id} has no fills or position."
+                                f"Closed expired conditional bot: entry {order.order_id} has no fills or position."
                             )
-                            self.execution.controller.delete(
-                                [str(self.execution.active_bot.id)]
-                            )
-                            self.execution.active_bot.status = Status.inactive
+                            self.execution.active_bot.status = Status.closed
+                            self.execution.controller.save(self.execution.active_bot)
                             return self.execution.active_bot
                         self.execution.controller.update_order(order)
                         self.execution.active_bot.status = Status.error
@@ -1022,7 +1022,7 @@ class FuturesPosition(PositionMarket):
 
                     if is_pending_entry_expired:
                         self._expire_unfilled_base_order(order, kucoin_symbol)
-                        if self.execution.active_bot.status == Status.inactive:
+                        if self.execution.active_bot.status == Status.closed:
                             return self.execution.active_bot
                         continue
 

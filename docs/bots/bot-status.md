@@ -1,33 +1,33 @@
 # Bot status
-Currently there are 5 status:
-Active, inactive, error, complete, closed, archive
-These are the values of the `status` property of the bot.
 
-## Active bot
-Indicates that the bot is actively trading. It must include data in the `deal` property which contain the prices that the bot is currenly trading, at least bought price (buy_price) and price to be sold e.g. take_profit, trailling profit.
+The bot `status` enum has six stored values. `all` is a query filter.
 
-An active bot cannot update the deal, because this relies on orders, and orders have already been executed.
-Although it is allowed to "Save" again, but this relies on the research app and the websocket to trigger the change in market_updates
+| Status | Meaning |
+| --- | --- |
+| `inactive` | Saved configuration that is not trading. |
+| `pending` | Waiting for a conditional entry price or an exchange entry fill. |
+| `active` | Managing a confirmed position and its exit orders. |
+| `completed` | A trading position was closed successfully. |
+| `error` | An execution or reconciliation failure requires attention. |
+| `closed` | A failed conditional-entry candidate archived for analysis. |
 
-## Inactive bot
-Indicates the bot is not currently trading. This usually happens when the bot is created, saved but no deal is opened.
+Conditional candidates become `closed` when they expire before submission or
+cannot afford the minimum contract. Submitted entries become `closed` only after
+cancellation/reconciliation confirms no fills and no remaining position. Partial
+fills and uncertain exchange outcomes remain available for reconciliation.
 
-## Closed bot
-Bot has been manually closed. If performed correctly, it should have sold all cryptos under that market, and hedged. 
+Closing preserves the bot, signal link, deal, orders, entry configuration, and
+timestamped reason in its logs. It does not represent a completed trade and does
+not permit reactivation. There is no separate `archived` enum value.
 
-E.g. 
-1. BNBBTC bot, clicked close.
-2. BNB is sold, any active orders closed 
-3. now balance adds BTC, 
-4. BTC is sold again and converted into GBP.
+Bot GET endpoints hide closed candidates by default, including `status=all`.
+Use `status=closed` on the list endpoints to retrieve only closed candidates,
+or `include_closed=true` to include them in lists, ID/symbol lookups, and algorithm
+rankings. An explicit status filter continues to take precedence over
+`include_closed`. Active-pair queries always return only active/pending bots.
 
-If at any stage it fails to perform one the operations, errors will be appended into the bot `errors` property and status should be changed to `error`
-
-## Error bot
-During active, closing, completion, if the bot failed to do any operation, there will be errors listed under the `errors` property, and this status will be added.
-
-## Completed bot
-The bot successfully performed all of the actions without errors and closed.
-
-## Archived bot
-This status exists to unclutter the view. Bots only become archive if the user manually archives them. They will not show by default in the list of bots. They are stored for historical reference/analyses.
+The `pybinbot` dependency must include `Status.closed` before running this code.
+Apply the closed-status Alembic migration before deploying API/streaming workers.
+Its upgrade safely replays when the enum value already exists. Downgrade retains
+the value and archived records because PostgreSQL cannot remove one enum value
+without rebuilding its type and rewriting dependent data.

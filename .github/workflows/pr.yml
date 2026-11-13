@@ -44,6 +44,7 @@ jobs:
       - name: Run tests
         env:
           POSTGRES_PORT: ${{ job.services.postgres.ports['5432'] }}
+          TEST_POSTGRES_URL: postgresql+psycopg2://postgres:postgres@localhost:${{ job.services.postgres.ports['5432'] }}/postgres
         run: uv run coverage run -m pytest --vcr-record=none api/tests/
 
   python-linting:

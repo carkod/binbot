@@ -161,8 +161,9 @@ Waiting conditional candidates do not occupy execution slots; active bots,
 immediate pending entries, and submitted conditional entries do. The entry check
 and submission are serialized across API/streaming processes using PostgreSQL.
 A full bot limit leaves the candidate waiting until capacity becomes available or
-it expires. Insufficient funds for the minimum contract deletes the unsubmitted
-candidate. Sizing retains the existing affordable-contract clamp and fee-aware
+it expires. Insufficient funds for the minimum contract sets the unsubmitted
+candidate to `closed`, retaining its configuration and closure reason. Sizing
+retains the existing affordable-contract clamp and fee-aware
 margin check, so a candidate may open a smaller position than requested.
 
 There are no entry groups and no automatic sibling cancellation. Several
@@ -171,10 +172,16 @@ positions remain managed normally.
 
 The same absolute deadline covers waiting for the price and an unfilled submitted
 order; submission does not restart the six-hour clock. Expired unsubmitted bots
-are deleted. Submitted entries are cancelled and reconciled, then the bot is deleted
+are set to `closed`. Submitted entries are cancelled and reconciled, then the bot is closed
 once no fills or position remain; fills found during cancellation become managed
 positions instead. Uncertain submission outcomes
-retain their client ID for reconciliation and are never deleted as unfunded.
+retain their client ID for reconciliation and are never closed as unfunded.
+
+Closed candidates retain their IDs, signal links, deals, orders, entry configuration,
+and logs for analysis. Bot GET endpoints exclude them by default, including
+`status=all`. Use `GET /bot?status=closed` for archived candidates only, or
+`include_closed=true` to include them in lists, ID/symbol lookups, and algorithm
+rankings. They do not occupy active bot slots and cannot be reactivated.
 The deadline stops governing the position after entry fills. Immediate strategies
 retain their existing strategy-specific order timeouts.
 

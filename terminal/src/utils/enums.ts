@@ -8,6 +8,7 @@ export enum BotStatus {
   ACTIVE = "active",
   PENDING = "pending",
   COMPLETED = "completed",
+  CLOSED = "closed",
   ERROR = "error",
 }
 
