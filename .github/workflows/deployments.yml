@@ -136,7 +136,7 @@ jobs:
         github.event.pull_request.head.repo.full_name == github.repository
       )
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: Connect to Tailscale
@@ -161,4 +161,4 @@ jobs:
           ssh -i ~/.ssh/home_server_key \
             -p 2222 \
             "carkod@100.64.83.67" \
-            'cd /var/www/terminal.binbot.in && docker compose up --pull always -d && docker image prune -f'
+            '/home/carkod/bin/deploy-binbot-staging.sh'
