@@ -43,7 +43,7 @@ jobs:
           uv sync --all-extras --dev
       - name: Run tests
         env:
-          POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
+          POSTGRES_PORT: ${{ job.services.postgres.ports['5432'] }}
         run: uv run coverage run -m pytest --vcr-record=none api/tests/
 
   python-linting:
