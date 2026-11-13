@@ -96,5 +96,4 @@ class PositionManager:
         DealGateway(
             bot=bot,
             db_table=db_table,
-            base_streaming=self.base_streaming,
         ).deal_exit_orchestration(0, 0)

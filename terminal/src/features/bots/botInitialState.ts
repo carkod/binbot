@@ -3,6 +3,7 @@ import {
   BotPosition,
   QuoteAsset,
   MarketType,
+  EntryMode,
 } from "../../utils/enums";
 
 export interface Deal {
@@ -48,6 +49,10 @@ export interface Bot {
   fiat?: string;
   quote_asset: QuoteAsset;
   fiat_order_size: number;
+  created_at?: number;
+  entry_mode?: EntryMode;
+  entry_price?: number | null;
+  entry_expires_at?: number | null;
   // New bots inherit symbol leverage until the user chooses an override.
   futures_leverage?: number;
   candle_interval?: string;
@@ -88,6 +93,8 @@ export const singleBot: Bot = {
   status: BotStatus.INACTIVE,
   balance_available: 0,
   fiat_order_size: 0,
+  entry_mode: EntryMode.IMMEDIATE,
+  entry_price: null,
   fiat: "USDC",
   quote_asset: QuoteAsset.USDC,
   logs: [],

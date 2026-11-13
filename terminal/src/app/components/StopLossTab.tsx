@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import {
   selectBot,
   setField,
+  focusOrderLine,
   setRecoveryParams,
   setToggle,
 } from "../../features/bots/botSlice";
@@ -23,7 +24,7 @@ const StopLossTab: FC = () => {
   const {
     watch,
     register,
-    reset,
+    setValue,
     formState: { errors },
   } = useForm({
     mode: "onTouched",
@@ -36,7 +37,11 @@ const StopLossTab: FC = () => {
   useEffect(() => {
     const { unsubscribe } = watch((values, { name }) => {
       const value = name ? values[name] : undefined;
-      if (name && value !== undefined) {
+      if (
+        name &&
+        value !== undefined &&
+        (typeof value !== "number" || Number.isFinite(value))
+      ) {
         if (typeof value === "boolean") {
           dispatch(setToggle({ name, value }));
         } else {
@@ -45,14 +50,12 @@ const StopLossTab: FC = () => {
       }
     });
 
-    if (bot.id) {
-      reset({
-        stop_loss: bot.stop_loss,
-      });
-    }
-
     return () => unsubscribe();
-  }, [watch, dispatch, bot, reset]);
+  }, [watch, dispatch]);
+
+  useEffect(() => {
+    setValue("stop_loss", bot.stop_loss);
+  }, [bot.stop_loss, setValue]);
 
   const handleBlur = (e) => {
     if (e.target.value) {
@@ -88,7 +91,10 @@ const StopLossTab: FC = () => {
             <InputGroup size="sm">
               <Form.Control
                 type="number"
+                step="any"
                 name="stop_loss"
+                id="stop_loss"
+                onFocus={() => dispatch(focusOrderLine("stop_loss"))}
                 isInvalid={!!errors?.stop_loss}
                 onBlur={(e) => handleBlur(e)}
                 {...register("stop_loss", {

@@ -2,10 +2,11 @@ import spotTrading from "./spot-strategy.service";
 import marginTrading from "./margin-short.service";
 import { type Bot } from "../../features/bots/botInitialState";
 import { type TimescaleMark } from "./index.d";
-import { BotPosition, DealType } from "../enums";
+import { BotPosition, BotStatus, EntryMode, DealType } from "../enums";
 import { matchTsToTimescale } from "../time";
 
 const dealColors = {
+  entry_price: "#e056b5",
   base_order: "#1f77d0",
   trailing_profit: "#9368e9",
   take_profit: "#87cb16",
@@ -18,6 +19,7 @@ export function updateOrderLines(
   bot: Bot,
   currentPrice: number,
   previewTrailingSettings = false,
+  previewStopLossSettings = false,
 ): any[] {
   /**
    * Updates orderlines for the chart
@@ -26,9 +28,19 @@ export function updateOrderLines(
    */
   let totalOrderLines = [];
   if (bot.position === BotPosition.SHORT) {
-    totalOrderLines = marginTrading(bot, currentPrice, previewTrailingSettings);
+    totalOrderLines = marginTrading(
+      bot,
+      currentPrice,
+      previewTrailingSettings,
+      previewStopLossSettings,
+    );
   } else {
-    totalOrderLines = spotTrading(bot, currentPrice, previewTrailingSettings);
+    totalOrderLines = spotTrading(
+      bot,
+      currentPrice,
+      previewTrailingSettings,
+      previewStopLossSettings,
+    );
   }
 
   return totalOrderLines;
@@ -88,6 +100,33 @@ export function updateTimescaleMarks(bot: Bot): TimescaleMark[] {
       // Since tradingview library requires this, it can be an exception to immutable state
       totalTimescaleMarks.push(timescaleMark);
     });
+  }
+  if (
+    bot.entry_mode === EntryMode.CONDITIONAL_LIMIT &&
+    bot.entry_price > 0 &&
+    (bot.status === BotStatus.INACTIVE || bot.status === BotStatus.PENDING)
+  ) {
+    if (!bot.orders?.some((order) => order.deal_type === DealType.BASE_ORDER)) {
+      totalTimescaleMarks.push({
+        id: "conditional_entry",
+        label: "E",
+        tooltip: ["Conditional entry", `${bot.entry_price} ${bot.fiat}`],
+        time: matchTsToTimescale(bot.created_at ?? Date.now()),
+        color: dealColors.entry_price,
+      });
+    }
+    if (bot.entry_expires_at) {
+      totalTimescaleMarks.push({
+        id: "conditional_entry_expiry",
+        label: "X",
+        tooltip: [
+          "Conditional entry expires",
+          new Date(bot.entry_expires_at).toLocaleString(),
+        ],
+        time: matchTsToTimescale(bot.entry_expires_at),
+        color: dealColors.entry_price,
+      });
+    }
   }
   return totalTimescaleMarks;
 }

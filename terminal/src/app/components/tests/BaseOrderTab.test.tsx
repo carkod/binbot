@@ -1,5 +1,6 @@
 import "@testing-library/jest-dom";
 import {
+  act,
   fireEvent,
   render,
   screen as testingScreen,
@@ -15,11 +16,12 @@ import { SymbolContext } from "../../hooks";
 import BaseOrderTab from "../BaseOrderTab";
 import {
   BotStatus,
+  EntryMode,
   MarketType,
   QuoteAsset,
   TabsKeys,
 } from "../../../utils/enums";
-import { setBot } from "../../../features/bots/botSlice";
+import { setBot, setCurrentPrice } from "../../../features/bots/botSlice";
 import {
   defaultRecoveryParams,
   singleBot,
@@ -80,6 +82,101 @@ function renderLeverage(botOverrides: Partial<Bot> = {}) {
 }
 
 describe("BaseOrderTab", () => {
+  it("defaults to immediate with a null price and hides conditional fields", () => {
+    const store = renderLeverage();
+    expect(testingScreen.getByLabelText("Entry")).toHaveValue(
+      EntryMode.IMMEDIATE,
+    );
+    expect(store.getState().bot.bot.entry_price).toBeNull();
+    expect(
+      testingScreen.queryByLabelText("Entry limit price"),
+    ).not.toBeInTheDocument();
+    expect(
+      testingScreen.queryByLabelText("Entry expires at"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("prefills the chart price and six-hour expiry, allowing both to be edited", () => {
+    const now = new Date("2026-11-13T10:00:00Z").getTime();
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+    const store = renderLeverage({
+      deal: { ...singleBot.deal, current_price: 95 },
+    });
+    fireEvent.change(testingScreen.getByLabelText("Entry"), {
+      target: { value: EntryMode.CONDITIONAL_LIMIT },
+    });
+    expect(testingScreen.getByLabelText("Entry limit price")).toHaveValue(95);
+    expect(store.getState().bot.bot.entry_expires_at).toBe(
+      now + 6 * 60 * 60 * 1000,
+    );
+    const expiry = testingScreen.getByLabelText(
+      "Entry expires at",
+    ) as HTMLInputElement;
+    expect(new Date(expiry.value).getTime()).toBe(now + 6 * 60 * 60 * 1000);
+    clock.mockRestore();
+
+    fireEvent.change(testingScreen.getByLabelText("Entry limit price"), {
+      target: { value: "90" },
+    });
+    fireEvent.change(expiry, { target: { value: "2026-11-14T09:30" } });
+    expect(store.getState().bot.bot.entry_price).toBe(90);
+    expect(store.getState().bot.bot.entry_expires_at).toBe(
+      new Date("2026-11-14T09:30").getTime(),
+    );
+
+    act(() => {
+      store.dispatch(setCurrentPrice(100));
+    });
+    expect(testingScreen.getByLabelText("Entry limit price")).toHaveValue(90);
+    fireEvent.change(testingScreen.getByLabelText("Entry"), {
+      target: { value: EntryMode.IMMEDIATE },
+    });
+    expect(
+      testingScreen.queryByLabelText("Entry limit price"),
+    ).not.toBeInTheDocument();
+    fireEvent.change(testingScreen.getByLabelText("Entry"), {
+      target: { value: EntryMode.CONDITIONAL_LIMIT },
+    });
+    expect(testingScreen.getByLabelText("Entry limit price")).toHaveValue(90);
+    expect(store.getState().bot.bot.entry_expires_at).toBe(
+      new Date("2026-11-14T09:30").getTime(),
+    );
+  });
+
+  it("waits for the chart price and preserves an explicitly cleared price as null", () => {
+    const store = renderLeverage();
+    fireEvent.change(testingScreen.getByLabelText("Entry"), {
+      target: { value: EntryMode.CONDITIONAL_LIMIT },
+    });
+    expect(store.getState().bot.bot.entry_price).toBeNull();
+    act(() => {
+      store.dispatch(setCurrentPrice(95));
+    });
+    expect(testingScreen.getByLabelText("Entry limit price")).toHaveValue(95);
+    act(() => {
+      store.dispatch(setCurrentPrice(100));
+    });
+    expect(testingScreen.getByLabelText("Entry limit price")).toHaveValue(95);
+    fireEvent.change(testingScreen.getByLabelText("Entry limit price"), {
+      target: { value: "" },
+    });
+    act(() => {
+      store.dispatch(setCurrentPrice(105));
+    });
+    expect(store.getState().bot.bot.entry_price).toBeNull();
+  });
+
+  it("preserves saved conditional settings", () => {
+    const store = renderLeverage({
+      entry_mode: EntryMode.CONDITIONAL_LIMIT,
+      entry_price: 90,
+      entry_expires_at: 1800000000000,
+      deal: { ...singleBot.deal, current_price: 95 },
+    });
+    expect(testingScreen.getByLabelText("Entry limit price")).toHaveValue(90);
+    expect(store.getState().bot.bot.entry_expires_at).toBe(1800000000000);
+  });
+
   it("enables automatic recovery without exposing source metadata or changing order size", () => {
     const store = renderLeverage({ fiat_order_size: 25 });
     const recoveryToggle = testingScreen.getByRole("checkbox", {

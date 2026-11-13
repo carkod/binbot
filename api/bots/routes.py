@@ -7,7 +7,15 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlmodel import Session
-from pybinbot import BotBase, Status, BinbotErrors, BinanceErrors, MarketType
+from pybinbot import (
+    BotBase,
+    Status,
+    BinbotErrors,
+    BinanceErrors,
+    MarketType,
+    EntryMode,
+    ExchangeId,
+)
 from api.user.models.user import UserTokenData
 from pybinbot import (
     BotResponse,
@@ -18,9 +26,11 @@ from pybinbot import (
     ErrorsRequestBody,
 )
 from api.databases.crud.bot_crud import BotTableCrud
+from api.databases.crud.autotrade_crud import AutotradeCrud
 from api.databases.crud.grid_ladder_crud import GridLadderCrud
 from api.databases.utils import get_session
 from api.deals.gateway import DealGateway
+from api.deals.conditional_entry import ConditionalEntryDeleted
 from api.databases.tables.bot_table import BotTable
 from api.exchange_apis.kucoin.futures.entry_pricing import EntryLiquidityError
 from kucoin_universal_sdk.model.common import RestError
@@ -224,6 +234,14 @@ def create_bot(
     session: Session = Depends(get_session),
     _: UserTokenData = Depends(get_current_user),
 ):
+    if (
+        bot_item.entry_mode == EntryMode.conditional_limit
+        and AutotradeCrud(session).get_settings().exchange_id != ExchangeId.KUCOIN
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="Conditional entry currently requires KuCoin futures",
+        )
     crud = BotTableCrud(session)
     grid_ladder_crud = GridLadderCrud(session)
     active_ladder = grid_ladder_crud.get_active_for_symbol(bot_item.pair)
@@ -264,7 +282,18 @@ def edit_bot(
             status_code=422,
             detail="Recovery cannot be enabled while a position sizing order is unsettled",
         )
-    excluded_fields = {"recovery_params"}
+    entry_fields = {"entry_mode", "entry_price", "entry_expires_at"}
+    if bot_row.deal.entry_client_oid is not None or bot_row.orders:
+        if any(
+            field in bot_item.model_fields_set
+            and getattr(bot_item, field) != getattr(bot_row, field)
+            for field in entry_fields
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail="Entry settings cannot change after order submission",
+            )
+    excluded_fields = {"recovery_params"} | (entry_fields - bot_item.model_fields_set)
     if "futures_leverage" not in bot_item.model_fields_set:
         excluded_fields.add("futures_leverage")
     bot_row.sqlmodel_update(bot_item.model_dump(exclude=excluded_fields))
@@ -307,16 +336,29 @@ def activate_bot(
             activated_bot = deal_gateway.open_deal(progress=progress)
             message = "Successfully activated bot."
             if activated_bot.status == Status.pending:
-                message = "Entry order submitted; bot pending exchange fill."
+                message = (
+                    "Conditional entry waiting for its limit price."
+                    if activated_bot.entry_mode == EntryMode.conditional_limit
+                    and activated_bot.deal.entry_client_oid is None
+                    else "Entry order submitted; bot pending exchange fill."
+                )
             elif bot_row.status == Status.active:
                 message = "Successfully updated bot."
             return BotResponse(message=message, data=activated_bot)
+        except ConditionalEntryDeleted as e:
+            return BotResponse(message=str(e), error=1)
         except EntryLiquidityError as e:
             updated_bot = BotModel.dump_from_table(
                 BotTableCrud().get_one(bot_id=bot_id)
             )
             return BotResponse(message=str(e), data=updated_bot, error=1)
         except (BinbotErrors, BinanceErrors, RestError) as e:
+            if bot_model.entry_mode == EntryMode.conditional_limit:
+                current_bot = deal_gateway.deal.active_bot
+                if current_bot.logs and current_bot.logs[-1].partition("] ")[2] == (
+                    f"Conditional entry deferred: {e}"
+                ):
+                    return BotResponse(message=str(e), data=current_bot, error=1)
             deal_gateway.update_logs(str(e))
             return BotResponse(message=str(e), data=bot_model, error=1)
 

@@ -8,6 +8,7 @@ from pybinbot import (
     BinbotErrors,
     BotModel,
     DealType,
+    EntryMode,
     OrderBase,
     OrderModel,
     OrderStatus,
@@ -17,6 +18,8 @@ from pybinbot import (
     round_numbers,
 )
 
+from api.deals.conditional_entry import ConditionalEntry
+from api.tools.utils import submission_guard
 from api.exchange_apis.kucoin.futures.balance import KucoinFuturesBalance
 from api.exchange_apis.kucoin.futures.entry_pricing import EntryPricing
 from api.tools.constants import (
@@ -165,167 +168,213 @@ class KucoinPositionDeal(EntryPricing):
         return int(contracts)
 
     def base_order(self) -> BotModel:
-        """Place or adopt the bot's entry, preserving identity across restarts."""
-        client_oid = self.active_bot.deal.entry_client_oid
-        if client_oid is not None:
-            try:
-                details = self.kucoin_futures_api.retrieve_order_by_client_oid(
-                    client_oid
-                )
-            except RestError as exc:
-                if str(
-                    exc.response.code
-                ) == "100001" or "getOrder.orderNotExist" in str(exc.response.message):
-                    self.active_bot.add_log(
-                        "Entry acknowledgement unresolved; retaining clientOid without resubmitting."
-                    )
-                    self.active_bot.status = Status.pending
-                    self.controller.save(self.active_bot)
-                    return self.active_bot
-                raise
-            contracts = float(details.size or 0)
-            entry_limit_price = float(details.price or 0)
-            order = OrderBase(
-                order_id=str(details.id),
-                client_oid=client_oid,
-                requested_qty=contracts,
-                pair=self.kucoin_symbol,
-                order_type="limit",
-                time_in_force="GTC",
-                order_side="sell"
-                if self.active_bot.position == Position.short
-                else "buy",
-                price=float(details.avg_deal_price or 0),
-                qty=float(details.filled_size or 0),
-                timestamp=int(details.created_at or 0),
-                status=OrderStatus.map_from_kucoin_status(details.status.value),
-                deal_type=DealType.base_order,
-            )
-        else:
-            if self.active_bot.fiat_order_size <= 0:
-                raise BinbotErrors("Fiat order size must be set.")
+        """
+        Executes entry order for bot which:
+        - fills out the deal
+        - sets out logic for conditional limit
+        - handles immediate entry orders
+        - validates margin requirements for the entry order
+        - submits the entry order to the exchange
+        - returns the bot model after submission
+        """
+        if self.active_bot.entry_mode == EntryMode.conditional_limit:
+            # Handle conditional limit entry separately
+            return ConditionalEntry(self).submit()
 
-            available_balance = self.compute_available_balance()
-            candidate_limit_price = self.body_capped_entry_limit_price()
-            price = candidate_limit_price
-
-            margin_sized_contracts = self.calculate_contracts(
-                self.active_bot.fiat_order_size, price
-            )
-
-            if margin_sized_contracts <= 0:
-                raise BinbotErrors(
-                    "Calculated contracts is 0. Check if the order size, stop loss, and risk settings are correct."
-                )
-
-            affordable_contracts = self.max_contracts_for_margin(
-                available_balance, price
-            )
-            affordability_capped_contracts = min(
-                margin_sized_contracts,
-                affordable_contracts,
-            )
-
-            if affordability_capped_contracts <= 0:
-                min_contract_margin = self.required_margin_for_contracts(
-                    self.kucoin_symbol_data.lot_size or 1, price
-                )
-                raise BinbotErrors(
-                    f"Required futures margin {min_contract_margin} {self.fiat} for the minimum contract size "
-                    f"exceeds available balance {available_balance} {self.fiat}."
-                )
-
-            if affordability_capped_contracts < margin_sized_contracts:
-                self.active_bot.add_log(
-                    f"Futures order downsized from {margin_sized_contracts} to "
-                    f"{affordability_capped_contracts} contracts because required "
-                    "margin exceeded available balance."
-                )
-
-            contracts = affordability_capped_contracts
-            entry_limit_price = self.prepare_entry_limit_price(candidate_limit_price)
-            required_margin = self.required_margin_for_contracts(
-                contracts, entry_limit_price
-            )
-            if required_margin > available_balance:
-                raise BinbotErrors(
-                    f"Required futures margin {required_margin} {self.fiat} for {contracts} contracts "
-                    f"exceeds available balance {available_balance} {self.fiat}."
-                )
-
-            notional = round_numbers(
-                self.notional_for_contracts(contracts, entry_limit_price), 8
-            )
-
-            recovery_params = self.active_bot.recovery_params
+        with submission_guard(self.active_bot.id) as (bot, _):
+            self.active_bot = bot
             if (
-                self._is_recovery_bot()
-                and recovery_params is not None
-                and recovery_params.source_contracts > 0
-                and contracts < recovery_params.source_contracts * 0.60
+                bot.entry_mode != EntryMode.immediate
+                or bot.status in {Status.completed, Status.error}
+                or any(order.deal_type == DealType.base_order for order in bot.orders)
+            ):
+                return bot
+            if bot.deal.entry_client_oid is not None:
+                restored = self.restore_entry_order(bot.deal.entry_client_oid)
+                if restored is None:
+                    return bot
+                order, contracts, entry_limit_price = restored
+            else:
+                if bot.fiat_order_size <= 0:
+                    raise BinbotErrors("Fiat order size must be set.")
+                available_balance = self.compute_available_balance()
+                candidate_limit_price = self.body_capped_entry_limit_price()
+                sized_contracts = self.size_entry_contracts(
+                    available_balance, candidate_limit_price
+                )
+                if sized_contracts <= 0:
+                    min_contract_margin = self.required_margin_for_contracts(
+                        self.kucoin_symbol_data.lot_size or 1, candidate_limit_price
+                    )
+                    raise BinbotErrors(
+                        f"Required futures margin {min_contract_margin} {self.fiat} for the minimum contract size "
+                        f"exceeds available balance {available_balance} {self.fiat}."
+                    )
+                entry_limit_price = self.prepare_entry_limit_price(
+                    candidate_limit_price
+                )
+                self.validate_entry_margin(
+                    sized_contracts, entry_limit_price, available_balance
+                )
+                contracts = sized_contracts
+                order = self.submit_entry_order(
+                    sized_contracts,
+                    entry_limit_price,
+                    post_only=self._entry_post_only
+                    if bot.position == Position.long
+                    else False,
+                )
+
+            pending_entry_minutes = 5
+            if bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO:
+                pending_entry_minutes = (
+                    self.interval_ms
+                    * TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES
+                    // 60_000
+                )
+            elif bot.name == TOP_GAINER_FAILURE_REVERSAL_ALGO:
+                pending_entry_minutes = (
+                    TOP_GAINER_FAILURE_REVERSAL_PENDING_ENTRY_TTL_MS // 60_000
+                )
+            return self.record_entry_order(
+                order,
+                contracts,
+                entry_limit_price,
+                pending_entry_minutes=pending_entry_minutes,
+            )
+
+    def restore_entry_order(
+        self, client_oid: str
+    ) -> tuple[OrderBase, float, float] | None:
+        """Adopt the original exchange identity after an ambiguous acknowledgement."""
+        try:
+            details = self.kucoin_futures_api.retrieve_order_by_client_oid(client_oid)
+        except RestError as exc:
+            if str(exc.response.code) == "100001" or "getOrder.orderNotExist" in str(
+                exc.response.message
             ):
                 self.active_bot.add_log(
-                    "underpowered_recovery: "
-                    f"opening {contracts} contracts, below 60% of source "
-                    f"{recovery_params.source_contracts} contracts."
+                    "Entry acknowledgement unresolved; retaining clientOid without resubmitting."
                 )
+                self.active_bot.status = Status.pending
+                self.controller.save(self.active_bot)
+                return None
+            raise
+        contracts = float(details.size or 0)
+        entry_limit_price = float(details.price or 0)
+        order = OrderBase(
+            order_id=str(details.id),
+            client_oid=client_oid,
+            requested_qty=contracts,
+            pair=self.kucoin_symbol,
+            order_type="limit",
+            time_in_force="GTC",
+            order_side="sell" if self.active_bot.position == Position.short else "buy",
+            price=float(details.avg_deal_price or 0),
+            qty=float(details.filled_size or 0),
+            timestamp=int(details.created_at or 0),
+            status=OrderStatus.map_from_kucoin_status(details.status.value),
+            deal_type=DealType.base_order,
+        )
+        return order, contracts, entry_limit_price
 
+    def size_entry_contracts(self, available_balance: float, price: float) -> int:
+        """Clamp initial-margin sizing to contracts the account can afford."""
+        margin_sized_contracts = self.calculate_contracts(
+            self.active_bot.fiat_order_size, price
+        )
+        if margin_sized_contracts <= 0:
+            raise BinbotErrors(
+                "Calculated contracts is 0. Check if the order size, stop loss, and risk settings are correct."
+            )
+        contracts = min(
+            margin_sized_contracts,
+            self.max_contracts_for_margin(available_balance, price),
+        )
+        if 0 < contracts < margin_sized_contracts:
             self.active_bot.add_log(
-                f"Futures activation sizing: contracts={contracts}, notional={notional} {self.fiat}, "
-                f"leverage={self.active_bot.futures_leverage}x, required_margin={required_margin} {self.fiat}, "
-                f"available_balance={available_balance} {self.fiat}, planned_margin={self.active_bot.fiat_order_size} {self.fiat}."
+                f"Futures order downsized from {margin_sized_contracts} to "
+                f"{contracts} contracts because required margin exceeded available balance."
             )
+        return contracts
 
-            client_oid = str(uuid4())
-            self.active_bot.deal.entry_client_oid = client_oid
-            self.controller.save(self.active_bot)
-            order = self.kucoin_futures_api.place_futures_order(
-                symbol=self.kucoin_symbol,
-                side=AddOrderReq.SideEnum.SELL
-                if self.active_bot.position == Position.short
-                else AddOrderReq.SideEnum.BUY,
-                size=contracts,
-                leverage=self.active_bot.futures_leverage,
-                order_type=OrderType.limit,
-                price=entry_limit_price,
-                time_in_force=AddOrderReq.TimeInForceEnum.GOOD_TILL_CANCELED,
-                post_only=self._entry_post_only
-                if self.active_bot.position == Position.long
-                else False,
-                reduce_only=False,
-                client_oid=client_oid,
+    def validate_entry_margin(
+        self, contracts: int, price: float, available_balance: float
+    ) -> None:
+        """Recheck the final exchange price and record the margin committed."""
+        required_margin = self.required_margin_for_contracts(contracts, price)
+        if required_margin > available_balance:
+            raise BinbotErrors(
+                f"Required futures margin {required_margin} {self.fiat} for {contracts} contracts "
+                f"exceeds available balance {available_balance} {self.fiat}."
             )
+        notional = round_numbers(self.notional_for_contracts(contracts, price), 8)
+        recovery_params = self.active_bot.recovery_params
+        if (
+            self._is_recovery_bot()
+            and recovery_params is not None
+            and recovery_params.source_contracts > 0
+            and contracts < recovery_params.source_contracts * 0.60
+        ):
+            self.active_bot.add_log(
+                "underpowered_recovery: "
+                f"opening {contracts} contracts, below 60% of source "
+                f"{recovery_params.source_contracts} contracts."
+            )
+        self.active_bot.add_log(
+            f"Futures activation sizing: contracts={contracts}, notional={notional} {self.fiat}, "
+            f"leverage={self.active_bot.futures_leverage}x, required_margin={required_margin} {self.fiat}, "
+            f"available_balance={available_balance} {self.fiat}, planned_margin={self.active_bot.fiat_order_size} {self.fiat}."
+        )
 
-        order.deal_type = DealType.base_order
-        order = OrderModel(**order.model_dump())
-        self.active_bot.orders.append(order)
-
-        # Keep acknowledgements nonterminal until streaming verifies the fills.
-        order.status = OrderStatus.NEW
-        order.qty = contracts
-        self.active_bot.deal.base_order_size = contracts
-        self.active_bot.deal.opening_timestamp = order.timestamp
+    def submit_entry_order(
+        self, contracts: int, price: float, *, post_only: bool
+    ) -> OrderBase:
+        """Persist a client identity before sending any order to the exchange."""
+        client_oid = str(uuid4())
         self.active_bot.status = Status.pending
-        pending_entry_minutes = 5
-        if self.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO:
-            pending_entry_minutes = (
-                self.interval_ms
-                * TOP_GAINER_EARLY_MOMENTUM_PENDING_ENTRY_CANDLES
-                // 60_000
-            )
-        elif self.active_bot.name == TOP_GAINER_FAILURE_REVERSAL_ALGO:
-            pending_entry_minutes = (
-                TOP_GAINER_FAILURE_REVERSAL_PENDING_ENTRY_TTL_MS // 60_000
-            )
+        self.active_bot.deal.entry_client_oid = client_oid
+        self.controller.save(self.active_bot)
+        return self.kucoin_futures_api.place_futures_order(
+            symbol=self.kucoin_symbol,
+            side=AddOrderReq.SideEnum.SELL
+            if self.active_bot.position == Position.short
+            else AddOrderReq.SideEnum.BUY,
+            size=contracts,
+            leverage=self.active_bot.futures_leverage,
+            order_type=OrderType.limit,
+            price=price,
+            time_in_force=AddOrderReq.TimeInForceEnum.GOOD_TILL_CANCELED,
+            post_only=post_only,
+            reduce_only=False,
+            client_oid=client_oid,
+        )
+
+    def record_entry_order(
+        self,
+        order: OrderBase,
+        contracts: float,
+        entry_limit_price: float,
+        *,
+        pending_entry_minutes: float,
+    ) -> BotModel:
+        """Keep acknowledgements pending until streaming verifies actual fills."""
+        order.deal_type = DealType.base_order
+        stored_order = OrderModel(**order.model_dump())
+        self.active_bot.orders.append(stored_order)
+        stored_order.status = OrderStatus.NEW
+        stored_order.qty = contracts
+        self.active_bot.deal.base_order_size = contracts
+        self.active_bot.deal.opening_timestamp = stored_order.timestamp
+        self.active_bot.status = Status.pending
         self.controller.update_logs(
             bot=self.active_bot,
             log_message=(
-                f"Futures entry limit order {order.order_id} submitted at {entry_limit_price} "
+                f"Futures entry limit order {stored_order.order_id} submitted at {entry_limit_price} "
                 f"with {contracts} contracts. Bot is pending for up to "
                 f"{pending_entry_minutes} minutes awaiting fill confirmation by lifecycle order updates."
             ),
         )
-
         self.controller.save(self.active_bot)
         return self.active_bot
 
@@ -428,7 +477,12 @@ class KucoinPositionDeal(EntryPricing):
         self.controller.save(self.active_bot)
         return self.active_bot
 
-    def open_deal(self, progress: Callable[[int, str], None] | None = None) -> BotModel:
+    def open_deal(
+        self,
+        progress: Callable[[int, str], None] | None = None,
+        *,
+        trigger_entry: bool = False,
+    ) -> BotModel:
         if progress:
             progress(35, "Preparing the futures entry")
         if (
@@ -448,13 +502,23 @@ class KucoinPositionDeal(EntryPricing):
         )
 
         if not base_order:
+            if (
+                self.active_bot.entry_mode == EntryMode.conditional_limit
+                and self.active_bot.deal.entry_client_oid is None
+                and not trigger_entry
+            ):
+                return ConditionalEntry(self).arm()
             if progress:
                 progress(45, "Submitting the entry order")
             self.active_bot.add_log(
                 f"Opening new future deal for {self.kucoin_symbol}..."
             )
-            self.controller.save(self.active_bot)
             self.base_order()
+            if self.active_bot.status in {Status.error, Status.completed} or (
+                not self.active_bot.orders
+                and self.active_bot.deal.entry_client_oid is None
+            ):
+                return self.active_bot
             if progress:
                 progress(75, "Entry order submitted")
 

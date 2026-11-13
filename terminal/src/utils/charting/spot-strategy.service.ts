@@ -1,7 +1,14 @@
+import { entryReferencePrice } from "./editing";
 import { type OrderLine } from "./index.d";
 import { type Bot } from "../../features/bots/botInitialState";
 import { dealColors } from "../../utils/charting/index";
-import { BotStatus, DealType, MarketType, QuoteAsset } from "../enums";
+import {
+  BotStatus,
+  EntryMode,
+  DealType,
+  MarketType,
+  QuoteAsset,
+} from "../enums";
 
 const getBaseOrderQuoteAsset = (bot: Bot): number => {
   let baseOrderSize = 0;
@@ -17,8 +24,10 @@ export default function spotTrading(
   bot: Bot,
   currentPrice: number = 0,
   previewTrailingSettings = false,
+  previewStopLossSettings = false,
 ): OrderLine[] {
   const quoteAsset = bot.quote_asset;
+  const price = entryReferencePrice(bot, currentPrice);
   let totalOrderLines: OrderLine[] = [];
   let baseOrderSize = 0;
 
@@ -74,12 +83,16 @@ export default function spotTrading(
           }`,
         ],
         quantity: `${qtyText} ${quoteAsset}`,
-        price: bot.deal.opening_price || currentPrice,
+        price: price,
         color: dealColors.base_order,
       });
     }
 
-    if (bot.trailing && bot.trailing_deviation > 0 && bot.trailing_profit > 0) {
+    if (
+      bot.trailing &&
+      (previewTrailingSettings ||
+        (bot.trailing_deviation > 0 && bot.trailing_profit > 0))
+    ) {
       // Bot is sold and completed
       if (bot.status === BotStatus.COMPLETED && bot.deal.closing_price > 0) {
         totalOrderLines.push({
@@ -128,8 +141,7 @@ export default function spotTrading(
         }
       } else {
         // Inactive bot
-        const trailingProfitPrice =
-          currentPrice * (1 + bot.trailing_profit / 100);
+        const trailingProfitPrice = price * (1 + bot.trailing_profit / 100);
         totalOrderLines.push({
           id: "trailing_profit",
           text: `Trailing profit ${bot.trailing_profit}%`,
@@ -177,9 +189,10 @@ export default function spotTrading(
     }
 
     // Stop loss remains the same in all situations
-    if (bot.stop_loss > 0) {
-      const stop_loss =
-        bot.deal.stop_loss_price || currentPrice * (1 - bot.stop_loss / 100);
+    if (bot.stop_loss > 0 || previewStopLossSettings) {
+      const stop_loss = previewStopLossSettings
+        ? price * (1 - bot.stop_loss / 100)
+        : bot.deal.stop_loss_price || price * (1 - bot.stop_loss / 100);
       totalOrderLines.push({
         id: "stop_loss",
         text: `Stop Loss ${bot.stop_loss}%`,
@@ -190,5 +203,24 @@ export default function spotTrading(
       });
     }
   }
+  if (
+    bot.entry_mode === EntryMode.CONDITIONAL_LIMIT &&
+    bot.entry_price > 0 &&
+    (bot.status === BotStatus.INACTIVE || bot.status === BotStatus.PENDING)
+  ) {
+    totalOrderLines.push({
+      id: "entry_price",
+      text: "Conditional entry limit",
+      tooltip: [bot.status, `Entry limit ${bot.entry_price} ${bot.fiat}`],
+      quantity:
+        bot.deal.base_order_size > 0
+          ? `${bot.deal.base_order_size} contracts`
+          : `${bot.fiat_order_size} ${bot.fiat}`,
+      price: bot.entry_price,
+      color: dealColors.entry_price,
+      lineStyle: 2,
+    });
+  }
+
   return totalOrderLines;
 }

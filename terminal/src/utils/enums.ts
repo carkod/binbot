@@ -16,6 +16,11 @@ export enum BotMode {
   AUTO = "auto",
 }
 
+export enum EntryMode {
+  IMMEDIATE = "immediate",
+  CONDITIONAL_LIMIT = "conditional_limit",
+}
+
 export enum BotPosition {
   LONG = "long",
   SHORT = "short",

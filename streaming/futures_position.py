@@ -12,6 +12,7 @@ from pybinbot import (
     BotModel,
     Candles,
     DealType,
+    EntryMode,
     ExchangeId,
     OrderModel,
     OrderStatus,
@@ -113,6 +114,14 @@ class FuturesPosition(PositionMarket):
             )
 
     def is_pending_base_entry_expired(self, order: OrderModel, now_ms: int) -> bool:
+        bot = self.execution.active_bot
+        if bot.entry_mode == EntryMode.conditional_limit:
+            return (
+                bot.status == Status.pending
+                and order.deal_type == DealType.base_order
+                and bot.deal.opening_price == 0
+                and now_ms >= bot.entry_expires_at
+            )
         pending_entry_ttl_ms = self.PENDING_ENTRY_TTL_MS
         if self.execution.active_bot.name == TOP_GAINER_EARLY_MOMENTUM_ALGO:
             pending_entry_ttl_ms = (
@@ -266,6 +275,13 @@ class FuturesPosition(PositionMarket):
             self.execution.controller.save(data=self.execution.active_bot)
             return False
 
+        if refreshed_filled_size > 0 or actual_filled_size > 0:
+            self.execution.active_bot.add_log(
+                f"Pending entry {order.order_id} has fills with an unresolved price; retaining bot."
+            )
+            self.execution.controller.save(self.execution.active_bot)
+            return False
+
         position_qty = self._absolute_position_qty(kucoin_symbol)
         if position_qty > 0:
             logging.warning(
@@ -308,6 +324,8 @@ class FuturesPosition(PositionMarket):
         now_ms: int,
     ) -> bool:
         bot = self.execution.active_bot
+        if bot.entry_mode == EntryMode.conditional_limit:
+            return False
         if (
             bot.name != TOP_GAINER_EARLY_MOMENTUM_ALGO
             or bot.status != Status.pending
@@ -595,6 +613,14 @@ class FuturesPosition(PositionMarket):
             "Entry order filled while expiry cancellation was being processed. "
             "Bot activated with confirmed fill.",
         ):
+            return
+
+        if self.execution.active_bot.entry_mode == EntryMode.conditional_limit:
+            self.execution.active_bot.add_log(
+                f"Deleted expired conditional bot after confirming entry {order.order_id} has no fills or position."
+            )
+            self.execution.controller.delete([str(self.execution.active_bot.id)])
+            self.execution.active_bot.status = Status.inactive
             return
 
         order.status = OrderStatus.EXPIRED
@@ -898,6 +924,12 @@ class FuturesPosition(PositionMarket):
                             filled_size = actual_filled_size
                             price_used = actual_price_used
                             status = OrderStatus.FILLED
+                        elif actual_filled_size > 0:
+                            self.execution.active_bot.add_log(
+                                f"Entry order {order.order_id} has fills with an unresolved price; retaining bot."
+                            )
+                            self.execution.controller.save(self.execution.active_bot)
+                            continue
                         else:
                             position_qty = self._absolute_position_qty(kucoin_symbol)
                             if position_qty > 0:
@@ -962,6 +994,23 @@ class FuturesPosition(PositionMarket):
                             OrderStatus.REJECTED,
                         }
                     ):
+                        if (
+                            self.execution.active_bot.entry_mode
+                            == EntryMode.conditional_limit
+                            and (
+                                is_pending_entry_expired
+                                or status == OrderStatus.EXPIRED
+                            )
+                        ):
+                            # Fill history and the exchange position were checked above.
+                            self.execution.active_bot.add_log(
+                                f"Deleted expired conditional bot: entry {order.order_id} has no fills or position."
+                            )
+                            self.execution.controller.delete(
+                                [str(self.execution.active_bot.id)]
+                            )
+                            self.execution.active_bot.status = Status.inactive
+                            return self.execution.active_bot
                         self.execution.controller.update_order(order)
                         self.execution.active_bot.status = Status.error
                         self.execution.active_bot.add_log(
@@ -973,6 +1022,8 @@ class FuturesPosition(PositionMarket):
 
                     if is_pending_entry_expired:
                         self._expire_unfilled_base_order(order, kucoin_symbol)
+                        if self.execution.active_bot.status == Status.inactive:
+                            return self.execution.active_bot
                         continue
 
                     if self._reprice_pending_top_gainer_entry(

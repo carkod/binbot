@@ -1,3 +1,4 @@
+import type { ChartEditField } from "../../utils/charting/editing";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import { createAppSlice } from "../../app/createAppSlice";
 import { singleBot, type Bot, type RecoveryParams } from "./botInitialState";
@@ -12,11 +13,22 @@ export const botSlice = createAppSlice({
   initialState: {
     bot: singleBot,
     previewTrailingSettings: false,
+    previewStopLossSettings: false,
+    focusedOrderLine: null as ChartEditField | null,
   },
   reducers: (create) => ({
+    focusOrderLine: create.reducer(
+      (state, { payload }: PayloadAction<ChartEditField | null>) => {
+        state.focusedOrderLine = payload;
+        if (payload === "stop_loss") state.previewStopLossSettings = true;
+        if (payload === "trailing_profit" || payload === "trailing_deviation")
+          state.previewTrailingSettings = true;
+      },
+    ),
     setField: create.reducer(
       (state, { payload }: PayloadAction<BotDetailsFormField>) => {
         state.bot[payload.name] = payload.value;
+        if (payload.name === "stop_loss") state.previewStopLossSettings = true;
         if (
           payload.name === "trailing_profit" ||
           payload.name === "trailing_deviation"
@@ -43,6 +55,8 @@ export const botSlice = createAppSlice({
       (state, { payload }: PayloadAction<BotDetailsState>) => {
         state.bot = { ...payload.bot };
         state.previewTrailingSettings = false;
+        state.previewStopLossSettings = false;
+        state.focusedOrderLine = null;
       },
     ),
     setCurrentPrice: create.reducer(
@@ -58,6 +72,8 @@ export const botSlice = createAppSlice({
         ...(action?.payload || {}),
       };
       state.previewTrailingSettings = false;
+      state.previewStopLossSettings = false;
+      state.focusedOrderLine = null;
     }),
   }),
   selectors: {
@@ -69,6 +85,7 @@ export const botSlice = createAppSlice({
 
 export const {
   setField,
+  focusOrderLine,
   setBot,
   setToggle,
   setRecoveryParams,
