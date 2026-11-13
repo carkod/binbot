@@ -66,6 +66,11 @@ class BotTable(SQLModel, table=True):
     )
     created_at: float = Field(default_factory=timestamp)
     updated_at: float = Field(default_factory=timestamp)
+    entry_mode: str = Field(default="immediate", nullable=False)
+    entry_price: float | None = Field(default=None, nullable=True)
+    entry_expires_at: float = Field(
+        default_factory=lambda: timestamp() + 6 * 60 * 60 * 1000, nullable=False
+    )
     dynamic_trailing: bool = Field(default=False)
     dynamic_position_sizing: bool = Field(default=False)
     logs: list = Field(default_factory=list, sa_column=Column(JSON))

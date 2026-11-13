@@ -1,6 +1,6 @@
-from typing import TYPE_CHECKING, Callable, Type, Union
+from typing import Callable, Type, Union
 
-from pybinbot import BotModel, ExchangeId, MarketType, Position
+from pybinbot import BotModel, BinbotErrors, EntryMode, ExchangeId, MarketType, Position
 
 from api.databases.crud.autotrade_crud import AutotradeCrud
 from api.databases.tables.bot_table import BotTable
@@ -9,9 +9,6 @@ from api.exchange_apis.binance.deals.short import BinanceShortDeal
 from api.exchange_apis.kucoin.deals.long_deal import KucoinLongDeal
 from api.exchange_apis.kucoin.deals.short_deal import KucoinShortDeal
 from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
-
-if TYPE_CHECKING:
-    from streaming.base import BaseStreaming
 
 
 class DealGateway:
@@ -26,9 +23,13 @@ class DealGateway:
         self,
         bot: BotModel,
         db_table: Type[BotTable],
-        base_streaming: "BaseStreaming | None" = None,
     ) -> None:
         self.autotrade_settings = AutotradeCrud().get_settings()
+        if (
+            bot.entry_mode == EntryMode.conditional_limit
+            and self.autotrade_settings.exchange_id != ExchangeId.KUCOIN
+        ):
+            raise BinbotErrors("Conditional entry currently requires KuCoin futures")
         self.bot = bot
         self.db_table = db_table
         self.deal: Union[

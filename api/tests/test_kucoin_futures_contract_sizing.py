@@ -1,4 +1,5 @@
 import types
+from contextlib import nullcontext
 from datetime import datetime, timezone
 from time import time_ns
 from typing import Any, cast
@@ -31,6 +32,29 @@ from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 from streaming.futures_position import FuturesPosition
 
 
+_sizing_bots: dict = {}
+
+
+@pytest.fixture(autouse=True)
+def isolate_entry_submission(monkeypatch):
+    _sizing_bots.clear()
+    monkeypatch.setattr(
+        "api.exchange_apis.kucoin.futures.futures_deal.submission_guard",
+        lambda bot_id: nullcontext((_sizing_bots[bot_id], None)),
+    )
+    conditional_entry = Mock(
+        side_effect=AssertionError(
+            "Immediate entry must not run the conditional workflow"
+        )
+    )
+    monkeypatch.setattr(
+        "api.exchange_apis.kucoin.futures.futures_deal.ConditionalEntry",
+        conditional_entry,
+    )
+    yield
+    conditional_entry.assert_not_called()
+
+
 def make_sizing_deal(
     *,
     fiat_order_size: float = 15.0,
@@ -48,6 +72,7 @@ def make_sizing_deal(
         stop_loss=stop_loss,
         futures_leverage=futures_leverage,
     )
+    _sizing_bots[deal.active_bot.id] = deal.active_bot
     deal.symbol_info = types.SimpleNamespace(
         qty_precision=qty_precision,
         futures_leverage=1,
@@ -1385,6 +1410,7 @@ def test_unfilled_capped_base_order_uses_pending_entry_ttl_not_legacy_age_expiry
     )
     bot = types.SimpleNamespace(
         name="another_strategy",
+        entry_mode="immediate",
         status=Status.pending,
         deal=types.SimpleNamespace(opening_price=0, opening_timestamp=0),
     )

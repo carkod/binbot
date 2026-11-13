@@ -12,6 +12,7 @@ from pybinbot import (
     DealType,
     DealModel,
     ExchangeId,
+    EntryMode,
     HABollinguerSpread,
     MarketType,
     OrderModel,
@@ -176,6 +177,7 @@ class TestPositionManager:
     ):
         # Lightweight BotModel-like object for tests
         bot = types.SimpleNamespace()
+        bot.entry_mode = "immediate"
         bot.futures_leverage = 1
         bot.id = f"test-bot-{id(bot)}"
         bot.signal_id = 123
@@ -311,14 +313,13 @@ class TestPositionManager:
 
         class FakeDealGateway:
             exit_calls: list[tuple[float, float]] = []
-            base_streaming = None
 
-            def __init__(self, bot, db_table, base_streaming=None):
+            def __init__(self, bot, db_table):
                 self.bot = bot
                 self.db_table = db_table
-                FakeDealGateway.base_streaming = base_streaming
 
             def deal_exit_orchestration(self, close_price, open_price):
+                assert self.bot is live_bot
                 FakeDealGateway.exit_calls.append((close_price, open_price))
 
             def save(self, bot):
@@ -334,7 +335,6 @@ class TestPositionManager:
         assert FakeDealGateway.exit_calls, (
             "Expected deal_exit_orchestration to be called"
         )
-        assert FakeDealGateway.base_streaming is base
 
     def test_process_deal_calls_deal_exit_orchestration_for_active_pair(
         self, monkeypatch
@@ -361,10 +361,9 @@ class TestPositionManager:
         class FakeDealGateway:
             exit_calls: list[tuple[float, float]] = []
 
-            def __init__(self, bot, db_table, base_streaming=None):
+            def __init__(self, bot, db_table):
                 self.bot = bot
                 self.db_table = db_table
-                self.base_streaming = base_streaming
 
             def deal_exit_orchestration(self, close_price, open_price):
                 FakeDealGateway.exit_calls.append((close_price, open_price))
@@ -411,10 +410,9 @@ class TestPositionManager:
         )
 
         class ErrorDealGateway:
-            def __init__(self, bot, db_table, base_streaming=None):
+            def __init__(self, bot, db_table):
                 self.bot = bot
                 self.db_table = db_table
-                self.base_streaming = base_streaming
 
             def deal_exit_orchestration(self, close_price, open_price):
                 # Raise BinanceErrors with code -2010 to hit error path
@@ -890,7 +888,18 @@ class TestPositionManager:
         assert bot.deal.closing_price == 0.1754
         assert bot.deal.closing_timestamp == filled_at
 
-    def test_futures_order_updates_expires_aged_pending_base_order(self, monkeypatch):
+    @pytest.mark.parametrize(
+        "entry_mode, exchange_status",
+        [
+            (EntryMode.immediate, "open"),
+            (EntryMode.conditional_limit, "open"),
+            (EntryMode.conditional_limit, "canceled"),
+            (EntryMode.conditional_limit, "expired"),
+        ],
+    )
+    def test_futures_order_updates_expires_aged_pending_base_order(
+        self, monkeypatch, entry_mode, exchange_status
+    ):
         base = self._make_base_streaming(monkeypatch, active_pairs=["MEMEUSDT"])
         base.exchange = ExchangeId.KUCOIN
         base.interval = types.SimpleNamespace(get_ms=lambda: 15 * 60 * 1000)
@@ -902,6 +911,8 @@ class TestPositionManager:
         )
         bot.id = "meme-bot"
         bot.status = Status.pending
+        bot.entry_mode = entry_mode
+        bot.entry_expires_at = int(time.time() * 1000) - 1000
         bot.deal.opening_price = 0
         logs: list[str] = []
         bot.add_log = lambda msg: logs.append(msg)
@@ -921,6 +932,7 @@ class TestPositionManager:
         ]
 
         deleted: list[str] = []
+        deleted_bots: list[str] = []
         canceled_futures_orders: list[str] = []
         canceled_stop_orders: list[str] = []
         saved: list[Any] = []
@@ -930,7 +942,11 @@ class TestPositionManager:
             "map_from_kucoin_status",
             staticmethod(
                 lambda status: (
-                    OrderStatus.NEW if status == "open" else OrderStatus.CANCELED
+                    OrderStatus.NEW
+                    if status == "open"
+                    else OrderStatus.EXPIRED
+                    if status == "expired"
+                    else OrderStatus.CANCELED
                 )
             ),
         )
@@ -941,7 +957,7 @@ class TestPositionManager:
 
         retrieve_calls: list[str] = []
 
-        system_order_statuses = iter(["open", "canceled"])
+        system_order_statuses = iter([exchange_status, "canceled"])
 
         base.kucoin_futures_api.retrieve_order = lambda order_id: types.SimpleNamespace(
             status=types.SimpleNamespace(value=next(system_order_statuses)),
@@ -958,6 +974,7 @@ class TestPositionManager:
         base.kucoin_futures_api.batch_cancel_stop_loss_orders = lambda order_ids: (
             canceled_stop_orders.extend(order_ids)
         )
+        base.bot_controller.delete = lambda ids: deleted_bots.extend(ids)
         base.bot_controller.update_order = lambda order: retrieve_calls.append(
             order.order_id
         )
@@ -981,14 +998,24 @@ class TestPositionManager:
 
         FuturesPosition.order_updates(fp)
 
-        assert bot.status == Status.error
-        assert canceled_futures_orders == ["455559324140359680"]
+        assert canceled_futures_orders == (
+            ["455559324140359680"] if exchange_status == "open" else []
+        )
         assert canceled_stop_orders == []
         assert deleted == []
-        assert retrieve_calls == ["455559324140359680"]
-        assert saved == [bot]
-        assert bot.orders[0].status == OrderStatus.EXPIRED
-        assert any("expired after 5 minutes without fill" in log for log in logs)
+        if entry_mode == EntryMode.conditional_limit:
+            assert bot.status == Status.inactive
+            assert deleted_bots == [bot.id]
+            assert any("Deleted expired conditional bot" in log for log in logs)
+            assert saved == []
+            assert retrieve_calls == []
+        else:
+            assert bot.status == Status.error
+            assert deleted_bots == []
+            assert retrieve_calls == ["455559324140359680"]
+            assert saved == [bot]
+            assert bot.orders[0].status == OrderStatus.EXPIRED
+            assert any("expired after 5 minutes without fill" in log for log in logs)
 
     def test_pending_top_gainer_entry_reprices_to_passive_cap(self, monkeypatch):
         base = self._make_base_streaming(monkeypatch, active_pairs=["DOTUSDTM"])
