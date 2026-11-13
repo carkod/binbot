@@ -30,7 +30,7 @@ jobs:
 
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Build image
         run: |
           docker build -t carloswufei/binbot:${{ github.sha }} -t carloswufei/binbot:latest -f api/Dockerfile .
@@ -66,7 +66,7 @@ jobs:
 
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Build image
         run: |
           docker build -t carloswufei/binbot_nginx:${{ github.sha }} -t carloswufei/binbot_nginx:latest .
@@ -85,7 +85,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Build image
         run: |
           docker build -t carloswufei/binbot_streaming:${{ github.sha }} -t carloswufei/binbot_streaming:latest -f streaming/Dockerfile .
@@ -106,7 +106,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Build image
         run: |
           docker build -t carloswufei/binbot_cronjobs:${{ github.sha }} -t carloswufei/binbot_cronjobs:latest -f cronjobs/Dockerfile .
@@ -136,11 +136,11 @@ jobs:
         github.event.pull_request.head.repo.full_name == github.repository
       )
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: Connect to Tailscale
-        uses: tailscale/github-action@v4
+        uses: tailscale/github-action@v4.4.0
         with:
           oauth-client-id: ${{ secrets.TAILSCALE_CLIENT_ID }}
           oauth-secret: ${{ secrets.TAILSCALE_CLIENT_SECRET }}
@@ -161,4 +161,4 @@ jobs:
           ssh -i ~/.ssh/home_server_key \
             -p 2222 \
             "carkod@100.64.83.67" \
-            'cd /var/www/terminal.binbot.in && docker compose up --pull always -d && docker image prune -f'
+            '/home/carkod/bin/deploy-binbot-staging.sh'

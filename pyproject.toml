@@ -29,23 +29,20 @@ Repository = "https://github.com/carkod/binbot"
 [tool.uv]
 package = false
 
-[tool.uv.sources]
-# Remove once vcrpy releases aiohttp 3.14 support from vcrpy#996.
-vcrpy = { git = "https://github.com/kevin1024/vcrpy.git", rev = "1b8c169fb3e69491290ba7b066ad7907112911e9" }
-
-
 [project.optional-dependencies]
 dev = [
-    "pytest-asyncio>=1.2.0",
+    "pytest-asyncio>=1.3.0",
     "pytest>=9.0.2",
     "coverage",
     "pytest-vcr>=1.0.2",
-    "vcrpy>=8.1.1",
-    "alembic-postgresql-enum",
+    "vcrpy>=9.4.2",
     "types-requests>=2.33.0.20260518",
     "types-python-dateutil",
     "httpx>=0.28.1",
-    "pytest-asyncio>=1.3.0",
     "mypy>=2.1.0",
-    "ruff==0.15.21",
+    "ruff==0.17.4",
 ]
+
+[tool.ruff.lint]
+# Preserve the existing lint policy across Ruff's expanded default rules.
+select = ["E4", "E7", "E9", "F"]

@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 2
       - name: Is there a new migration?
@@ -30,11 +30,11 @@ jobs:
           run_job=true
           while IFS= read -r file
           do
-            echo $file
+            echo "$file"
             if [[ $file == api/databases/tables/* ]] && ! git diff --name-only HEAD^ HEAD | grep -q '^api/alembic/versions/'; then
               echo "SQL database table models have been modified and no alembic revision was found. Please create a new revision."
               run_job=false
               exit 1
             fi
           done < files.txt
-          echo "::set-output name=run_job::$run_job"
+          echo "run_job=$run_job" >> "$GITHUB_OUTPUT"

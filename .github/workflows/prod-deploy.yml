@@ -48,7 +48,7 @@ jobs:
           echo "Image tag: $image_tag"
 
       - name: SSH deploy
-        uses: appleboy/ssh-action@v1.2.4
+        uses: appleboy/ssh-action@v1.2.5
         env:
           IMAGE_TAG: ${{ steps.deploy_tags.outputs.image_tag }}
         with:
