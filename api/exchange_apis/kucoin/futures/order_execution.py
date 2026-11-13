@@ -12,6 +12,7 @@ from pybinbot import (
     BinbotErrors,
     BotModel,
     DealType,
+    EntryMode,
     KucoinFutures,
     OrderBase,
     OrderModel,
@@ -33,6 +34,7 @@ from api.databases.crud.symbols_crud import SymbolsCrud
 from api.databases.tables.bot_table import BotTable
 from api.exchange_apis.kucoin.deals.base import KucoinBaseBalance
 from api.exchange_apis.kucoin.futures.liquidity import load_futures_order_book
+from api.tools.utils import submission_guard
 
 
 def is_order_not_found(exc: RestError) -> bool:
@@ -1401,6 +1403,33 @@ class OrderExecution(KucoinBaseBalance):
         amount that doesn't fill immediately is closed with a market order
         for whatever qty is left. ``market_only`` skips the limit leg.
         """
+        if self.active_bot.entry_mode == EntryMode.conditional_limit:
+            # Reload under the same lock as submission before claiming that a
+            # waiting candidate is stopped. A stale request may have lost the race.
+            with submission_guard(self.active_bot.id) as (bot, _session):
+                self.active_bot = bot
+                if (
+                    bot.entry_mode == EntryMode.conditional_limit
+                    and bot.deal.entry_client_oid is None
+                    and not bot.orders
+                    and bot.deal.opening_timestamp == 0
+                    and bot.deal.opening_qty == 0
+                    and bot.deal.current_position_qty == 0
+                ):
+                    bot.status = Status.closed
+                    bot.deal.recovery_cancelled = True
+                    bot.add_log(
+                        "Conditional entry closed: deactivated before submission"
+                    )
+                    self.controller.save(bot)
+                    if progress:
+                        progress(95, "Waiting conditional entry closed")
+                    return bot
+                if bot.status == Status.pending:
+                    raise BinbotErrors(
+                        "Conditional entry submission has started; deactivation is "
+                        "not confirmed. Reconcile the entry order before retrying."
+                    )
         if algorithmic_close:
             deal_type = DealType.algorithmic_close
         if progress:

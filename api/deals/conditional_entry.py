@@ -89,7 +89,7 @@ class ConditionalEntry:
                     if occupied >= settings.max_active_autotrade_bots:
                         raise EntryCapacityError("Waiting for an available bot slot")
                 yield bot
-            except ConditionalEntryClosed as error:
+            except ConditionalEntryClosed:
                 # Closure already saved the reason and terminal status together.
                 raise
             except (BinbotErrors, ValueError, RestError) as error:

@@ -1,6 +1,6 @@
 from contextlib import contextmanager, nullcontext
 from concurrent.futures import ThreadPoolExecutor
-from threading import Barrier
+from threading import Barrier, Event
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -24,6 +24,7 @@ from api.bots.routes import activate_bot
 from api.databases.crud.bot_crud import BotTableCrud
 from api.databases.tables.bot_table import BotTable
 from api.databases.tables.deal_table import DealTable
+from api.tools.utils import submission_guard
 from api.deals.conditional_entry import (
     ConditionalEntry,
     ConditionalEntryClosed,
@@ -504,6 +505,116 @@ def test_stale_worker_does_not_activate_a_disarmed_candidate(conditional_deal):
     execution.kucoin_futures_api.place_futures_order.assert_not_called()
 
 
+@pytest.mark.parametrize("entry_started", [False, True])
+def test_deactivation_uses_fresh_entry_state_before_reporting_success(
+    conditional_deal, monkeypatch, entry_started
+):
+    execution, _, balance = conditional_deal
+    fresh = execution.active_bot.model_copy(deep=True)
+    if entry_started:
+        fresh.deal.entry_client_oid = "submission-in-progress"
+    monkeypatch.setattr(
+        "api.exchange_apis.kucoin.futures.order_execution.submission_guard",
+        lambda _bot_id: nullcontext((fresh, None)),
+    )
+    if entry_started:
+        with pytest.raises(BinbotErrors, match="deactivation is not confirmed"):
+            execution.close_all()
+        assert fresh.status == Status.pending
+        execution.controller.save.assert_not_called()
+    else:
+        result = execution.close_all()
+        assert result is fresh
+        assert result.status == Status.closed
+        assert "deactivated before submission" in result.logs[-1]
+        execution.controller.save.assert_called_once_with(fresh)
+    balance.assert_not_called()
+    execution.kucoin_futures_api.place_futures_order.assert_not_called()
+
+
+@pytest.mark.parametrize("stop_first", [False, True])
+def test_deactivation_and_submission_serialize_before_claiming_a_candidate_stopped(
+    conditional_deal, monkeypatch, tmp_path, stop_first
+):
+    execution, _, _ = conditional_deal
+    engine = create_engine(f"sqlite:///{tmp_path / 'stop-race.db'}")
+    SQLModel.metadata.create_all(engine)
+    with Session(engine) as session:
+        row = BotTable(
+            id=execution.active_bot.id,
+            pair=execution.active_bot.pair,
+            entry_mode=EntryMode.conditional_limit,
+            entry_price=10,
+            status=Status.pending,
+            market_type=MarketType.FUTURES,
+            deal=DealTable(),
+        )
+        session.add(row)
+        session.commit()
+    monkeypatch.setattr(
+        "api.databases.utils.independent_session", lambda: Session(engine)
+    )
+    execution.controller = BotTableCrud()
+    first_locked = Event()
+    second_attempting = Event()
+    release_first = Event()
+
+    @contextmanager
+    def stop_guard(bot_id):
+        if not stop_first:
+            second_attempting.set()
+        with submission_guard(bot_id) as guarded:
+            if stop_first:
+                first_locked.set()
+                assert release_first.wait(5)
+            yield guarded
+
+    monkeypatch.setattr(
+        "api.exchange_apis.kucoin.futures.order_execution.submission_guard", stop_guard
+    )
+
+    def submit():
+        if stop_first:
+            second_attempting.set()
+        try:
+            with submission_guard(execution.active_bot.id) as (bot, _session):
+                if not stop_first:
+                    first_locked.set()
+                    assert release_first.wait(5)
+                # Submission writes its identity while holding this same guard.
+                bot.deal.entry_client_oid = "submitted-before-stop"
+                BotTableCrud().save(bot)
+            return True
+        except BinbotErrors:
+            return False
+
+    def stop():
+        try:
+            return execution.close_all().status == Status.closed
+        except BinbotErrors:
+            return False
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        first = executor.submit(stop if stop_first else submit)
+        try:
+            assert first_locked.wait(5)
+            second = executor.submit(submit if stop_first else stop)
+            assert second_attempting.wait(5)
+        finally:
+            release_first.set()
+        assert first.result(timeout=5)
+        assert not second.result(timeout=5)
+
+    saved = BotTableCrud().get_one(
+        bot_id=str(execution.active_bot.id), include_closed=True
+    )
+    assert saved.status == (Status.closed if stop_first else Status.pending)
+    assert saved.deal.entry_client_oid == (
+        None if stop_first else "submitted-before-stop"
+    )
+    engine.dispose()
+
+
 @pytest.mark.parametrize(
     "failure, expected",
     [
@@ -570,7 +681,7 @@ def test_repeated_streaming_failure_returns_refreshed_bot_without_repeating_log(
 
 
 @pytest.mark.parametrize("trigger_entry", [False, True])
-def test_deleted_candidate_keeps_timestamped_reason_without_being_saved(
+def test_closed_candidate_persists_timestamped_reason_once(
     conditional_deal, trigger_entry
 ):
     execution, _, _ = conditional_deal
@@ -578,9 +689,9 @@ def test_deleted_candidate_keeps_timestamped_reason_without_being_saved(
     with pytest.raises(ConditionalEntryClosed):
         execution.open_deal(trigger_entry=trigger_entry)
     assert execution.active_bot.logs[-1].startswith("[")
-    assert "Conditional entry deleted: expired before" in execution.active_bot.logs[-1]
+    assert "Conditional entry closed: expired before" in execution.active_bot.logs[-1]
     execution.controller.update_logs.assert_not_called()
-    execution.controller.save.assert_not_called()
+    execution.controller.save.assert_called_once_with(execution.active_bot)
 
 
 def test_log_persistence_failure_does_not_hide_submission_failure(conditional_deal):
