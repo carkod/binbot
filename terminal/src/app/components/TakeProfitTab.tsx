@@ -11,7 +11,12 @@ import {
 } from "react-bootstrap";
 import InputGroupText from "react-bootstrap/esm/InputGroupText";
 import { useForm } from "react-hook-form";
-import { selectBot, setField, setToggle } from "../../features/bots/botSlice";
+import {
+  selectBot,
+  setField,
+  setToggle,
+  focusOrderLine,
+} from "../../features/bots/botSlice";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { TabsKeys } from "../../utils/enums";
 
@@ -22,6 +27,7 @@ const TakeProfit: FC = () => {
   const {
     register,
     reset,
+    setValue,
     formState: { errors },
   } = useForm({
     mode: "onTouched",
@@ -41,6 +47,13 @@ const TakeProfit: FC = () => {
     });
     // A new bot needs new defaults; local field edits must not reset the form.
   }, [bot.id, reset]);
+
+  useEffect(() => {
+    setValue("trailing_profit", bot.trailing_profit);
+  }, [bot.trailing_profit, setValue]);
+  useEffect(() => {
+    setValue("trailing_deviation", bot.trailing_deviation);
+  }, [bot.trailing_deviation, setValue]);
 
   const commitPercentage = (
     name: "take_profit" | "trailing_profit" | "trailing_deviation",
@@ -67,6 +80,8 @@ const TakeProfit: FC = () => {
                   type="number"
                   name="trailing_profit"
                   id="trailing_profit"
+                  step="any"
+                  onFocus={() => dispatch(focusOrderLine("trailing_profit"))}
                   {...register("trailing_profit", {
                     required:
                       "Trailing profit in percentage is required when trailing is activated",
@@ -190,6 +205,8 @@ const TakeProfit: FC = () => {
                   type="number"
                   name="trailing_deviation"
                   id="trailing_deviation"
+                  step="any"
+                  onFocus={() => dispatch(focusOrderLine("trailing_deviation"))}
                   {...register("trailing_deviation", {
                     required:
                       "Trailing deviation in percentage is required when trailing is activated",

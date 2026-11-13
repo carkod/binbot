@@ -5,7 +5,10 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from fastapi import Request
 from pybinbot import (
+    BinbotErrors,
+    BotModel,
     DealType,
     EntryMode,
     ExchangeId,
@@ -17,9 +20,11 @@ from pybinbot import (
 )
 from sqlmodel import Session, SQLModel, create_engine
 
+from api.bots.routes import activate_bot
+from api.databases.crud.bot_crud import BotTableCrud
 from api.databases.tables.bot_table import BotTable
 from api.databases.tables.deal_table import DealTable
-from api.deals.entry import (
+from api.deals.conditional_entry import (
     ConditionalEntry,
     ConditionalEntryDeleted,
     EntryCapacityError,
@@ -63,24 +68,31 @@ def conditional_deal(monkeypatch):
             deal_type=DealType.base_order,
         )
     )
+    session = Mock()
+    session.exec.return_value.one.return_value = 0
     monkeypatch.setattr(
-        ConditionalEntry,
-        "entry_submission",
-        lambda self, **kwargs: nullcontext(bot),
+        "api.deals.conditional_entry.submission_guard",
+        lambda _bot_id: nullcontext((bot, session)),
     )
-    monkeypatch.setattr("api.deals.entry.timestamp", lambda: 2000)
+    monkeypatch.setattr(
+        "api.deals.conditional_entry.AutotradeCrud",
+        lambda _session: SimpleNamespace(
+            get_settings=lambda: SimpleNamespace(max_active_autotrade_bots=10)
+        ),
+    )
+    monkeypatch.setattr("api.deals.conditional_entry.timestamp", lambda: 2000)
     book = SimpleNamespace(
         bids=[SimpleNamespace(price=10.1)],
         asks=[SimpleNamespace(price=10.2)],
         exchange_timestamp_ms=2000,
     )
     monkeypatch.setattr(
-        "api.deals.entry.load_futures_order_book",
+        "api.deals.conditional_entry.load_futures_order_book",
         lambda *args: book,
     )
     balance = Mock(return_value=({}, 100, 100))
     monkeypatch.setattr(
-        "api.deals.entry.KucoinFuturesBalance",
+        "api.deals.conditional_entry.KucoinFuturesBalance",
         lambda: SimpleNamespace(compute_futures_balance=balance),
     )
     return execution, book, balance
@@ -150,8 +162,8 @@ def test_candidate_expiring_during_sizing_is_deleted_before_submission(
     conditional_deal, monkeypatch
 ):
     execution, _, balance = conditional_deal
-    times = iter([2000, 2000, 100_000])
-    monkeypatch.setattr("api.deals.entry.timestamp", lambda: next(times))
+    times = iter([2000, 2000, 2000, 100_000])
+    monkeypatch.setattr("api.deals.conditional_entry.timestamp", lambda: next(times))
     with pytest.raises(ConditionalEntryDeleted, match="expired before submission"):
         execution.open_deal(trigger_entry=True)
     balance.assert_called_once()
@@ -414,7 +426,7 @@ def test_waiting_candidates_do_not_take_slots_but_submitted_entries_do(
 
     monkeypatch.setattr("api.tools.utils.get_db_session", database_session)
     monkeypatch.setattr(
-        "api.deals.entry.AutotradeCrud",
+        "api.deals.conditional_entry.AutotradeCrud",
         lambda session: SimpleNamespace(
             get_settings=lambda: SimpleNamespace(max_active_autotrade_bots=2)
         ),
@@ -466,3 +478,166 @@ def test_stale_worker_does_not_activate_a_disarmed_candidate(conditional_deal):
     assert result.status == Status.inactive
     balance.assert_not_called()
     execution.kucoin_futures_api.place_futures_order.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "failure, expected",
+    [
+        ("price", "Conditional entry requires an entry price"),
+        ("book", "Conditional entry requires a fresh order book"),
+        ("size", "Fiat order size must be set."),
+        ("capacity", "Waiting for an available bot slot"),
+        ("margin", "Insufficient margin including fees"),
+    ],
+)
+def test_submission_failures_are_timestamped_persisted_and_still_abort(
+    conditional_deal, monkeypatch, failure, expected
+):
+    execution, book, _ = conditional_deal
+    if failure == "price":
+        execution.active_bot.entry_price = None
+    elif failure == "book":
+        book.exchange_timestamp_ms = -4000
+    elif failure == "size":
+        execution.active_bot.fiat_order_size = 0
+    elif failure == "capacity":
+        monkeypatch.setattr(
+            "api.deals.conditional_entry.AutotradeCrud",
+            lambda _session: SimpleNamespace(
+                get_settings=lambda: SimpleNamespace(max_active_autotrade_bots=0)
+            ),
+        )
+    else:
+        execution.validate_entry_margin = Mock(side_effect=BinbotErrors(expected))
+
+    with pytest.raises(BinbotErrors, match=expected):
+        execution.open_deal(trigger_entry=True)
+
+    bot = execution.active_bot
+    message = f"Conditional entry deferred: {expected}"
+    assert bot.logs[-1].startswith("[")
+    assert bot.logs[-1].partition("] ")[2] == message
+    execution.controller.update_logs.assert_called_once_with(
+        log_message=message, bot=bot
+    )
+    execution.controller.save.assert_not_called()
+    execution.kucoin_futures_api.place_futures_order.assert_not_called()
+
+
+def test_repeated_streaming_failure_returns_refreshed_bot_without_repeating_log(
+    conditional_deal,
+):
+    execution, book, _ = conditional_deal
+    persisted_bot = execution.active_bot
+    execution.active_bot = persisted_bot.model_copy(deep=True)
+    book.exchange_timestamp_ms = -4000
+    lifecycle = Lifecycle.__new__(Lifecycle)
+    lifecycle.execution = execution
+
+    first = lifecycle.process_tick()
+    second = lifecycle.process_tick()
+
+    assert first is persisted_bot
+    assert second is persisted_bot
+    assert first.status == Status.pending
+    assert sum("Conditional entry deferred:" in log for log in second.logs) == 1
+    execution.controller.update_logs.assert_called_once()
+    execution.kucoin_futures_api.place_futures_order.assert_not_called()
+
+
+@pytest.mark.parametrize("trigger_entry", [False, True])
+def test_deleted_candidate_keeps_timestamped_reason_without_being_saved(
+    conditional_deal, trigger_entry
+):
+    execution, _, _ = conditional_deal
+    execution.active_bot.entry_expires_at = 2000
+    with pytest.raises(ConditionalEntryDeleted):
+        execution.open_deal(trigger_entry=trigger_entry)
+    assert execution.active_bot.logs[-1].startswith("[")
+    assert "Conditional entry deleted: expired before" in execution.active_bot.logs[-1]
+    execution.controller.update_logs.assert_not_called()
+    execution.controller.save.assert_not_called()
+
+
+def test_log_persistence_failure_does_not_hide_submission_failure(conditional_deal):
+    execution, book, _ = conditional_deal
+    book.exchange_timestamp_ms = -4000
+    execution.controller.update_logs.side_effect = RuntimeError("Database unavailable")
+    with pytest.raises(BinbotErrors, match="fresh order book"):
+        execution.open_deal(trigger_entry=True)
+    assert "fresh order book" in execution.active_bot.logs[-1]
+
+
+def test_failure_log_survives_exception_without_overwriting_bot_state(
+    conditional_deal, monkeypatch
+):
+    execution, book, _ = conditional_deal
+    bot = execution.active_bot
+    book.exchange_timestamp_ms = -4000
+    engine = create_engine("sqlite://")
+    SQLModel.metadata.create_all(engine)
+    with Session(engine) as session:
+        session.add(
+            BotTable(
+                id=bot.id,
+                pair=bot.pair,
+                market_type=MarketType.FUTURES,
+                status=Status.inactive,
+                entry_price=99,
+                deal=DealTable(),
+                logs=["Existing message"],
+            )
+        )
+        session.commit()
+    monkeypatch.setattr(
+        "api.databases.crud.bot_crud.get_db_session",
+        lambda _session=None: Session(engine),
+    )
+    execution.controller = BotTableCrud()
+
+    with pytest.raises(BinbotErrors, match="fresh order book"):
+        execution.open_deal(trigger_entry=True)
+
+    with Session(engine) as session:
+        row = session.get(BotTable, bot.id)
+        assert row is not None
+        assert row.status == Status.inactive
+        assert row.entry_price == 99
+        assert len(row.logs) == 2
+        assert row.logs[0] == "Existing message"
+        assert row.logs[1].partition("] ")[2] == (
+            "Conditional entry deferred: Conditional entry requires a fresh order book"
+        )
+    engine.dispose()
+
+
+def test_activation_returns_current_conditional_failure_logs_without_double_logging(
+    conditional_deal, monkeypatch
+):
+    execution, book, _ = conditional_deal
+    book.exchange_timestamp_ms = -4000
+    loaded_bot = execution.active_bot.model_copy(deep=True)
+    monkeypatch.setattr(
+        "api.bots.routes.BotTableCrud",
+        lambda _session: SimpleNamespace(get_one=lambda **kwargs: loaded_bot),
+    )
+    monkeypatch.setattr(BotModel, "dump_from_table", staticmethod(lambda row: row))
+    gateway = SimpleNamespace(
+        deal=execution,
+        open_deal=lambda **kwargs: execution.open_deal(trigger_entry=True),
+        update_logs=Mock(),
+    )
+    monkeypatch.setattr("api.bots.routes.DealGateway", lambda *args, **kwargs: gateway)
+
+    with Session() as session:
+        response = activate_bot(
+            str(loaded_bot.id),
+            Request({"type": "http", "headers": []}),
+            session=session,
+        )
+
+    assert response.error == 1
+    assert response.data is execution.active_bot
+    assert "fresh order book" in response.data.logs[-1]
+    execution.controller.update_logs.assert_called_once()
+    gateway.update_logs.assert_not_called()

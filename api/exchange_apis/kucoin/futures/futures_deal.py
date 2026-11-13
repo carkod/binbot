@@ -18,7 +18,7 @@ from pybinbot import (
     round_numbers,
 )
 
-from api.deals.entry import ConditionalEntry
+from api.deals.conditional_entry import ConditionalEntry
 from api.tools.utils import submission_guard
 from api.exchange_apis.kucoin.futures.balance import KucoinFuturesBalance
 from api.exchange_apis.kucoin.futures.entry_pricing import EntryPricing
@@ -168,11 +168,20 @@ class KucoinPositionDeal(EntryPricing):
         return int(contracts)
 
     def base_order(self) -> BotModel:
-        """Submit an immediate entry, dispatching explicit-price entries separately."""
+        """
+        Executes entry order for bot which:
+        - fills out the deal
+        - sets out logic for conditional limit
+        - handles immediate entry orders
+        - validates margin requirements for the entry order
+        - submits the entry order to the exchange
+        - returns the bot model after submission
+        """
         if self.active_bot.entry_mode == EntryMode.conditional_limit:
+            # Handle conditional limit entry separately
             return ConditionalEntry(self).submit()
 
-        with submission_guard(self.active_bot.id) as (bot, _session):
+        with submission_guard(self.active_bot.id) as (bot, _):
             self.active_bot = bot
             if (
                 bot.entry_mode != EntryMode.immediate

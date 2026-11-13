@@ -10,12 +10,14 @@ import {
   Tab,
   ToggleButton,
 } from "react-bootstrap";
+import moment from "moment";
 import { type FieldValues, useForm } from "react-hook-form";
 import { useImmer } from "use-immer";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 import {
   selectBot,
   setField,
+  focusOrderLine,
   setRecoveryParams,
   setToggle,
 } from "../../features/bots/botSlice";
@@ -24,6 +26,7 @@ import {
   BotStatus,
   BotPosition,
   MarketType,
+  EntryMode,
   TabsKeys,
 } from "../../utils/enums";
 import { useAppDispatch, useAppSelector, useSymbolData } from "../hooks";
@@ -33,6 +36,7 @@ import SymbolSearch from "./SymbolSearch";
 import { useLocation, useParams } from "react-router";
 import { SpinnerContext } from "../spinner-context";
 import { matchNewRoutes } from "../../utils/validations";
+import { canEditConditionalEntry } from "../../utils/charting/editing";
 
 interface ErrorsState {
   pair?: string;
@@ -63,6 +67,7 @@ const BaseOrderTab: FC<{
 
   const [currentPrice, setCurrentPrice] = useState<number>(0);
   const [errorsState, setErrorsState] = useImmer<ErrorsState>({});
+  const entryPriceEditedRef = useRef(false);
   const initializedSymbolRef = useRef<string | null>(null);
   const {
     register,
@@ -120,6 +125,28 @@ const BaseOrderTab: FC<{
 
     return () => unsubscribe();
   }, [dispatch, watch]);
+
+  useEffect(() => {
+    if (
+      bot.entry_mode === EntryMode.CONDITIONAL_LIMIT &&
+      bot.entry_price == null &&
+      !entryPriceEditedRef.current &&
+      !isBusyBot &&
+      bot.status !== BotStatus.PENDING &&
+      bot.deal?.current_price > 0
+    ) {
+      dispatch(
+        setField({ name: "entry_price", value: bot.deal.current_price }),
+      );
+    }
+  }, [
+    bot.entry_mode,
+    bot.entry_price,
+    bot.deal?.current_price,
+    bot.status,
+    dispatch,
+    isBusyBot,
+  ]);
 
   useEffect(() => {
     if (!touchedFields.fiat_order_size) {
@@ -323,28 +350,59 @@ const BaseOrderTab: FC<{
               </Col>
               <Col md="6" sm="12" className="my-6">
                 {bot.market_type === MarketType.FUTURES ? (
-                  <Form.Group controlId="futures_leverage">
-                    <Form.Label>Leverage</Form.Label>
-                    <Form.Select
-                      name="futures_leverage"
-                      value={bot.futures_leverage ?? futuresLeverage}
-                      disabled={isBusyBot || bot.status === BotStatus.PENDING}
-                      onChange={(event) =>
-                        dispatch(
-                          setField({
-                            name: "futures_leverage",
-                            value: Number(event.target.value),
-                          }),
-                        )
-                      }
-                    >
-                      {[1, 2, 3, 4, 5].map((leverage) => (
-                        <option key={leverage} value={leverage}>
-                          {leverage}x
+                  <>
+                    <Form.Group controlId="entry_mode">
+                      <Form.Label>Entry</Form.Label>
+                      <Form.Select
+                        value={bot.entry_mode ?? EntryMode.IMMEDIATE}
+                        disabled={isBusyBot || bot.status === BotStatus.PENDING}
+                        onChange={(event) => {
+                          const entryMode = event.target.value as EntryMode;
+                          dispatch(
+                            setField({ name: "entry_mode", value: entryMode }),
+                          );
+                          if (
+                            entryMode === EntryMode.CONDITIONAL_LIMIT &&
+                            bot.entry_expires_at == null
+                          ) {
+                            dispatch(
+                              setField({
+                                name: "entry_expires_at",
+                                value: Date.now() + 6 * 60 * 60 * 1000,
+                              }),
+                            );
+                          }
+                        }}
+                      >
+                        <option value={EntryMode.IMMEDIATE}>Immediate</option>
+                        <option value={EntryMode.CONDITIONAL_LIMIT}>
+                          Conditional limit
                         </option>
-                      ))}
-                    </Form.Select>
-                  </Form.Group>
+                      </Form.Select>
+                    </Form.Group>
+                    <Form.Group controlId="futures_leverage">
+                      <Form.Label>Leverage</Form.Label>
+                      <Form.Select
+                        name="futures_leverage"
+                        value={bot.futures_leverage ?? futuresLeverage}
+                        disabled={isBusyBot || bot.status === BotStatus.PENDING}
+                        onChange={(event) =>
+                          dispatch(
+                            setField({
+                              name: "futures_leverage",
+                              value: Number(event.target.value),
+                            }),
+                          )
+                        }
+                      >
+                        {[1, 2, 3, 4, 5].map((leverage) => (
+                          <option key={leverage} value={leverage}>
+                            {leverage}x
+                          </option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                  </>
                 ) : (
                   <>
                     <InputTooltip
@@ -368,6 +426,71 @@ const BaseOrderTab: FC<{
             </Row>
           )}
         </Row>
+        {bot.market_type === MarketType.FUTURES &&
+          bot.entry_mode === EntryMode.CONDITIONAL_LIMIT && (
+            <Row className="my-3">
+              <Col md="6" sm="12">
+                <Form.Group controlId="entry_price">
+                  <Form.Label>Entry limit price</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min="0"
+                    step="any"
+                    required
+                    value={bot.entry_price ?? ""}
+                    onFocus={() => dispatch(focusOrderLine("entry_price"))}
+                    disabled={!canEditConditionalEntry(bot)}
+                    onChange={(event) => {
+                      entryPriceEditedRef.current = true;
+                      dispatch(
+                        setField({
+                          name: "entry_price",
+                          value:
+                            event.target.value === ""
+                              ? null
+                              : Number(event.target.value),
+                        }),
+                      );
+                    }}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md="6" sm="12">
+                <Form.Group controlId="entry_expires_at">
+                  <Form.Label>Entry expires at</Form.Label>
+                  <Form.Control
+                    type="datetime-local"
+                    step="1"
+                    required
+                    onFocus={() => dispatch(focusOrderLine("entry_expires_at"))}
+                    value={
+                      bot.entry_expires_at == null
+                        ? ""
+                        : moment(bot.entry_expires_at).format(
+                            "YYYY-MM-DDTHH:mm:ss",
+                          )
+                    }
+                    disabled={!canEditConditionalEntry(bot)}
+                    onChange={(event) =>
+                      dispatch(
+                        setField({
+                          name: "entry_expires_at",
+                          value:
+                            event.target.value === ""
+                              ? null
+                              : new Date(event.target.value).getTime(),
+                        }),
+                      )
+                    }
+                  />
+                  <Form.Text>
+                    Local time. Defaults to six hours from now. Focus this field
+                    to drag the expiry line on the chart.
+                  </Form.Text>
+                </Form.Group>
+              </Col>
+            </Row>
+          )}
         <Row className="my-3">
           <Col md="6" sm="12">
             <Form.Group controlId="recovery_mode">

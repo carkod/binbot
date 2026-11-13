@@ -104,3 +104,96 @@ The base order size error is tightly coupled with available balance, as this is 
 
 ## Why not use algo orders for take_profit and safety_orders (TAKE_PROFIT, STOP_LOSS)?
 The Binance maximum is only 5 algo orders, which is not enough to make many orders.
+
+## Conditional LIMIT entries (KuCoin futures)
+
+In the dashboard, focusing the stop-loss, trailing-profit, trailing-deviation, or
+conditional entry-price input unlocks its corresponding chart line. Dragging the
+line updates the form; saving or updating the bot remains a separate action.
+Trailing deviation is measured from the trailing-profit reference, while stop
+loss and trailing profit are measured from the opening price (or conditional
+entry price before opening). Clicking elsewhere or pressing Escape locks the line.
+Submitted entry prices and completed bots cannot be dragged.
+Live quotes are frozen as the preview reference while a field is selected, so
+dropping a line and returning focus to the input preserves the selected price.
+
+Focusing `entry_expires_at` shows a draggable magenta vertical expiry line for
+an unsubmitted conditional entry. Moving it updates the local-time input and
+expiry mark continuously; past expiry drops are rejected. Switching fields,
+clicking elsewhere, pressing Escape, or selecting Immediate hides the handle.
+Pending, active, completed, and already-submitted entries cannot edit expiry.
+Pan to the future if the expiry is offscreen. The handle supports fixed-duration
+timeframes (including the default hourly chart), with minute precision.
+
+Conditional entries have a magenta price line and `E`/`X` timescale marks for
+creation and expiry. Marks use the existing hourly timestamp format; TradingView
+may not display an expiry mark until its timestamp is within the available bars.
+These interactions require the accompanying `binbot-charts` library changes;
+the published 0.16.4 package does not provide the drag callbacks or the
+`timeMarker` / `onTimeMarkerMove` expiry API. Dashboard validation uses the local
+charts build. Before deploying, publish the updated library and update the
+dashboard dependency and lockfile; a clean install of 0.16.4 cannot run these
+interactions.
+
+Bots accept `entry_mode`: `immediate` (default) or `conditional_limit`. The shared
+Pydantic model validates these values; the database stores a string. A conditional
+entry requires a positive `entry_price`, which otherwise defaults to `null`.
+The dashboard prefills it from the chart's current price and shows an editable
+expiry six hours from selection, displayed in local time. `entry_expires_at` is an absolute Unix
+millisecond timestamp, defaulting to `created_at + 21600000` (six hours). Omitted
+or null mode/expiry values use those defaults.
+
+Manual activation arms the bot as `pending` without submitting an order. Binquant
+can create the same pending candidate directly. Streaming checks a fresh order
+book: a long needs ask <= limit, a short needs bid >= limit. The limit is rounded
+to the exchange tick without worsening the requested price. Conditional entries
+never use strategy repricing or market fallback.
+
+Conditional-entry failures are timestamped on the bot and appended to its stored
+logs before the exception stops the attempt. Repeated identical failure messages
+are suppressed during retries. Logging updates only the logs, preserving newer
+position state. Deleted candidates retain their reason on the in-memory model
+and in the activation response or streaming logs; they are never saved again just
+to retain a log message.
+
+Candidates compete for available futures funds and `max_active_autotrade_bots`.
+Waiting conditional candidates do not occupy execution slots; active bots,
+immediate pending entries, and submitted conditional entries do. The entry check
+and submission are serialized across API/streaming processes using PostgreSQL.
+A full bot limit leaves the candidate waiting until capacity becomes available or
+it expires. Insufficient funds for the minimum contract deletes the unsubmitted
+candidate. Sizing retains the existing affordable-contract clamp and fee-aware
+margin check, so a candidate may open a smaller position than requested.
+
+There are no entry groups and no automatic sibling cancellation. Several
+candidates may open when both funds and execution slots permit. Other existing
+positions remain managed normally.
+
+The same absolute deadline covers waiting for the price and an unfilled submitted
+order; submission does not restart the six-hour clock. Expired unsubmitted bots
+are deleted. Submitted entries are cancelled and reconciled, then the bot is deleted
+once no fills or position remain; fills found during cancellation become managed
+positions instead. Uncertain submission outcomes
+retain their client ID for reconciliation and are never deleted as unfunded.
+The deadline stops governing the position after entry fills. Immediate strategies
+retain their existing strategy-specific order timeouts.
+
+The worker currently polls on its existing 15-second sweep; a brief touch can be
+missed and reaching the price does not guarantee a fill. Entry configuration is
+immutable after order submission. Deploy the updated shared pybinbot package and
+apply the replay-safe entry migration before starting the updated services.
+
+### Entry implementation and diagnostics
+
+`ConditionalEntry` in `api/deals/conditional_entry.py` owns conditional arming, capacity
+checks, explicit-price triggers and submission deadlines. Immediate entry stays
+in `KucoinPositionDeal.base_order()`. Both paths import `submission_guard` from
+`api/tools/utils.py` and share margin sizing, affordability validation and
+client-order-ID recovery operations.
+This keeps the conditional decision flow separate while preserving account-wide
+serialization and exchange order identity.
+
+Streaming stores unresolved-fill diagnostics in the bot's saved `logs`.
+Conditional deletion reasons are added to the returned bot before deletion;
+deleting the bot also removes its persisted logs. The worker does not save the
+bot afterward.

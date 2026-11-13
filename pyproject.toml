@@ -18,7 +18,7 @@ dependencies = [
     "alembic-postgresql-enum",
     "numpy==2.5.4",
     "pandas==3.1.1",
-    "pybinbot>=2.1.0",
+    "pybinbot>=2.1.1",
 ]
 
 [project.urls]

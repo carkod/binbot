@@ -30,7 +30,7 @@ from api.databases.crud.autotrade_crud import AutotradeCrud
 from api.databases.crud.grid_ladder_crud import GridLadderCrud
 from api.databases.utils import get_session
 from api.deals.gateway import DealGateway
-from api.deals.entry import ConditionalEntryDeleted
+from api.deals.conditional_entry import ConditionalEntryDeleted
 from api.databases.tables.bot_table import BotTable
 from api.exchange_apis.kucoin.futures.entry_pricing import EntryLiquidityError
 from kucoin_universal_sdk.model.common import RestError
@@ -353,6 +353,12 @@ def activate_bot(
             )
             return BotResponse(message=str(e), data=updated_bot, error=1)
         except (BinbotErrors, BinanceErrors, RestError) as e:
+            if bot_model.entry_mode == EntryMode.conditional_limit:
+                current_bot = deal_gateway.deal.active_bot
+                if current_bot.logs and current_bot.logs[-1].partition("] ")[2] == (
+                    f"Conditional entry deferred: {e}"
+                ):
+                    return BotResponse(message=str(e), data=current_bot, error=1)
             deal_gateway.update_logs(str(e))
             return BotResponse(message=str(e), data=bot_model, error=1)
 

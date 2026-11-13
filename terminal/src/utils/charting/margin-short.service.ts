@@ -1,5 +1,6 @@
+import { entryReferencePrice } from "./editing";
 import { type Bot } from "../../features/bots/botInitialState";
-import { BotStatus } from "../enums";
+import { BotStatus, EntryMode } from "../enums";
 import { dealColors } from "../../utils/charting/index";
 import type { OrderLine } from "./index.d";
 
@@ -7,12 +8,15 @@ export default function marginTrading(
   bot: Bot,
   currentPrice: number,
   previewTrailingSettings = false,
+  previewStopLossSettings = false,
 ): OrderLine[] {
   const quoteAsset = bot.quote_asset;
   let totalOrderLines: OrderLine[] = [];
   const qtyText = bot.deal ? String(bot.deal.opening_qty) : "";
-  const price =
-    bot.deal?.opening_price || currentPrice || bot.deal.current_price;
+  const price = entryReferencePrice(
+    bot,
+    currentPrice || bot.deal.current_price,
+  );
 
   const baseOrderSize =
     bot.deal.base_order_size > 0
@@ -107,10 +111,10 @@ export default function marginTrading(
         color: dealColors.trailing_stop_loss,
       });
     } else if (
-      bot.status === BotStatus.INACTIVE &&
+      (bot.status === BotStatus.INACTIVE || bot.status === BotStatus.PENDING) &&
       bot.trailing &&
-      bot.trailing_deviation > 0 &&
-      bot.trailing_profit > 0
+      (previewTrailingSettings ||
+        (bot.trailing_deviation > 0 && bot.trailing_profit > 0))
     ) {
       // Preview the short's trailing levels below the base order.
       const trailingProfitPrice = price * (1 - bot.trailing_profit / 100);
@@ -154,9 +158,10 @@ export default function marginTrading(
     });
   }
 
-  if (bot.stop_loss > 0) {
-    const stopLossPrice =
-      bot.deal.stop_loss_price || currentPrice * (1 + bot.stop_loss / 100);
+  if (bot.stop_loss > 0 || previewStopLossSettings) {
+    const stopLossPrice = previewStopLossSettings
+      ? price * (1 + bot.stop_loss / 100)
+      : bot.deal.stop_loss_price || price * (1 + bot.stop_loss / 100);
     totalOrderLines.push({
       id: "stop_loss",
       text: `Stop Loss ${bot.stop_loss}%`,
@@ -164,6 +169,25 @@ export default function marginTrading(
       quantity: `${qtyText} ${quoteAsset}`,
       price: stopLossPrice, // buy_profit * take_profit%
       color: dealColors.stop_loss,
+    });
+  }
+
+  if (
+    bot.entry_mode === EntryMode.CONDITIONAL_LIMIT &&
+    bot.entry_price > 0 &&
+    (bot.status === BotStatus.INACTIVE || bot.status === BotStatus.PENDING)
+  ) {
+    totalOrderLines.push({
+      id: "entry_price",
+      text: "Conditional entry limit",
+      tooltip: [bot.status, `Entry limit ${bot.entry_price} ${bot.fiat}`],
+      quantity:
+        bot.deal.base_order_size > 0
+          ? `${bot.deal.base_order_size} contracts`
+          : `${bot.fiat_order_size} ${bot.fiat}`,
+      price: bot.entry_price,
+      color: dealColors.entry_price,
+      lineStyle: 2,
     });
   }
 

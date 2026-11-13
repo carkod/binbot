@@ -1,3 +1,4 @@
+import logging
 from math import ceil
 from time import time
 from typing import Union
@@ -8,8 +9,10 @@ from pybinbot import (
     BinanceKlineIntervals,
     BotBase,
     BotModel,
+    BinbotErrors,
     Candles,
     DealType,
+    EntryMode,
     OrderStatus,
     ExchangeId,
     KucoinApi,
@@ -22,6 +25,7 @@ from pybinbot import (
     round_numbers,
 )
 
+from api.deals.conditional_entry import ConditionalEntryDeleted
 from api.databases.crud.autotrade_crud import AutotradeCrud
 from api.exchange_apis.kucoin.futures.entry_pricing import (
     EntryLiquidityError,
@@ -524,6 +528,8 @@ class Lifecycle:
         self.execution.controller.save(self.execution.active_bot)
 
         if self.execution.active_bot.status == Status.pending:
+            if self.execution.active_bot.entry_mode != EntryMode.immediate:
+                return self.execution.active_bot
             if self.execution.active_bot.deal.opening_price == 0 and any(
                 order.deal_type == DealType.base_order
                 and order.status
@@ -824,6 +830,23 @@ class Lifecycle:
         return self.execution.active_bot
 
     def process_tick(self) -> BotModel:
+        bot = self.execution.active_bot
+        if (
+            bot.status == Status.pending
+            and bot.entry_mode == EntryMode.conditional_limit
+            and not bot.orders
+            and bot.deal.opening_qty == 0
+        ):
+            try:
+                return self.execution.open_deal(trigger_entry=True)
+            except ConditionalEntryDeleted as error:
+                logging.info("Conditional entry %s: %s", bot.id, error)
+                bot = self.execution.active_bot
+                bot.status = Status.inactive
+                return bot
+            except (BinbotErrors, ValueError, RestError) as error:
+                logging.warning("Conditional entry %s deferred: %s", bot.id, error)
+                return self.execution.active_bot
         close_price = 0.0
         cls: Union[SpotPosition, FuturesPosition]
         if self.execution.active_bot.market_type == MarketType.FUTURES:

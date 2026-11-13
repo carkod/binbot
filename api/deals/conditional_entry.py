@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Generator
 from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
+from kucoin_universal_sdk.model.common import RestError
 from pybinbot import (
     BinbotErrors,
     BotModel,
@@ -48,33 +50,67 @@ class ConditionalEntry:
     @contextmanager
     def entry_submission(self, *, check_capacity: bool = True) -> Generator[BotModel]:
         with submission_guard(self.execution.active_bot.id) as (bot, session):
-            if (
-                check_capacity
-                and bot.entry_mode == EntryMode.conditional_limit
-                and bot.status == Status.pending
-                and bot.deal.entry_client_oid is None
-                and not bot.orders
-                and timestamp() < bot.entry_expires_at
-            ):
-                settings = AutotradeCrud(session).get_settings()
-                occupied = session.exec(
-                    select(func.count())
-                    .select_from(BotTable)
-                    .join(DealTable)
-                    .where(BotTable.id != bot.id)
-                    .where(col(BotTable.status).in_((Status.active, Status.pending)))
-                    .where(
-                        or_(
-                            col(BotTable.status) == Status.active,
-                            col(BotTable.entry_mode) == EntryMode.immediate,
-                            col(DealTable.entry_client_oid).is_not(None),
-                            col(DealTable.opening_qty) > 0,
+            self.execution.active_bot = bot
+            try:
+                if (
+                    check_capacity
+                    and bot.entry_mode == EntryMode.conditional_limit
+                    and bot.status == Status.pending
+                    and bot.deal.entry_client_oid is None
+                    and not bot.orders
+                    and timestamp() < bot.entry_expires_at
+                ):
+                    settings = AutotradeCrud(session).get_settings()
+                    occupied = session.exec(
+                        select(func.count())
+                        .select_from(BotTable)
+                        .join(DealTable)
+                        .where(BotTable.id != bot.id)
+                        .where(
+                            col(BotTable.status).in_((Status.active, Status.pending))
                         )
-                    )
-                ).one()
-                if occupied >= settings.max_active_autotrade_bots:
-                    raise EntryCapacityError("Waiting for an available bot slot")
-            yield bot
+                        .where(
+                            or_(
+                                col(BotTable.status) == Status.active,
+                                col(BotTable.entry_mode) == EntryMode.immediate,
+                                col(DealTable.entry_client_oid).is_not(None),
+                                col(DealTable.opening_qty) > 0,
+                            )
+                        )
+                    ).one()
+                    if occupied >= settings.max_active_autotrade_bots:
+                        raise EntryCapacityError("Waiting for an available bot slot")
+                yield bot
+            except ConditionalEntryDeleted as error:
+                # Keep the reason on the returned model without recreating its row.
+                bot.add_log(str(error))
+                raise
+            except (BinbotErrors, ValueError, RestError) as error:
+                message = f"Conditional entry deferred: {error}"
+                previous = next(
+                    (
+                        log.partition("] ")[2]
+                        for log in reversed(bot.logs)
+                        if log.partition("] ")[2].startswith(
+                            "Conditional entry deferred:"
+                        )
+                    ),
+                    None,
+                )
+                if previous != message:
+                    bot.add_log(message)
+                    try:
+                        # Append only the log: saving the whole bot could overwrite
+                        # exchange reconciliation or recreate a concurrently deleted bot.
+                        # update_logs supplies its own timestamp, so pass raw text.
+                        self.execution.controller.update_logs(
+                            log_message=message, bot=bot
+                        )
+                    except Exception:
+                        logging.exception(
+                            "Could not persist conditional entry log for %s", bot.id
+                        )
+                raise
 
     def arm(self) -> BotModel:
         """Manual activation waits for streaming rather than submitting an order."""
