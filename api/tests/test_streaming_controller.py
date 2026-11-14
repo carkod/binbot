@@ -1004,10 +1004,15 @@ class TestPositionManager:
         assert canceled_stop_orders == []
         assert deleted == []
         if entry_mode == EntryMode.conditional_limit:
-            assert bot.status == Status.inactive
-            assert deleted_bots == [bot.id]
-            assert any("Deleted expired conditional bot" in log for log in logs)
-            assert saved == []
+            assert bot.status == Status.closed
+            assert deleted_bots == []
+            assert any("Closed expired conditional bot" in log for log in logs)
+            assert saved == [bot]
+            assert bot.orders[0].status == (
+                OrderStatus.CANCELED
+                if exchange_status == "canceled"
+                else OrderStatus.EXPIRED
+            )
             assert retrieve_calls == []
         else:
             assert bot.status == Status.error

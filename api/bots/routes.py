@@ -30,7 +30,7 @@ from api.databases.crud.autotrade_crud import AutotradeCrud
 from api.databases.crud.grid_ladder_crud import GridLadderCrud
 from api.databases.utils import get_session
 from api.deals.gateway import DealGateway
-from api.deals.conditional_entry import ConditionalEntryDeleted
+from api.deals.conditional_entry import ConditionalEntryClosed
 from api.databases.tables.bot_table import BotTable
 from api.exchange_apis.kucoin.futures.entry_pricing import EntryLiquidityError
 from kucoin_universal_sdk.model.common import RestError
@@ -89,6 +89,7 @@ async def stream_bot_operation(
 @bot_blueprint.get("/bot", response_model=BotListResponse, tags=["bots"])
 def get_bots(
     status: Status = Status.all,
+    include_closed: bool = False,
     start_date: int | None = None,
     end_date: int | None = None,
     limit: int = 200,
@@ -106,6 +107,7 @@ def get_bots(
             limit=limit,
             offset=offset,
             bot_name=bot_name,
+            include_closed=include_closed,
         )
         data = [BotModel.dump_from_table(bot) for bot in bots]
         return BotListResponse(message="Successfully found bots!", data=data)
@@ -130,12 +132,13 @@ def get_active_pairs(
 
 @bot_blueprint.get("/bot/algo-ranking", tags=["bots"])
 def get_algo_ranking(
+    include_closed: bool = False,
     session: Session = Depends(get_session),
     _: UserTokenData = Depends(get_current_user),
 ):
     crud = BotTableCrud(session)
     try:
-        ranking = crud.get_list_algo()
+        ranking = crud.get_list_algo(include_closed=include_closed)
         return JSONResponse(content={"detail": jsonable_encoder(ranking)})
     except BinbotErrors as e:
         raise HTTPException(status_code=400, detail=e.message)
@@ -144,6 +147,7 @@ def get_algo_ranking(
 @bot_blueprint.get("/bot/public", response_model=BotListResponse, tags=["bots"])
 def get_public_bots(
     status: Status = Status.all,
+    include_closed: bool = False,
     limit: int = 200,
     offset: int = 0,
     session: Session = Depends(get_session),
@@ -162,6 +166,7 @@ def get_public_bots(
             offset=offset,
             start_date=start_date,
             end_date=end_date,
+            include_closed=include_closed,
         )
         bot_profit_list = []
         for bot in bots:
@@ -173,6 +178,8 @@ def get_public_bots(
             )
             if opening and opening != 0:
                 profit_pct = (closing - opening) / opening
+            elif bot.status == Status.closed:
+                profit_pct = 0
             else:
                 continue
 
@@ -201,12 +208,13 @@ def get_public_bots(
 @bot_blueprint.get("/bot/{bot_id}", response_model=BotResponse, tags=["bots"])
 def get_one_by_id(
     bot_id: str,
+    include_closed: bool = False,
     session: Session = Depends(get_session),
     _: UserTokenData = Depends(get_current_user),
 ):
     crud = BotTableCrud(session)
     try:
-        bot_row = crud.get_one(bot_id=bot_id)
+        bot_row = crud.get_one(bot_id=bot_id, include_closed=include_closed)
         bot_model = BotModel.dump_from_table(bot_row)
         return BotResponse(message="Successfully found one bot.", data=bot_model)
     except BinbotErrors as e:
@@ -216,12 +224,13 @@ def get_one_by_id(
 @bot_blueprint.get("/bot/symbol/{symbol}", response_model=BotResponse, tags=["bots"])
 def get_one_by_symbol(
     symbol: str,
+    include_closed: bool = False,
     session: Session = Depends(get_session),
     _: UserTokenData = Depends(get_current_user),
 ):
     crud = BotTableCrud(session)
     try:
-        bot_row = crud.get_one(symbol=symbol)
+        bot_row = crud.get_one(symbol=symbol, include_closed=include_closed)
         bot_model = BotModel.dump_from_table(bot_row)
         return BotResponse(message="Successfully found one bot.", data=bot_model)
     except BinbotErrors as e:
@@ -345,8 +354,10 @@ def activate_bot(
             elif bot_row.status == Status.active:
                 message = "Successfully updated bot."
             return BotResponse(message=message, data=activated_bot)
-        except ConditionalEntryDeleted as e:
-            return BotResponse(message=str(e), error=1)
+        except ConditionalEntryClosed as e:
+            return BotResponse(
+                message=str(e), data=deal_gateway.deal.active_bot, error=1
+            )
         except EntryLiquidityError as e:
             updated_bot = BotModel.dump_from_table(
                 BotTableCrud().get_one(bot_id=bot_id)

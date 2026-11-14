@@ -483,6 +483,8 @@ class KucoinPositionDeal(EntryPricing):
         *,
         trigger_entry: bool = False,
     ) -> BotModel:
+        if self.active_bot.status == Status.closed:
+            return self.active_bot
         if progress:
             progress(35, "Preparing the futures entry")
         if (
