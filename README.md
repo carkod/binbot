@@ -44,7 +44,7 @@ flowchart LR
 
 ## Telegram alerts
 
-Active futures bots send ephemeral Telegram alerts when mark price reaches an
+Active futures bots send ephemeral Telegram alerts when last traded price reaches an
 armed stop-loss or trailing-stop threshold. Each qualifying sweep attempts a
 message before order reconciliation; completed bots do not notify. Messages
 contain the bot name, symbol, stop type, threshold, and dashboard link. Delivery
@@ -56,6 +56,19 @@ initialization. Deploy pybinbot 1.13.7 with these changes; publish that release
 and refresh the application lockfile before a registry-based deployment.
 
 ## KuCoin futures recovery
+
+Futures bot stop-loss and trailing-stop orders, including recovery closes, and
+grid protective stops use KuCoin's last traded price (`stopPriceType=TP`).
+Pybinbot 2.1.2 defaults conditional futures orders to last price. Binbot also
+passes the trigger type explicitly.
+Streaming lifecycle decisions and stop alerts use the futures last-trade ticker
+through Pybinbot's `KucoinFutures.get_ticker_price()` method, which validates the
+exchange response. This application requires Pybinbot 2.1.2 or newer.
+Trigger levels, limit prices, quantities, and market fallback rules are
+unchanged. Existing exchange orders retain their trigger type until replaced.
+Last price can spike more than mark price in either direction; selecting it does
+not guarantee the highest long exit or lowest short exit, since fills depend on
+the available order book.
 
 Recovery is configured through `recovery_params`; `margin_short_reversal` has
 been removed. After an entry fills, binbot arms a native conditional market

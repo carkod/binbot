@@ -73,14 +73,14 @@ class FuturesPosition(PositionMarket):
         self.kucoin_benchmark_symbol = "XBTUSDTM"
         self.api = self.base_streaming.kucoin_futures_api
 
-    def notify_stop_condition_hits(self, mark_price: float) -> None:
+    def notify_stop_condition_hits(self, last_price: float) -> None:
         """Report armed stop conditions before reconciliation can retire the bot."""
         bot = self.execution.active_bot
         if (
             bot.status != Status.active
             or bot.deal.opening_price <= 0
-            or not isfinite(mark_price)
-            or mark_price <= 0
+            or not isfinite(last_price)
+            or last_price <= 0
         ):
             return
 
@@ -104,7 +104,7 @@ class FuturesPosition(PositionMarket):
                     if trailing
                     else bot.deal.stop_loss_price
                 )
-            if threshold <= 0 or (mark_price - threshold) * direction > 0:
+            if threshold <= 0 or (last_price - threshold) * direction > 0:
                 continue
             stop_type = "Trailing stop loss" if trailing else "Stop loss"
             self.base_streaming.telegram_delivery.send_once(

@@ -110,12 +110,17 @@ it.each([BotPosition.LONG, BotPosition.SHORT])(
     expect(editable()).toEqual(["stop_loss"]);
     fireEvent.pointerDown(testingScreen.getByTestId("chart"));
     expect(editable()).toEqual(["stop_loss"]);
+    const input = testingScreen.getByLabelText(/Stop loss/);
+    const focus = vi.spyOn(input, "focus");
     act(() => {
       chart.props.onOrderLineMove(
         "stop_loss",
         position === BotPosition.LONG ? 95 : 105,
       );
     });
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+    expect(input).toHaveFocus();
+    focus.mockRestore();
     expect(store.getState().bot.bot.stop_loss).toBe(5);
     expect(testingScreen.getByLabelText(/Stop loss/)).toHaveValue(5);
     fireEvent.pointerDown(
@@ -181,6 +186,55 @@ it.each([BotPosition.LONG, BotPosition.SHORT])(
     });
     expect(store.getState().bot.bot.stop_loss).toBe(3);
     expect(testingScreen.getByRole("alert")).toBeInTheDocument();
+  },
+);
+it.each([
+  [BotPosition.LONG, "typing", 116.6, 111.936],
+  [BotPosition.LONG, "dragging", 116.6, 111.936],
+  [BotPosition.SHORT, "typing", 103.4, 107.536],
+  [BotPosition.SHORT, "dragging", 103.4, 107.536],
+] as const)(
+  "recalculates %s trailing prices immediately when %s the conditional entry",
+  (position, interaction, profitPrice, stopPrice) => {
+    const store = setup(TabsKeys.MAIN, {
+      position,
+      entry_mode: EntryMode.CONDITIONAL_LIMIT,
+      entry_price: 100,
+    });
+    const input = testingScreen.getByLabelText("Entry limit price");
+    fireEvent.focus(input);
+    if (interaction === "typing") {
+      fireEvent.change(input, { target: { value: "110" } });
+    } else {
+      act(() => {
+        chart.props.onOrderLineMove("base_order", 110);
+      });
+    }
+
+    const expectTrailingPrices = () => {
+      expect(
+        chart.props.orderLines.find((line) => line.id === "trailing_profit")
+          ?.price,
+      ).toBeCloseTo(profitPrice);
+      expect(
+        chart.props.orderLines.find((line) => line.id === "trailing_stop_loss")
+          ?.price,
+      ).toBeCloseTo(stopPrice);
+    };
+    expect(input).toHaveValue(110);
+    expect(store.getState().bot.bot.entry_price).toBe(110);
+    expect(store.getState().bot.bot.trailing_profit).toBe(6);
+    expect(store.getState().bot.bot.trailing_deviation).toBe(4);
+    expectTrailingPrices();
+
+    fireEvent.blur(input);
+    fireEvent.pointerDown(
+      testingScreen.getByRole("button", { name: "Elsewhere" }),
+    );
+    act(() => {
+      chart.props.onTick({ close: "120" });
+    });
+    expectTrailingPrices();
   },
 );
 it.each([BotStatus.PENDING, BotStatus.ACTIVE, BotStatus.COMPLETED])(

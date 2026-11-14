@@ -201,7 +201,7 @@ const ChartContainer: FC<{
     }
     setDragError("");
     dispatch(setField({ name: focusedOrderLine, value }));
-    document.getElementById(focusedOrderLine)?.focus();
+    document.getElementById(focusedOrderLine)?.focus({ preventScroll: true });
   };
 
   const handleTimeMarkerMove = (id: string, time: number) => {

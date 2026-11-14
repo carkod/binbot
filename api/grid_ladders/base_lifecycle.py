@@ -659,7 +659,7 @@ class BaseLifecycle(ABC):
             order_type=OrderType.market,
             stop=stop_direction,
             stop_price=stop_price,
-            stop_price_type=AddOrderReq.StopPriceTypeEnum.MARK_PRICE,
+            stop_price_type=AddOrderReq.StopPriceTypeEnum.TRADE_PRICE,
             reduce_only=True,
         )
         self.crud.create_order(
