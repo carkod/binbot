@@ -29,10 +29,6 @@ Repository = "https://github.com/carkod/binbot"
 [tool.uv]
 package = false
 
-[tool.uv.sources]
-# Includes Status.closed until the companion change is released on PyPI.
-pybinbot = { git = "https://github.com/carkod/pybinbot.git", rev = "5e7044254619a1049c69f17a1586622921a8132a" }
-
 [project.optional-dependencies]
 dev = [
     "pytest-asyncio>=1.3.0",
