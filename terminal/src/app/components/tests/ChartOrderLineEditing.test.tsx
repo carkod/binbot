@@ -143,26 +143,46 @@ it("updates each trailing field from its own line", () => {
   fireEvent.keyDown(document, { key: "Escape" });
   expect(editable()).toEqual([]);
 });
-it("moves a conditional entry without changing expiry and refuses invalid stop drops", () => {
-  const store = setup(TabsKeys.MAIN, {
-    entry_mode: EntryMode.CONDITIONAL_LIMIT,
-    entry_price: 100,
-    entry_expires_at: 1800000000000,
-  });
-  fireEvent.focus(testingScreen.getByLabelText("Entry limit price"));
-  expect(editable()).toEqual(["entry_price"]);
-  act(() => {
-    chart.props.onOrderLineMove("entry_price", 99);
-  });
-  expect(testingScreen.getByLabelText("Entry limit price")).toHaveValue(99);
-  expect(store.getState().bot.bot.entry_expires_at).toBe(1800000000000);
-  fireEvent.focus(testingScreen.getByLabelText(/Stop loss/));
-  act(() => {
-    chart.props.onOrderLineMove("stop_loss", 110);
-  });
-  expect(store.getState().bot.bot.stop_loss).toBe(3);
-  expect(testingScreen.getByRole("alert")).toBeInTheDocument();
-});
+it.each([BotPosition.LONG, BotPosition.SHORT])(
+  "moves the single %s conditional entry line without changing expiry",
+  (position) => {
+    const store = setup(TabsKeys.MAIN, {
+      position,
+      entry_mode: EntryMode.CONDITIONAL_LIMIT,
+      entry_price: 100,
+      entry_expires_at: 1800000000000,
+    });
+    fireEvent.focus(testingScreen.getByLabelText("Entry limit price"));
+    expect(editable()).toEqual(["base_order"]);
+    expect(
+      chart.props.orderLines.some(
+        (line) => line.id === "entry_price" || line.id === "conditional_entry",
+      ),
+    ).toBe(false);
+    expect(
+      chart.props.orderLines
+        .filter((line) => line.price === 100)
+        .map((line) => line.id),
+    ).toEqual(["base_order"]);
+    act(() => {
+      chart.props.onOrderLineMove("base_order", 99);
+    });
+    expect(testingScreen.getByLabelText("Entry limit price")).toHaveValue(99);
+    expect(store.getState().bot.bot.entry_expires_at).toBe(1800000000000);
+    expect(
+      chart.props.orderLines.find((line) => line.id === "base_order").price,
+    ).toBe(99);
+    fireEvent.focus(testingScreen.getByLabelText(/Stop loss/));
+    act(() => {
+      chart.props.onOrderLineMove(
+        "stop_loss",
+        position === BotPosition.LONG ? 110 : 90,
+      );
+    });
+    expect(store.getState().bot.bot.stop_loss).toBe(3);
+    expect(testingScreen.getByRole("alert")).toBeInTheDocument();
+  },
+);
 it.each([BotStatus.PENDING, BotStatus.ACTIVE, BotStatus.COMPLETED])(
   "keeps submitted or finished entry lines locked (%s)",
   (status) => {
@@ -295,7 +315,7 @@ it("preserves low-price quote precision for conditional entry prefills", () => {
   });
   expect(store.getState().bot.bot.entry_price).toBe(0.00001234);
   expect(
-    chart.props.orderLines.find((line) => line.id === "entry_price").price,
+    chart.props.orderLines.find((line) => line.id === "base_order").price,
   ).toBe(0.00001234);
 });
 

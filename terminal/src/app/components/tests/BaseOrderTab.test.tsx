@@ -131,13 +131,14 @@ describe("BaseOrderTab", () => {
     fireEvent.change(testingScreen.getByLabelText("Entry"), {
       target: { value: EntryMode.IMMEDIATE },
     });
+    expect(store.getState().bot.bot.entry_price).toBeNull();
     expect(
       testingScreen.queryByLabelText("Entry limit price"),
     ).not.toBeInTheDocument();
     fireEvent.change(testingScreen.getByLabelText("Entry"), {
       target: { value: EntryMode.CONDITIONAL_LIMIT },
     });
-    expect(testingScreen.getByLabelText("Entry limit price")).toHaveValue(90);
+    expect(testingScreen.getByLabelText("Entry limit price")).toHaveValue(100);
     expect(store.getState().bot.bot.entry_expires_at).toBe(
       new Date("2026-11-14T09:30").getTime(),
     );
