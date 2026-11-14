@@ -17,7 +17,7 @@ export function canEditConditionalEntry(bot: Bot): boolean {
 
 export const fieldOrderLines: Record<OrderLineField, string> = {
   stop_loss: "stop_loss",
-  entry_price: "entry_price",
+  entry_price: "base_order",
   trailing_profit: "trailing_profit",
   trailing_deviation: "trailing_stop_loss",
 };

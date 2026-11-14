@@ -46,7 +46,12 @@ export default function spotTrading(
         : getBaseOrderQuoteAsset(bot);
   }
 
-  if (baseOrderSize > 0 && currentPrice) {
+  const conditionalEntry =
+    bot.entry_mode === EntryMode.CONDITIONAL_LIMIT &&
+    bot.entry_price > 0 &&
+    (bot.status === BotStatus.INACTIVE || bot.status === BotStatus.PENDING);
+
+  if ((baseOrderSize > 0 && currentPrice) || conditionalEntry) {
     const qtyText =
       bot.deal.opening_qty > 0
         ? String(bot.deal.opening_qty)
@@ -202,24 +207,6 @@ export default function spotTrading(
         color: dealColors.stop_loss,
       });
     }
-  }
-  if (
-    bot.entry_mode === EntryMode.CONDITIONAL_LIMIT &&
-    bot.entry_price > 0 &&
-    (bot.status === BotStatus.INACTIVE || bot.status === BotStatus.PENDING)
-  ) {
-    totalOrderLines.push({
-      id: "entry_price",
-      text: "Conditional entry limit",
-      tooltip: [bot.status, `Entry limit ${bot.entry_price} ${bot.fiat}`],
-      quantity:
-        bot.deal.base_order_size > 0
-          ? `${bot.deal.base_order_size} contracts`
-          : `${bot.fiat_order_size} ${bot.fiat}`,
-      price: bot.entry_price,
-      color: dealColors.entry_price,
-      lineStyle: 2,
-    });
   }
 
   return totalOrderLines;

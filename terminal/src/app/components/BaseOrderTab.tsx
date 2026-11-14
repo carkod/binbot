@@ -361,6 +361,12 @@ const BaseOrderTab: FC<{
                           dispatch(
                             setField({ name: "entry_mode", value: entryMode }),
                           );
+                          if (entryMode === EntryMode.IMMEDIATE) {
+                            entryPriceEditedRef.current = false;
+                            dispatch(
+                              setField({ name: "entry_price", value: null }),
+                            );
+                          }
                           if (
                             entryMode === EntryMode.CONDITIONAL_LIMIT &&
                             bot.entry_expires_at == null
@@ -453,6 +459,9 @@ const BaseOrderTab: FC<{
                       );
                     }}
                   />
+                  <Form.Text>
+                    Focus this field to drag the entry line on the chart.
+                  </Form.Text>
                 </Form.Group>
               </Col>
               <Col md="6" sm="12">

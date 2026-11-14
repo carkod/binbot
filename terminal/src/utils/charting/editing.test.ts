@@ -47,10 +47,16 @@ it.each([BotPosition.LONG, BotPosition.SHORT])(
       trailing_deviation: 4,
     };
     const lines = updateOrderLines(bot, 120);
-    expect(lines.find((line) => line.id === "entry_price")).toMatchObject({
+    expect(lines.find((line) => line.id === "base_order")).toMatchObject({
       price: 100,
-      color: dealColors.entry_price,
+      color: dealColors.base_order,
     });
+    expect(lines.filter((line) => line.id === "base_order")).toHaveLength(1);
+    expect(
+      lines.some((line) =>
+        ["entry_price", "conditional_entry"].includes(line.id),
+      ),
+    ).toBe(false);
     expect(lines.find((line) => line.id === "stop_loss")?.price).toBe(
       position === BotPosition.LONG ? 97 : 103,
     );
