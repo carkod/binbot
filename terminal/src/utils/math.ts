@@ -1,8 +1,5 @@
-const checkValue = (value) => {
-  if (value === "" || value === null || value === undefined) {
-    return true;
-  }
-  return false;
+const checkValue = (value: unknown): boolean => {
+  return value === "" || value === null || value === undefined;
 };
 
 const checkMinValue = (value) => {
@@ -69,6 +66,15 @@ const floatSafe = (value: unknown): number => {
     : 0;
 };
 
+const isPositiveFinite = (value: number): boolean => {
+  return Number.isFinite(value) && value > 0;
+};
+
+// Round down to the nearest multiple, e.g. timestamps to interval boundaries.
+const floorToMultiple = (value: number, interval: number): number => {
+  return Math.floor(value / interval) * interval;
+};
+
 export {
   checkValue,
   checkMinValue,
@@ -79,4 +85,6 @@ export {
   replaceZeros,
   roundDecimals,
   floatSafe,
+  isPositiveFinite,
+  floorToMultiple,
 };

@@ -361,6 +361,13 @@ textarea.form-control {
   border-radius: 0;
 }
 
+.rbt-input-main.form-control-lg {
+  padding: 0.5rem 1rem;
+  font-size: 1.25rem;
+  line-height: 1.5;
+  border-radius: $border-radius-base;
+}
+
 .form-horizontal {
   .col-form-label,
   .label-on-right {

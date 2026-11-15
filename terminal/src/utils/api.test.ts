@@ -78,6 +78,14 @@ describe("buildBackUrl", () => {
 });
 
 describe("getApiErrorMessage", () => {
+  it("reads KuCoin messages from HTTP errors and query application errors", () => {
+    expect(
+      getApiErrorMessage({ status: 400, data: { msg: "Symbol not found" } }),
+    ).toBe("Symbol not found");
+    expect(
+      getApiErrorMessage({ status: "CUSTOM_ERROR", error: "Symbol not found" }),
+    ).toBe("Symbol not found");
+  });
   it("reads FastAPI detail messages from RTK query errors", () => {
     expect(
       getApiErrorMessage(

@@ -5,6 +5,7 @@ import { type BalanceData } from "../../features/features.types";
 import { buildBackUrl } from "../../utils/api";
 import { BotStatus, ExchangeId, MarketType } from "../../utils/enums";
 import { getToken } from "../../utils/login";
+import { floorToMultiple } from "../../utils/math";
 import {
   calculateRiskBeta,
   FIFTEEN_MINUTES_MS,
@@ -95,8 +96,7 @@ export function useRiskBeta(accountData: BalanceData, marketType: MarketType) {
     }
 
     const controller = new AbortController();
-    const completedBefore =
-      Math.floor(Date.now() / FIFTEEN_MINUTES_MS) * FIFTEEN_MINUTES_MS;
+    const completedBefore = floorToMultiple(Date.now(), FIFTEEN_MINUTES_MS);
     const exchange = settings.exchange_id;
     const fiat = accountData.fiat_currency;
     setBeta(null);

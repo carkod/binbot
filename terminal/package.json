@@ -53,6 +53,7 @@
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.3",
     "eslint-plugin-react": "^7.37.4",
+    "fake-indexeddb": "^6.2.8",
     "globals": "^15.14.0",
     "jsdom": "^23.2.0",
     "prettier": "^3.2.1",

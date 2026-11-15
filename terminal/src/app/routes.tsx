@@ -5,6 +5,7 @@ import BotDetail from "./pages/BotDetail";
 import FuturesBotDetail from "./pages/FuturesBotDetail";
 import BotsPage from "./pages/Bots";
 import DashboardPage from "./pages/Dashboard";
+import MicrostructurePage from "./pages/Microstructure";
 import GridLaddersPage from "./pages/GridLadders";
 import GridLadderDetail from "./pages/GridLadderDetail";
 import NotFound from "./pages/NotFound";
@@ -35,6 +36,15 @@ export const routes: AppRoute[] = [
     element: <DashboardPage />,
     id: "dashboard",
     nav: false,
+  },
+  {
+    path: "microstructure/:symbol?",
+    link: "/microstructure",
+    name: "Microstructure",
+    icon: "fas fa-water",
+    element: <MicrostructurePage />,
+    id: "microstructure",
+    nav: true,
   },
   {
     path: "grid-ladders",

@@ -1,4 +1,63 @@
-import { roundDecimals, toPercentage } from "./math";
+import {
+  checkValue,
+  floorToMultiple,
+  isPositiveFinite,
+  percentageToFloat,
+  roundDecimals,
+  toPercentage,
+} from "./math";
+
+describe("checkValue", () => {
+  it.each(["", null, undefined])("identifies missing input (%s)", (value) => {
+    expect(checkValue(value)).toBe(true);
+  });
+
+  it.each([0, -1, "0", "-1", "1", false, NaN])(
+    "does not treat supplied input as missing (%s)",
+    (value) => {
+      expect(checkValue(value)).toBe(false);
+    },
+  );
+
+  it("allows zero, signed values and numeric strings in percentage conversions", () => {
+    expect(toPercentage(0)).toBe(0);
+    expect(toPercentage("-0.05")).toBe(-5);
+    expect(percentageToFloat("0")).toBe(0);
+    expect(percentageToFloat(-5)).toBe(-0.05);
+    expect(toPercentage(null)).toBeNull();
+    expect(percentageToFloat("")).toBeNull();
+  });
+});
+
+describe("floorToMultiple", () => {
+  it.each([
+    [0, 60_000, 0],
+    [59_999, 60_000, 0],
+    [60_000, 60_000, 60_000],
+    [60_001, 60_000, 60_000],
+    [1_799_999, 900_000, 900_000],
+    [1_800_000, 900_000, 1_800_000],
+    [-1, 60_000, -60_000],
+  ])("rounds %s down to a multiple of %s", (value, interval, expected) => {
+    expect(floorToMultiple(value, interval)).toBe(expected);
+  });
+});
+
+describe("isPositiveFinite", () => {
+  it.each([Number.MIN_VALUE, 0.0001, 1, Number.MAX_VALUE])(
+    "accepts positive finite numbers (%s)",
+    (value) => {
+      expect(isPositiveFinite(value)).toBe(true);
+    },
+  );
+
+  it.each([0, -0, -1, NaN, Infinity, -Infinity])(
+    "rejects zero, negative and non-finite numbers (%s)",
+    (value) => {
+      expect(isPositiveFinite(value)).toBe(false);
+    },
+  );
+});
 
 describe("roundDecimals", () => {
   it("should round to 2 decimals by default", () => {
