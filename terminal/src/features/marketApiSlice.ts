@@ -48,6 +48,9 @@ export interface FastestMoversSnapshot {
  */
 export const marketApiSlice = userApiSlice.injectEndpoints({
   endpoints: (build) => ({
+    cvdAggregate: build.query<CvdAggregate, void>({
+      query: () => ({ url: "/charts/cvd-aggregate?interval=15m&limit=672" }),
+    }),
     fastestMovers: build.query<FastestMoversSnapshot, void>({
       query: () => ({ url: "/charts/fastest_movers?limit=10" }),
       transformResponse: ({ data, message, error }) => {
@@ -72,5 +75,31 @@ export const marketApiSlice = userApiSlice.injectEndpoints({
   }),
 });
 
-export const { useFastestMoversQuery, useGainersLosersAggregateQuery } =
-  marketApiSlice;
+export const {
+  useFastestMoversQuery,
+  useGainersLosersAggregateQuery,
+  useCvdAggregateQuery,
+} = marketApiSlice;
+
+export interface CvdPoint {
+  timestamp: string;
+  buy: number | null;
+  sell: number | null;
+  cvd: number | null;
+  expected_symbols: number | null;
+  covered_symbols: number;
+  observed_minutes: number;
+  complete: boolean;
+  gap: boolean;
+  current: boolean;
+  universe_changed: boolean;
+}
+
+export interface CvdAggregate {
+  source: string;
+  data: CvdPoint[];
+  reset_at: string;
+  updated_at: string | null;
+  stale: boolean;
+  partial: boolean;
+}

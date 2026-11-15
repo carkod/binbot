@@ -158,3 +158,26 @@ class MarketBreadthSample(BaseModel):
     avg_loss: float
     total_volume: float
     strength_index: float
+
+
+class CvdAggregatePoint(BaseModel):
+    timestamp: datetime.datetime
+    buy: float | None
+    sell: float | None
+    cvd: float | None
+    expected_symbols: int | None
+    covered_symbols: int
+    observed_minutes: int
+    complete: bool
+    gap: bool
+    current: bool
+    universe_changed: bool
+
+
+class CvdAggregateResponse(BaseModel):
+    source: str
+    data: list[CvdAggregatePoint]
+    reset_at: datetime.datetime
+    updated_at: datetime.datetime | None
+    stale: bool
+    partial: bool

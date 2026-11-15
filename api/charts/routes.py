@@ -1,3 +1,7 @@
+from time import time
+from typing import Literal
+from api.charts.models import CvdAggregateResponse
+from api.databases.crud.cvd_crud import query_cvd_aggregate
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session
 from api.databases.crud.top_gainers_losers_series_crud import (
@@ -118,3 +122,19 @@ def get_gainers_losers_series(
         raise
     except Exception as error:
         return json_response_error(f"Failed to retrieve gainers/losers series: {error}")
+
+
+@charts_blueprint.get(
+    "/cvd-aggregate", tags=["charts"], response_model=CvdAggregateResponse
+)
+def get_cvd_aggregate(
+    interval: Literal["15m"] = "15m",
+    limit: int = Query(default=672, ge=1, le=672),
+    session: Session = Depends(get_session),
+):
+    """Stored aggressive USDT buy minus sell notionals; cumulative from reset_at.
+
+    CVD sums observed deltas, including partial minutes; gaps are never backfilled.
+    Counts are conservative minima/maxima across each interval's fixed universe.
+    """
+    return query_cvd_aggregate(session, limit, time())
