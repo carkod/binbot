@@ -72,7 +72,7 @@ vi.mock("../../../features/symbolsApiSlice", async () => {
 });
 
 // Lightweight mocks for heavy child components
-vi.mock("../../components/ChartContainer", () => {
+vi.mock("../../components/BotChartTabs", () => {
   const ChartContainer = (_props: any) => <div data-testid="chart-container" />;
   ChartContainer.displayName = "ChartContainer";
   return { default: ChartContainer };

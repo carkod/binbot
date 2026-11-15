@@ -2,6 +2,7 @@ import React from "react";
 import { MotionConfig } from "motion/react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
+import { chartTransition } from "./utils/motion";
 import "react-toastify/dist/ReactToastify.css";
 import "./assets/scss/paper-dashboard.scss";
 
@@ -12,10 +13,7 @@ if (container) {
 
   root.render(
     <React.StrictMode>
-      <MotionConfig
-        reducedMotion="never"
-        transition={{ duration: 0.3, ease: "easeOut" }}
-      >
+      <MotionConfig reducedMotion="never" transition={chartTransition}>
         <App />
       </MotionConfig>
     </React.StrictMode>,

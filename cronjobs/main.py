@@ -1,6 +1,5 @@
 from apscheduler.schedulers.blocking import BlockingScheduler
 from api.account.controller import ConsolidatedAccounts
-from api.exchange_apis.binance.assets import Assets
 from api.databases.crud.signals_crud import SignalsCrud
 from api.databases.crud.top_gainers_losers_series_crud import (
     TopGainersLosersSeriesCrud,
@@ -8,7 +7,7 @@ from api.databases.crud.top_gainers_losers_series_crud import (
 from api.databases.symbols_etl import SymbolDataEtl
 from api.charts.controllers import MarketDominationController
 from api.databases.utils import independent_session
-from pybinbot import ExchangeId, configure_logging
+from pybinbot import configure_logging
 from api.tools.config import Config
 from api.web3_candidates.ingest_web3_candidates import IngestWeb3Candidates
 
@@ -17,7 +16,6 @@ def main():
     config = Config()
     configure_logging(force=True)
     scheduler = BlockingScheduler()
-    assets = Assets(session=independent_session())
     consolidated_accounts = ConsolidatedAccounts(session=independent_session())
     market_domination = MarketDominationController()
     symbols_crud = SymbolDataEtl()
@@ -26,9 +24,6 @@ def main():
         session=independent_session()
     )
     web3_candidates_ingester = IngestWeb3Candidates(session=independent_session())
-
-    autotrade_settings = assets.autotrade_settings
-    exchange = ExchangeId(autotrade_settings.exchange_id)
 
     # Jobs should be distributed as far as possible from each other
     # to avoid overloading RAM and also avoid hitting rate limits due to high weight
@@ -76,23 +71,6 @@ def main():
         minute=0,
         id="ingest_web3_candidates",
     )
-    if exchange == ExchangeId.BINANCE:
-        scheduler.add_job(
-            func=assets.disable_isolated_accounts,
-            trigger="cron",
-            timezone=config.timezone,
-            hour=2,
-            minute=1,
-            id="disable_isolated_accounts",
-        )
-        scheduler.add_job(
-            func=consolidated_accounts.clean_balance_assets,
-            trigger="cron",
-            timezone=config.timezone,
-            hour=3,
-            minute=27,
-            id="clean_balance_assets",
-        )
     scheduler.add_job(
         func=market_domination.ingest_market_breadth,
         trigger="interval",

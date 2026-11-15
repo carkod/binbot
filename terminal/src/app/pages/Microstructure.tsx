@@ -1,14 +1,10 @@
 import { useState } from "react";
 import { Button, Col, Form, Row } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router";
-import { useFuturesLiquidityQuery } from "../../features/kucoinApiSlice";
 import { useSymbolData } from "../hooks";
 import SymbolSearch from "../components/SymbolSearch";
-import OrderBookImbalanceCard from "../components/OrderBookImbalanceCard";
-import { OBI_POLL_INTERVAL_MS } from "../../features/kucoinLiquidity";
-import { useKucoinTradeFlow } from "../hooks/useKucoinTradeFlow";
-import TradeFlowCard from "../components/TradeFlowCard";
-import SpreadAndDepthCard from "../components/SpreadAndDepthCard";
+import { useMicrostructureData } from "../hooks/useMicrostructureData";
+import OrderBookAnalysis from "../components/OrderBookAnalysis";
 import { getApiErrorMessage } from "../../utils/api";
 
 const MicrostructureContent = ({ symbol }: { symbol: string }) => {
@@ -18,25 +14,8 @@ const MicrostructureContent = ({ symbol }: { symbol: string }) => {
   const [validationError, setValidationError] = useState("");
   const normalizedSearch = search.trim().toUpperCase();
   const canQuery = Boolean(symbol) && normalizedSearch === symbol;
-  const {
-    currentData: snapshot,
-    isFetching,
-    isError,
-    error,
-    refetch,
-  } = useFuturesLiquidityQuery(symbol, {
-    skip: !canQuery,
-    pollingInterval: OBI_POLL_INTERVAL_MS,
-    skipPollingIfUnfocused: true,
-    refetchOnMountOrArgChange: true,
-    refetchOnFocus: true,
-    refetchOnReconnect: true,
-  });
-  const tradeFlow = useKucoinTradeFlow(
-    symbol,
-    canQuery && !isError,
-    snapshot?.multiplier,
-  );
+  const { liquidity } = useMicrostructureData();
+  const { isError, error } = liquidity;
   const apiError =
     canQuery && isError
       ? getApiErrorMessage(error, "KuCoin symbol request failed")
@@ -92,38 +71,7 @@ const MicrostructureContent = ({ symbol }: { symbol: string }) => {
           </Col>
         </Row>
       </Form>
-      <Row>
-        <Col md="6" xs="12">
-          <OrderBookImbalanceCard
-            snapshot={snapshot}
-            enabled={canQuery}
-            isFetching={isFetching}
-            isError={isError}
-            onRetry={() => refetch()}
-          />
-        </Col>
-        <Col md="6" xs="12">
-          <TradeFlowCard
-            kind="cvd"
-            buckets={tradeFlow.history.buckets}
-            enabled={canQuery}
-            status={tradeFlow.status}
-            restarted={tradeFlow.restarted}
-            storageError={tradeFlow.storageError}
-          />
-        </Col>
-      </Row>
-      <Row>
-        <Col xs="12">
-          <SpreadAndDepthCard
-            snapshot={snapshot}
-            enabled={canQuery}
-            isFetching={isFetching}
-            isError={isError}
-            onRetry={() => refetch()}
-          />
-        </Col>
-      </Row>
+      <OrderBookAnalysis enabled={canQuery} />
     </div>
   );
 };

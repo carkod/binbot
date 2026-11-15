@@ -1,13 +1,11 @@
+import { useMemo } from "react";
 import { Button, Card } from "react-bootstrap";
-import {
-  OBI_WINDOW_MS,
-  type ObiSnapshot,
-} from "../../features/kucoinLiquidity";
-import { useOrderBookHistory } from "../hooks/useOrderBookHistory";
-import PlotlyChart from "./PlotlyChart";
+import { OBI_WINDOW_MS } from "../../features/kucoinLiquidity";
+import type { useOrderBookHistory } from "../hooks/useOrderBookHistory";
+import LivePlotlyChart from "./LivePlotlyChart";
 
 interface SpreadAndDepthCardProps {
-  snapshot?: ObiSnapshot;
+  orderBookHistory: ReturnType<typeof useOrderBookHistory>;
   enabled: boolean;
   isFetching: boolean;
   isError: boolean;
@@ -15,19 +13,92 @@ interface SpreadAndDepthCardProps {
 }
 
 const SpreadAndDepthCard = ({
-  snapshot,
+  orderBookHistory,
   enabled,
   isFetching,
   isError,
   onRetry,
 }: SpreadAndDepthCardProps) => {
-  const { history, chartPoints, now } = useOrderBookHistory(
-    snapshot,
-    enabled,
-    isError,
-  );
-  const timestamps = chartPoints.map(({ timestamp }) =>
-    new Date(timestamp).toISOString(),
+  const { history, chartPoints, now } = orderBookHistory;
+
+  const data = useMemo(() => {
+    const timestamps = chartPoints.map(({ timestamp }) =>
+      new Date(timestamp).toISOString(),
+    );
+    return [
+      {
+        ids: chartPoints.map(({ timestamp }) => String(timestamp)),
+        x: timestamps,
+        y: chartPoints.map(({ bidDepth }) => bidDepth),
+        type: "scatter",
+        mode: "lines+markers",
+        name: "Bid depth",
+        line: { color: "#198754", width: 2 },
+        marker: { size: 4 },
+        connectgaps: false,
+        hovertemplate:
+          "%{x|%H:%M:%S}<br>Bid depth: %{y:,.2f} USDT<extra></extra>",
+      },
+      {
+        ids: chartPoints.map(({ timestamp }) => String(timestamp)),
+        x: timestamps,
+        y: chartPoints.map(({ askDepth }) => askDepth),
+        type: "scatter",
+        mode: "lines+markers",
+        name: "Ask depth",
+        line: { color: "#dc3545", width: 2 },
+        marker: { size: 4 },
+        connectgaps: false,
+        hovertemplate:
+          "%{x|%H:%M:%S}<br>Ask depth: %{y:,.2f} USDT<extra></extra>",
+      },
+      {
+        ids: chartPoints.map(({ timestamp }) => String(timestamp)),
+        x: timestamps,
+        y: chartPoints.map(({ spreadRatio }) =>
+          spreadRatio === null ? null : spreadRatio * 100,
+        ),
+        yaxis: "y2",
+        type: "scatter",
+        mode: "lines+markers",
+        name: "Spread",
+        line: { color: "#51cbce", width: 2, dash: "dot" },
+        marker: { size: 4 },
+        connectgaps: false,
+        hovertemplate: "%{x|%H:%M:%S}<br>Spread: %{y:.4f}%<extra></extra>",
+      },
+    ];
+  }, [chartPoints]);
+  const layout = useMemo(
+    () => ({
+      autosize: true,
+      height: 380,
+      margin: { t: 20, l: 90, r: 85, b: 80 },
+      xaxis: {
+        title: { text: "Time" },
+        type: "date",
+        tickformat: "%H:%M:%S",
+        range: [
+          new Date(now - OBI_WINDOW_MS).toISOString(),
+          new Date(now).toISOString(),
+        ],
+        showgrid: false,
+      },
+      yaxis: {
+        title: { text: "Nearby depth (USDT)" },
+        rangemode: "tozero",
+      },
+      yaxis2: {
+        title: { text: "Spread (%)" },
+        overlaying: "y",
+        side: "right",
+        rangemode: "tozero",
+        showgrid: false,
+      },
+      legend: { orientation: "h", y: -0.25 },
+      showlegend: true,
+    }),
+    [now],
   );
 
   return (
@@ -55,80 +126,7 @@ const SpreadAndDepthCard = ({
               </div>
             )}
             {history.length > 0 ? (
-              <PlotlyChart
-                data={[
-                  {
-                    x: timestamps,
-                    y: chartPoints.map(({ bidDepth }) => bidDepth),
-                    type: "scatter",
-                    mode: "lines+markers",
-                    name: "Bid depth",
-                    line: { color: "#198754", width: 2 },
-                    marker: { size: 4 },
-                    connectgaps: false,
-                    hovertemplate:
-                      "%{x|%H:%M:%S}<br>Bid depth: %{y:,.2f} USDT<extra></extra>",
-                  },
-                  {
-                    x: timestamps,
-                    y: chartPoints.map(({ askDepth }) => askDepth),
-                    type: "scatter",
-                    mode: "lines+markers",
-                    name: "Ask depth",
-                    line: { color: "#dc3545", width: 2 },
-                    marker: { size: 4 },
-                    connectgaps: false,
-                    hovertemplate:
-                      "%{x|%H:%M:%S}<br>Ask depth: %{y:,.2f} USDT<extra></extra>",
-                  },
-                  {
-                    x: timestamps,
-                    y: chartPoints.map(({ spreadRatio }) =>
-                      spreadRatio === null ? null : spreadRatio * 100,
-                    ),
-                    yaxis: "y2",
-                    type: "scatter",
-                    mode: "lines+markers",
-                    name: "Spread",
-                    line: { color: "#51cbce", width: 2, dash: "dot" },
-                    marker: { size: 4 },
-                    connectgaps: false,
-                    hovertemplate:
-                      "%{x|%H:%M:%S}<br>Spread: %{y:.4f}%<extra></extra>",
-                  },
-                ]}
-                layout={{
-                  autosize: true,
-                  height: 380,
-                  margin: { t: 20, l: 90, r: 85, b: 80 },
-                  xaxis: {
-                    title: { text: "Time" },
-                    type: "date",
-                    tickformat: "%H:%M:%S",
-                    range: [
-                      new Date(now - OBI_WINDOW_MS).toISOString(),
-                      new Date(now).toISOString(),
-                    ],
-                    showgrid: false,
-                  },
-                  yaxis: {
-                    title: { text: "Nearby depth (USDT)" },
-                    rangemode: "tozero",
-                  },
-                  yaxis2: {
-                    title: { text: "Spread (%)" },
-                    overlaying: "y",
-                    side: "right",
-                    rangemode: "tozero",
-                    showgrid: false,
-                  },
-                  legend: { orientation: "h", y: -0.25 },
-                  showlegend: true,
-                }}
-                config={{ responsive: true, displayModeBar: false }}
-                style={{ width: "100%", height: "100%" }}
-                useResizeHandler={true}
-              />
+              <LivePlotlyChart data={data} layout={layout} />
             ) : (
               !isError && (
                 <p className="text-body-secondary" role="status">
@@ -142,8 +140,9 @@ const SpreadAndDepthCard = ({
         )}
       </Card.Body>
       <Card.Footer className="text-body-secondary">
-        Visible depth from up to 100 levels per side. History collects while
-        this page is open and resets on reload or symbol change.
+        Visible depth from up to 100 levels per side. History collects across
+        navigation while the terminal is open for the selected symbol. Resets on
+        reload or symbol change.
       </Card.Footer>
     </Card>
   );

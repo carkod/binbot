@@ -1,7 +1,7 @@
 .PHONY: up down test test-streaming test-cronjobs \
         build build-api build-streaming build-cronjobs \
         migrate migrate-reset create-migration \
-        format delete-revision upgrade-pybinbot export-bot-records
+        format lint delete-revision upgrade-pybinbot export-bot-records
 
 ifneq (,$(wildcard .env))
     include .env
@@ -53,6 +53,11 @@ dump-fixtures:  ## Dump test fixtures from database (requires DB to be running)
 format:  ## Format, lint, and type-check all service folders
 	@uv run ruff format .
 	@uv run ruff check . --fix
+	@uv run mypy .
+
+lint:  ## Check formatting, lint, and types without modifying files
+	@uv run ruff format . --check
+	@uv run ruff check .
 	@uv run mypy .
 
 # ── Migrations ────────────────────────────────────────────────────────────────

@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FC } from "react";
-import { Badge, Card, Col, Row } from "react-bootstrap";
 import { useAppDispatch, useAppSelector, useSymbolData } from "../hooks";
-import { computeSingleBotProfit } from "../../features/bots/profits";
 import { useImmer } from "use-immer";
 import { updateOrderLines } from "../../utils/charting/index";
 import { dealColors, updateTimescaleMarks } from "../../utils/charting";
@@ -12,7 +10,6 @@ import { type Bot } from "../../features/bots/botInitialState";
 import { type PayloadActionCreator } from "@reduxjs/toolkit";
 import { BotPosition, BotStatus, MarketType } from "../../utils/enums";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
-import { capitalizeFirst } from "../../utils/strings";
 import {
   selectBot,
   focusOrderLine,
@@ -31,7 +28,7 @@ const ChartContainer: FC<{
   bot: Bot;
   setCurrentPrice: PayloadActionCreator<number>;
   marketType: MarketType;
-}> = ({ bot, setCurrentPrice, marketType }) => {
+}> = ({ bot, setCurrentPrice }) => {
   const dispatch: AppDispatch = useAppDispatch();
   const {
     previewTrailingSettings,
@@ -46,9 +43,7 @@ const ChartContainer: FC<{
     null,
   );
   const [exchangeSymbol, setExchangeSymbol] = useImmer<string>(bot.pair);
-  const [botProfit, setBotProfit] = useState<number>(Number(0));
   const { data: autotradeSettings } = useGetSettingsQuery();
-  const marketLabel = capitalizeFirst(marketType.toLowerCase());
   const exchangeState =
     autotradeSettings?.exchange_id?.toLowerCase() === "kucoin"
       ? Exchange.KUCOIN
@@ -243,18 +238,12 @@ const ChartContainer: FC<{
       return;
     }
 
-    const nextBotProfit = computeSingleBotProfit(bot, currentChartPrice);
-    setBotProfit((prev) => (prev !== nextBotProfit ? nextBotProfit : prev));
-
     if (bot.deal?.current_price !== currentChartPrice) {
       dispatch(setCurrentPrice(currentChartPrice));
     }
   }, [bot, currentChartPrice, dispatch, setCurrentPrice]);
 
   useEffect(() => {
-    if (bot.id && bot.deal.opening_price > 0) {
-      setBotProfit(computeSingleBotProfit(bot));
-    }
     if (!bot?.pair) {
       return;
     }
@@ -275,48 +264,11 @@ const ChartContainer: FC<{
   }, [bot.pair, exchangeState, quoteAsset]);
 
   return (
-    <Card
+    <div
       ref={chartRef}
       style={{ display: "flex", flexDirection: "column", minHeight: "580px" }}
     >
-      <Card.Header>
-        <Row style={{ alignItems: "baseline" }}>
-          <Col md="8">
-            <Card.Title as="h3">
-              {bot.pair}{" "}
-              <Badge
-                bg={
-                  botProfit > 0
-                    ? "success"
-                    : botProfit < 0
-                      ? "danger"
-                      : "secondary"
-                }
-              >
-                {botProfit ? botProfit + "% " : "0% "}
-              </Badge>{" "}
-              <Badge
-                bg={
-                  bot.status === BotStatus.ACTIVE
-                    ? "success"
-                    : bot.status === BotStatus.ERROR
-                      ? "warning"
-                      : bot.status === BotStatus.COMPLETED
-                        ? "info"
-                        : "secondary"
-                }
-              >
-                {bot.status}
-              </Badge>{" "}
-              <Badge bg="info">{bot.position}</Badge>{" "}
-              <Badge bg="dark" className="text-uppercase">
-                {marketLabel}
-              </Badge>
-            </Card.Title>
-          </Col>
-        </Row>
-      </Card.Header>
-      <Card.Body style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         {focusedOrderLine === "stop_loss" &&
           bot.status !== BotStatus.COMPLETED && (
             <p className="text-muted">
@@ -354,8 +306,8 @@ const ChartContainer: FC<{
             style={{ minHeight: "100%", height: "600px", width: "100%" }}
           />
         )}
-      </Card.Body>
-    </Card>
+      </div>
+    </div>
   );
 };
 

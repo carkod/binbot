@@ -6,11 +6,29 @@ import {
   screen as testingScreen,
 } from "@testing-library/react";
 import { vi } from "vitest";
-import SpreadAndDepthCard from "../SpreadAndDepthCard";
+import SpreadAndDepthCardView from "../SpreadAndDepthCard";
+import type { ComponentProps } from "react";
+import { useOrderBookHistory } from "../../hooks/useOrderBookHistory";
 import {
   OBI_WINDOW_MS,
   type ObiSnapshot,
 } from "../../../features/kucoinLiquidity";
+
+const SpreadAndDepthCard = ({
+  snapshot,
+  ...props
+}: Omit<ComponentProps<typeof SpreadAndDepthCardView>, "orderBookHistory"> & {
+  snapshot?: ObiSnapshot;
+}) => {
+  const orderBookHistory = useOrderBookHistory(
+    snapshot,
+    props.enabled,
+    props.isError,
+  );
+  return (
+    <SpreadAndDepthCardView {...props} orderBookHistory={orderBookHistory} />
+  );
+};
 
 vi.mock("../PlotlyChart", () => ({
   default: ({ data, layout }: { data: unknown; layout: unknown }) => (
