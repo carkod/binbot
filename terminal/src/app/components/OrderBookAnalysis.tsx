@@ -2,7 +2,7 @@ import { Alert, Col, Row } from "react-bootstrap";
 import { getApiErrorMessage } from "../../utils/api";
 import { useMicrostructureData } from "../hooks/useMicrostructureData";
 import SpreadAndDepthCard from "./SpreadAndDepthCard";
-import TradeFlowCard from "./TradeFlowCard";
+import SymbolCvdCard from "./SymbolCvdCard";
 
 const OrderBookAnalysis = ({
   enabled,
@@ -11,7 +11,7 @@ const OrderBookAnalysis = ({
   enabled: boolean;
   showError?: boolean;
 }) => {
-  const { liquidity, tradeFlow, orderBookHistory } = useMicrostructureData();
+  const { symbol, liquidity, orderBookHistory } = useMicrostructureData();
   const { isFetching, isError, error, refetch } = liquidity;
 
   return (
@@ -32,14 +32,7 @@ const OrderBookAnalysis = ({
           />
         </Col>
         <Col md="6" xs="12">
-          <TradeFlowCard
-            kind="cvd"
-            buckets={tradeFlow.history.buckets}
-            enabled={enabled}
-            status={tradeFlow.status}
-            restarted={tradeFlow.restarted}
-            storageError={tradeFlow.storageError}
-          />
+          <SymbolCvdCard symbol={symbol} enabled={enabled} />
         </Col>
       </Row>
     </>

@@ -66,6 +66,7 @@ These projects are interconnected, and Codex conversations often refer across th
 
 ## Tests
 
+- Do not use the `no-mistakes` pipeline unless the user explicitly requests it. Run the repository's formatting, tests, lint, type checks, and builds directly, then commit and push when authorized.
 - Do not add tests whose only purpose is to assert that a removed feature, element, option, or behavior is absent. Remove obsolete tests when removing features; test the supported behavior instead. This does not prohibit negative tests for supported validation rules or failure cases.
 - Add small regression tests for sizing, rounding, stop placement, and reversal logic whenever those calculations change.
 - Prefer tests that name the business rule being protected, especially for trading risk behavior.

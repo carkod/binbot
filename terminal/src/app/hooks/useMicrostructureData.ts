@@ -1,13 +1,11 @@
 import { createContext, useContext } from "react";
 import type { useFuturesLiquidityQuery } from "../../features/kucoinApiSlice";
-import type { useKucoinTradeFlow } from "./useKucoinTradeFlow";
 import type { useOrderBookHistory } from "./useOrderBookHistory";
 
 interface MicrostructureData {
   symbol: string;
   selectSymbol: (symbol: string) => void;
   liquidity: ReturnType<typeof useFuturesLiquidityQuery>;
-  tradeFlow: ReturnType<typeof useKucoinTradeFlow>;
   orderBookHistory: ReturnType<typeof useOrderBookHistory>;
 }
 

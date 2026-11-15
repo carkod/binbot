@@ -29,6 +29,8 @@ from api.databases.tables.account_balances import (  # noqa
     ConsolidatedBalancesTable,
 )
 
+from api.databases.tables.cvd_table import CvdBucketTable, CvdMinuteTable  # noqa
+
 target_metadata = SQLModel.metadata
 
 # other values from the config, defined by the needs of env.py,

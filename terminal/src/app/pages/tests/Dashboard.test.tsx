@@ -125,6 +125,10 @@ vi.mock("../../components/BitcoinPriceCard", () => ({
   default: () => <div>BitcoinPriceCard</div>,
 }));
 
+vi.mock("../../components/AggregateCvdCard", () => ({
+  default: () => <div>AggregateCvdCard</div>,
+}));
+
 describe("Dashboard page", () => {
   const renderDashboard = () =>
     renderWithProviders(
@@ -155,6 +159,13 @@ describe("Dashboard page", () => {
         rtlScreen.getByRole("heading", { name, level: 2 }).parentElement,
       ).toHaveAttribute("aria-labelledby");
     }
+  });
+
+  it("shows market CVD alongside the market trend charts", () => {
+    renderDashboard();
+    expect(
+      rtlScreen.getByRole("region", { name: "Market analysis" }),
+    ).toContainElement(rtlScreen.getByText("AggregateCvdCard"));
   });
 
   it("renders BTC sharpe in the risk efficiency section", () => {

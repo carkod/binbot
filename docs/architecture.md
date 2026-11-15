@@ -52,7 +52,7 @@ WSL Nginx provides the HTTP entry point on port `80`.
 
 The `gluetun` service, shown as `gluetun / binbot_vpn`, runs Proton VPN WireGuard
 using `wg0.conf` with Canadian egress. `binquant` (signals and bot updates),
-`streaming` (open-position management), and `cronjobs` (scheduled work) each use
+`streaming` (open-position management and public futures CVD collection), and `cronjobs` (scheduled work) each use
 `network_mode: service:gluetun`. They share the VPN gateway's network namespace,
 reach the API and database through the shared Docker network, and send outbound
 KuCoin API, WebSocket, and other internet traffic through the Canadian public IP.
@@ -96,10 +96,11 @@ This separation gives us the flexibility to release API changes independently of
 
 ### PostgreSQL table relationships
 
-This diagram covers the 19 application tables in the current SQLModel schema and
-Alembic's `alembic_version` table. It shows key columns only. A line represents a
-declared foreign key; `o` means the relationship is optional and a crow's foot
-means many rows are allowed.
+This diagram is a snapshot from before CVD history was added. The current schema
+is defined by the [SQLModel tables](../api/databases/tables/) and
+[Alembic migrations](../api/alembic/versions/). The diagram shows key columns
+only. A line represents a declared foreign key; `o` means the relationship is
+optional and a crow's foot means many rows are allowed.
 
 ![PostgreSQL tables and their declared foreign-key relationships](assets/database-schema.png)
 
@@ -124,6 +125,7 @@ and shared `pybinbot` client, every application table has an active code path:
 | `symbol`, `symbol_exchange`, `autotrade` | Exchange symbol metadata and trading settings. |
 | `consolidated_balances`, `balances` | Scheduled balance snapshots and portfolio history. |
 | `market_breadth`, `top_gainers_losers_series`, `futures_price_sample` | Market breadth for binquant strategies; hourly ranking timestamps and full registered-futures price snapshots for the dashboard's seven-day gain/loss trend; price samples also support fastest movers. |
+| `cvd_bucket`, `cvd_minute` | See [market-wide CVD storage and coverage](market-cvd.md#universe-buckets-and-gaps). |
 | `binbot_user`, `inquirytable`, `web3_candidates` | Authentication, brochure site contact inquiries, and scheduled Web3 candidate ingestion/API. |
 | `alembic_version` | Alembic migration state; it must be retained. |
 

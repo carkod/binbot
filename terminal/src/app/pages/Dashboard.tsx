@@ -18,6 +18,7 @@ import GainersLosers from "../components/GainersLosers";
 import FastestMovers from "../components/FastestMovers";
 import PortfolioBenchmarkChart from "../components/PortfolioBenchmark";
 import GainersLosersHistoryCard from "../components/GainersLosersHistoryCard";
+import AggregateCvdCard from "../components/AggregateCvdCard";
 import BitcoinPriceCard from "../components/BitcoinPriceCard";
 import CardLoadingSpinner from "../components/CardLoadingSpinner";
 import { useFilteredFuturesRankings } from "../hooks/useFilteredFuturesRankings";
@@ -356,6 +357,11 @@ export const DashboardPage: FC<{}> = () => {
                 </motion.div>
               )
             )}
+          </Col>
+        </Row>
+        <Row>
+          <Col xs="12" className="dashboard-trend">
+            <AggregateCvdCard />
           </Col>
         </Row>
       </section>
