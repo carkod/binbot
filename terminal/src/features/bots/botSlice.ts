@@ -13,6 +13,7 @@ export const botSlice = createAppSlice({
   initialState: {
     bot: singleBot,
     previewTrailingSettings: false,
+    previewTrailingDeviationSettings: false,
     previewStopLossSettings: false,
     focusedOrderLine: null as ChartEditField | null,
   },
@@ -21,8 +22,10 @@ export const botSlice = createAppSlice({
       (state, { payload }: PayloadAction<ChartEditField | null>) => {
         state.focusedOrderLine = payload;
         if (payload === "stop_loss") state.previewStopLossSettings = true;
-        if (payload === "trailing_profit" || payload === "trailing_deviation")
+        if (payload === "take_profit" || payload === "trailing_profit")
           state.previewTrailingSettings = true;
+        if (payload === "trailing_deviation")
+          state.previewTrailingDeviationSettings = true;
       },
     ),
     setField: create.reducer(
@@ -30,11 +33,13 @@ export const botSlice = createAppSlice({
         state.bot[payload.name] = payload.value;
         if (payload.name === "stop_loss") state.previewStopLossSettings = true;
         if (
-          payload.name === "trailing_profit" ||
-          payload.name === "trailing_deviation"
+          payload.name === "take_profit" ||
+          payload.name === "trailing_profit"
         ) {
           state.previewTrailingSettings = true;
         }
+        if (payload.name === "trailing_deviation")
+          state.previewTrailingDeviationSettings = true;
       },
     ),
     setToggle: create.reducer(
@@ -55,6 +60,7 @@ export const botSlice = createAppSlice({
       (state, { payload }: PayloadAction<BotDetailsState>) => {
         state.bot = { ...payload.bot };
         state.previewTrailingSettings = false;
+        state.previewTrailingDeviationSettings = false;
         state.previewStopLossSettings = false;
         state.focusedOrderLine = null;
       },
@@ -72,6 +78,7 @@ export const botSlice = createAppSlice({
         ...(action?.payload || {}),
       };
       state.previewTrailingSettings = false;
+      state.previewTrailingDeviationSettings = false;
       state.previewStopLossSettings = false;
       state.focusedOrderLine = null;
     }),

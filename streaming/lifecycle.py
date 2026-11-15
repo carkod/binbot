@@ -883,7 +883,7 @@ class Lifecycle:
             isinstance(cls, FuturesPosition)
             and self.execution.active_bot.status == Status.active
         ):
-            close_price = self.base_streaming.kucoin_futures_api.get_mark_price(
+            close_price = self.base_streaming.kucoin_futures_api.get_ticker_price(
                 self.execution.active_bot.pair
             )
             cls.notify_stop_condition_hits(close_price)
@@ -896,15 +896,17 @@ class Lifecycle:
 
         if bot.status != Status.completed:
             # Fetch position AFTER order_updates so any fill-promotion is already
-            # reflected. Same single call as before; close_price stays mark-price.
+            # reflected. Same single call as before; close_price stays last-price.
             position = None
             if bot.market_type == MarketType.FUTURES:
                 position = self.base_streaming.kucoin_futures_api.get_futures_position(
                     bot.pair
                 )
                 if close_price <= 0:
-                    close_price = self.base_streaming.kucoin_futures_api.get_mark_price(
-                        bot.pair
+                    close_price = (
+                        self.base_streaming.kucoin_futures_api.get_ticker_price(
+                            bot.pair
+                        )
                     )
 
             if self.execution.awaiting_close_confirmation():

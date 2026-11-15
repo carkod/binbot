@@ -102,38 +102,125 @@ function setup(tab: TabsKeys, overrides: Partial<Bot> = {}) {
 }
 const editable = () =>
   chart.props.orderLines.filter((line) => line.editable).map((line) => line.id);
+it.each([
+  [BotPosition.LONG, "stop_loss", "stop_loss", 95, 5],
+  [BotPosition.SHORT, "stop_loss", "stop_loss", 105, 5],
+  [BotPosition.LONG, "trailing_profit", "trailing_profit", 110, 10],
+  [BotPosition.SHORT, "trailing_profit", "trailing_profit", 90, 10],
+  [BotPosition.LONG, "trailing_stop_loss", "trailing_deviation", 100.7, 5],
+  [BotPosition.SHORT, "trailing_stop_loss", "trailing_deviation", 98.7, 5],
+  [BotPosition.LONG, "take_profit", "take_profit", 110, 10],
+  [BotPosition.SHORT, "take_profit", "take_profit", 90, 10],
+  [BotPosition.LONG, "base_order", "entry_price", 110, 110],
+  [BotPosition.SHORT, "base_order", "entry_price", 110, 110],
+] as const)(
+  "updates %s %s directly without focusing its input",
+  (position, lineId, field, price, expected) => {
+    const store = setup(TabsKeys.MAIN, {
+      position,
+      trailing: field !== "take_profit",
+      entry_mode: EntryMode.CONDITIONAL_LIMIT,
+      entry_price: 100,
+    });
+    expect(store.getState().bot.focusedOrderLine).toBeNull();
+    expect(editable()).toContain(lineId);
+    act(() => chart.props.onOrderLineMove(lineId, price));
+    expect(store.getState().bot.bot[field]).toBe(expected);
+    expect(document.getElementById(field)).toHaveValue(expected);
+    expect(
+      chart.props.orderLines.find((line) => line.id === lineId)?.price,
+    ).toBeCloseTo(price);
+  },
+);
+it("updates the dropped line's field even when another input is focused", () => {
+  const store = setup(TabsKeys.TAKEPROFIT);
+  fireEvent.focus(testingScreen.getByLabelText(/Trail profit at/));
+  act(() => chart.props.onOrderLineMove("stop_loss", 95));
+  expect(store.getState().bot.bot.stop_loss).toBe(5);
+  expect(store.getState().bot.bot.trailing_profit).toBe(6);
+});
+it.each([
+  [BotPosition.LONG, 120, 114],
+  [BotPosition.SHORT, 80, 84],
+] as const)(
+  "keeps the active %s trailing-profit level when dropping its deviation line",
+  (position, profitPrice, stopPrice) => {
+    const store = setup(TabsKeys.TAKEPROFIT, {
+      position,
+      status: BotStatus.ACTIVE,
+      deal: {
+        ...singleBot.deal,
+        current_price: 110,
+        opening_price: 100,
+        trailing_profit_price: profitPrice,
+        trailing_stop_loss_price: profitPrice,
+      },
+    });
+    act(() => chart.props.onOrderLineMove("trailing_stop_loss", stopPrice));
+    expect(store.getState().bot.bot.trailing_deviation).toBe(5);
+    expect(
+      chart.props.orderLines.find((line) => line.id === "trailing_profit")
+        ?.price,
+    ).toBe(profitPrice);
+    expect(
+      chart.props.orderLines.find((line) => line.id === "trailing_stop_loss")
+        ?.price,
+    ).toBeCloseTo(stopPrice);
+  },
+);
+it("keeps completed bots and an immediate entry read-only", () => {
+  const store = setup(TabsKeys.MAIN);
+  expect(editable()).not.toContain("base_order");
+  act(() => chart.props.onOrderLineMove("base_order", 110));
+  expect(store.getState().bot.bot.entry_price).toBe(singleBot.entry_price);
+  act(() => {
+    store.dispatch(
+      setBot({
+        bot: { ...store.getState().bot.bot, status: BotStatus.COMPLETED },
+      }),
+    );
+  });
+  expect(editable()).toEqual([]);
+  act(() => chart.props.onOrderLineMove("stop_loss", 95));
+  expect(store.getState().bot.bot.stop_loss).toBe(3);
+});
 it.each([BotPosition.LONG, BotPosition.SHORT])(
-  "updates the %s stop input and locks on leaving the chart",
+  "updates the %s stop input without scrolling and remains draggable after leaving",
   (position) => {
     const store = setup(TabsKeys.STOPLOSS, { position });
     fireEvent.focus(testingScreen.getByLabelText(/Stop loss/));
-    expect(editable()).toEqual(["stop_loss"]);
+    expect(editable()).toContain("stop_loss");
     fireEvent.pointerDown(testingScreen.getByTestId("chart"));
-    expect(editable()).toEqual(["stop_loss"]);
+    expect(editable()).toContain("stop_loss");
+    const input = testingScreen.getByLabelText(/Stop loss/);
+    const focus = vi.spyOn(input, "focus");
     act(() => {
       chart.props.onOrderLineMove(
         "stop_loss",
         position === BotPosition.LONG ? 95 : 105,
       );
     });
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+    expect(input).toHaveFocus();
+    focus.mockRestore();
     expect(store.getState().bot.bot.stop_loss).toBe(5);
     expect(testingScreen.getByLabelText(/Stop loss/)).toHaveValue(5);
     fireEvent.pointerDown(
       testingScreen.getByRole("button", { name: "Elsewhere" }),
     );
-    expect(editable()).toEqual([]);
+    expect(editable()).toContain("stop_loss");
   },
 );
 it("updates each trailing field from its own line", () => {
   const store = setup(TabsKeys.TAKEPROFIT);
   fireEvent.focus(testingScreen.getByLabelText(/Trail profit at/));
-  expect(editable()).toEqual(["trailing_profit"]);
+  expect(editable()).toContain("trailing_profit");
   act(() => {
     chart.props.onOrderLineMove("trailing_profit", 110);
   });
   expect(testingScreen.getByLabelText(/Trail profit at/)).toHaveValue(10);
   fireEvent.focus(testingScreen.getByLabelText("Trailing deviation"));
-  expect(editable()).toEqual(["trailing_stop_loss"]);
+  expect(editable()).toContain("trailing_stop_loss");
   act(() => {
     chart.props.onOrderLineMove("trailing_stop_loss", 104.5);
   });
@@ -141,7 +228,7 @@ it("updates each trailing field from its own line", () => {
   expect(testingScreen.getByLabelText("Trailing deviation")).toHaveValue(5);
   expect(store.getState().bot.bot.trailing_profit).toBe(10);
   fireEvent.keyDown(document, { key: "Escape" });
-  expect(editable()).toEqual([]);
+  expect(editable()).toContain("trailing_stop_loss");
 });
 it.each([BotPosition.LONG, BotPosition.SHORT])(
   "moves the single %s conditional entry line without changing expiry",
@@ -153,7 +240,7 @@ it.each([BotPosition.LONG, BotPosition.SHORT])(
       entry_expires_at: 1800000000000,
     });
     fireEvent.focus(testingScreen.getByLabelText("Entry limit price"));
-    expect(editable()).toEqual(["base_order"]);
+    expect(editable()).toContain("base_order");
     expect(
       chart.props.orderLines.some(
         (line) => line.id === "entry_price" || line.id === "conditional_entry",
@@ -183,6 +270,55 @@ it.each([BotPosition.LONG, BotPosition.SHORT])(
     expect(testingScreen.getByRole("alert")).toBeInTheDocument();
   },
 );
+it.each([
+  [BotPosition.LONG, "typing", 116.6, 111.936],
+  [BotPosition.LONG, "dragging", 116.6, 111.936],
+  [BotPosition.SHORT, "typing", 103.4, 107.536],
+  [BotPosition.SHORT, "dragging", 103.4, 107.536],
+] as const)(
+  "recalculates %s trailing prices immediately when %s the conditional entry",
+  (position, interaction, profitPrice, stopPrice) => {
+    const store = setup(TabsKeys.MAIN, {
+      position,
+      entry_mode: EntryMode.CONDITIONAL_LIMIT,
+      entry_price: 100,
+    });
+    const input = testingScreen.getByLabelText("Entry limit price");
+    fireEvent.focus(input);
+    if (interaction === "typing") {
+      fireEvent.change(input, { target: { value: "110" } });
+    } else {
+      act(() => {
+        chart.props.onOrderLineMove("base_order", 110);
+      });
+    }
+
+    const expectTrailingPrices = () => {
+      expect(
+        chart.props.orderLines.find((line) => line.id === "trailing_profit")
+          ?.price,
+      ).toBeCloseTo(profitPrice);
+      expect(
+        chart.props.orderLines.find((line) => line.id === "trailing_stop_loss")
+          ?.price,
+      ).toBeCloseTo(stopPrice);
+    };
+    expect(input).toHaveValue(110);
+    expect(store.getState().bot.bot.entry_price).toBe(110);
+    expect(store.getState().bot.bot.trailing_profit).toBe(6);
+    expect(store.getState().bot.bot.trailing_deviation).toBe(4);
+    expectTrailingPrices();
+
+    fireEvent.blur(input);
+    fireEvent.pointerDown(
+      testingScreen.getByRole("button", { name: "Elsewhere" }),
+    );
+    act(() => {
+      chart.props.onTick({ close: "120" });
+    });
+    expectTrailingPrices();
+  },
+);
 it.each([BotStatus.PENDING, BotStatus.ACTIVE, BotStatus.COMPLETED])(
   "keeps submitted or finished entry lines locked (%s)",
   (status) => {
@@ -195,7 +331,7 @@ it.each([BotStatus.PENDING, BotStatus.ACTIVE, BotStatus.COMPLETED])(
     });
     expect(testingScreen.getByLabelText("Entry limit price")).toBeDisabled();
     fireEvent.focus(testingScreen.getByLabelText("Entry limit price"));
-    expect(editable()).toEqual([]);
+    expect(editable()).not.toContain("base_order");
     const expiry = testingScreen.getByLabelText("Entry expires at");
     expect(expiry).toBeDisabled();
     fireEvent.focus(expiry);
@@ -222,7 +358,7 @@ it("updates the expiry input and mark while dragging only its focused handle", (
   ) as HTMLInputElement;
   expect(chart.props.timeMarker).toBeUndefined();
   fireEvent.focus(input);
-  expect(editable()).toEqual([]);
+  expect(editable()).toContain("base_order");
   expect(chart.props.timeMarker).toMatchObject({
     id: "conditional_entry_expiry",
     time: expiresAt / 1000,

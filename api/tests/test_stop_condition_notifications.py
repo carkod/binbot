@@ -141,12 +141,22 @@ def test_legacy_stop_order_uses_deal_trigger_price():
     instance.base_streaming.telegram_delivery.send_once.assert_called_once()
 
 
-def test_lifecycle_notifies_before_reconciliation_completes_bot(monkeypatch):
-    instance = make_position()
+@pytest.mark.parametrize(
+    "position,threshold,last_price,mark_price",
+    [(Position.long, 98, 97, 99), (Position.short, 102, 103, 101)],
+)
+def test_lifecycle_notifies_on_last_price_before_reconciliation_completes_bot(
+    monkeypatch, position, threshold, last_price, mark_price
+):
+    instance = make_position(position=position, threshold=threshold)
     bot = instance.execution.active_bot
     events = []
     base = instance.base_streaming
-    base.kucoin_futures_api = SimpleNamespace(get_mark_price=Mock(return_value=97))
+    ticker = Mock(return_value=last_price)
+    base.kucoin_futures_api = SimpleNamespace(
+        get_ticker_price=ticker,
+        get_mark_price=Mock(return_value=mark_price),
+    )
     base.telegram_delivery.send_once.side_effect = lambda message: events.append(
         "notify"
     )
@@ -174,5 +184,6 @@ def test_lifecycle_notifies_before_reconciliation_completes_bot(monkeypatch):
     assert events == ["notify", "reconcile"]
     # Completed bots also skip the upstream price lookup on another tick.
     lifecycle.process_tick()
-    base.kucoin_futures_api.get_mark_price.assert_called_once_with("BTCUSDTM")
+    ticker.assert_called_once_with("BTCUSDTM")
+    base.kucoin_futures_api.get_mark_price.assert_not_called()
     assert events == ["notify", "reconcile", "reconcile"]

@@ -180,9 +180,8 @@ it.each([BotPosition.LONG, BotPosition.SHORT])(
     expect(
       [...shapes.values()].filter((shape) => shape.points[0].price === 100),
     ).toEqual([entry]);
-    expect(entry.editable).toBe(false);
+    expect(entry.editable && entry.selectable).toBe(true);
     const input = testingScreen.getByLabelText("Entry limit price");
-    fireEvent.focus(input);
     await waitFor(() => expect(entry.editable && entry.selectable).toBe(true));
     fireEvent.change(input, { target: { value: "98" } });
     await waitFor(() => expect(entry.points[0].price).toBe(98));
@@ -190,13 +189,14 @@ it.each([BotPosition.LONG, BotPosition.SHORT])(
       emit("mouse_down", {});
       entry.setPoints([{ time: 1800000000, price: 99 }]);
       emit("drawing_event", entityId, "points_changed");
+      expect(store.getState().bot.bot.entry_price).toBe(98);
       emit("mouse_up", {});
     });
     await waitFor(() => expect(input).toHaveValue(99));
     expect(store.getState().bot.bot.entry_price).toBe(99);
     expect(entry.points[0].price).toBe(99);
     fireEvent.keyDown(document, { key: "Escape" });
-    await waitFor(() => expect(entry.editable).toBe(false));
+    await waitFor(() => expect(entry.editable).toBe(true));
     fireEvent.focus(input);
     await waitFor(() => expect(entry.editable).toBe(true));
     fireEvent.change(testingScreen.getByLabelText("Entry"), {
@@ -211,7 +211,7 @@ it.each([BotPosition.LONG, BotPosition.SHORT])(
       target: { value: EntryMode.CONDITIONAL_LIMIT },
     });
     await waitFor(() => expect(entry.points[0].price).toBe(100));
-    expect(entry.editable).toBe(false);
+    expect(entry.editable).toBe(true);
     fireEvent.focus(testingScreen.getByLabelText("Entry limit price"));
     await waitFor(() => expect(entry.editable).toBe(true));
   },

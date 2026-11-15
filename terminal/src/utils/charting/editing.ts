@@ -2,7 +2,11 @@ import type { Bot } from "../../features/bots/botInitialState";
 import { BotPosition, BotStatus, EntryMode, MarketType } from "../enums";
 
 export type OrderLineField =
-  "stop_loss" | "entry_price" | "trailing_profit" | "trailing_deviation";
+  | "stop_loss"
+  | "entry_price"
+  | "take_profit"
+  | "trailing_profit"
+  | "trailing_deviation";
 
 export type ChartEditField = OrderLineField | "entry_expires_at";
 
@@ -18,6 +22,7 @@ export function canEditConditionalEntry(bot: Bot): boolean {
 export const fieldOrderLines: Record<OrderLineField, string> = {
   stop_loss: "stop_loss",
   entry_price: "base_order",
+  take_profit: "take_profit",
   trailing_profit: "trailing_profit",
   trailing_deviation: "trailing_stop_loss",
 };
@@ -47,7 +52,7 @@ export function percentageFromOrderLine(
   const percentage =
     100 *
     direction *
-    (field === "trailing_profit"
+    (field === "trailing_profit" || field === "take_profit"
       ? price / reference - 1
       : 1 - price / reference);
   return percentage >= 0 && percentage < 100

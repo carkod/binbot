@@ -24,6 +24,7 @@ import {
   entryReferencePrice,
   fieldOrderLines,
   percentageFromOrderLine,
+  type OrderLineField,
 } from "../../utils/charting/editing";
 
 const ChartContainer: FC<{
@@ -32,8 +33,12 @@ const ChartContainer: FC<{
   marketType: MarketType;
 }> = ({ bot, setCurrentPrice, marketType }) => {
   const dispatch: AppDispatch = useAppDispatch();
-  const { previewTrailingSettings, previewStopLossSettings, focusedOrderLine } =
-    useAppSelector(selectBot);
+  const {
+    previewTrailingSettings,
+    previewTrailingDeviationSettings,
+    previewStopLossSettings,
+    focusedOrderLine,
+  } = useAppSelector(selectBot);
   const chartRef = useRef<HTMLDivElement>(null);
   const [dragError, setDragError] = useState("");
   const { quoteAsset } = useSymbolData();
@@ -90,21 +95,20 @@ const ChartContainer: FC<{
         referencePrice,
         previewTrailingSettings,
         previewStopLossSettings,
+        previewTrailingDeviationSettings,
       ).map((line) => ({
         ...line,
         editable:
           bot.status !== BotStatus.COMPLETED &&
-          focusedOrderLine != null &&
-          focusedOrderLine !== "entry_expires_at" &&
-          line.id === fieldOrderLines[focusedOrderLine] &&
-          (focusedOrderLine !== "entry_price" || entryEditable),
+          Object.values(fieldOrderLines).includes(line.id) &&
+          (line.id !== "base_order" || entryEditable),
       })),
     [
       bot,
       referencePrice,
       previewTrailingSettings,
       previewStopLossSettings,
-      focusedOrderLine,
+      previewTrailingDeviationSettings,
       entryEditable,
     ],
   );
@@ -170,38 +174,35 @@ const ChartContainer: FC<{
   );
 
   const handleOrderLineMove = (id: string, price: number) => {
+    const field = (
+      Object.entries(fieldOrderLines) as [OrderLineField, string][]
+    ).find(([, lineId]) => lineId === id)?.[0];
     if (
-      !focusedOrderLine ||
-      focusedOrderLine === "entry_expires_at" ||
+      !field ||
       !currentOrderLines.some((line) => line.id === id && line.editable)
     )
       return;
     const reference =
-      focusedOrderLine === "trailing_deviation"
+      field === "trailing_deviation"
         ? currentOrderLines.find((line) => line.id === "trailing_profit")?.price
         : entryReferencePrice(bot, referencePrice);
     const value =
-      focusedOrderLine === "entry_price"
+      field === "entry_price"
         ? Number.isFinite(price) && price > 0
           ? price
           : null
-        : percentageFromOrderLine(
-            focusedOrderLine,
-            price,
-            reference,
-            bot.position,
-          );
+        : percentageFromOrderLine(field, price, reference, bot.position);
     if (value == null) {
       setDragError(
-        focusedOrderLine === "stop_loss"
+        field === "stop_loss"
           ? `For a ${bot.position} position, stop loss must be ${bot.position === BotPosition.SHORT ? "at or above" : "at or below"} the entry reference (${reference}). Dropped price: ${price}. Use a percentage below 100%.`
           : "Choose a price on the correct side of the reference, with a percentage below 100%.",
       );
       return;
     }
     setDragError("");
-    dispatch(setField({ name: focusedOrderLine, value }));
-    document.getElementById(focusedOrderLine)?.focus();
+    dispatch(setField({ name: field, value }));
+    document.getElementById(field)?.focus({ preventScroll: true });
   };
 
   const handleTimeMarkerMove = (id: string, time: number) => {

@@ -7,7 +7,7 @@ Regression fixture: FHEUSDTM 2026-05-31
   (the wick low). With a 0.5% stop-limit, KuCoin rests the close at 0.02237,
   so no fill can land deeper in the wick than that.
 
-The trigger itself stays on KuCoin's mark price, inside the candle. An earlier
+The trigger uses KuCoin's last traded price, inside the candle. An earlier
 simulation over 14 historical SL exits found that delaying the *trigger* to a
 closed candle worsened outcomes (~2.1%), so only the market fallback for a
 stop-limit that the price ran past waits for a closed candle.
@@ -137,10 +137,15 @@ def _make_fheusdtm_lifecycle(*, closed_close: float) -> Lifecycle:
     return lifecycle
 
 
-def test_native_stop_is_a_stop_limit_capped_above_the_wick():
+@pytest.mark.parametrize("position", [Position.long, Position.short])
+@pytest.mark.parametrize("deal_type", [DealType.stop_loss, DealType.trailing_profit])
+def test_native_stop_uses_last_price_and_preserves_direction_and_limit(
+    position, deal_type
+):
     lifecycle = _make_fheusdtm_lifecycle(closed_close=0.02252)
     execution = cast(Any, lifecycle.execution)
     execution.active_bot.deal.conditional_close_order = None
+    execution.active_bot.position = position
     submitted: dict[str, Any] = {}
 
     def place_futures_order(**kwargs) -> OrderBase:
@@ -162,14 +167,22 @@ def test_native_stop_is_a_stop_limit_capped_above_the_wick():
         place_futures_order=place_futures_order
     )
 
-    execution.place_conditional_close(FHEU_STOP, 8, DealType.stop_loss)
+    execution.place_conditional_close(FHEU_STOP, 8, deal_type)
 
     assert submitted["order_type"] == OrderType.limit
-    assert submitted["stop"] == AddOrderReq.StopEnum.DOWN
+    short = position == Position.short
+    assert submitted["stop"] == (
+        AddOrderReq.StopEnum.UP if short else AddOrderReq.StopEnum.DOWN
+    )
+    assert submitted["side"] == (
+        AddOrderReq.SideEnum.BUY if short else AddOrderReq.SideEnum.SELL
+    )
+    assert submitted["stop_price_type"] == AddOrderReq.StopPriceTypeEnum.TRADE_PRICE
     assert submitted["stop_price"] == FHEU_STOP
-    assert submitted["price"] == FHEU_STOP_LIMIT
-    assert submitted["price"] > WICK_LOW
+    assert submitted["price"] == (0.02261 if short else FHEU_STOP_LIMIT)
+    assert submitted["size"] == 8
     assert submitted["reduce_only"] is True
+    assert execution.active_bot.deal.conditional_close_order.deal_type == deal_type
 
 
 def test_wick_through_stop_with_closed_candle_above_limit_keeps_native_stop():

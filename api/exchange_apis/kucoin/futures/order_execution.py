@@ -848,7 +848,7 @@ class OrderExecution(KucoinBaseBalance):
                 leverage=self.active_bot.futures_leverage,
                 stop=AddOrderReq.StopEnum.UP if short else AddOrderReq.StopEnum.DOWN,
                 stop_price=intent.stop_price,
-                stop_price_type=AddOrderReq.StopPriceTypeEnum.MARK_PRICE,
+                stop_price_type=AddOrderReq.StopPriceTypeEnum.TRADE_PRICE,
                 reduce_only=True,
                 client_oid=intent.client_oid,
             )

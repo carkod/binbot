@@ -26,8 +26,10 @@ or `include_closed=true` to include them in lists, ID/symbol lookups, and algori
 rankings. An explicit status filter continues to take precedence over
 `include_closed`. Active-pair queries always return only active/pending bots.
 
-The `pybinbot` dependency is pinned to the companion Git commit containing
-`Status.closed`; clean installs and CI use that commit until a PyPI release includes it.
+Install `pybinbot` from PyPI. Version 2.1.2 lacks `Status.closed`; publish an
+updated PyPI release containing both `Status.closed` and the last-price order
+changes, then upgrade binbot's minimum dependency version and lockfile to that
+release. Do not use local-path, editable, or Git source overrides.
 Apply the closed-status Alembic migration before deploying API/streaming workers.
 Its upgrade safely replays when the enum value already exists. Downgrade retains
 the value and archived records because PostgreSQL cannot remove one enum value

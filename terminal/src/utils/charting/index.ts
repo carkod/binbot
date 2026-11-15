@@ -20,6 +20,7 @@ export function updateOrderLines(
   currentPrice: number,
   previewTrailingSettings = false,
   previewStopLossSettings = false,
+  previewTrailingDeviationSettings = false,
 ): any[] {
   /**
    * Updates orderlines for the chart
@@ -33,6 +34,7 @@ export function updateOrderLines(
       currentPrice,
       previewTrailingSettings,
       previewStopLossSettings,
+      previewTrailingDeviationSettings,
     );
   } else {
     totalOrderLines = spotTrading(
@@ -40,6 +42,7 @@ export function updateOrderLines(
       currentPrice,
       previewTrailingSettings,
       previewStopLossSettings,
+      previewTrailingDeviationSettings,
     );
   }
 

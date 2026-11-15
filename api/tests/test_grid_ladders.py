@@ -988,7 +988,7 @@ def test_grid_lifecycle_places_take_profit_after_entry_fill(
     assert protective_stop["stop"] == AddOrderReq.StopEnum.DOWN
     assert protective_stop["stop_price"] == detail["breakout_low"]
     assert protective_stop["stop_price_type"] == (
-        AddOrderReq.StopPriceTypeEnum.MARK_PRICE
+        AddOrderReq.StopPriceTypeEnum.TRADE_PRICE
     )
     assert protective_stop["size"] == entry_order.contracts
     assert tp_order["side"].value == "sell"
