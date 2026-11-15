@@ -5,7 +5,7 @@ import PlotlyChart from "./PlotlyChart";
 
 interface LivePlotlyChartProps {
   data: Record<string, unknown>[];
-  layout: Record<string, unknown>;
+  layout: Record<string, unknown> & { height: number };
 }
 
 const config = { responsive: true, displayModeBar: false };
@@ -28,6 +28,7 @@ const LivePlotlyChart = memo(function LivePlotlyChart({
 
   return (
     <motion.div
+      style={{ height: layout.height }}
       initial="hidden"
       animate="visible"
       variants={chartRevealVariants}

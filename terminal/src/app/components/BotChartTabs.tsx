@@ -30,35 +30,31 @@ const BotChartTabs = ({
 
   return (
     <>
-      <Card>
-        <Card.Body>
-          <Card.Title as="h3" className="mb-0">
-            {bot.pair}{" "}
-            <Badge
-              bg={profit > 0 ? "success" : profit < 0 ? "danger" : "secondary"}
-            >
-              {profit}%
-            </Badge>{" "}
-            <Badge
-              bg={
-                bot.status === BotStatus.ACTIVE
-                  ? "success"
-                  : bot.status === BotStatus.ERROR
-                    ? "warning"
-                    : bot.status === BotStatus.COMPLETED
-                      ? "info"
-                      : "secondary"
-              }
-            >
-              {bot.status}
-            </Badge>{" "}
-            <Badge bg="info">{bot.position}</Badge>{" "}
-            <Badge bg="dark" className="text-uppercase">
-              {capitalizeFirst(marketType.toLowerCase())}
-            </Badge>
-          </Card.Title>
-        </Card.Body>
-      </Card>
+      <h2 className="h4 mt-0 mb-4 text-body-secondary">
+        {bot.pair}{" "}
+        <Badge
+          bg={profit > 0 ? "success" : profit < 0 ? "danger" : "secondary"}
+        >
+          {profit}%
+        </Badge>{" "}
+        <Badge
+          bg={
+            bot.status === BotStatus.ACTIVE
+              ? "success"
+              : bot.status === BotStatus.ERROR
+                ? "warning"
+                : bot.status === BotStatus.COMPLETED
+                  ? "info"
+                  : "secondary"
+          }
+        >
+          {bot.status}
+        </Badge>{" "}
+        <Badge bg="info">{bot.position}</Badge>{" "}
+        <Badge bg="dark" className="text-uppercase">
+          {capitalizeFirst(marketType.toLowerCase())}
+        </Badge>
+      </h2>
       <Card>
         <Card.Body>
           <Tabs id={tabsId} defaultActiveKey="chart" className="mb-3">
@@ -72,8 +68,7 @@ const BotChartTabs = ({
             <Tab
               eventKey="analysis"
               title="Order book analysis"
-              mountOnEnter
-              unmountOnExit
+              onEntered={resizeCharts}
             >
               {!supportsAnalysis ? (
                 <p className="text-body-secondary">

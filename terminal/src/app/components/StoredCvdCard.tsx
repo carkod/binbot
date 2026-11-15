@@ -106,32 +106,35 @@ const StoredCvdCard = ({
         </p>
       </Card.Header>
       <Card.Body>
-        {isLoading && (
-          <p role="status">
-            Loading {symbol ? `${symbol} CVD` : "market CVD"}…
-          </p>
-        )}
-        {isError && <p role="alert">{subject} could not be refreshed.</p>}
-        {result?.stale && (
-          <p role="status" className="text-warning">
-            Collector checkpoint is stale. Recent executions may be missing.
-          </p>
-        )}
-        {!isLoading && !isError && !result?.data.length && (
-          <p>
-            Collection has no observations yet{symbol ? ` for ${symbol}` : ""}.
-          </p>
-        )}
-        {result?.partial && (
-          <p className="text-warning">
-            Partial coverage: open diamonds mark incomplete intervals. Lines
-            break at gaps and {symbol ? "contract multiplier" : "universe"}{" "}
-            changes; CVD includes only observed trades.
-          </p>
-        )}
-        {!!result?.data.length && (
-          <LivePlotlyChart data={data} layout={layout} />
-        )}
+        <div style={{ minHeight: layout.height }}>
+          {isLoading && (
+            <p role="status">
+              Loading {symbol ? `${symbol} CVD` : "market CVD"}…
+            </p>
+          )}
+          {isError && <p role="alert">{subject} could not be refreshed.</p>}
+          {result?.stale && (
+            <p role="status" className="text-warning">
+              Collector checkpoint is stale. Recent executions may be missing.
+            </p>
+          )}
+          {!isLoading && !isError && !result?.data.length && (
+            <p>
+              Collection has no observations yet{symbol ? ` for ${symbol}` : ""}
+              .
+            </p>
+          )}
+          {result?.partial && (
+            <p className="text-warning">
+              Partial coverage: open diamonds mark incomplete intervals. Lines
+              break at gaps and {symbol ? "contract multiplier" : "universe"}{" "}
+              changes; CVD includes only observed trades.
+            </p>
+          )}
+          {!!result?.data.length && (
+            <LivePlotlyChart data={data} layout={layout} />
+          )}
+        </div>
       </Card.Body>
       <Card.Footer className="text-body-secondary">
         {symbol ? "Rolling 15-minute" : "Seven-day"} window; CVD starts at zero
