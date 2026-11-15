@@ -16,7 +16,7 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import Session
 
 from api.charts.routes import charts_blueprint
-from api.databases.crud.cvd_crud import query_cvd_aggregate
+from api.databases.crud.cvd_crud import query_cvd_aggregate, query_cvd_symbol
 from api.databases.tables.cvd_table import SOURCE, CvdBucketTable, CvdMinuteTable
 from api.databases.utils import get_session
 from streaming.cvd import (
@@ -543,3 +543,154 @@ async def test_missing_ack_or_pong_invalidates_subscription(monkeypatch, missing
             stop.set()
             task.cancel()
             await asyncio.gather(task, return_exceptions=True)
+
+
+def save_symbol_minute(
+    session,
+    minute,
+    *,
+    symbol="SOLUSDTM",
+    source=SOURCE,
+    buy=0,
+    sell=0,
+    covered=True,
+    finalized=True,
+    multiplier=0.1,
+    updated_at=None,
+    universe="all",
+    market_covered=717,
+):
+    session.add(
+        CvdBucketTable(
+            source=source,
+            symbol=symbol,
+            minute=minute,
+            buy=buy,
+            sell=sell,
+            covered=covered,
+            multiplier=multiplier,
+        )
+    )
+    if session.get(CvdMinuteTable, (source, minute)) is None:
+        session.add(
+            CvdMinuteTable(
+                source=source,
+                minute=minute,
+                buy=99999,
+                sell=999,
+                expected_symbols=717,
+                covered_symbols=market_covered,
+                universe=universe,
+                finalized=finalized,
+                updated_at=datetime.fromtimestamp(
+                    updated_at if updated_at is not None else minute, timezone.utc
+                ),
+            )
+        )
+    session.commit()
+
+
+def test_symbol_cvd_uses_own_notional_coverage_and_multiplier_history(cvd_engine):
+    now = START + 5 * 60 + 20
+    with Session(cvd_engine) as session:
+        save_symbol_minute(session, START - 60, buy=999)
+        save_symbol_minute(session, START, buy=100, sell=20)
+        # A quiet covered market stays complete despite other markets' outages
+        # or changes to the registered universe.
+        save_symbol_minute(session, START + 60, universe="changed", market_covered=1)
+        save_symbol_minute(session, START + 180, buy=7, sell=10, covered=False)
+        save_symbol_minute(
+            session, START + 240, buy=20, multiplier=0.2, finalized=False
+        )
+        save_symbol_minute(
+            session,
+            START + 300,
+            buy=1,
+            sell=2,
+            multiplier=0.2,
+            finalized=False,
+            updated_at=now,
+        )
+        save_symbol_minute(session, START, symbol="OTHERUSDTM", buy=999)
+        save_symbol_minute(session, START, source="other_exchange", buy=999)
+        result = query_cvd_symbol(session, "SOLUSDTM", 6, now)
+    first, quiet, missing, disconnected, mutable, current = result["data"]
+    assert first["buy"] == 100 and first["sell"] == 20 and first["cvd"] == 80
+    assert first["complete"] and first["expected_symbols"] == 1
+    assert quiet["cvd"] == 80 and quiet["buy"] == quiet["sell"] == 0
+    assert quiet["complete"] and not quiet["universe_changed"]
+    assert missing["gap"] and missing["cvd"] is None
+    assert missing["buy"] is None and missing["observed_minutes"] == 0
+    assert disconnected["cvd"] == 77 and disconnected["covered_symbols"] == 0
+    assert disconnected["gap"]
+    assert mutable["cvd"] == 97 and mutable["universe_changed"] and mutable["gap"]
+    assert current["cvd"] == 96 and current["current"] and current["gap"]
+    assert not current["universe_changed"]
+    assert result["reset_at"].timestamp() == START
+    assert result["source"] == SOURCE and result["symbol"] == "SOLUSDTM"
+    assert result["partial"] and not result["stale"]
+
+
+def test_symbol_freshness_does_not_follow_other_markets(cvd_engine):
+    with Session(cvd_engine) as session:
+        save_symbol_minute(session, START, buy=12, updated_at=START)
+        save_symbol_minute(
+            session, START + 180, symbol="OTHERUSDTM", updated_at=START + 180
+        )
+        result = query_cvd_symbol(session, "SOLUSDTM", 4, START + 180)
+        assert result["stale"] and result["updated_at"].timestamp() == START
+        assert result["data"][0]["cvd"] == 12
+        assert result["data"][-1]["cvd"] is None
+        # A delisted symbol still has readable history, until retention removes it.
+        empty = query_cvd_symbol(session, "UNKNOWN", 4, START + 180)
+        assert empty["data"] == [] and empty["stale"] and empty["updated_at"] is None
+        # A selected window with only finalized quiet observations is complete.
+        quiet = query_cvd_symbol(session, "SOLUSDTM", 1, START)
+        assert not quiet["partial"]
+
+
+def test_symbol_api_validates_bounds_normalizes_symbol_and_returns_saved_data(
+    cvd_engine,
+):
+    app = FastAPI()
+    app.include_router(charts_blueprint, prefix="/charts")
+
+    def session():
+        with Session(cvd_engine) as db:
+            yield db
+
+    app.dependency_overrides[get_session] = session
+    with Session(cvd_engine) as db:
+        save_symbol_minute(db, START, buy=123.456789, sell=23.0, finalized=False)
+    client = TestClient(app)
+    with patch("api.charts.routes.time", return_value=START) as clock:
+        for suffix in (
+            "",
+            "symbol=",
+            "symbol=SOL/USDTM",
+            "symbol=" + "A" * 65,
+            "symbol=SOLUSDTM&limit=0",
+            "symbol=SOLUSDTM&limit=10081",
+            "symbol=SOLUSDTM&interval=15m",
+            "symbol=SOLUSDTM&limit=bad",
+        ):
+            assert client.get("/charts/cvd-symbol?" + suffix).status_code == 422
+        assert clock.call_count == 0
+        response = client.get("/charts/cvd-symbol?symbol=solusdtm&interval=1m&limit=1")
+        assert response.status_code == 200
+        result = response.json()
+        assert result["symbol"] == "SOLUSDTM" and not result["stale"]
+        assert result["data"][0]["cvd"] == pytest.approx(100.456789)
+        assert result["data"][0]["current"] and result["data"][0]["gap"]
+        assert (
+            len(client.get("/charts/cvd-symbol?symbol=SOLUSDTM").json()["data"]) == 15
+        )
+        assert (
+            len(
+                client.get("/charts/cvd-symbol?symbol=SOLUSDTM&limit=10080").json()[
+                    "data"
+                ]
+            )
+            == 10080
+        )
+        assert client.get("/charts/cvd-symbol?symbol=UNKNOWN").json()["data"] == []

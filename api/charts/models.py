@@ -181,3 +181,7 @@ class CvdAggregateResponse(BaseModel):
     updated_at: datetime.datetime | None
     stale: bool
     partial: bool
+
+
+class CvdSymbolResponse(CvdAggregateResponse):
+    symbol: str

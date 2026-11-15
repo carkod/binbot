@@ -1,4 +1,4 @@
-# Market-wide KuCoin Futures CVD
+# Stored KuCoin Futures CVD
 
 The API reads Postgres only. The independent `streaming.cvd` process collects
 public executions even when no browsers are open. Bot lifecycle and breadth
@@ -18,6 +18,10 @@ schedules are unchanged. No pybinbot release is required.
 4. After verifying real coverage, build terminal with
    `VITE_MARKET_CVD_ENABLED=true`. Its Dashboard then polls every 60 seconds.
    Leave it false while deploying schema and collector first.
+
+Futures bot detail also reads this collector's per-symbol buckets. Deploy the
+schema and API before the terminal; until a symbol has observations its CVD card
+shows an empty state. The Dashboard flag controls only the market card.
 
 The collector holds a Postgres **session advisory lock** on the same physical
 connection that writes all batches. A second owner exits without writing. That
@@ -139,6 +143,37 @@ a historic population. The response includes source, latest checkpoint,
 staleness (>90 seconds) and partial-history status. The chart breaks lines at
 partial/absent intervals and population changes, preserves numerical hover
 values, and marks incomplete points with open diamonds.
+
+### Individual futures symbols
+
+`GET /charts/cvd-symbol?symbol=SOLUSDTM&interval=1m&limit=15` reads the same
+collector's `cvd_bucket` rows, filtered by source and symbol. Symbols are
+case-insensitive alphanumeric KuCoin contract IDs (up to 64 characters). Only
+`1m` is supported; `limit` is bounded to 1–10080 minutes (seven days), default 15.
+No additional exchange requests, collector or migration are needed.
+
+The futures bot's order-book analysis tab shows a rolling 15-minute window and
+polls every 30 seconds. The shared standalone futures analysis view uses the same
+card. Browser WebSocket collection and IndexedDB CVD history are superseded;
+spread/depth polling and its in-memory history remain independent. Switching bots
+shows only the requested symbol's cached response or its loading state.
+
+The response adds `symbol` to the market CVD response shape. Each point is one
+minute; expected/covered counts are 1 for a recorded/covered symbol, respectively.
+Quiet covered minutes have zero buy/sell; missing minutes have null notionals/CVD,
+unknown expected count, and zero coverage. Completeness requires that symbol's
+coverage and the minute's finalized checkpoint. Unrelated markets' outages and
+universe changes do not affect it. `universe_changed` here means a change to this
+contract's multiplier between observed minutes. Lines break at coverage gaps and
+multiplier changes, and hover values retain the API precision.
+
+Freshness uses the latest checkpoint containing this symbol, so an active market
+cannot mask a stale or delisted one. Collected history remains readable after
+delisting until seven-day retention expires. CVD starts at zero at `reset_at`,
+accumulates only observed minute deltas, and rebases as the window advances. The
+current minute and closed minutes awaiting the two-minute late-arrival allowance
+remain partial. No executions lost during outages or before deployment are
+backfilled; existing browser-only observations are not merged into central data.
 
 Run `make format`, `make test`, `make test-streaming`, `make test-cronjobs`, and
 terminal test/lint/type-check/build scripts. PostgreSQL-specific ownership and

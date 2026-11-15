@@ -1,7 +1,7 @@
 from time import time
 from typing import Literal
-from api.charts.models import CvdAggregateResponse
-from api.databases.crud.cvd_crud import query_cvd_aggregate
+from api.charts.models import CvdAggregateResponse, CvdSymbolResponse
+from api.databases.crud.cvd_crud import query_cvd_aggregate, query_cvd_symbol
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session
 from api.databases.crud.top_gainers_losers_series_crud import (
@@ -138,3 +138,19 @@ def get_cvd_aggregate(
     Counts are conservative minima/maxima across each interval's fixed universe.
     """
     return query_cvd_aggregate(session, limit, time())
+
+
+@charts_blueprint.get("/cvd-symbol", tags=["charts"], response_model=CvdSymbolResponse)
+def get_cvd_symbol(
+    symbol: str = Query(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9]+$"),
+    interval: Literal["1m"] = "1m",
+    limit: int = Query(default=15, ge=1, le=10080),
+    session: Session = Depends(get_session),
+):
+    """Stored per-symbol USDT CVD, rebased at reset_at; at most seven days.
+
+    Quiet covered minutes are zero; missing/uncovered minutes are gaps. Coverage
+    and freshness belong to this symbol. universe_changed marks multiplier changes.
+    Inactive/delisted symbols retain their collected history until retention expires.
+    """
+    return query_cvd_symbol(session, symbol.upper(), limit, time())

@@ -54,6 +54,11 @@ transition settings while preserving legend selections across refreshes. Supply
 stable point IDs and explicit nulls for gaps; keep data and layout memoized so
 unrelated renders do not restart transitions.
 
+Futures bot detail uses centrally stored per-symbol CVD: one-minute points over
+a rolling 15-minute window, refreshed every 30 seconds. It shares the independent
+collector with the Dashboard's aggregate card. See [CVD operations](../docs/market-cvd.md)
+for deployment, coverage and history limits.
+
 ## Deployment
 
 1. Merge changes to master

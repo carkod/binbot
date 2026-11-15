@@ -2,7 +2,6 @@ import { useState, type ReactNode } from "react";
 import { useFuturesLiquidityQuery } from "../../features/kucoinApiSlice";
 import { OBI_POLL_INTERVAL_MS } from "../../features/kucoinLiquidity";
 import { MicrostructureContext } from "../hooks/useMicrostructureData";
-import { useKucoinTradeFlow } from "../hooks/useKucoinTradeFlow";
 import { useOrderBookHistory } from "../hooks/useOrderBookHistory";
 
 export const MicrostructureProvider = ({
@@ -21,12 +20,6 @@ export const MicrostructureProvider = ({
     refetchOnReconnect: true,
   });
   const snapshot = liquidity.currentData;
-  // A failed book refresh should not interrupt an already validated trade stream.
-  const tradeFlow = useKucoinTradeFlow(
-    symbol,
-    Boolean(symbol && snapshot),
-    snapshot?.multiplier,
-  );
   const orderBookHistory = useOrderBookHistory(
     snapshot,
     Boolean(symbol),
@@ -36,7 +29,7 @@ export const MicrostructureProvider = ({
 
   return (
     <MicrostructureContext.Provider
-      value={{ symbol, selectSymbol, liquidity, tradeFlow, orderBookHistory }}
+      value={{ symbol, selectSymbol, liquidity, orderBookHistory }}
     >
       {children}
     </MicrostructureContext.Provider>

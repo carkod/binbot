@@ -11,6 +11,7 @@ import { BotStatus, MarketType } from "../../../utils/enums";
 import { useGetSettingsQuery } from "../../../features/autotradeApiSlice";
 import { useMicrostructureData } from "../../hooks/useMicrostructureData";
 import BotChartTabs from "../BotChartTabs";
+import { useCvdSymbolQuery } from "../../../features/marketApiSlice";
 
 vi.mock("../../../features/autotradeApiSlice", () => ({
   useGetSettingsQuery: vi.fn(),
@@ -21,8 +22,14 @@ vi.mock("../../hooks/useMicrostructureData", () => ({
 vi.mock("../ChartContainer", () => ({
   default: () => <input aria-label="Chart state" defaultValue="original" />,
 }));
-vi.mock("../OrderBookAnalysis", () => ({
+vi.mock("../SpreadAndDepthCard", () => ({
   default: () => <div>Shared order book charts</div>,
+}));
+vi.mock("../LivePlotlyChart", () => ({
+  default: () => <div>Stored CVD chart</div>,
+}));
+vi.mock("../../../features/marketApiSlice", () => ({
+  useCvdSymbolQuery: vi.fn(() => ({ isFetching: false, isError: false })),
 }));
 
 const bot = {
@@ -46,11 +53,6 @@ describe("bot chart tabs", () => {
     vi.mocked(useMicrostructureData).mockReturnValue({
       symbol: bot.pair,
       selectSymbol,
-      tradeFlow: {
-        history: { buckets: [], seen: {} },
-        status: "connecting",
-        restarted: false,
-      },
       orderBookHistory: { history: [], chartPoints: [], now: Date.now() },
       liquidity: {
         refetch: vi.fn(),
@@ -87,11 +89,36 @@ describe("bot chart tabs", () => {
     expect(
       testingScreen.getByText("Shared order book charts"),
     ).toBeInTheDocument();
+    expect(useCvdSymbolQuery).toHaveBeenLastCalledWith(
+      "PROMUSDTM",
+      expect.objectContaining({ skip: false, pollingInterval: 30_000 }),
+    );
     fireEvent.click(testingScreen.getByRole("tab", { name: "Chart" }));
     expect(testingScreen.getByRole("textbox", { name: "Chart state" })).toBe(
       chart,
     );
     expect(chart).toHaveValue("zoomed");
+  });
+
+  it("requests stored CVD for the changed futures symbol even when its order book fails", () => {
+    const { rerender } = render(<BotChartTabs {...props} />);
+    const context = vi.mocked(useMicrostructureData).mock.results[0].value;
+    vi.mocked(useMicrostructureData).mockReturnValue({
+      ...context,
+      symbol: "XBTUSDTM",
+      liquidity: { ...context.liquidity, isError: true },
+    });
+    rerender(<BotChartTabs {...props} bot={{ ...bot, pair: "XBTUSDTM" }} />);
+    fireEvent.click(
+      testingScreen.getByRole("tab", { name: "Order book analysis" }),
+    );
+    expect(useCvdSymbolQuery).toHaveBeenLastCalledWith(
+      "XBTUSDTM",
+      expect.objectContaining({ skip: false }),
+    );
+    expect(
+      testingScreen.getByText(/no observations yet for XBTUSDTM/),
+    ).toBeInTheDocument();
   });
 
   it("selects a changed symbol and waits for its collector before showing analysis", () => {
