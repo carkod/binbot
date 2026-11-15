@@ -5,11 +5,11 @@ import BotDetail from "./pages/BotDetail";
 import FuturesBotDetail from "./pages/FuturesBotDetail";
 import BotsPage from "./pages/Bots";
 import DashboardPage from "./pages/Dashboard";
-import MicrostructurePage from "./pages/Microstructure";
 import GridLaddersPage from "./pages/GridLadders";
 import GridLadderDetail from "./pages/GridLadderDetail";
 import NotFound from "./pages/NotFound";
 import SymbolsPage from "./pages/Symbols";
+import SignalsPage from "./pages/Signals";
 import UserFormPage from "./pages/UserForm";
 import UsersPage from "./pages/Users";
 
@@ -36,15 +36,6 @@ export const routes: AppRoute[] = [
     element: <DashboardPage />,
     id: "dashboard",
     nav: false,
-  },
-  {
-    path: "microstructure/:symbol?",
-    link: "/microstructure",
-    name: "Microstructure",
-    icon: "fas fa-water",
-    element: <MicrostructurePage />,
-    id: "microstructure",
-    nav: true,
   },
   {
     path: "grid-ladders",
@@ -114,6 +105,15 @@ export const routes: AppRoute[] = [
     name: "Autotrade",
     element: <AutotradePage />,
     id: "autotrade",
+    nav: true,
+  },
+  {
+    path: "signals",
+    link: "/signals",
+    icon: "fas fa-signal",
+    name: "Signals",
+    element: <SignalsPage />,
+    id: "signals",
     nav: true,
   },
   {

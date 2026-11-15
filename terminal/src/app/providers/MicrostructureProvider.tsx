@@ -1,20 +1,17 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { useMatch } from "react-router";
+import { useState, type ReactNode } from "react";
 import { useFuturesLiquidityQuery } from "../../features/kucoinApiSlice";
 import { OBI_POLL_INTERVAL_MS } from "../../features/kucoinLiquidity";
 import { MicrostructureContext } from "../hooks/useMicrostructureData";
 import { useKucoinTradeFlow } from "../hooks/useKucoinTradeFlow";
 import { useOrderBookHistory } from "../hooks/useOrderBookHistory";
 
-const MicrostructureCollector = ({
-  symbol,
-  selectSymbol,
+export const MicrostructureProvider = ({
   children,
 }: {
-  symbol: string;
-  selectSymbol: (symbol: string) => void;
   children: ReactNode;
 }) => {
+  // Keep the last bot symbol collecting across tabs and navigation.
+  const [symbol, selectSymbol] = useState("");
   const liquidity = useFuturesLiquidityQuery(symbol, {
     skip: !symbol,
     pollingInterval: OBI_POLL_INTERVAL_MS,
@@ -43,29 +40,5 @@ const MicrostructureCollector = ({
     >
       {children}
     </MicrostructureContext.Provider>
-  );
-};
-
-export const MicrostructureProvider = ({
-  children,
-}: {
-  children: ReactNode;
-}) => {
-  const routeSymbol =
-    useMatch("/microstructure/:symbol?")?.params.symbol?.trim().toUpperCase() ||
-    "";
-  const [lastSymbol, setLastSymbol] = useState(routeSymbol);
-  const symbol = routeSymbol || lastSymbol;
-
-  useEffect(() => {
-    if (routeSymbol) setLastSymbol(routeSymbol);
-  }, [routeSymbol]);
-
-  // Hooks reset their data on symbol changes without remounting bot forms.
-  // Returning to a route with the same symbol keeps the existing stream.
-  return (
-    <MicrostructureCollector symbol={symbol} selectSymbol={setLastSymbol}>
-      {children}
-    </MicrostructureCollector>
   );
 };

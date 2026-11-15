@@ -5,7 +5,14 @@ import {
   render,
   screen as testingScreen,
 } from "@testing-library/react";
-import { MemoryRouter, Route, Routes, useNavigate } from "react-router";
+import { useEffect } from "react";
+import {
+  MemoryRouter,
+  Route,
+  Routes,
+  useNavigate,
+  useParams,
+} from "react-router";
 import { vi } from "vitest";
 import { MicrostructureProvider } from "./MicrostructureProvider";
 import { useMicrostructureData } from "../hooks/useMicrostructureData";
@@ -65,17 +72,24 @@ const Controls = () => {
     <>
       <input aria-label="Bot form state" defaultValue="draft" />
       <button onClick={() => navigate("/dashboard")}>Dashboard</button>
-      <button onClick={() => navigate("/microstructure/KGENUSDTM")}>
+      <button onClick={() => navigate("/bots/futures/new/KGENUSDTM")}>
         KGEN
       </button>
-      <button onClick={() => navigate("/microstructure/XBTUSDTM")}>XBT</button>
+      <button onClick={() => navigate("/bots/futures/new/XBTUSDTM")}>
+        XBT
+      </button>
       <button onClick={() => selectSymbol("KGENUSDTM")}>Bot KGEN</button>
       <button onClick={() => selectSymbol("XBTUSDTM")}>Bot XBT</button>
     </>
   );
 };
 const Probe = () => {
-  const { symbol, tradeFlow, orderBookHistory } = useMicrostructureData();
+  const { symbol: botSymbol } = useParams();
+  const { symbol, selectSymbol, tradeFlow, orderBookHistory } =
+    useMicrostructureData();
+  useEffect(() => {
+    if (botSymbol) selectSymbol(botSymbol);
+  }, [botSymbol, selectSymbol]);
   return (
     <output data-testid="collector">
       {JSON.stringify({
@@ -86,13 +100,13 @@ const Probe = () => {
     </output>
   );
 };
-const renderCollector = (path = "/microstructure/KGENUSDTM") =>
+const renderCollector = (path = "/bots/futures/new/KGENUSDTM") =>
   render(
     <MemoryRouter initialEntries={[path]}>
       <MicrostructureProvider>
         <Controls />
         <Routes>
-          <Route path="/microstructure/:symbol?" element={<Probe />} />
+          <Route path="/bots/futures/new/:symbol" element={<Probe />} />
           <Route path="/dashboard" element={<p>Other page</p>} />
         </Routes>
       </MicrostructureProvider>
@@ -202,7 +216,7 @@ describe("background microstructure collectors", () => {
     expect(socket.close).toHaveBeenCalledOnce();
   });
 
-  it("switches to one new collector when the route symbol changes", async () => {
+  it("switches to one new collector when the bot symbol changes", async () => {
     renderCollector();
     const first = await connectSocket();
     act(() => sendTrade(first, "pending"));

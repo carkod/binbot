@@ -24,10 +24,6 @@
     --dashboard-card-height: 600px;
   }
 
-  .dashboard-ranking {
-    --dashboard-card-height: 400px;
-  }
-
   .card {
     width: 100%;
 
@@ -41,6 +37,11 @@
       flex-shrink: 0;
     }
   }
+}
+
+.signals-ranking .card-loading {
+  height: 400px;
+  overflow: auto;
 }
 
 .card {
