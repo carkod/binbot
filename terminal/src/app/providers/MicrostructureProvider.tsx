@@ -8,9 +8,11 @@ import { useOrderBookHistory } from "../hooks/useOrderBookHistory";
 
 const MicrostructureCollector = ({
   symbol,
+  selectSymbol,
   children,
 }: {
   symbol: string;
+  selectSymbol: (symbol: string) => void;
   children: ReactNode;
 }) => {
   const liquidity = useFuturesLiquidityQuery(symbol, {
@@ -36,7 +38,7 @@ const MicrostructureCollector = ({
 
   return (
     <MicrostructureContext.Provider
-      value={{ symbol, liquidity, tradeFlow, orderBookHistory }}
+      value={{ symbol, selectSymbol, liquidity, tradeFlow, orderBookHistory }}
     >
       {children}
     </MicrostructureContext.Provider>
@@ -61,7 +63,11 @@ export const MicrostructureProvider = ({
   // Key the collector by symbol so returning to a route keeps the same stream,
   // while a new symbol disposes the previous stream and its order-book history.
   return (
-    <MicrostructureCollector key={symbol} symbol={symbol}>
+    <MicrostructureCollector
+      key={symbol}
+      symbol={symbol}
+      selectSymbol={setLastSymbol}
+    >
       {children}
     </MicrostructureCollector>
   );

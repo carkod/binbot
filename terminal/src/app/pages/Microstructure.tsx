@@ -4,8 +4,7 @@ import { useNavigate, useParams } from "react-router";
 import { useSymbolData } from "../hooks";
 import SymbolSearch from "../components/SymbolSearch";
 import { useMicrostructureData } from "../hooks/useMicrostructureData";
-import TradeFlowCard from "../components/TradeFlowCard";
-import SpreadAndDepthCard from "../components/SpreadAndDepthCard";
+import OrderBookAnalysis from "../components/OrderBookAnalysis";
 import { getApiErrorMessage } from "../../utils/api";
 
 const MicrostructureContent = ({ symbol }: { symbol: string }) => {
@@ -15,8 +14,8 @@ const MicrostructureContent = ({ symbol }: { symbol: string }) => {
   const [validationError, setValidationError] = useState("");
   const normalizedSearch = search.trim().toUpperCase();
   const canQuery = Boolean(symbol) && normalizedSearch === symbol;
-  const { liquidity, tradeFlow, orderBookHistory } = useMicrostructureData();
-  const { isFetching, isError, error, refetch } = liquidity;
+  const { liquidity } = useMicrostructureData();
+  const { isError, error } = liquidity;
   const apiError =
     canQuery && isError
       ? getApiErrorMessage(error, "KuCoin symbol request failed")
@@ -72,27 +71,7 @@ const MicrostructureContent = ({ symbol }: { symbol: string }) => {
           </Col>
         </Row>
       </Form>
-      <Row>
-        <Col md="6" xs="12">
-          <SpreadAndDepthCard
-            orderBookHistory={orderBookHistory}
-            enabled={canQuery}
-            isFetching={isFetching}
-            isError={isError}
-            onRetry={() => refetch()}
-          />
-        </Col>
-        <Col md="6" xs="12">
-          <TradeFlowCard
-            kind="cvd"
-            buckets={tradeFlow.history.buckets}
-            enabled={canQuery}
-            status={tradeFlow.status}
-            restarted={tradeFlow.restarted}
-            storageError={tradeFlow.storageError}
-          />
-        </Col>
-      </Row>
+      <OrderBookAnalysis enabled={canQuery} />
     </div>
   );
 };

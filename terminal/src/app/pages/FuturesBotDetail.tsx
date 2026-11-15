@@ -10,7 +10,7 @@ import {
 } from "../../features/bots/botSlice";
 import BotDetailTabs from "../components/BotDetailTabs";
 import BotInfo from "../components/BotInfo";
-import ChartContainer from "../components/ChartContainer";
+import BotChartTabs from "../components/BotChartTabs";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import LogsInfo from "../components/LogsInfo";
 import { SpinnerContext } from "../spinner-context";
@@ -76,7 +76,7 @@ export const FuturesBotDetail: FC<{}> = () => {
         <Container fluid>
           <Row>
             <Col md="12" sm="12">
-              <ChartContainer
+              <BotChartTabs
                 bot={bot}
                 setCurrentPrice={setCurrentPrice}
                 marketType={currentMarketType}

@@ -5,6 +5,7 @@ import type { useOrderBookHistory } from "./useOrderBookHistory";
 
 interface MicrostructureData {
   symbol: string;
+  selectSymbol: (symbol: string) => void;
   liquidity: ReturnType<typeof useFuturesLiquidityQuery>;
   tradeFlow: ReturnType<typeof useKucoinTradeFlow>;
   orderBookHistory: ReturnType<typeof useOrderBookHistory>;
