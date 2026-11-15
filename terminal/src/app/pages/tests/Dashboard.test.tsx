@@ -1,5 +1,6 @@
 import "@testing-library/jest-dom";
-import { screen as rtlScreen, within } from "@testing-library/react";
+import { screen as rtlScreen, waitFor, within } from "@testing-library/react";
+import { useReducedMotion } from "motion/react";
 import { MemoryRouter } from "react-router";
 import { vi } from "vitest";
 import DashboardPage from "../Dashboard";
@@ -20,6 +21,11 @@ import {
 import { useBtcCloseSeriesQuery } from "../../../features/kucoinApiSlice";
 import { useBinquantStrategyNames } from "../../hooks/useBinquantStrategyNames";
 import { useFilteredFuturesRankings } from "../../hooks/useFilteredFuturesRankings";
+
+vi.mock("motion/react", async (importOriginal) => ({
+  ...(await importOriginal()),
+  useReducedMotion: vi.fn(() => false),
+}));
 
 vi.mock("../../../features/balanceApiSlice", () => ({
   useGetBalanceQuery: vi.fn(() => ({
@@ -177,6 +183,53 @@ describe("Dashboard page", () => {
       rtlScreen.getByText("BitcoinPriceCard").closest(".col-lg-6"),
     ).toBeInTheDocument();
   });
+
+  it.each([false, true])(
+    "reveals a loaded chart once and keeps it visible on refresh (reduced motion: %s)",
+    async (reducedMotion) => {
+      vi.mocked(useReducedMotion).mockReturnValue(reducedMotion);
+      vi.mocked(useGetBenchmarkQuery).mockReturnValueOnce({
+        isLoading: true,
+      } as unknown as ReturnType<typeof useGetBenchmarkQuery>);
+
+      const { rerender } = renderDashboard();
+
+      expect(
+        rtlScreen.getByRole("status", {
+          name: "Loading portfolio benchmark...",
+        }),
+      ).toBeInTheDocument();
+      expect(rtlScreen.queryByText("PortfolioBenchmarkChart")).toBeNull();
+      expect(rtlScreen.getByText("BitcoinPriceCard")).toBeInTheDocument();
+
+      rerender(
+        <MemoryRouter>
+          <DashboardPage />
+        </MemoryRouter>,
+      );
+
+      const chart = rtlScreen.getByText("PortfolioBenchmarkChart");
+      const reveal = chart.parentElement;
+      expect(reveal).toHaveStyle({ opacity: reducedMotion ? "1" : "0" });
+      await waitFor(() => {
+        expect(reveal).toHaveStyle({ opacity: "1", transform: "none" });
+      });
+      expect(
+        rtlScreen.queryByRole("status", {
+          name: "Loading portfolio benchmark...",
+        }),
+      ).toBeNull();
+
+      rerender(
+        <MemoryRouter>
+          <DashboardPage />
+        </MemoryRouter>,
+      );
+
+      expect(rtlScreen.getByText("PortfolioBenchmarkChart")).toBe(chart);
+      expect(reveal).toHaveStyle({ opacity: "1", transform: "none" });
+    },
+  );
 
   it("renders loading spinners inside each card without a page overlay", () => {
     vi.mocked(useGetBalanceQuery).mockReturnValueOnce({

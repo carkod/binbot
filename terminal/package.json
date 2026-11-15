@@ -21,6 +21,7 @@
     "bootstrap": "^5.3.8",
     "chart.js": "^4.5.1",
     "moment": "^2.31.0",
+    "motion": "^14.14.0",
     "plotly": "^1.0.6",
     "plotly.js": "^4.2.0",
     "react": "^19.2.7",

@@ -1,4 +1,5 @@
 import { useMemo, type FC } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import { Card, Col, Row, Table } from "react-bootstrap";
 import {
   useGetBalanceQuery,
@@ -17,6 +18,7 @@ import { useGetSignalsQuery } from "../../features/signalsApiSlice";
 import { BotStatus, MarketType } from "../../utils/enums";
 import { roundDecimals } from "../../utils/math";
 import { formatTimestamp } from "../../utils/time";
+import { chartRevealVariants } from "../../utils/motion";
 import GainersLosers from "../components/GainersLosers";
 import FastestMovers from "../components/FastestMovers";
 import PortfolioBenchmarkChart from "../components/PortfolioBenchmark";
@@ -28,6 +30,7 @@ import { useFilteredFuturesRankings } from "../hooks/useFilteredFuturesRankings"
 import { usePortfolioPnlDetails } from "../hooks/usePortfolioPnlDetails";
 
 export const DashboardPage: FC<{}> = () => {
+  const reducedMotion = useReducedMotion();
   const { data: accountData, isLoading: loadingEstimates } =
     useGetBalanceQuery();
   const { data: activeBotEntities, isLoading: loadingActiveBots } =
@@ -342,7 +345,15 @@ export const DashboardPage: FC<{}> = () => {
             <CardLoadingSpinner label="portfolio benchmark" />
           ) : (
             benchmark?.percentageSeries.datesSeries && (
-              <PortfolioBenchmarkChart chartData={benchmark.percentageSeries} />
+              <motion.div
+                initial={reducedMotion ? false : "hidden"}
+                animate="visible"
+                variants={chartRevealVariants}
+              >
+                <PortfolioBenchmarkChart
+                  chartData={benchmark.percentageSeries}
+                />
+              </motion.div>
             )
           )}
         </Col>
@@ -360,10 +371,16 @@ export const DashboardPage: FC<{}> = () => {
             <CardLoadingSpinner label="futures gainers and losers" />
           ) : (
             combinedFuturesRankings?.length > 0 && (
-              <GainersLosers
-                data={combinedFuturesRankings}
-                market_type={MarketType.FUTURES}
-              />
+              <motion.div
+                initial={reducedMotion ? false : "hidden"}
+                animate="visible"
+                variants={chartRevealVariants}
+              >
+                <GainersLosers
+                  data={combinedFuturesRankings}
+                  market_type={MarketType.FUTURES}
+                />
+              </motion.div>
             )
           )}
         </Col>
@@ -374,7 +391,13 @@ export const DashboardPage: FC<{}> = () => {
             <CardLoadingSpinner label="gainers versus losers trend" />
           ) : (
             gainersLosersHistory && (
-              <GainersLosersHistoryCard points={gainersLosersHistory} />
+              <motion.div
+                initial={reducedMotion ? false : "hidden"}
+                animate="visible"
+                variants={chartRevealVariants}
+              >
+                <GainersLosersHistoryCard points={gainersLosersHistory} />
+              </motion.div>
             )
           )}
         </Col>
@@ -383,7 +406,13 @@ export const DashboardPage: FC<{}> = () => {
             <CardLoadingSpinner label="Bitcoin price trend" />
           ) : (
             btcCloseSeries && (
-              <BitcoinPriceCard btcCloseSeries={btcCloseSeries} />
+              <motion.div
+                initial={reducedMotion ? false : "hidden"}
+                animate="visible"
+                variants={chartRevealVariants}
+              >
+                <BitcoinPriceCard btcCloseSeries={btcCloseSeries} />
+              </motion.div>
             )
           )}
         </Col>
