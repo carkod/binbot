@@ -42,3 +42,34 @@ export const MicrostructureProvider = ({
     </MicrostructureContext.Provider>
   );
 };
+<<<<<<< HEAD
+=======
+
+export const MicrostructureProvider = ({
+  children,
+}: {
+  children: ReactNode;
+}) => {
+  const routeSymbol =
+    useMatch("/microstructure/:symbol?")?.params.symbol?.trim().toUpperCase() ||
+    "";
+  const [lastSymbol, setLastSymbol] = useState(routeSymbol);
+  const symbol = routeSymbol || lastSymbol;
+
+  useEffect(() => {
+    if (routeSymbol) setLastSymbol(routeSymbol);
+  }, [routeSymbol]);
+
+  // Key the collector by symbol so returning to a route keeps the same stream,
+  // while a new symbol disposes the previous stream and its order-book history.
+  return (
+    <MicrostructureCollector
+      key={symbol}
+      symbol={symbol}
+      selectSymbol={setLastSymbol}
+    >
+      {children}
+    </MicrostructureCollector>
+  );
+};
+>>>>>>> 5f425392 (Remove unused binance clean up jobs)
