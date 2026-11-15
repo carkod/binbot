@@ -34,6 +34,7 @@ const MicrostructureCollector = ({
     snapshot,
     Boolean(symbol),
     liquidity.isError,
+    symbol,
   );
 
   return (
@@ -60,14 +61,10 @@ export const MicrostructureProvider = ({
     if (routeSymbol) setLastSymbol(routeSymbol);
   }, [routeSymbol]);
 
-  // Key the collector by symbol so returning to a route keeps the same stream,
-  // while a new symbol disposes the previous stream and its order-book history.
+  // Hooks reset their data on symbol changes without remounting bot forms.
+  // Returning to a route with the same symbol keeps the existing stream.
   return (
-    <MicrostructureCollector
-      key={symbol}
-      symbol={symbol}
-      selectSymbol={setLastSymbol}
-    >
+    <MicrostructureCollector symbol={symbol} selectSymbol={setLastSymbol}>
       {children}
     </MicrostructureCollector>
   );

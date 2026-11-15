@@ -60,13 +60,17 @@ const queryResult = (timestamp = now) =>
 
 const Controls = () => {
   const navigate = useNavigate();
+  const { selectSymbol } = useMicrostructureData();
   return (
     <>
+      <input aria-label="Bot form state" defaultValue="draft" />
       <button onClick={() => navigate("/dashboard")}>Dashboard</button>
       <button onClick={() => navigate("/microstructure/KGENUSDTM")}>
         KGEN
       </button>
       <button onClick={() => navigate("/microstructure/XBTUSDTM")}>XBT</button>
+      <button onClick={() => selectSymbol("KGENUSDTM")}>Bot KGEN</button>
+      <button onClick={() => selectSymbol("XBTUSDTM")}>Bot XBT</button>
     </>
   );
 };
@@ -236,6 +240,30 @@ describe("background microstructure collectors", () => {
       "",
       expect.objectContaining({ skip: true }),
     );
+  });
+
+  it("collects a symbol selected by bot detail and replaces it only when the symbol changes", async () => {
+    renderCollector("/dashboard");
+    const form = testingScreen.getByRole("textbox", { name: "Bot form state" });
+    fireEvent.change(form, { target: { value: "edited draft" } });
+    fireEvent.click(testingScreen.getByRole("button", { name: "Bot KGEN" }));
+    const first = await connectSocket();
+    expect(first.send).toHaveBeenCalledWith(
+      expect.stringContaining("/contractMarket/execution:KGENUSDTM"),
+    );
+    fireEvent.click(testingScreen.getByRole("button", { name: "Bot KGEN" }));
+    expect(first.close).not.toHaveBeenCalled();
+    fireEvent.click(testingScreen.getByRole("button", { name: "Bot XBT" }));
+    expect(first.close).toHaveBeenCalledOnce();
+    const second = await connectSocket();
+    expect(second.send).toHaveBeenCalledWith(
+      expect.stringContaining("/contractMarket/execution:XBTUSDTM"),
+    );
+    expect(MockSocket.sockets).toHaveLength(2);
+    expect(testingScreen.getByRole("textbox", { name: "Bot form state" })).toBe(
+      form,
+    );
+    expect(form).toHaveValue("edited draft");
   });
 
   it("keeps a validated trade stream alive during an order-book refresh failure", async () => {

@@ -20,24 +20,28 @@ interface TradeFlowState {
   storageError?: boolean;
 }
 
+const emptyTradeFlow: TradeFlowState = {
+  history: { buckets: [], seen: {} },
+  status: "connecting",
+  restarted: false,
+};
+
 export const useKucoinTradeFlow = (
   symbol: string,
   enabled: boolean,
   multiplier?: number,
 ) => {
-  const [state, setState] = useState<TradeFlowState>({
-    history: { buckets: [], seen: {} },
-    status: "connecting",
-    restarted: false,
-  });
+  const [state, setState] = useState<TradeFlowState>(emptyTradeFlow);
+  const [historySymbol, setHistorySymbol] = useState(symbol);
+
+  if (historySymbol !== symbol) {
+    setHistorySymbol(symbol);
+    setState(emptyTradeFlow);
+  }
 
   useEffect(() => {
     if (!enabled || !isPositiveFinite(multiplier)) return;
-    setState({
-      history: { buckets: [], seen: {} },
-      status: "connecting",
-      restarted: false,
-    });
+    setState(emptyTradeFlow);
     let disposed = false;
     let socket: WebSocket | undefined;
     let retry: ReturnType<typeof setTimeout>;

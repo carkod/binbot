@@ -24,7 +24,7 @@ vi.mock("../../../features/symbolsApiSlice", async () => ({
   useGetSymbolsQuery: vi.fn(() => ({ data: [] })),
 }));
 
-vi.mock("../../components/ChartContainer", () => {
+vi.mock("../../components/BotChartTabs", () => {
   const ChartContainer = (_props: any) => <div data-testid="chart-container" />;
   ChartContainer.displayName = "ChartContainer";
   return { default: ChartContainer };

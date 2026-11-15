@@ -17,16 +17,24 @@ export const useOrderBookHistory = (
   snapshot: ObiSnapshot | undefined,
   enabled: boolean,
   isError: boolean,
+  symbol = "",
 ) => {
   const [history, setHistory] = useState<ObiSnapshot[]>([]);
   const [now, setNow] = useState(Date.now);
+  const [historySymbol, setHistorySymbol] = useState(symbol);
+
+  if (historySymbol !== symbol) {
+    setHistorySymbol(symbol);
+    setHistory([]);
+    setNow(Date.now());
+  }
 
   useEffect(() => {
     if (!enabled || isError || !snapshot) return;
     const receivedAt = Date.now();
     setNow(receivedAt);
     setHistory((previous) => updateObiHistory(previous, snapshot, receivedAt));
-  }, [snapshot, enabled, isError]);
+  }, [snapshot, enabled, isError, symbol]);
 
   useEffect(() => {
     const interval = setInterval(() => {
