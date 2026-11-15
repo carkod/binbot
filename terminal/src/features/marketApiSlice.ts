@@ -51,11 +51,11 @@ export const marketApiSlice = userApiSlice.injectEndpoints({
     cvdSymbol: build.query<CvdSymbol, string>({
       query: (symbol) => ({
         url: "/charts/cvd-symbol",
-        params: { symbol, interval: "1m", limit: 15 },
+        params: { symbol, limit: 15 },
       }),
     }),
     cvdAggregate: build.query<CvdAggregate, void>({
-      query: () => ({ url: "/charts/cvd-aggregate?interval=15m&limit=672" }),
+      query: () => ({ url: "/charts/cvd-aggregate?limit=672" }),
     }),
     fastestMovers: build.query<FastestMoversSnapshot, void>({
       query: () => ({ url: "/charts/fastest_movers?limit=10" }),

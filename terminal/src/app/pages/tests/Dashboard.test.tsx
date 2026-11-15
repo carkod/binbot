@@ -130,7 +130,6 @@ vi.mock("../../components/AggregateCvdCard", () => ({
 }));
 
 describe("Dashboard page", () => {
-  afterEach(() => vi.unstubAllEnvs());
   const renderDashboard = () =>
     renderWithProviders(
       <MemoryRouter>
@@ -162,8 +161,7 @@ describe("Dashboard page", () => {
     }
   });
 
-  it("shows enabled market CVD alongside the market trend charts", () => {
-    vi.stubEnv("VITE_MARKET_CVD_ENABLED", "true");
+  it("shows market CVD alongside the market trend charts", () => {
     renderDashboard();
     expect(
       rtlScreen.getByRole("region", { name: "Market analysis" }),

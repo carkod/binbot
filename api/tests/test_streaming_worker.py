@@ -7,6 +7,7 @@ from unittest.mock import Mock
 import pytest
 
 from streaming import cvd, main
+from streaming.cvd import collector, storage
 
 
 @pytest.mark.asyncio
@@ -163,10 +164,10 @@ async def test_embedded_collector_uses_worker_shutdown_and_flushes_final_checkpo
         persisted.append(snapshot)
         loop.call_soon_threadsafe(stop.set)
 
-    monkeypatch.setattr(cvd, "owner_connection", owner)
-    monkeypatch.setattr(cvd, "load_contracts", lambda: {})
-    monkeypatch.setattr(cvd, "restore", Mock())
-    monkeypatch.setattr(cvd, "persist", persist)
+    monkeypatch.setattr(collector, "owner_connection", owner)
+    monkeypatch.setattr(collector, "load_contracts", lambda: {})
+    monkeypatch.setattr(collector, "restore", Mock())
+    monkeypatch.setattr(collector, "persist", persist)
 
     await asyncio.wait_for(cvd.run(stop), 2)
 
@@ -193,11 +194,11 @@ async def test_database_ownership_does_not_block_worker_event_loop(monkeypatch):
         acquired.append(get_ident())
 
     async def own():
-        async with cvd.owner_connection() as owner:
+        async with storage.owner_connection() as owner:
             assert owner is connection
 
-    monkeypatch.setattr(cvd.engine, "connect", connect)
-    monkeypatch.setattr(cvd, "acquire_owner", acquire)
+    monkeypatch.setattr(storage.engine, "connect", connect)
+    monkeypatch.setattr(storage, "acquire_owner", acquire)
     task = asyncio.create_task(own())
     try:
         assert await asyncio.to_thread(connecting.wait, 1)

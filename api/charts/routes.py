@@ -1,5 +1,4 @@
 from time import time
-from typing import Literal
 from api.charts.models import CvdAggregateResponse, CvdSymbolResponse
 from api.databases.crud.cvd_crud import query_cvd_aggregate, query_cvd_symbol
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -125,32 +124,86 @@ def get_gainers_losers_series(
 
 
 @charts_blueprint.get(
-    "/cvd-aggregate", tags=["charts"], response_model=CvdAggregateResponse
+    "/cvd-aggregate",
+    tags=["charts"],
+    summary="Market-wide KuCoin Futures CVD from stored executions",
+    description="""
+    Read Postgres-only **15-minute UTC buckets**, oldest first, ending with the
+    current interval. The population is active, registered linear USDT contracts;
+    buy/sell values are aggressive taker notionals (`price × contracts × multiplier`).
+
+    CVD accumulates observed buy minus sell from zero at `reset_at`, the selected
+    window's start, and rebases as the window advances. Partial observations
+    contribute; missing trades are never estimated or backfilled. History begins
+    at collector startup and is retained for seven days. No observations in the
+    requested range returns an empty `data` list; otherwise missing intervals
+    have null buy/sell/CVD and unknown expected-symbol counts.
+
+    `expected_symbols` is the maximum and `covered_symbols` the minimum across
+    observed minutes. `complete` requires all 15 minutes finalized, full coverage
+    and an unchanged nonempty universe; `gap` means incomplete. `current` marks
+    the open interval. Finalization waits two minutes for late arrivals.
+    `universe_changed` identifies membership or multiplier changes, including
+    changes within an interval. Clients should break chart lines at gaps and
+    population changes. A covered quiet market contributes zero, not a gap.
+
+    `source` identifies the feed, `updated_at` the latest saved checkpoint,
+    `stale` means no checkpoint or one older than 90 seconds, and `partial`
+    indicates any incomplete interval or universe change in the selected window.
+    """,
+    response_model=CvdAggregateResponse,
+    response_description="USDT notionals and rebased CVD with coverage and freshness",
 )
 def get_cvd_aggregate(
-    interval: Literal["15m"] = "15m",
-    limit: int = Query(default=672, ge=1, le=672),
+    limit: int = Query(
+        default=672, ge=1, le=672, description="Number of 15-minute UTC buckets."
+    ),
     session: Session = Depends(get_session),
 ):
-    """Stored aggressive USDT buy minus sell notionals; cumulative from reset_at.
-
-    CVD sums observed deltas, including partial minutes; gaps are never backfilled.
-    Counts are conservative minima/maxima across each interval's fixed universe.
-    """
     return query_cvd_aggregate(session, limit, time())
 
 
-@charts_blueprint.get("/cvd-symbol", tags=["charts"], response_model=CvdSymbolResponse)
+@charts_blueprint.get(
+    "/cvd-symbol",
+    tags=["charts"],
+    summary="Individual KuCoin Futures contract CVD from stored executions",
+    description="""
+    Read one contract's stored **one-minute UTC buckets**, oldest first, ending
+    with the current minute. Uses the same collector as market-wide CVD, with
+    no exchange calls. Historical inactive/delisted contracts remain readable
+    until seven-day retention expires.
+
+    Buy/sell values are aggressive taker USDT notionals
+    (`price × contracts × multiplier`). CVD accumulates observed buy minus sell
+    from zero at `reset_at`, rebasing as the selected window advances. Partial
+    observations contribute; missing trades are never estimated or backfilled.
+    An empty selected range returns an empty `data` list. Within a populated
+    range, missing minutes have null buy/sell/CVD, unknown expected-symbol count
+    and zero coverage. Covered quiet minutes have zero buy/sell.
+
+    Expected/covered symbol counts are 1 for a recorded/covered contract.
+    `complete` requires coverage and finalization; `gap` means incomplete.
+    The current minute and closed minutes awaiting the two-minute late-arrival
+    allowance remain partial. `universe_changed` means this contract's multiplier
+    changed. Clients should break chart lines at gaps and multiplier changes.
+
+    Coverage and `updated_at` belong to this symbol; unrelated markets cannot
+    mask an outage. `stale` means no checkpoint or one older than 90 seconds.
+    `partial` indicates any incomplete minute or multiplier change in the window.
+    """,
+    response_model=CvdSymbolResponse,
+    response_description="Contract USDT notionals and rebased CVD with symbol coverage",
+)
 def get_cvd_symbol(
-    symbol: str = Query(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9]+$"),
-    interval: Literal["1m"] = "1m",
-    limit: int = Query(default=15, ge=1, le=10080),
+    symbol: str = Query(
+        min_length=1,
+        max_length=64,
+        pattern=r"^[A-Za-z0-9]+$",
+        description="Case-insensitive KuCoin Futures contract ID, e.g. SOLUSDTM.",
+    ),
+    limit: int = Query(
+        default=15, ge=1, le=10080, description="Number of one-minute UTC buckets."
+    ),
     session: Session = Depends(get_session),
 ):
-    """Stored per-symbol USDT CVD, rebased at reset_at; at most seven days.
-
-    Quiet covered minutes are zero; missing/uncovered minutes are gaps. Coverage
-    and freshness belong to this symbol. universe_changed marks multiplier changes.
-    Inactive/delisted symbols retain their collected history until retention expires.
-    """
     return query_cvd_symbol(session, symbol.upper(), limit, time())

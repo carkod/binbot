@@ -2,6 +2,7 @@
 
 import os
 from datetime import datetime, timezone
+from functools import partial
 from importlib import import_module
 from time import perf_counter
 from unittest.mock import patch
@@ -19,14 +20,10 @@ from api.charts.routes import charts_blueprint
 from api.databases.crud.cvd_crud import query_cvd_aggregate, query_cvd_symbol
 from api.databases.tables.cvd_table import SOURCE, CvdBucketTable, CvdMinuteTable
 from api.databases.utils import get_session
-from streaming.cvd import (
-    Flow,
-    discover_contracts,
-    handle_message,
-    persist,
-    restore,
-    acquire_owner,
-)
+from streaming.cvd.contracts import discover_contracts
+from streaming.cvd.flow import Flow, handle_message
+from streaming.cvd.storage import acquire_owner, persist, restore
+from streaming.shared.kucoin_futures import stream_executions
 
 # UTC aligned exchange minute, far above seconds/milliseconds timestamp ranges.
 START = 1_790_000_040
@@ -147,7 +144,7 @@ def test_acknowledgement_and_invalid_payload_coverage():
     flow = flow_at_start()
     flow.disconnect(["SOLUSDTM"], START)
     pending = {"sub": ("SOLUSDTM", 0.0)}
-    with patch("streaming.cvd.time.time", return_value=START + 1):
+    with patch("streaming.cvd.flow.time.time", return_value=START + 1):
         handle_message(flow, {"type": "ack", "id": "sub"}, pending, ["SOLUSDTM"])
     assert not pending
     assert flow.acknowledged["SOLUSDTM"] == START + 1
@@ -155,7 +152,7 @@ def test_acknowledgement_and_invalid_payload_coverage():
         handle_message(flow, {"type": "error"}, pending, ["SOLUSDTM"])
     for second in range(10, 71, 10):
         flow.tick(START + second)
-    with patch("streaming.cvd.time.time", return_value=START + 71):
+    with patch("streaming.cvd.flow.time.time", return_value=START + 71):
         handle_message(
             flow,
             {
@@ -252,10 +249,10 @@ def test_restart_fences_saved_future_minutes_per_symbol_and_allows_new_late_trad
 
 def test_migration_replays_on_new_and_partially_migrated_schemas():
     migration = import_module("api.alembic.versions.c8d71b9e204f_add_cvd_buckets")
-    for partial in (False, True):
+    for partially_migrated in (False, True):
         engine = create_engine("sqlite://")
         with engine.begin() as connection:
-            if partial:
+            if partially_migrated:
                 connection.execute(
                     text(
                         "CREATE TABLE cvd_bucket (source VARCHAR(32), symbol VARCHAR(64), minute BIGINT, PRIMARY KEY (source, symbol, minute))"
@@ -270,7 +267,7 @@ def test_migration_replays_on_new_and_partially_migrated_schemas():
                 assert {
                     c["name"] for c in inspect(connection).get_columns("cvd_bucket")
                 } >= {"multiplier", "buy", "sell", "covered", "last_trade_ns"}
-                if partial:
+                if partially_migrated:
                     assert connection.execute(
                         text("SELECT buy, covered FROM cvd_bucket")
                     ).one() == (0, 0)
@@ -336,10 +333,10 @@ def test_api_bounds_empty_and_staleness(cvd_engine):
     app.dependency_overrides[get_session] = session
     with patch("api.charts.routes.time", return_value=START) as clock:
         client = TestClient(app)
-        for suffix in ("limit=0", "limit=673", "interval=1m", "limit=bad"):
+        for suffix in ("limit=0", "limit=673", "limit=bad"):
             assert client.get("/charts/cvd-aggregate?" + suffix).status_code == 422
         assert clock.call_count == 0
-        response = client.get("/charts/cvd-aggregate?limit=1&interval=15m")
+        response = client.get("/charts/cvd-aggregate?limit=1")
         assert response.status_code == 200
         assert response.json()["stale"] and response.json()["data"] == []
         with Session(cvd_engine) as db:
@@ -436,7 +433,6 @@ async def test_websocket_ack_ping_and_reconnect_gap(monkeypatch):
     import json
     import time
     from websockets.asyncio.server import serve
-    from streaming.cvd import stream_shard
 
     flow = Flow({"SOLUSDTM": 0.1}, time.time_ns())
     flow.tick(time.time())
@@ -453,6 +449,16 @@ async def test_websocket_ack_ping_and_reconnect_gap(monkeypatch):
                 assert message["topic"] == "/contractMarket/execution:SOLUSDTM"
                 assert message["response"]
                 await ws.send(json.dumps({"type": "ack", "id": message["id"]}))
+                await ws.send(
+                    json.dumps(
+                        {
+                            "type": "message",
+                            "subject": "match",
+                            "topic": "/contractMarket/execution:SOLUSDTM",
+                            "data": execution() | {"ts": time.time_ns()},
+                        }
+                    )
+                )
                 subscribed.set()
             elif message["type"] == "ping":
                 received_ping.set()
@@ -461,7 +467,7 @@ async def test_websocket_ack_ping_and_reconnect_gap(monkeypatch):
     async with serve(exchange, "127.0.0.1", 0) as server:
         port = server.sockets[0].getsockname()[1]
         monkeypatch.setattr(
-            "streaming.cvd.public_request",
+            "streaming.shared.kucoin_futures.public_request",
             lambda *args: {
                 "token": "test",
                 "instanceServers": [
@@ -474,11 +480,19 @@ async def test_websocket_ack_ping_and_reconnect_gap(monkeypatch):
             },
         )
         stop = asyncio.Event()
-        task = asyncio.create_task(stream_shard(flow, ["SOLUSDTM"], stop))
+        task = asyncio.create_task(
+            stream_executions(
+                ["SOLUSDTM"], stop, partial(handle_message, flow), flow.disconnect
+            )
+        )
         try:
             await asyncio.wait_for(subscribed.wait(), 2)
             await asyncio.wait_for(received_ping.wait(), 2)
             assert "SOLUSDTM" in flow.acknowledged
+            assert flow.trades == 1
+            assert sum(
+                b.buy for m in flow.minutes.values() for b in m.symbols.values()
+            ) == pytest.approx(28.6952)
             await connections[0].close()
             for _ in range(100):
                 if "SOLUSDTM" not in flow.acknowledged:
@@ -499,7 +513,6 @@ async def test_missing_ack_or_pong_invalidates_subscription(monkeypatch, missing
     import json
     import time
     from websockets.asyncio.server import serve
-    from streaming.cvd import stream_shard
 
     flow = Flow({"SOLUSDTM": 0.1}, time.time_ns())
     flow.tick(time.time())
@@ -518,9 +531,9 @@ async def test_missing_ack_or_pong_invalidates_subscription(monkeypatch, missing
             closed.set()
 
     async with serve(exchange, "127.0.0.1", 0) as server:
-        monkeypatch.setattr("streaming.cvd.ACK_TIMEOUT", 0.1)
+        monkeypatch.setattr("streaming.shared.kucoin_futures.ACK_TIMEOUT", 0.1)
         monkeypatch.setattr(
-            "streaming.cvd.public_request",
+            "streaming.shared.kucoin_futures.public_request",
             lambda *args: {
                 "token": "test",
                 "instanceServers": [
@@ -533,7 +546,11 @@ async def test_missing_ack_or_pong_invalidates_subscription(monkeypatch, missing
             },
         )
         stop = asyncio.Event()
-        task = asyncio.create_task(stream_shard(flow, ["SOLUSDTM"], stop))
+        task = asyncio.create_task(
+            stream_executions(
+                ["SOLUSDTM"], stop, partial(handle_message, flow), flow.disconnect
+            )
+        )
         try:
             await asyncio.wait_for(closed.wait(), 3)
             await asyncio.sleep(0.01)
@@ -671,12 +688,11 @@ def test_symbol_api_validates_bounds_normalizes_symbol_and_returns_saved_data(
             "symbol=" + "A" * 65,
             "symbol=SOLUSDTM&limit=0",
             "symbol=SOLUSDTM&limit=10081",
-            "symbol=SOLUSDTM&interval=15m",
             "symbol=SOLUSDTM&limit=bad",
         ):
             assert client.get("/charts/cvd-symbol?" + suffix).status_code == 422
         assert clock.call_count == 0
-        response = client.get("/charts/cvd-symbol?symbol=solusdtm&interval=1m&limit=1")
+        response = client.get("/charts/cvd-symbol?symbol=solusdtm&limit=1")
         assert response.status_code == 200
         result = response.json()
         assert result["symbol"] == "SOLUSDTM" and not result["stale"]
