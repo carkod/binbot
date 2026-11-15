@@ -7,6 +7,7 @@ import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import { useBreakpoint } from "./hooks";
 import { SpinnerContext } from "./spinner-context";
+import { MicrostructureProvider } from "./providers/MicrostructureProvider";
 
 export const Layout: FC<{}> = () => {
   const token = getToken();
@@ -63,7 +64,9 @@ export const Layout: FC<{}> = () => {
 
           <SpinnerContext.Provider value={spinnerValue}>
             <Header onExpand={handleExpand} />
-            <Outlet />
+            <MicrostructureProvider>
+              <Outlet />
+            </MicrostructureProvider>
             <Footer />
           </SpinnerContext.Provider>
         </div>

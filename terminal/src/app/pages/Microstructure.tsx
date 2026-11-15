@@ -1,12 +1,9 @@
 import { useState } from "react";
 import { Button, Col, Form, Row } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router";
-import { useFuturesLiquidityQuery } from "../../features/kucoinApiSlice";
 import { useSymbolData } from "../hooks";
 import SymbolSearch from "../components/SymbolSearch";
-import OrderBookImbalanceCard from "../components/OrderBookImbalanceCard";
-import { OBI_POLL_INTERVAL_MS } from "../../features/kucoinLiquidity";
-import { useKucoinTradeFlow } from "../hooks/useKucoinTradeFlow";
+import { useMicrostructureData } from "../hooks/useMicrostructureData";
 import TradeFlowCard from "../components/TradeFlowCard";
 import SpreadAndDepthCard from "../components/SpreadAndDepthCard";
 import { getApiErrorMessage } from "../../utils/api";
@@ -18,25 +15,8 @@ const MicrostructureContent = ({ symbol }: { symbol: string }) => {
   const [validationError, setValidationError] = useState("");
   const normalizedSearch = search.trim().toUpperCase();
   const canQuery = Boolean(symbol) && normalizedSearch === symbol;
-  const {
-    currentData: snapshot,
-    isFetching,
-    isError,
-    error,
-    refetch,
-  } = useFuturesLiquidityQuery(symbol, {
-    skip: !canQuery,
-    pollingInterval: OBI_POLL_INTERVAL_MS,
-    skipPollingIfUnfocused: true,
-    refetchOnMountOrArgChange: true,
-    refetchOnFocus: true,
-    refetchOnReconnect: true,
-  });
-  const tradeFlow = useKucoinTradeFlow(
-    symbol,
-    canQuery && !isError,
-    snapshot?.multiplier,
-  );
+  const { liquidity, tradeFlow, orderBookHistory } = useMicrostructureData();
+  const { isFetching, isError, error, refetch } = liquidity;
   const apiError =
     canQuery && isError
       ? getApiErrorMessage(error, "KuCoin symbol request failed")
@@ -94,8 +74,8 @@ const MicrostructureContent = ({ symbol }: { symbol: string }) => {
       </Form>
       <Row>
         <Col md="6" xs="12">
-          <OrderBookImbalanceCard
-            snapshot={snapshot}
+          <SpreadAndDepthCard
+            orderBookHistory={orderBookHistory}
             enabled={canQuery}
             isFetching={isFetching}
             isError={isError}
@@ -110,17 +90,6 @@ const MicrostructureContent = ({ symbol }: { symbol: string }) => {
             status={tradeFlow.status}
             restarted={tradeFlow.restarted}
             storageError={tradeFlow.storageError}
-          />
-        </Col>
-      </Row>
-      <Row>
-        <Col xs="12">
-          <SpreadAndDepthCard
-            snapshot={snapshot}
-            enabled={canQuery}
-            isFetching={isFetching}
-            isError={isError}
-            onRetry={() => refetch()}
           />
         </Col>
       </Row>

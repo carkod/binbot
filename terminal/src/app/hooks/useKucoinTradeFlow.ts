@@ -144,12 +144,13 @@ export const useKucoinTradeFlow = (
                 );
               }
               collecting = true;
+              const restarted = hasConnected || restored;
               setState((previous) => ({
                 ...previous,
                 history,
                 status: "live",
                 startedAt,
-                restarted: hasConnected || restored,
+                restarted,
               }));
               hasConnected = true;
               persist();

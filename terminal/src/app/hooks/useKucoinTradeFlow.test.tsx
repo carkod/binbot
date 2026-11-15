@@ -91,6 +91,7 @@ describe("terminal trade stream", () => {
       expect.stringContaining("/contractMarket/execution:KGENUSDTM"),
     );
     expect(result.current.status).toBe("live");
+    expect(result.current.restarted).toBe(false);
     const message = {
       type: "message",
       topic: "/contractMarket/execution:KGENUSDTM",

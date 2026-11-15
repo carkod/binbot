@@ -16,6 +16,7 @@ import { vi } from "vitest";
 import { useFuturesLiquidityQuery } from "../../../features/kucoinApiSlice";
 import { SymbolContext } from "../../hooks";
 import MicrostructurePage from "../Microstructure";
+import { MicrostructureProvider } from "../../providers/MicrostructureProvider";
 
 vi.mock("../../hooks/useKucoinTradeFlow", () => ({
   useKucoinTradeFlow: vi.fn(() => ({
@@ -31,11 +32,7 @@ vi.mock("../../../features/kucoinApiSlice", () => ({
 
 vi.mock("../../components/PlotlyChart", () => ({
   default: ({ data }: { data: { name: string }[] }) => (
-    <div
-      data-testid={data[0].name === "OBI" ? "obi-chart" : "spread-depth-chart"}
-    >
-      {JSON.stringify(data)}
-    </div>
+    <div data-testid="spread-depth-chart">{JSON.stringify(data)}</div>
   ),
 }));
 
@@ -65,13 +62,15 @@ const renderPage = (path = "/microstructure") =>
       }}
     >
       <MemoryRouter initialEntries={[path]}>
-        <LocationControls />
-        <Routes>
-          <Route
-            path="/microstructure/:symbol?"
-            element={<MicrostructurePage />}
-          />
-        </Routes>
+        <MicrostructureProvider>
+          <LocationControls />
+          <Routes>
+            <Route
+              path="/microstructure/:symbol?"
+              element={<MicrostructurePage />}
+            />
+          </Routes>
+        </MicrostructureProvider>
       </MemoryRouter>
     </SymbolContext.Provider>,
   );
@@ -98,35 +97,29 @@ describe("Microstructure page", () => {
     renderPage();
     expect(testingScreen.getByRole("combobox")).toBeRequired();
     expect(testingScreen.getByRole("combobox")).toHaveClass("form-control-lg");
-    expect(testingScreen.getAllByText("Enter a symbol")).toHaveLength(3);
+    expect(testingScreen.getAllByText("Enter a symbol")).toHaveLength(2);
     expect(useFuturesLiquidityQuery).toHaveBeenLastCalledWith(
       "",
       expect.objectContaining({ skip: true }),
     );
   });
 
-  it("prefills a route symbol and renders only the current liquidity label", () => {
+  it("prefills a route symbol and renders spread/depth beside CVD", () => {
     renderPage("/microstructure/KGENUSDTM");
     expect(testingScreen.getByRole("combobox")).toHaveValue("KGENUSDTM");
-    expect(testingScreen.getByText("High liquidity")).toBeInTheDocument();
-    expect(testingScreen.getByTestId("obi-chart")).toBeInTheDocument();
-    expect(testingScreen.queryByText("Volume Delta")).not.toBeInTheDocument();
-    const obiCard = testingScreen
-      .getByText("Order Book Imbalance (OBI)")
-      .closest(".card");
     const cvdCard = testingScreen
       .getByText("Cumulative Volume Delta")
       .closest(".card");
-    expect(obiCard.parentElement).toHaveClass("col-md-6");
-    expect(cvdCard.parentElement).toHaveClass("col-md-6");
-    expect(obiCard.parentElement.parentElement).toBe(
-      cvdCard.parentElement.parentElement,
+    const depthCard = testingScreen
+      .getByText("Spread and Nearby Depth")
+      .closest(".card");
+    expect(cvdCard.parentElement).toHaveClass("col-md-6", "col-12");
+    expect(depthCard.parentElement).toHaveClass("col-md-6", "col-12");
+    expect(depthCard.closest(".row")).toBe(cvdCard.closest(".row"));
+    expect(depthCard.parentElement.nextElementSibling).toBe(
+      cvdCard.parentElement,
     );
-    expect(
-      testingScreen.getByText("Spread and Nearby Depth").closest(".row"),
-    ).not.toBe(obiCard.parentElement.parentElement);
     expect(testingScreen.getByTestId("spread-depth-chart")).toBeInTheDocument();
-    expect(testingScreen.queryByText(/^Liquidity$/)).not.toBeInTheDocument();
     expect(useFuturesLiquidityQuery).toHaveBeenLastCalledWith(
       "KGENUSDTM",
       expect.objectContaining({ skip: false, pollingInterval: 15_000 }),
@@ -155,17 +148,21 @@ describe("Microstructure page", () => {
     );
   });
 
-  it("hides the previous symbol's label while changing or clearing the search", () => {
+  it("requires the selected symbol while editing or clearing the search and keeps collecting", () => {
     renderPage("/microstructure/KGENUSDTM");
     fireEvent.change(testingScreen.getByRole("combobox"), {
       target: { value: "XBT" },
     });
-    expect(testingScreen.queryByText("High liquidity")).not.toBeInTheDocument();
+    expect(testingScreen.getAllByText("Enter a symbol")).toHaveLength(2);
     fireEvent.change(testingScreen.getByRole("combobox"), {
       target: { value: "" },
     });
     expect(testingScreen.getByRole("combobox")).toHaveValue("");
-    expect(testingScreen.getAllByText("Enter a symbol")).toHaveLength(3);
+    expect(testingScreen.getAllByText("Enter a symbol")).toHaveLength(2);
+    expect(useFuturesLiquidityQuery).toHaveBeenLastCalledWith(
+      "KGENUSDTM",
+      expect.objectContaining({ skip: false }),
+    );
   });
 
   it("syncs the search with route changes", async () => {
@@ -235,15 +232,9 @@ describe("Microstructure page", () => {
     } as ReturnType<typeof useFuturesLiquidityQuery>);
     renderPage("/microstructure/KGENUSDTM");
     expect(
-      testingScreen.getByText(/Liquidity unavailable/),
-    ).toBeInTheDocument();
-    expect(testingScreen.queryByText("High liquidity")).not.toBeInTheDocument();
-    expect(
       testingScreen.getByText(/Spread and depth unavailable/),
     ).toBeInTheDocument();
-    await userEvent.click(
-      testingScreen.getAllByRole("button", { name: "Retry" })[0],
-    );
+    await userEvent.click(testingScreen.getByRole("button", { name: "Retry" }));
     expect(refetch).toHaveBeenCalledOnce();
   });
 });

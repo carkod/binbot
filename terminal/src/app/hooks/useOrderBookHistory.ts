@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   OBI_POLL_INTERVAL_MS,
   updateObiHistory,
@@ -40,23 +40,26 @@ export const useOrderBookHistory = (
   }, []);
 
   // Break lines across missed polls instead of implying measurements in gaps.
-  const chartPoints: OrderBookHistoryPoint[] = [];
-  history.forEach((point, index) => {
-    const previous = history[index - 1];
-    if (
-      previous &&
-      point.timestamp - previous.timestamp > 2 * OBI_POLL_INTERVAL_MS
-    ) {
-      chartPoints.push({
-        timestamp: previous.timestamp + OBI_POLL_INTERVAL_MS,
-        obi: null,
-        spreadRatio: null,
-        bidDepth: null,
-        askDepth: null,
-      });
-    }
-    chartPoints.push(point);
-  });
+  const chartPoints = useMemo(() => {
+    const points: OrderBookHistoryPoint[] = [];
+    history.forEach((point, index) => {
+      const previous = history[index - 1];
+      if (
+        previous &&
+        point.timestamp - previous.timestamp > 2 * OBI_POLL_INTERVAL_MS
+      ) {
+        points.push({
+          timestamp: previous.timestamp + OBI_POLL_INTERVAL_MS,
+          obi: null,
+          spreadRatio: null,
+          bidDepth: null,
+          askDepth: null,
+        });
+      }
+      points.push(point);
+    });
+    return points;
+  }, [history]);
 
   return { history, chartPoints, now };
 };
