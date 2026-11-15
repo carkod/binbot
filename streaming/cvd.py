@@ -1,8 +1,8 @@
-"""Independent public KuCoin Futures execution collector. Run one owner per DB."""
+"""Public KuCoin Futures collector hosted by streaming.main; one owner per DB."""
 
 import asyncio
 from collections import defaultdict
-from contextlib import contextmanager
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from hashlib import sha256
@@ -435,23 +435,28 @@ def handle_message(
                     state.symbols[payload["symbol"]].covered = False
 
 
-@contextmanager
-def owner_connection():
-    with engine.connect() as connection:
+@asynccontextmanager
+async def owner_connection():
+    connection = await asyncio.to_thread(engine.connect)
+    try:
+        await asyncio.to_thread(acquire_owner, connection)
+        yield connection
+    finally:
         try:
-            acquire_owner(connection)
-            yield connection
+            await asyncio.to_thread(connection.invalidate)
         finally:
-            connection.invalidate()
+            connection.close()
 
 
-async def run() -> None:
-    stop = asyncio.Event()
-    loop = asyncio.get_running_loop()
-    for sig in (signal.SIGTERM, signal.SIGINT):
-        loop.add_signal_handler(sig, stop.set)
+async def run(stop: asyncio.Event | None = None) -> None:
+    if stop is None:
+        # Standalone diagnostics own signals; the shared worker supplies its stop event.
+        stop = asyncio.Event()
+        loop = asyncio.get_running_loop()
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            loop.add_signal_handler(sig, stop.set)
     # Never allow SQLAlchemy to reconnect this owner connection after failure.
-    with owner_connection() as connection:
+    async with owner_connection() as connection:
         flow = Flow(await asyncio.to_thread(load_contracts), time.time_ns())
         await asyncio.to_thread(restore, connection, flow)
         tasks: list[asyncio.Task] = []

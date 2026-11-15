@@ -112,13 +112,13 @@ available for KuCoin futures bots and shows Spread and Nearby Depth beside
 per-symbol Cumulative Volume Delta. Selecting a supported bot selects its
 symbol for collection, including while the Chart tab is open.
 
-The selected symbol continues collecting across terminal navigation, including
-the Microstructure page, while the terminal is open. Switching symbols stops
-the previous symbol's collector. Spread/depth history resets on reload or symbol
-change; observed trade history is saved per symbol in this browser for a rolling
-15-minute window. Reconnects and closed browser sessions have no historical
-backfill. This browser history is separate from the
-[centrally collected Dashboard CVD](../market-cvd.md).
+The selected symbol's spread/depth polling continues across terminal navigation
+while the terminal is open. Switching symbols resets that in-memory history;
+reloading also clears it. CVD uses the same centrally stored per-symbol buckets
+as the Dashboard aggregate: one-minute points over a rolling 15-minute window,
+refreshed every 30 seconds. The existing streaming worker collects CVD for the
+registered futures universe regardless of which bot or browser is open. See
+[stored CVD coverage and history limits](../market-cvd.md).
 
 ## Conditional LIMIT entries (KuCoin futures)
 

@@ -1,16 +1,23 @@
 # Stored KuCoin Futures CVD
 
-The API reads Postgres only. The independent `streaming.cvd` process collects
-public executions even when no browsers are open. Bot lifecycle and breadth
-schedules are unchanged. No pybinbot release is required.
+The API reads Postgres only. The existing `streaming.main` worker hosts CVD
+collection on its async event loop and runs blocking position sweeps sequentially
+in a background thread. Public executions are collected even with no active bots
+or open browsers. Both share one Python process, image, and container; no extra
+service or interpreter is needed. The sweep cadence and breadth schedule are
+unchanged. No pybinbot release is required.
 
 ## Rollout
 
 1. Apply `uv run alembic upgrade head` from the repository root to create the
    history tables, then deploy the updated API.
-2. Start **one** collector: `docker compose --profile cvd up -d --build cvd_collector`.
-   The profile is opt-in. The collector uses the streaming image with its own
-   entry point and public KuCoin endpoints; exchange credentials are unnecessary.
+2. Deploy/restart the existing **streaming** service. Its normal
+   `uv run -m streaming.main` entry point starts collection automatically. Keep
+   one streaming replica per database and allow 30 seconds for graceful shutdown
+   (`stop_grace_period: 30s` in deployment Compose). No additional service,
+   profile, image, or exchange credentials are needed for CVD. If the previous
+   standalone `cvd_collector` was deployed, stop/remove it before restarting
+   streaming so its ownership lock is released.
 3. Observe checkpoint logs and `GET /charts/cvd-aggregate?interval=15m&limit=672`.
    Verify expected versus covered symbols, acknowledged subscriptions, fresh
    checkpoints, rejected payloads, and disconnect/flush errors. Allow three
@@ -28,7 +35,22 @@ connection that writes all batches. A second owner exits without writing. That
 connection is destroyed on exit, releasing the lock; a lost/invalidated DB
 connection stops collection rather than reconnecting without ownership.
 SIGTERM stops the shards and saves a final partial checkpoint. Flush failures
-are logged and terminate the process for deployment supervision to restart.
+are logged and restart only collection inside the streaming worker, with capped
+exponential backoff and jitter (maximum 61 seconds). Position management continues
+during CVD startup, database failures, ownership contention, and reconnects. A
+position-worker exception still stops the service for its existing deployment
+restart policy. The streaming healthcheck tracks position progress, including
+quiet sweeps; CVD health is its stored API freshness/coverage and checkpoint logs.
+Both stop on SIGTERM/SIGINT; the collector saves a final partial checkpoint while
+the position thread finishes its current operation.
+
+Sharing the process avoids a second interpreter and duplicate imports. The
+WebSocket buffers, bounded deduplication window, minute buckets, and Postgres
+history still consume resources; combining services does not remove that work.
+No additional container memory reservation or image build is introduced. CPU
+and memory limits now apply to positions and collection together. The standalone
+`uv run -m streaming.cvd` entry point remains available for diagnostics; do not
+run it alongside streaming against the same database.
 
 ## Protocol verification (2026-11-15)
 
@@ -153,8 +175,7 @@ case-insensitive alphanumeric KuCoin contract IDs (up to 64 characters). Only
 No additional exchange requests, collector or migration are needed.
 
 The futures bot's order-book analysis tab shows a rolling 15-minute window and
-polls every 30 seconds. The shared standalone futures analysis view uses the same
-card. Browser WebSocket collection and IndexedDB CVD history are superseded;
+polls every 30 seconds. Browser WebSocket collection and IndexedDB CVD history are superseded;
 spread/depth polling and its in-memory history remain independent. Switching bots
 shows only the requested symbol's cached response or its loading state.
 

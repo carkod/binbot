@@ -52,7 +52,7 @@ WSL Nginx provides the HTTP entry point on port `80`.
 
 The `gluetun` service, shown as `gluetun / binbot_vpn`, runs Proton VPN WireGuard
 using `wg0.conf` with Canadian egress. `binquant` (signals and bot updates),
-`streaming` (open-position management), and `cronjobs` (scheduled work) each use
+`streaming` (open-position management and public futures CVD collection), and `cronjobs` (scheduled work) each use
 `network_mode: service:gluetun`. They share the VPN gateway's network namespace,
 reach the API and database through the shared Docker network, and send outbound
 KuCoin API, WebSocket, and other internet traffic through the Canadian public IP.

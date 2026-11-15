@@ -72,6 +72,7 @@ services:
   #     context: .
   #     dockerfile: streaming/Dockerfile
   #   image: binbot_streaming
+  #   stop_grace_period: 30s
   #   env_file:
   #     - .env
   #   restart: on-failure
@@ -90,25 +91,6 @@ services:
   #   container_name: binbot_cronjobs
   #   depends_on:
   #     - api
-
-  cvd_collector:
-    profiles: ["cvd"]
-    build:
-      context: .
-      dockerfile: streaming/Dockerfile
-    entrypoint: ["uv", "run", "-m", "streaming.cvd"]
-    restart: unless-stopped
-    stop_grace_period: 30s
-    networks: [kafka_network]
-    env_file: [.env]
-    environment:
-      POSTGRES_HOSTNAME: api_db
-    depends_on:
-      api_db:
-        condition: service_healthy
-    # Collector checkpoint/coverage is monitored through the stored-data API.
-    healthcheck:
-      disable: true
 
 volumes:
   pg_data:

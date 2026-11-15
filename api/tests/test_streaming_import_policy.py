@@ -60,7 +60,7 @@ def test_worker_defers_optional_exports_and_registers_database_models() -> None:
                 original_import = builtins.__import__
 
                 def stop_before_worker_imports(name, *args, **kwargs):
-                    if name == "api.databases.utils":
+                    if name == "pybinbot":
                         assert sys.get_lazy_imports() == "all"
                         raise WorkerImportsReached
                     return original_import(name, *args, **kwargs)
