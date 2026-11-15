@@ -11,6 +11,7 @@ interface TradeFlowCardProps {
   enabled: boolean;
   status: "connecting" | "live" | "disconnected";
   restarted: boolean;
+  storageError?: boolean;
 }
 
 const TradeFlowCard = ({
@@ -19,9 +20,33 @@ const TradeFlowCard = ({
   enabled,
   status,
   restarted,
+  storageError,
 }: TradeFlowCardProps) => {
   const series = buildTradeFlowSeries(buckets);
   const cumulative = kind === "cvd";
+  const chartPoints: {
+    timestamp: number;
+    cvd: number | null;
+    delta: number | null;
+    buy: number | null;
+    sell: number | null;
+  }[] = [];
+  series.forEach((point, index) => {
+    const previous = series[index - 1];
+    if (
+      previous &&
+      (point.gapBefore || point.timestamp - previous.timestamp > 60_000)
+    ) {
+      chartPoints.push({
+        timestamp: previous.timestamp + 30_000,
+        cvd: null,
+        delta: null,
+        buy: null,
+        sell: null,
+      });
+    }
+    chartPoints.push(point);
+  });
   return (
     <Card className="card-chart">
       <Card.Header>
@@ -48,17 +73,23 @@ const TradeFlowCard = ({
             )}
             {restarted && (
               <p className="text-warning">
-                Reconnected. Accumulation restarted after the data gap.
+                Previous observations retained. Trades during time away or
+                disconnections are missing; affected minutes are partial.
+              </p>
+            )}
+            {storageError && (
+              <p role="status" className="text-warning">
+                Browser history storage unavailable. Live data may not be saved.
               </p>
             )}
             {series.length > 0 && (
               <PlotlyChart
                 data={[
                   {
-                    x: series.map(({ timestamp }) =>
+                    x: chartPoints.map(({ timestamp }) =>
                       new Date(timestamp).toISOString(),
                     ),
-                    y: series.map((point) =>
+                    y: chartPoints.map((point) =>
                       cumulative ? point.cvd : point.delta,
                     ),
                     type: cumulative ? "scatter" : "bar",
@@ -67,15 +98,16 @@ const TradeFlowCard = ({
                           mode: "lines+markers",
                           line: { color: "#51cbce", width: 2 },
                           marker: { size: 4 },
+                          connectgaps: false,
                         }
                       : {
                           marker: {
-                            color: series.map(({ delta }) =>
+                            color: chartPoints.map(({ delta }) =>
                               delta >= 0 ? "#198754" : "#dc3545",
                             ),
                           },
                         }),
-                    customdata: series.map(({ buy, sell }) => [buy, sell]),
+                    customdata: chartPoints.map(({ buy, sell }) => [buy, sell]),
                     hovertemplate: `%{x|%H:%M}<br>${cumulative ? "CVD" : "Delta"}: %{y:+,.2f} USDT<br>Buys: %{customdata[0]:,.2f}<br>Sells: %{customdata[1]:,.2f}<extra></extra>`,
                     name: cumulative ? "CVD" : "Volume delta",
                   },
@@ -109,8 +141,9 @@ const TradeFlowCard = ({
         )}
       </Card.Body>
       <Card.Footer className="text-body-secondary">
-        Live trades collected in this tab; no historical backfill. First and
-        current minutes are partial. Resets on reload or symbol change.
+        Observed trades saved per symbol in this browser for the rolling
+        15-minute window. Collection pauses when you leave this page; no
+        historical backfill. First and current minutes are partial.
       </Card.Footer>
     </Card>
   );

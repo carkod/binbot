@@ -2,15 +2,22 @@ import { useEffect, useState } from "react";
 import {
   accumulateTradeFlow,
   parseKucoinExecution,
+  pruneTradeFlowHistory,
   type AggressiveTrade,
   type TradeFlowHistory,
 } from "../../features/kucoinTradeFlow";
+import { floorToMultiple, isPositiveFinite } from "../../utils/math";
+import {
+  loadTradeFlowHistory,
+  saveTradeFlowHistory,
+} from "../../utils/tradeFlowStorage";
 
 interface TradeFlowState {
   history: TradeFlowHistory;
   status: "connecting" | "live" | "disconnected";
   startedAt?: number;
   restarted: boolean;
+  storageError?: boolean;
 }
 
 export const useKucoinTradeFlow = (
@@ -25,7 +32,7 @@ export const useKucoinTradeFlow = (
   });
 
   useEffect(() => {
-    if (!enabled || !multiplier || !Number.isFinite(multiplier)) return;
+    if (!enabled || !isPositiveFinite(multiplier)) return;
     setState({
       history: { buckets: [], seen: {} },
       status: "connecting",
@@ -39,14 +46,37 @@ export const useKucoinTradeFlow = (
     let flush: ReturnType<typeof setInterval>;
     let startedAt = 0;
     let hasConnected = false;
+    let hydrated = false;
+    let collecting = false;
+    let history: TradeFlowHistory = { buckets: [], seen: {} };
     let pending: AggressiveTrade[] = [];
     const controller = new AbortController();
 
+    const persist = () => {
+      if (!hydrated) return;
+      void saveTradeFlowHistory(symbol, multiplier, history).catch(() => {
+        if (!disposed)
+          setState((previous) => ({ ...previous, storageError: true }));
+      });
+    };
+
+    const flushPending = () => {
+      if (!hydrated) return;
+      const trades = pending;
+      pending = [];
+      history = collecting
+        ? accumulateTradeFlow(history, trades, Date.now(), startedAt)
+        : pruneTradeFlowHistory(history, Date.now());
+      if (!disposed) setState((previous) => ({ ...previous, history }));
+      persist();
+    };
+
     const reconnect = () => {
       clearInterval(heartbeat);
-      clearInterval(flush);
       clearTimeout(timeout);
       if (disposed) return;
+      flushPending();
+      collecting = false;
       setState((previous) => ({ ...previous, status: "disconnected" }));
       retry = setTimeout(connect, 5000);
     };
@@ -68,10 +98,8 @@ export const useKucoinTradeFlow = (
           session.code !== "200000" ||
           !session.data.token ||
           !server ||
-          !Number.isFinite(server.pingInterval) ||
-          server.pingInterval <= 0 ||
-          !Number.isFinite(server.pingTimeout) ||
-          server.pingTimeout <= 0
+          !isPositiveFinite(server.pingInterval) ||
+          !isPositiveFinite(server.pingTimeout)
         ) {
           throw new Error("KuCoin trade stream unavailable");
         }
@@ -100,34 +128,31 @@ export const useKucoinTradeFlow = (
                 }),
               );
             } else if (message.type === "ack" && message.id === "subscribe") {
+              if (collecting) return;
               clearTimeout(timeout);
               startedAt = Date.now();
               pending = [];
-              setState({
-                history: accumulateTradeFlow(
-                  { buckets: [], seen: {} },
-                  [],
-                  startedAt,
-                  startedAt,
-                ),
+              history = pruneTradeFlowHistory(history, startedAt);
+              const restored = history.buckets.length > 0;
+              history = accumulateTradeFlow(history, [], startedAt, startedAt);
+              if (restored) {
+                const minute = floorToMultiple(startedAt, 60_000);
+                history.buckets = history.buckets.map((bucket) =>
+                  bucket.timestamp === minute
+                    ? { ...bucket, gapBefore: true }
+                    : bucket,
+                );
+              }
+              collecting = true;
+              setState((previous) => ({
+                ...previous,
+                history,
                 status: "live",
                 startedAt,
-                restarted: hasConnected,
-              });
+                restarted: hasConnected || restored,
+              }));
               hasConnected = true;
-              flush = setInterval(() => {
-                const trades = pending;
-                pending = [];
-                setState((previous) => ({
-                  ...previous,
-                  history: accumulateTradeFlow(
-                    previous.history,
-                    trades,
-                    Date.now(),
-                    startedAt,
-                  ),
-                }));
-              }, 1000);
+              persist();
               heartbeat = setInterval(() => {
                 if (socket?.readyState !== WebSocket.OPEN) return;
                 socket.send(JSON.stringify({ id: "heartbeat", type: "ping" }));
@@ -135,7 +160,11 @@ export const useKucoinTradeFlow = (
               }, server.pingInterval);
             } else if (message.type === "pong") {
               clearTimeout(timeout);
-            } else if (message.type === "message" && message.topic === topic) {
+            } else if (
+              collecting &&
+              message.type === "message" &&
+              message.topic === topic
+            ) {
               pending.push(parseKucoinExecution(message.data, multiplier));
             } else if (message.type === "error") {
               socket?.close();
@@ -151,9 +180,31 @@ export const useKucoinTradeFlow = (
         reconnect();
       }
     };
-    void connect();
+    const initialize = async () => {
+      try {
+        const stored = await loadTradeFlowHistory(symbol, multiplier);
+        if (disposed) return;
+        history = pruneTradeFlowHistory(stored, Date.now());
+        setState((previous) => ({
+          ...previous,
+          history,
+          restarted: history.buckets.length > 0,
+        }));
+      } catch {
+        if (disposed) return;
+        setState((previous) => ({ ...previous, storageError: true }));
+      }
+      hydrated = true;
+      flush = setInterval(flushPending, 1000);
+      void connect();
+    };
+    window.addEventListener("pagehide", flushPending);
+    void initialize();
     return () => {
       disposed = true;
+      flushPending();
+      collecting = false;
+      window.removeEventListener("pagehide", flushPending);
       controller.abort();
       clearTimeout(retry);
       clearTimeout(timeout);

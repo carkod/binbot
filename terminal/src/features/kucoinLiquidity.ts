@@ -29,6 +29,9 @@ const MAX_SPREAD_RATIO = 0.001;
 const DEPTH_BAND_RATIO = 0.005;
 const MIN_SIDE_NOTIONAL_USDT = 10_000;
 
+export const OBI_WINDOW_MS = 15 * 60 * 1000;
+export const OBI_POLL_INTERVAL_MS = 15_000;
+
 export const analyzeKucoinOrderBook = (
   book: KucoinOrderBook,
   multiplier: number,
@@ -83,9 +86,6 @@ export const analyzeKucoinOrderBook = (
     askDepth,
   };
 };
-
-export const OBI_WINDOW_MS = 15 * 60 * 1000;
-export const OBI_POLL_INTERVAL_MS = 15_000;
 
 export const updateObiHistory = (
   history: ObiSnapshot[],

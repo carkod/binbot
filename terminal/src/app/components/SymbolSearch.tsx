@@ -87,7 +87,7 @@ const SymbolSearch: FC<SymbolSearchProps> = ({
       />
 
       {errors[name] && (
-        <Form.Control.Feedback type="invalid">
+        <Form.Control.Feedback type="invalid" className="d-block" role="alert">
           {errors[name]}
         </Form.Control.Feedback>
       )}

@@ -1,5 +1,5 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { notifification } from "../utils/api";
+import { getApiErrorMessage, notifification } from "../utils/api";
 import { floatSafe } from "../utils/math";
 import {
   analyzeKucoinOrderBook,
@@ -102,9 +102,23 @@ export const kucoinApiSlice = createApi({
           };
         };
         try {
+          if (book?.code !== "200000") {
+            throw new Error(
+              getApiErrorMessage(
+                { data: book },
+                "KuCoin order-book request failed",
+              ),
+            );
+          }
+          if (contract?.code !== "200000") {
+            throw new Error(
+              getApiErrorMessage(
+                { data: contract },
+                "KuCoin contract request failed",
+              ),
+            );
+          }
           if (
-            book?.code !== "200000" ||
-            contract?.code !== "200000" ||
             book.data?.symbol !== symbol ||
             contract.data?.symbol !== symbol ||
             contract.data.quoteCurrency !== "USDT" ||

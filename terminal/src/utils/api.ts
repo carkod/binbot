@@ -83,11 +83,16 @@ const apiErrorMessageFromData = (data: unknown): string | undefined => {
   const payload = data as {
     detail?: unknown;
     message?: unknown;
+    msg?: unknown;
     error?: unknown;
   };
 
   if (typeof payload.message === "string") {
     return payload.message;
+  }
+
+  if (typeof payload.msg === "string") {
+    return payload.msg;
   }
 
   if (typeof payload.detail === "string") {
@@ -129,6 +134,10 @@ export const getApiErrorMessage = (
     error && typeof error === "object" && "error" in error
       ? (error as { error?: unknown }).error
       : error;
+
+  if (typeof candidate === "string") {
+    return candidate;
+  }
 
   if (candidate && typeof candidate === "object") {
     if ("data" in candidate) {

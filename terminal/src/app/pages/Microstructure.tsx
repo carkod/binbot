@@ -9,8 +9,7 @@ import { OBI_POLL_INTERVAL_MS } from "../../features/kucoinLiquidity";
 import { useKucoinTradeFlow } from "../hooks/useKucoinTradeFlow";
 import TradeFlowCard from "../components/TradeFlowCard";
 import SpreadAndDepthCard from "../components/SpreadAndDepthCard";
-
-const isFuturesSymbol = (symbol: string) => /^[A-Z0-9]+USDTM$/.test(symbol);
+import { getApiErrorMessage } from "../../utils/api";
 
 const MicrostructureContent = ({ symbol }: { symbol: string }) => {
   const navigate = useNavigate();
@@ -18,11 +17,12 @@ const MicrostructureContent = ({ symbol }: { symbol: string }) => {
   const [search, setSearch] = useState(symbol);
   const [validationError, setValidationError] = useState("");
   const normalizedSearch = search.trim().toUpperCase();
-  const canQuery = isFuturesSymbol(symbol) && normalizedSearch === symbol;
+  const canQuery = Boolean(symbol) && normalizedSearch === symbol;
   const {
     currentData: snapshot,
     isFetching,
     isError,
+    error,
     refetch,
   } = useFuturesLiquidityQuery(symbol, {
     skip: !canQuery,
@@ -32,12 +32,21 @@ const MicrostructureContent = ({ symbol }: { symbol: string }) => {
     refetchOnFocus: true,
     refetchOnReconnect: true,
   });
-  const tradeFlow = useKucoinTradeFlow(symbol, canQuery, snapshot?.multiplier);
+  const tradeFlow = useKucoinTradeFlow(
+    symbol,
+    canQuery && !isError,
+    snapshot?.multiplier,
+  );
+  const apiError =
+    canQuery && isError
+      ? getApiErrorMessage(error, "KuCoin symbol request failed")
+      : "";
+  const searchError = validationError || apiError;
 
   const selectSymbol = (value: string) => {
     const selected = value.trim().toUpperCase();
-    if (!isFuturesSymbol(selected)) {
-      setValidationError("Enter a KuCoin USDT futures symbol.");
+    if (!selected) {
+      setValidationError("Enter a symbol.");
       return;
     }
     setValidationError("");
@@ -60,13 +69,11 @@ const MicrostructureContent = ({ symbol }: { symbol: string }) => {
               label="Symbol"
               placeholder="Search KuCoin futures symbols"
               value={search}
-              options={symbolsList.filter(isFuturesSymbol)}
+              options={symbolsList}
               size="lg"
               required
               errors={
-                validationError
-                  ? { "microstructure-symbol": validationError }
-                  : {}
+                searchError ? { "microstructure-symbol": searchError } : {}
               }
               onInputChange={(value) => {
                 setSearch(value);
@@ -102,6 +109,7 @@ const MicrostructureContent = ({ symbol }: { symbol: string }) => {
             enabled={canQuery}
             status={tradeFlow.status}
             restarted={tradeFlow.restarted}
+            storageError={tradeFlow.storageError}
           />
         </Col>
       </Row>

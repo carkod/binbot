@@ -121,7 +121,23 @@ describeBlock("futuresLiquidity query", () => {
         msg: "Symbol not found",
       });
       expectValue(result.error).toMatchObject({ status: "CUSTOM_ERROR" });
+      expectValue(result.error).toMatchObject({ error: "Symbol not found" });
       expectValue(result.data).toBeUndefined();
+    },
+  );
+
+  testCase(
+    "preserves the HTTP 40X status and exchange message for the UI",
+    async () => {
+      const { result } = await runQuery(
+        { code: "400100", msg: "Symbol not found" },
+        contractResponse,
+        400,
+      );
+      expectValue(result.error).toMatchObject({
+        status: 400,
+        data: { msg: "Symbol not found" },
+      });
     },
   );
 

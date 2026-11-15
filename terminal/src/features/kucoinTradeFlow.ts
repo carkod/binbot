@@ -14,12 +14,31 @@ export interface TradeFlowBucket {
   timestamp: number;
   buy: number;
   sell: number;
+  gapBefore?: boolean;
 }
 
 export interface TradeFlowHistory {
   buckets: TradeFlowBucket[];
   seen: Record<string, number>;
 }
+
+export const pruneTradeFlowHistory = (
+  history: TradeFlowHistory,
+  now: number,
+): TradeFlowHistory => {
+  const firstMinute = floorToMultiple(now - TRADE_FLOW_WINDOW_MS, MINUTE_MS);
+  const currentMinute = floorToMultiple(now, MINUTE_MS);
+  return {
+    buckets: history.buckets.filter(
+      ({ timestamp }) => timestamp >= firstMinute && timestamp <= currentMinute,
+    ),
+    seen: Object.fromEntries(
+      Object.entries(history.seen).filter(
+        ([, timestamp]) => timestamp >= now - TRADE_FLOW_WINDOW_MS,
+      ),
+    ),
+  };
+};
 
 export const parseKucoinExecution = (
   data: unknown,
@@ -55,16 +74,11 @@ export const accumulateTradeFlow = (
   const cutoff = Math.max(startedAt, now - TRADE_FLOW_WINDOW_MS);
   const firstMinute = floorToMultiple(cutoff, MINUTE_MS);
   const currentMinute = floorToMultiple(now, MINUTE_MS);
+  const retained = pruneTradeFlowHistory(previous, now);
   const buckets = new Map(
-    previous.buckets
-      .filter(({ timestamp }) => timestamp >= firstMinute)
-      .map((bucket) => [bucket.timestamp, { ...bucket }]),
+    retained.buckets.map((bucket) => [bucket.timestamp, { ...bucket }]),
   );
-  const seen = Object.fromEntries(
-    Object.entries(previous.seen).filter(
-      ([, timestamp]) => timestamp >= cutoff,
-    ),
-  );
+  const seen = { ...retained.seen };
   for (
     let timestamp = firstMinute;
     timestamp <= currentMinute;

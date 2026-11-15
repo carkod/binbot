@@ -2,6 +2,7 @@ import {
   accumulateTradeFlow,
   buildTradeFlowSeries,
   parseKucoinExecution,
+  pruneTradeFlowHistory,
   TRADE_FLOW_WINDOW_MS,
   type AggressiveTrade,
 } from "./kucoinTradeFlow";
@@ -16,6 +17,32 @@ const trade: AggressiveTrade = {
 };
 
 describe("KuCoin aggressive trade flow", () => {
+  it("preserves previous observations without creating zero-volume buckets during time away", () => {
+    const first = accumulateTradeFlow(empty, [trade], now, now);
+    const returnedAt = now + 3 * 60_000;
+    const resumed = accumulateTradeFlow(
+      first,
+      [{ ...trade, id: "new", timestamp: returnedAt, notional: 40 }],
+      returnedAt,
+      returnedAt,
+    );
+    expect(resumed.buckets.map(({ timestamp }) => timestamp)).toEqual([
+      now,
+      returnedAt,
+    ]);
+    expect(buildTradeFlowSeries(resumed.buckets).map(({ cvd }) => cvd)).toEqual(
+      [100, 140],
+    );
+    expect(resumed.seen[trade.id]).toBe(now);
+  });
+
+  it("expires saved observations without filling unobserved minutes", () => {
+    const first = accumulateTradeFlow(empty, [trade], now, now);
+    expect(
+      pruneTradeFlowHistory(first, now + TRADE_FLOW_WINDOW_MS + 60_000),
+    ).toEqual(empty);
+  });
+
   it("values execution size using price and the futures contract multiplier", () => {
     expect(
       parseKucoinExecution(

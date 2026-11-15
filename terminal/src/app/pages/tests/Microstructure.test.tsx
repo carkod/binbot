@@ -180,17 +180,41 @@ describe("Microstructure page", () => {
     );
   });
 
-  it("rejects spot symbols without navigating or querying liquidity", async () => {
+  it("submits symbols without checking their format and lets KuCoin validate them", async () => {
     renderPage();
     const user = userEvent.setup();
     await user.type(testingScreen.getByRole("combobox"), "BTCUSDT");
     await user.click(testingScreen.getByRole("button", { name: "Search" }));
-    expect(
-      testingScreen.getByText("Enter a KuCoin USDT futures symbol."),
-    ).toBeInTheDocument();
     expect(testingScreen.getByTestId("pathname")).toHaveTextContent(
-      /^\/microstructure$/,
+      "/microstructure/BTCUSDT",
     );
+    expect(useFuturesLiquidityQuery).toHaveBeenLastCalledWith(
+      "BTCUSDT",
+      expect.objectContaining({ skip: false }),
+    );
+  });
+
+  it("queries an arbitrary route symbol and shows the KuCoin 40X message", () => {
+    vi.mocked(useFuturesLiquidityQuery).mockReturnValue({
+      currentData: undefined,
+      isFetching: false,
+      isError: true,
+      error: { status: 400, data: { code: "400100", msg: "Symbol not found" } },
+      refetch: vi.fn(),
+    } as ReturnType<typeof useFuturesLiquidityQuery>);
+    renderPage("/microstructure/UNKNOWN");
+    expect(useFuturesLiquidityQuery).toHaveBeenLastCalledWith(
+      "UNKNOWN",
+      expect.objectContaining({ skip: false }),
+    );
+    expect(testingScreen.getByRole("alert")).toHaveTextContent(
+      "Symbol not found",
+    );
+    expect(testingScreen.getByRole("combobox")).toHaveClass("is-invalid");
+    fireEvent.change(testingScreen.getByRole("combobox"), {
+      target: { value: "XBT" },
+    });
+    expect(testingScreen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("shows unavailable and allows retry when a refresh fails, even with cached data", async () => {
