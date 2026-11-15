@@ -9,6 +9,7 @@ export default function marginTrading(
   currentPrice: number,
   previewTrailingSettings = false,
   previewStopLossSettings = false,
+  previewTrailingDeviationSettings = false,
 ): OrderLine[] {
   const quoteAsset = bot.quote_asset;
   let totalOrderLines: OrderLine[] = [];
@@ -81,15 +82,20 @@ export default function marginTrading(
         });
       }
 
-      if (previewTrailingSettings || bot.deal.trailing_stop_loss_price > 0) {
+      if (
+        previewTrailingSettings ||
+        previewTrailingDeviationSettings ||
+        bot.deal.trailing_stop_loss_price > 0
+      ) {
         totalOrderLines.push({
           id: "trailing_stop_loss",
           text: `Trailing stop loss -${bot.trailing_deviation}%`,
           tooltip: [bot.status, " Sell order when prices drop here"],
           quantity: `${qtyText} ${quoteAsset}`,
-          price: previewTrailingSettings
-            ? trailingProfitPrice * (1 + bot.trailing_deviation / 100)
-            : bot.deal.trailing_stop_loss_price,
+          price:
+            previewTrailingSettings || previewTrailingDeviationSettings
+              ? trailingProfitPrice * (1 + bot.trailing_deviation / 100)
+              : bot.deal.trailing_stop_loss_price,
           color: dealColors.trailing_stop_loss,
         });
       }
@@ -119,6 +125,7 @@ export default function marginTrading(
       (bot.status === BotStatus.INACTIVE || bot.status === BotStatus.PENDING) &&
       bot.trailing &&
       (previewTrailingSettings ||
+        previewTrailingDeviationSettings ||
         (bot.trailing_deviation > 0 && bot.trailing_profit > 0))
     ) {
       // Preview the short's trailing levels below the base order.
@@ -150,7 +157,7 @@ export default function marginTrading(
     (bot.status !== BotStatus.COMPLETED || bot.deal.take_profit_price > 0)
   ) {
     const takeProfitPrice =
-      bot.status === BotStatus.INACTIVE
+      previewTrailingSettings || bot.status === BotStatus.INACTIVE
         ? price * (1 - bot.take_profit / 100)
         : bot.deal.take_profit_price || price * (1 - bot.take_profit / 100);
     totalOrderLines.push({

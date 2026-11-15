@@ -25,6 +25,7 @@ export default function spotTrading(
   currentPrice: number = 0,
   previewTrailingSettings = false,
   previewStopLossSettings = false,
+  previewTrailingDeviationSettings = false,
 ): OrderLine[] {
   const quoteAsset = bot.quote_asset;
   const price = entryReferencePrice(bot, currentPrice);
@@ -96,6 +97,7 @@ export default function spotTrading(
     if (
       bot.trailing &&
       (previewTrailingSettings ||
+        previewTrailingDeviationSettings ||
         (bot.trailing_deviation > 0 && bot.trailing_profit > 0))
     ) {
       // Bot is sold and completed
@@ -132,15 +134,20 @@ export default function spotTrading(
           price: trailingProfitPrice,
           color: dealColors.trailing_profit,
         });
-        if (previewTrailingSettings || bot.deal.trailing_stop_loss_price > 0) {
+        if (
+          previewTrailingSettings ||
+          previewTrailingDeviationSettings ||
+          bot.deal.trailing_stop_loss_price > 0
+        ) {
           totalOrderLines.push({
             id: "trailing_stop_loss",
             text: `Trailing stop loss ${bot.trailing_deviation}%`,
             tooltip: [bot.status, " Sell order when prices drop here"],
             quantity: `${qtyText} ${quoteAsset}`,
-            price: previewTrailingSettings
-              ? trailingProfitPrice * (1 - bot.trailing_deviation / 100)
-              : bot.deal.trailing_stop_loss_price,
+            price:
+              previewTrailingSettings || previewTrailingDeviationSettings
+                ? trailingProfitPrice * (1 - bot.trailing_deviation / 100)
+                : bot.deal.trailing_stop_loss_price,
             color: dealColors.trailing_stop_loss,
           });
         }
@@ -186,7 +193,10 @@ export default function spotTrading(
             text: `Take profit ${bot.take_profit}%`,
             tooltip: [bot.status, " Sell Order "],
             quantity: `${qtyText} ${quoteAsset}`,
-            price: currentPrice * (1 + bot.take_profit / 100), // buy_profit * take_profit%
+            price: previewTrailingSettings
+              ? price * (1 + bot.take_profit / 100)
+              : bot.deal.take_profit_price ||
+                price * (1 + bot.take_profit / 100),
             color: dealColors.take_profit,
           });
         }

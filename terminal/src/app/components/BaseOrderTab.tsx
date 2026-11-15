@@ -460,7 +460,7 @@ const BaseOrderTab: FC<{
                     }}
                   />
                   <Form.Text>
-                    Focus this field to drag the entry line on the chart.
+                    Drag the entry line on the chart to update this price.
                   </Form.Text>
                 </Form.Group>
               </Col>

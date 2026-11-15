@@ -49,6 +49,9 @@ const TakeProfit: FC = () => {
   }, [bot.id, reset]);
 
   useEffect(() => {
+    setValue("take_profit", bot.take_profit);
+  }, [bot.take_profit, setValue]);
+  useEffect(() => {
     setValue("trailing_profit", bot.trailing_profit);
   }, [bot.trailing_profit, setValue]);
   useEffect(() => {
@@ -111,6 +114,7 @@ const TakeProfit: FC = () => {
                   type="number"
                   name="take_profit"
                   id="take_profit"
+                  onFocus={() => dispatch(focusOrderLine("take_profit"))}
                   {...register("take_profit", {
                     valueAsNumber: true,
                     min: {

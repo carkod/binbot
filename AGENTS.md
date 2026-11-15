@@ -14,6 +14,12 @@ This VS Code workspace spans several connected projects. When discussing or chan
 
 These projects are interconnected, and Codex conversations often refer across them. Prefer naming the project or path explicitly when a change crosses boundaries, especially when touching shared contracts between `binbot/api`, `binbot/terminal`, `binquant`, and `pybinbot`.
 
+## Shared pybinbot Dependency
+
+- Consume pybinbot through published PyPI releases. Do not replace the dependency with a local path, editable checkout, or Git source override.
+- When a fix requires changes to pybinbot, remind the user to publish an updated pybinbot PyPI release first, then upgrade the consuming project's dependency and lockfile to that release.
+- Keep the declared minimum version aligned with the release containing the required shared functionality; do not hide missing enum members or model fields with type ignores or runtime patches.
+
 ## Function Shape
 
 - When making technical decisions, do not give much weight to development cost.
