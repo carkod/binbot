@@ -113,6 +113,36 @@ def test_quiet_acknowledged_market_differs_from_disconnected_market():
     assert flow.minutes[START + 60].symbols["B"].covered
 
 
+@pytest.mark.parametrize("last_second,resumed_second", [(10, 40), (50, 135)])
+@pytest.mark.parametrize("disconnected", [False, True])
+def test_scheduler_stall_marks_gaps_and_recovers_future_coverage(
+    last_second, resumed_second, disconnected
+):
+    flow = flow_at_start({"A": 0.1, "B": 0.01})
+    if disconnected:
+        flow.disconnect(["B"], START + 5)
+    for second in range(10, last_second + 1, 10):
+        flow.tick(START + second)
+    flow.tick(START + resumed_second)
+    affected_minutes = list(flow.minutes)
+    for minute in affected_minutes:
+        assert not flow.minutes[minute].symbols["A"].covered
+        assert not flow.minutes[minute].symbols["B"].covered
+    assert "A" in flow.acknowledged
+    assert ("B" not in flow.acknowledged) == disconnected
+    next_minute = resumed_second // 60 * 60 + 60
+    for second in range(resumed_second + 10, next_minute + 11, 10):
+        flow.tick(START + second)
+    for minute in affected_minutes:
+        assert not flow.minutes[minute].symbols["A"].covered
+    recovered = flow.minutes[START + next_minute]
+    assert recovered.symbols["A"].covered
+    assert recovered.symbols["B"].covered == (not disconnected)
+    snapshots = {row["minute"]: row for row in flow.snapshot(START + next_minute)[1]}
+    expected_covered = 1 if disconnected else 2
+    assert snapshots[START + next_minute]["covered_symbols"] == expected_covered
+
+
 def test_acknowledgement_and_invalid_payload_coverage():
     flow = flow_at_start()
     flow.disconnect(["SOLUSDTM"], START)
@@ -184,6 +214,40 @@ def cvd_engine():
         getattr(model, "__table__").create(engine)
     yield engine
     engine.dispose()
+
+
+def test_restart_fences_saved_future_minutes_per_symbol_and_allows_new_late_trades(
+    cvd_engine,
+):
+    flow = flow_at_start({"SOLUSDTM": 0.1, "OTHERUSDTM": 0.1})
+    assert flow.trade(execution(second=59), START + 58)
+    assert flow.trade(execution(trade_id="future", second=60), START + 58)
+    assert flow.trade(execution(symbol="OTHERUSDTM", second=57), START + 58)
+    with Session(cvd_engine) as session:
+        for model, rows in zip(
+            (CvdBucketTable, CvdMinuteTable), flow.snapshot(START + 58)
+        ):
+            session.add_all(model(**row) for row in rows)
+        session.commit()
+    restarted = Flow(flow.contracts, (START + 59) * 10**9)
+    with cvd_engine.connect() as connection:
+        restore(connection, restarted)
+    assert not restarted.trade(execution(second=59), START + 60)
+    assert not restarted.trade(execution(trade_id="future", second=60), START + 60)
+    assert not restarted.trade(execution(trade_id="uncertain", second=60), START + 60)
+    assert restarted.trade(execution(symbol="OTHERUSDTM", second=59), START + 60)
+    assert restarted.trade(execution(trade_id="new", second=64), START + 64)
+    assert restarted.trade(execution(trade_id="late", second=62), START + 65)
+    assert not restarted.trade(execution(trade_id="late", second=62), START + 66)
+    assert restarted.minutes[START + 60].symbols["SOLUSDTM"].buy == pytest.approx(
+        3 * 28.6952
+    )
+    restarted.acknowledged = {symbol: START + 66 for symbol in flow.contracts}
+    for second in range(70, 131, 10):
+        restarted.tick(START + second)
+    for minute in (START, START + 60):
+        assert not restarted.minutes[minute].symbols["SOLUSDTM"].covered
+    assert restarted.minutes[START + 120].symbols["SOLUSDTM"].covered
 
 
 def test_migration_replays_on_new_and_partially_migrated_schemas():
@@ -319,7 +383,8 @@ def test_representative_execution_load_stays_bounded():
     __import__("os").getenv("CVD_TEST_POSTGRES_URL") is None,
     reason="isolated PostgreSQL URL required",
 )
-def test_postgres_owner_snapshot_retry_and_restart():
+@pytest.mark.parametrize("saved_second", [1, 4])
+def test_postgres_owner_snapshot_retry_and_restart(saved_second):
 
     engine = create_engine(os.environ["CVD_TEST_POSTGRES_URL"])
     for model in (CvdBucketTable, CvdMinuteTable):
@@ -330,18 +395,18 @@ def test_postgres_owner_snapshot_retry_and_restart():
             acquire_owner(other)
         other.rollback()
         flow = flow_at_start()
-        flow.trade(execution(), START + 2)
-        snapshot = flow.snapshot(START + 2)
-        persist(owner, snapshot, START + 2)
-        persist(owner, snapshot, START + 2)
-        restarted = Flow(flow.contracts, (START + 3) * 10**9)
+        assert flow.trade(execution(second=saved_second), START + 1)
+        snapshot = flow.snapshot(START + 1)
+        persist(owner, snapshot, START + 1)
+        persist(owner, snapshot, START + 1)
+        restarted = Flow(flow.contracts, (START + 2) * 10**9)
         restore(owner, restarted)
         assert restarted.minutes[START].symbols["SOLUSDTM"].buy == pytest.approx(
             28.6952
         )
         assert not restarted.minutes[START].symbols["SOLUSDTM"].covered
-        assert not restarted.trade(execution(), START + 4)
-        assert restarted.trade(execution(trade_id="after", second=4), START + 5)
+        assert not restarted.trade(execution(second=saved_second), START + 3)
+        assert restarted.trade(execution(trade_id="after", second=5), START + 5)
         persist(owner, restarted.snapshot(START + 5), START + 5)
         assert owner.execute(
             text("SELECT buy FROM cvd_minute WHERE minute=:minute"), {"minute": START}

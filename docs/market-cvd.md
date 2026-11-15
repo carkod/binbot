@@ -85,8 +85,11 @@ An acknowledged subscription covering the entire minute counts as covered even
 with zero executions. Startup, subscription failure, reconnect, rejected data,
 event-loop stalls and metadata changes mark affected minutes partial. After
 disconnect, invalidate coverage back 30 seconds to conservatively account for
-heartbeat detection delay. Acks do not heal earlier gaps. Current intervals
-are always partial. An entirely absent minute is an outage, never a zero.
+heartbeat detection delay. A scheduler stall marks every minute from the last
+tick through resumption partial while retaining healthy subscription acks;
+coverage can resume with the next full minute. Acks do not heal earlier gaps.
+Current intervals are always partial. An entirely absent minute is an outage,
+never a zero.
 
 Persist per-symbol buckets and market minute rollups atomically every ten
 seconds in batches of 500, using absolute upserts. Read charts from rollups so
@@ -103,11 +106,17 @@ batches replace absolute totals rather than adding them, so an ambiguous commit
 cannot double-count the same batch. The single owner prevents worker overlap.
 
 On restart, restore recent saved absolute buckets and their frozen universe.
-Reject executions timestamped before this process's startup, avoiding replay
-of pre-crash totals; accept only new executions. Restored minutes permanently
-lose complete coverage. This deliberately sacrifices delayed executions across
-a restart rather than claiming exactly-once history. Executions received after
-the last successful checkpoint can be lost. WebSocket reconnect has **no
+Reject executions timestamped before this process's startup or at or below the
+maximum saved exchange timestamp for that symbol. This durable replay cutoff
+also fences saved executions up to five seconds ahead of the local clock during
+a rapid restart. The per-symbol cutoff stays fixed for the process lifetime,
+so new within-run out-of-order executions above it remain eligible under the
+120-second lateness limit. Distinct executions at or below the cutoff are
+deliberately dropped when their replay status is uncertain. Restored minutes
+permanently lose complete coverage. This deliberately sacrifices delayed
+executions across a restart rather than claiming exactly-once history.
+Executions received after the last successful checkpoint can be lost.
+WebSocket reconnect has **no
 backfill guarantee**, and history begins at collector startup. Missing minutes
 remain gaps in the API, including during full collector outages.
 

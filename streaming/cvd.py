@@ -107,6 +107,7 @@ class Flow:
     trades: int = 0
     last_trade_ns: int = 0
     last_tick: float = 0
+    replay_cutoffs: dict[str, int] = field(default_factory=dict)
 
     def ensure_minute(self, minute: int) -> None:
         if minute not in self.minutes:
@@ -126,18 +127,23 @@ class Flow:
 
     def tick(self, now: float) -> None:
         minute = int(now) // 60 * 60
-        if self.last_tick and now - self.last_tick > 20:
-            self.disconnect(list(self.contracts), self.last_tick)
         first = max(
             self.started_ns // 60_000_000_000 * 60, int(self.last_tick) // 60 * 60
         )
         for timestamp in range(first, minute + 1, 60):
             self.ensure_minute(timestamp)
+        if self.last_tick and now - self.last_tick > 20:
+            self.invalidate_coverage(list(self.contracts), self.last_tick)
+            for symbol in self.acknowledged:
+                self.acknowledged[symbol] = now
         self.last_tick = now
 
     def disconnect(self, symbols: list[str], since: float) -> None:
         for symbol in symbols:
             self.acknowledged.pop(symbol, None)
+        self.invalidate_coverage(symbols, since)
+
+    def invalidate_coverage(self, symbols: list[str], since: float) -> None:
         for minute, state in self.minutes.items():
             if minute + 60 > since:
                 for symbol in symbols:
@@ -158,6 +164,7 @@ class Flow:
                 or not str(trade_id)
                 or side not in ("buy", "sell")
                 or timestamp_ns < self.started_ns
+                or timestamp_ns <= self.replay_cutoffs.get(symbol, 0)
                 or timestamp_ns > int((now + 5) * 1e9)
                 or timestamp_ns < int((now - LATE_SECONDS) * 1e9)
                 or not math.isfinite(price)
@@ -257,6 +264,9 @@ def restore(connection: Connection, flow: Flow) -> None:
             )
         ).mappings():
             flow.last_trade_ns = max(flow.last_trade_ns, row["last_trade_ns"])
+            flow.replay_cutoffs[row["symbol"]] = max(
+                flow.replay_cutoffs.get(row["symbol"], 0), row["last_trade_ns"]
+            )
             state = flow.minutes.get(row["minute"])
             if state is not None:
                 # Restart uncertainty is permanent for these minutes.
