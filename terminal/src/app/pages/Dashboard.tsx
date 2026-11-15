@@ -359,6 +359,13 @@ export const DashboardPage: FC<{}> = () => {
             )}
           </Col>
         </Row>
+        {import.meta.env.VITE_MARKET_CVD_ENABLED === "true" && (
+          <Row>
+            <Col xs="12" className="dashboard-trend">
+              <AggregateCvdCard />
+            </Col>
+          </Row>
+        )}
       </section>
       <section
         aria-labelledby="order-book-aggregation-heading"
