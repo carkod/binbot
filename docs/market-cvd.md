@@ -15,9 +15,7 @@ unchanged. No pybinbot release is required.
    `uv run -m streaming.main` entry point starts collection automatically. Keep
    one streaming replica per database and allow 30 seconds for graceful shutdown
    (`stop_grace_period: 30s` in deployment Compose). No additional service,
-   profile, image, or exchange credentials are needed for CVD. If the previous
-   standalone `cvd_collector` was deployed, stop/remove it before restarting
-   streaming so its ownership lock is released.
+   profile, image, or exchange credentials are needed for CVD.
 3. Observe checkpoint logs and `GET /charts/cvd-aggregate?interval=15m&limit=672`.
    Verify expected versus covered symbols, acknowledged subscriptions, fresh
    checkpoints, rejected payloads, and disconnect/flush errors. Allow three
