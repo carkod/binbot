@@ -27,17 +27,16 @@ New packages or installing from scratch:
 
 Motion is installed as `motion`; import components and hooks from `motion/react`.
 Vite needs no additional configuration. The application root uses `MotionConfig`
-with a 300 ms ease-out transition and the user's reduced-motion preference.
+with a 300 ms ease-out transition and `reducedMotion="never"`, so the internal
+terminal app always uses the full animations.
 
 The dashboard reveals chart cards after their initial queries load. Use
 `chartRevealVariants` from [src/utils/motion.ts](./src/utils/motion.ts) for the same
 fade and 12 px upward slide elsewhere:
 
 ```tsx
-const reducedMotion = useReducedMotion();
-
 <motion.div
-  initial={reducedMotion ? false : "hidden"}
+  initial="hidden"
   animate="visible"
   variants={chartRevealVariants}
 >
@@ -46,7 +45,7 @@ const reducedMotion = useReducedMotion();
 ```
 
 Keep the animated element mounted when data refreshes, so polling updates do not
-replay the entrance. Reduced-motion users see the chart immediately.
+replay the entrance.
 
 ## Deployment
 

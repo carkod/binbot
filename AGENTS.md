@@ -33,6 +33,11 @@ These projects are interconnected, and Codex conversations often refer across th
 
 - Prefer specific imports for the functions, classes, or constants being used, such as `from databases.utils import get_db_session`, over importing broader modules when only a few names are needed.
 
+## Terminal Animations
+
+- `terminal/` is an internal operational tool. Always use the full animations; do not add reduced-motion handling or accessibility preference options for animations.
+- Set Motion's `MotionConfig` to `reducedMotion="never"`. Do not use `useReducedMotion`, `prefers-reduced-motion` checks, or conditional animation suppression in the terminal app.
+
 ## Trading Logic
 
 - For KuCoin futures bots, `fiat_order_size` is the **initial margin** the bot commits (margin-spend interpretation), not the risk-at-stop. `KucoinPositionDeal.calculate_contracts(balance, price)` is `balance * active_bot.futures_leverage / (price * multiplier)`; `contracts_to_fiat_order_size` is its inverse. `notional = fiat_order_size * futures_leverage`.

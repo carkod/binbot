@@ -1,5 +1,5 @@
 import { useMemo, type FC } from "react";
-import { motion, useReducedMotion } from "motion/react";
+import { motion } from "motion/react";
 import { Card, Col, Row, Table } from "react-bootstrap";
 import {
   useGetBalanceQuery,
@@ -30,7 +30,6 @@ import { useFilteredFuturesRankings } from "../hooks/useFilteredFuturesRankings"
 import { usePortfolioPnlDetails } from "../hooks/usePortfolioPnlDetails";
 
 export const DashboardPage: FC<{}> = () => {
-  const reducedMotion = useReducedMotion();
   const { data: accountData, isLoading: loadingEstimates } =
     useGetBalanceQuery();
   const { data: activeBotEntities, isLoading: loadingActiveBots } =
@@ -346,7 +345,7 @@ export const DashboardPage: FC<{}> = () => {
           ) : (
             benchmark?.percentageSeries.datesSeries && (
               <motion.div
-                initial={reducedMotion ? false : "hidden"}
+                initial="hidden"
                 animate="visible"
                 variants={chartRevealVariants}
               >
@@ -372,7 +371,7 @@ export const DashboardPage: FC<{}> = () => {
           ) : (
             combinedFuturesRankings?.length > 0 && (
               <motion.div
-                initial={reducedMotion ? false : "hidden"}
+                initial="hidden"
                 animate="visible"
                 variants={chartRevealVariants}
               >
@@ -392,7 +391,7 @@ export const DashboardPage: FC<{}> = () => {
           ) : (
             gainersLosersHistory && (
               <motion.div
-                initial={reducedMotion ? false : "hidden"}
+                initial="hidden"
                 animate="visible"
                 variants={chartRevealVariants}
               >
@@ -407,7 +406,7 @@ export const DashboardPage: FC<{}> = () => {
           ) : (
             btcCloseSeries && (
               <motion.div
-                initial={reducedMotion ? false : "hidden"}
+                initial="hidden"
                 animate="visible"
                 variants={chartRevealVariants}
               >

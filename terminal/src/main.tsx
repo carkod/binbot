@@ -13,7 +13,7 @@ if (container) {
   root.render(
     <React.StrictMode>
       <MotionConfig
-        reducedMotion="user"
+        reducedMotion="never"
         transition={{ duration: 0.3, ease: "easeOut" }}
       >
         <App />
