@@ -66,6 +66,7 @@ These projects are interconnected, and Codex conversations often refer across th
 
 ## Tests
 
+- Do not add tests whose only purpose is to assert that a removed feature, element, option, or behavior is absent. Remove obsolete tests when removing features; test the supported behavior instead. This does not prohibit negative tests for supported validation rules or failure cases.
 - Add small regression tests for sizing, rounding, stop placement, and reversal logic whenever those calculations change.
 - Prefer tests that name the business rule being protected, especially for trading risk behavior.
 - Run `make format` from the repo root to check formatting, linting, and mypy across all services (api/, streaming/, cronjobs/).
