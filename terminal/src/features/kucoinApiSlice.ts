@@ -1,6 +1,11 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { notifification } from "../utils/api";
 import { floatSafe } from "../utils/math";
+import {
+  analyzeKucoinOrderBook,
+  type KucoinOrderBook,
+  type ObiSnapshot,
+} from "./kucoinLiquidity";
 
 export interface KucoinFuturesTicker24 {
   sequence: number;
@@ -74,6 +79,67 @@ export const kucoinApiSlice = createApi({
   }),
   reducerPath: "kucoinApi",
   endpoints: (build) => ({
+    futuresLiquidity: build.query<ObiSnapshot, string>({
+      async queryFn(symbol, _api, _extraOptions, baseQuery) {
+        const [bookResult, contractResult] = await Promise.all([
+          baseQuery({ url: "/level2/depth100", params: { symbol } }),
+          baseQuery({ url: `/contracts/${encodeURIComponent(symbol)}` }),
+        ]);
+        if (bookResult.error) return { error: bookResult.error };
+        if (contractResult.error) return { error: contractResult.error };
+
+        const book = bookResult.data as {
+          code: string;
+          data?: KucoinOrderBook;
+        };
+        const contract = contractResult.data as {
+          code: string;
+          data?: {
+            symbol: string;
+            multiplier: number | string;
+            quoteCurrency: string;
+            isInverse: boolean;
+          };
+        };
+        try {
+          if (
+            book?.code !== "200000" ||
+            contract?.code !== "200000" ||
+            book.data?.symbol !== symbol ||
+            contract.data?.symbol !== symbol ||
+            contract.data.quoteCurrency !== "USDT" ||
+            contract.data.isInverse !== false
+          ) {
+            throw new Error("KuCoin USDT futures liquidity is unavailable");
+          }
+          // KuCoin Futures depth timestamps are Unix nanoseconds.
+          const timestamp = Number(book.data.ts) / 1_000_000;
+          if (!Number.isFinite(timestamp) || timestamp <= 0) {
+            throw new Error("Invalid KuCoin snapshot timestamp");
+          }
+          return {
+            data: {
+              ...analyzeKucoinOrderBook(
+                book.data,
+                Number(contract.data.multiplier),
+              ),
+              timestamp,
+              multiplier: Number(contract.data.multiplier),
+            },
+          };
+        } catch (error) {
+          return {
+            error: {
+              status: "CUSTOM_ERROR",
+              error:
+                error instanceof Error
+                  ? error.message
+                  : "Invalid KuCoin liquidity data",
+            },
+          };
+        }
+      },
+    }),
     btcCloseSeries: build.query<BtcCloseSeries, void>({
       query: () => ({
         url: import.meta.env.VITE_KUCOIN_BTC_KLINES || "/kline/query",
@@ -124,6 +190,7 @@ export const kucoinApiSlice = createApi({
 });
 
 export const {
+  useFuturesLiquidityQuery,
   useBtcCloseSeriesQuery,
   useFuturesRankingsQuery,
   useFuturesContractQuery,

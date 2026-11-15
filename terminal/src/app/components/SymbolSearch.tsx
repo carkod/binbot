@@ -13,6 +13,9 @@ type SymbolSearchProps = {
   disabled?: boolean;
   placeholder?: string;
   options?: string[];
+  size?: "sm" | "lg";
+  onChange?: (symbol: string) => void;
+  onInputChange?: (symbol: string) => void;
   onBlur?: (e: ChangeEvent<HTMLInputElement>) => void;
   errors?: object;
 };
@@ -27,6 +30,9 @@ const SymbolSearch: FC<SymbolSearchProps> = ({
   errors = {},
   placeholder = "",
   options: providedOptions,
+  size,
+  onChange,
+  onInputChange,
 }) => {
   const [state, setState] = useState<string>(value ?? "");
   const [options, setOptions] = useState<string[]>([]);
@@ -48,26 +54,33 @@ const SymbolSearch: FC<SymbolSearchProps> = ({
   return (
     <Form.Group>
       {label && (
-        <Form.Label>
+        <Form.Label htmlFor={name}>
           {label}
           {required && <span className="u-required">*</span>}
         </Form.Label>
       )}
       <Typeahead
         id={name}
+        size={size}
+        inputProps={{ id: name, name, required }}
         options={options}
         {...(required
-          ? { isInvalid: Boolean(errors?.[name]) || Boolean(value) === false }
+          ? { isInvalid: Boolean(errors?.[name]) || !state.trim() }
           : {})}
         disabled={disabled}
         selected={state ? [state] : []}
         onChange={(selected) => {
+          // Typeahead also emits an empty selection while the user types.
+          // Input changes already update the text through onInputChange.
           if (selected.length > 0) {
-            setState(selected[0] as string);
+            const symbol = selected[0] as string;
+            setState(symbol);
+            onChange?.(symbol);
           }
         }}
         onInputChange={(value) => {
           setState(value);
+          onInputChange?.(value);
         }}
         onBlur={(e) => onBlur(e)}
         placeholder={placeholder}
