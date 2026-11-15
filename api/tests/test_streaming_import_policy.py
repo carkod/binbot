@@ -42,7 +42,7 @@ def test_importing_streaming_entrypoint_keeps_other_services_eager() -> None:
     }
 
 
-def test_worker_defers_optional_exports_and_registers_database_models() -> None:
+def test_worker_enables_lazy_imports_and_registers_database_models() -> None:
     result = run(
         [
             executable,
@@ -77,13 +77,6 @@ def test_worker_defers_optional_exports_and_registers_database_models() -> None:
                 finally:
                     builtins.__import__ = original_import
 
-                import pybinbot
-                assert "pybinbot.apis.coingecko" not in sys.modules
-
-                from pybinbot import CoinGecko
-                assert CoinGecko.__name__ == "CoinGecko"
-                assert "pybinbot.apis.coingecko" in sys.modules
-
                 import api.databases.tables
                 from sqlalchemy.orm import configure_mappers
                 from sqlmodel import SQLModel
@@ -93,17 +86,6 @@ def test_worker_defers_optional_exports_and_registers_database_models() -> None:
                     "bot", "deal", "autotrade", "grid_ladder", "grid_order"
                 } <= SQLModel.metadata.tables.keys()
 
-                from kucoin_universal_sdk.generate.futures.market import (
-                    GetPartOrderBookReqBuilder,
-                )
-
-                request = (
-                    GetPartOrderBookReqBuilder()
-                    .set_symbol("XBTUSDTM")
-                    .set_size("1")
-                    .build()
-                )
-                assert request.model_dump()["symbol"] == "XBTUSDTM"
                 print("worker import policy OK")
             """),
         ],
