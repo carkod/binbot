@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom";
-import { screen as rtlScreen, within } from "@testing-library/react";
+import { screen as rtlScreen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { vi } from "vitest";
 import DashboardPage from "../Dashboard";
@@ -176,6 +176,49 @@ describe("Dashboard page", () => {
     expect(
       rtlScreen.getByText("BitcoinPriceCard").closest(".col-lg-6"),
     ).toBeInTheDocument();
+  });
+
+  it("reveals a loaded chart once and keeps it visible on refresh", async () => {
+    vi.mocked(useGetBenchmarkQuery).mockReturnValueOnce({
+      isLoading: true,
+    } as unknown as ReturnType<typeof useGetBenchmarkQuery>);
+
+    const { rerender } = renderDashboard();
+
+    expect(
+      rtlScreen.getByRole("status", {
+        name: "Loading portfolio benchmark...",
+      }),
+    ).toBeInTheDocument();
+    expect(rtlScreen.queryByText("PortfolioBenchmarkChart")).toBeNull();
+    expect(rtlScreen.getByText("BitcoinPriceCard")).toBeInTheDocument();
+
+    rerender(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
+
+    const chart = rtlScreen.getByText("PortfolioBenchmarkChart");
+    const reveal = chart.parentElement;
+    expect(reveal).toHaveStyle({ opacity: "0" });
+    await waitFor(() => {
+      expect(reveal).toHaveStyle({ opacity: "1", transform: "none" });
+    });
+    expect(
+      rtlScreen.queryByRole("status", {
+        name: "Loading portfolio benchmark...",
+      }),
+    ).toBeNull();
+
+    rerender(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
+
+    expect(rtlScreen.getByText("PortfolioBenchmarkChart")).toBe(chart);
+    expect(reveal).toHaveStyle({ opacity: "1", transform: "none" });
   });
 
   it("renders loading spinners inside each card without a page overlay", () => {

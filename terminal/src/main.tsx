@@ -1,4 +1,5 @@
 import React from "react";
+import { MotionConfig } from "motion/react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "react-toastify/dist/ReactToastify.css";
@@ -11,7 +12,12 @@ if (container) {
 
   root.render(
     <React.StrictMode>
-      <App />
+      <MotionConfig
+        reducedMotion="never"
+        transition={{ duration: 0.3, ease: "easeOut" }}
+      >
+        <App />
+      </MotionConfig>
     </React.StrictMode>,
   );
 } else {
