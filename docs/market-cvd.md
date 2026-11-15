@@ -6,7 +6,8 @@ schedules are unchanged. No pybinbot release is required.
 
 ## Rollout
 
-1. Apply `uv run alembic upgrade head` to deploy the two history tables and API.
+1. Apply `uv run alembic upgrade head` from the repository root to create the
+   history tables, then deploy the updated API.
 2. Start **one** collector: `docker compose --profile cvd up -d --build cvd_collector`.
    The profile is opt-in. The collector uses the streaming image with its own
    entry point and public KuCoin endpoints; exchange credentials are unnecessary.

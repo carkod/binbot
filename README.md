@@ -42,6 +42,12 @@ flowchart LR
     Cronjobs -->|maintenance| Postgres
 ```
 
+## Market analysis
+
+See [market-wide CVD](docs/market-cvd.md) for the optional Dashboard chart and
+independent collector, and [bot order book analysis](docs/bots/bot.md#order-book-analysis)
+for the per-symbol bot-detail tab.
+
 ## Telegram alerts
 
 Active futures bots send ephemeral Telegram alerts when last traded price reaches an

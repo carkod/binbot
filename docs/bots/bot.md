@@ -105,6 +105,21 @@ The base order size error is tightly coupled with available balance, as this is 
 ## Why not use algo orders for take_profit and safety_orders (TAKE_PROFIT, STOP_LOSS)?
 The Binance maximum is only 5 algo orders, which is not enough to make many orders.
 
+## Order book analysis
+
+Bot detail pages have a Chart tab and an Order book analysis tab. Analysis is
+available for KuCoin futures bots and shows Spread and Nearby Depth beside
+per-symbol Cumulative Volume Delta. Selecting a supported bot selects its
+symbol for collection, including while the Chart tab is open.
+
+The selected symbol continues collecting across terminal navigation, including
+the Microstructure page, while the terminal is open. Switching symbols stops
+the previous symbol's collector. Spread/depth history resets on reload or symbol
+change; observed trade history is saved per symbol in this browser for a rolling
+15-minute window. Reconnects and closed browser sessions have no historical
+backfill. This browser history is separate from the
+[centrally collected Dashboard CVD](../market-cvd.md).
+
 ## Conditional LIMIT entries (KuCoin futures)
 
 In the dashboard, focusing the stop-loss, trailing-profit, trailing-deviation, or

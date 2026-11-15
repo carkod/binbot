@@ -27,8 +27,9 @@ New packages or installing from scratch:
 
 Motion is installed as `motion`; import components and hooks from `motion/react`.
 Vite needs no additional configuration. The application root uses `MotionConfig`
-with a 300 ms ease-out transition and `reducedMotion="never"`, so the internal
-terminal app always uses the full animations.
+with `chartTransition` from [src/utils/motion.ts](./src/utils/motion.ts) and
+`reducedMotion="never"`, so the internal terminal app always uses the full
+animations.
 
 The dashboard reveals chart cards after their initial queries load. Use
 `chartRevealVariants` from [src/utils/motion.ts](./src/utils/motion.ts) for the same
@@ -46,6 +47,12 @@ fade and 12 px upward slide elsewhere:
 
 Keep the animated element mounted when data refreshes, so polling updates do not
 replay the entrance.
+
+Use [LivePlotlyChart](./src/app/components/LivePlotlyChart.tsx) for updating
+microstructure and aggregate CVD charts. It applies the shared reveal and Plotly
+transition settings while preserving legend selections across refreshes. Supply
+stable point IDs and explicit nulls for gaps; keep data and layout memoized so
+unrelated renders do not restart transitions.
 
 ## Deployment
 

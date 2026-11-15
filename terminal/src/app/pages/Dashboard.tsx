@@ -233,110 +233,12 @@ export const DashboardPage: FC<{}> = () => {
                   </Row>
                 </Card.Footer>
               </Card>
-<<<<<<< HEAD
             )}
             {loadingActiveBots ? (
               <CardLoadingSpinner
                 label="active bots"
                 className="dashboard-active-bots"
               />
-=======
-            )
-          )}
-        </Col>
-        <Col lg="9" xs="12" sm="12" className="dashboard-benchmark">
-          {loadingBenchmark ? (
-            <CardLoadingSpinner label="portfolio benchmark" />
-          ) : (
-            benchmark?.percentageSeries.datesSeries && (
-              <motion.div
-                initial="hidden"
-                animate="visible"
-                variants={chartRevealVariants}
-              >
-                <PortfolioBenchmarkChart
-                  chartData={benchmark.percentageSeries}
-                />
-              </motion.div>
-            )
-          )}
-        </Col>
-      </Row>
-      <Row>
-        <Col lg="6" md="12" className="dashboard-movers">
-          {loadingFastestMovers ? (
-            <CardLoadingSpinner label="fastest futures movers" />
-          ) : (
-            <FastestMovers data={fastestMovers} />
-          )}
-        </Col>
-        <Col lg="6" md="12" className="dashboard-movers">
-          {loadingFuturesRankings ? (
-            <CardLoadingSpinner label="futures gainers and losers" />
-          ) : (
-            combinedFuturesRankings?.length > 0 && (
-              <motion.div
-                initial="hidden"
-                animate="visible"
-                variants={chartRevealVariants}
-              >
-                <GainersLosers
-                  data={combinedFuturesRankings}
-                  market_type={MarketType.FUTURES}
-                />
-              </motion.div>
-            )
-          )}
-        </Col>
-      </Row>
-      <Row>
-        <Col lg="6" md="12" className="dashboard-trend">
-          {loadingGainersLosersHistory ? (
-            <CardLoadingSpinner label="gainers versus losers trend" />
-          ) : (
-            gainersLosersHistory && (
-              <motion.div
-                initial="hidden"
-                animate="visible"
-                variants={chartRevealVariants}
-              >
-                <GainersLosersHistoryCard points={gainersLosersHistory} />
-              </motion.div>
-            )
-          )}
-        </Col>
-        <Col lg="6" md="12" className="dashboard-trend">
-          {loadingBtcCloseSeries ? (
-            <CardLoadingSpinner label="Bitcoin price trend" />
-          ) : (
-            btcCloseSeries && (
-              <motion.div
-                initial="hidden"
-                animate="visible"
-                variants={chartRevealVariants}
-              >
-                <BitcoinPriceCard btcCloseSeries={btcCloseSeries} />
-              </motion.div>
-            )
-          )}
-        </Col>
-      </Row>
-      {import.meta.env.VITE_MARKET_CVD_ENABLED === "true" && (
-        <Row>
-          <Col xs="12" className="dashboard-trend">
-            <AggregateCvdCard />
-          </Col>
-        </Row>
-      )}
-      <Row>
-        {(loadingAlgoRanking ||
-          loadingStrategyNames ||
-          strategyNamesError ||
-          filteredAlgoRanking.length > 0) && (
-          <Col lg="6" md="12" className="dashboard-ranking">
-            {loadingAlgoRanking || loadingStrategyNames ? (
-              <CardLoadingSpinner label="algorithm ranking" />
->>>>>>> d76fc95c (Collect market-wide KuCoin futures CVD with stored coverage and dashboard)
             ) : (
               activeBotsCount > 0 && (
                 <Card className="dashboard-active-bots">

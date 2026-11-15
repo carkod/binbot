@@ -19,6 +19,7 @@ permalink: /
 - [Autotrade](autotrade.md)
 - [Position Lifecycle](lifecycle.md)
 - [Grid Ladders](grid-ladders.md)
+- [Market-wide CVD](market-cvd.md)
 - [Account](account/)
   - [Bot](account/bot.md)
   - [Bot Status](account/bot-status.md)

@@ -42,30 +42,3 @@ export const MicrostructureProvider = ({
     </MicrostructureContext.Provider>
   );
 };
-<<<<<<< HEAD
-=======
-
-export const MicrostructureProvider = ({
-  children,
-}: {
-  children: ReactNode;
-}) => {
-  const routeSymbol =
-    useMatch("/microstructure/:symbol?")?.params.symbol?.trim().toUpperCase() ||
-    "";
-  const [lastSymbol, setLastSymbol] = useState(routeSymbol);
-  const symbol = routeSymbol || lastSymbol;
-
-  useEffect(() => {
-    if (routeSymbol) setLastSymbol(routeSymbol);
-  }, [routeSymbol]);
-
-  // Hooks reset their data on symbol changes without remounting bot forms.
-  // Returning to a route with the same symbol keeps the existing stream.
-  return (
-    <MicrostructureCollector symbol={symbol} selectSymbol={setLastSymbol}>
-      {children}
-    </MicrostructureCollector>
-  );
-};
->>>>>>> 5f425392 (Remove unused binance clean up jobs)
