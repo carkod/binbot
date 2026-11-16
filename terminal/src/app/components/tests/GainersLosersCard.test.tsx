@@ -1,7 +1,7 @@
-import { render, screen as rtlScreen } from "../../utils/render";
+import { render, screen as rtlScreen } from "../../../utils/render";
 
-import { MarketType } from "../../utils/enums";
-import GainersLosersCard from "./GainersLosersCard";
+import { MarketType } from "../../../utils/enums";
+import GainersLosersCard from "../GainersLosersCard";
 
 describe("GainersLosersCard", () => {
   it("links futures symbols to the futures bot creation route", () => {

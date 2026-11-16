@@ -1,6 +1,6 @@
 import { MemoryRouter } from "react-router";
-import { render, screen } from "../../utils/render";
-import Sidebar from "./Sidebar";
+import { render, screen } from "../../../utils/render";
+import Sidebar from "../Sidebar";
 
 describe("Sidebar", () => {
   it.each([

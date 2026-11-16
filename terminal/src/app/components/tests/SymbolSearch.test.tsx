@@ -2,12 +2,12 @@ import "@testing-library/jest-dom";
 import type { ReactElement } from "react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
-import { filterSymbolByBaseAsset } from "../../utils/api";
-import { fireEvent, render, screen as rtlScreen } from "../../utils/render";
-import { SymbolContext } from "../hooks";
-import SymbolSearch from "./SymbolSearch";
+import { filterSymbolByBaseAsset } from "../../../utils/api";
+import { fireEvent, render, screen as rtlScreen } from "../../../utils/render";
+import { SymbolContext } from "../../hooks";
+import SymbolSearch from "../SymbolSearch";
 
-vi.mock("../../features/autotradeApiSlice", () => ({
+vi.mock("../../../features/autotradeApiSlice", () => ({
   useGetSettingsQuery: vi.fn(() => ({ data: {} })),
 }));
 
