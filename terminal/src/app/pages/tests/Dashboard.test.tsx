@@ -1,20 +1,20 @@
 import "@testing-library/jest-dom";
-import { screen as rtlScreen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { vi } from "vitest";
-import DashboardPage from "../Dashboard";
-import { renderWithProviders } from "../../../utils/test-utils";
 import {
   useGetBalanceQuery,
   useGetBenchmarkQuery,
 } from "../../../features/balanceApiSlice";
 import { useGetBotsQuery } from "../../../features/bots/botsApiSlice";
+import { useBtcCloseSeriesQuery } from "../../../features/kucoinApiSlice";
 import {
   useFastestMoversQuery,
   useGainersLosersAggregateQuery,
 } from "../../../features/marketApiSlice";
-import { useBtcCloseSeriesQuery } from "../../../features/kucoinApiSlice";
+import { screen as rtlScreen, waitFor } from "../../../utils/render";
+import { renderWithProviders } from "../../../utils/test-utils";
 import { useFilteredFuturesRankings } from "../../hooks/useFilteredFuturesRankings";
+import DashboardPage from "../Dashboard";
 
 vi.mock("../../../features/balanceApiSlice", () => ({
   useGetBalanceQuery: vi.fn(() => ({
@@ -182,10 +182,12 @@ describe("Dashboard page", () => {
     renderDashboard();
 
     expect(
-      rtlScreen.getByText("GainersLosersHistoryCard").closest(".col-lg-6"),
+      rtlScreen
+        .getByText("GainersLosersHistoryCard")
+        .closest(".dashboard-trend"),
     ).toBeInTheDocument();
     expect(
-      rtlScreen.getByText("BitcoinPriceCard").closest(".col-lg-6"),
+      rtlScreen.getByText("BitcoinPriceCard").closest(".dashboard-trend"),
     ).toBeInTheDocument();
   });
 
@@ -262,7 +264,7 @@ describe("Dashboard page", () => {
 
     expect(spinners).toHaveLength(9);
     spinners.forEach((spinner) => {
-      expect(spinner.closest(".card")).toBeInTheDocument();
+      expect(spinner.closest(".mantine-Card-root")).toBeInTheDocument();
     });
     expect(
       rtlScreen.getByRole("status", { name: "Loading total balance..." }),

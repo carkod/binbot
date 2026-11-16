@@ -1,11 +1,11 @@
-import { render, screen as rtlScreen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
-import { makeStore } from "../../store";
 import { MemoryRouter } from "react-router";
-import Autotrade from "../Autotrade";
-import { initialAutotradeSettings } from "../../../features/autotradeSlice";
 import { vi } from "vitest";
+import { initialAutotradeSettings } from "../../../features/autotradeSlice";
+import { render, screen as rtlScreen } from "../../../utils/render";
+import { makeStore } from "../../store";
+import Autotrade from "../Autotrade";
 
 vi.mock("../../../features/autotradeApiSlice", async () => {
   const actual = await vi.importActual("../../../features/autotradeApiSlice");
@@ -27,7 +27,7 @@ const renderAutotradePage = () =>
 
 const enableGridLadders = async () => {
   const user = userEvent.setup();
-  const toggle = document.querySelector('label[for="enable_grid_ladders"].btn');
+  const toggle = rtlScreen.getByRole("switch", { name: /Enable grid ladders/ });
   await user.click(toggle as HTMLElement);
 };
 
@@ -35,7 +35,9 @@ describe("Autotrade page", () => {
   it("renders without crashing", () => {
     const { container } = renderAutotradePage();
 
-    expect(container.querySelector(".container")).not.toBeNull();
+    expect(
+      rtlScreen.getByRole("heading", { name: "General bot autotrade" }),
+    ).toBeInTheDocument();
   });
 
   it("hides grid ladder fields until enable_grid_ladders is toggled on", () => {

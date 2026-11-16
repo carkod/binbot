@@ -1,19 +1,24 @@
+import { Box, Tabs } from "@mantine/core";
 import "@testing-library/jest-dom";
+import userEvent from "@testing-library/user-event";
+import moment from "moment";
+import { Provider } from "react-redux";
+import { MemoryRouter } from "react-router";
+import { vi } from "vitest";
 import {
   act,
   fireEvent,
   render,
   screen as testingScreen,
   waitFor,
-} from "@testing-library/react";
-import { Provider } from "react-redux";
-import { MemoryRouter } from "react-router";
-import { Tab } from "react-bootstrap";
-import { vi } from "vitest";
+} from "../../../utils/render";
 
-import { makeStore } from "../../store";
-import { SymbolContext } from "../../hooks";
-import BaseOrderTab from "../BaseOrderTab";
+import {
+  defaultRecoveryParams,
+  singleBot,
+  type Bot,
+} from "../../../features/bots/botInitialState";
+import { setBot, setCurrentPrice } from "../../../features/bots/botSlice";
 import {
   BotStatus,
   EntryMode,
@@ -21,12 +26,9 @@ import {
   QuoteAsset,
   TabsKeys,
 } from "../../../utils/enums";
-import { setBot, setCurrentPrice } from "../../../features/bots/botSlice";
-import {
-  defaultRecoveryParams,
-  singleBot,
-  type Bot,
-} from "../../../features/bots/botInitialState";
+import { SymbolContext } from "../../hooks";
+import { makeStore } from "../../store";
+import BaseOrderTab from "../BaseOrderTab";
 
 const settingsResponse = vi.hoisted(() => ({
   data: { fiat: "USDT", base_order_size: 123 },
@@ -69,11 +71,11 @@ function renderLeverage(botOverrides: Partial<Bot> = {}) {
         value={{ ...symbolContextValue, futuresLeverage: 3 }}
       >
         <MemoryRouter initialEntries={["/bots/futures/new"]}>
-          <Tab.Container activeKey={TabsKeys.MAIN}>
-            <Tab.Content>
+          <Tabs value={TabsKeys.MAIN}>
+            <Box>
               <BaseOrderTab />
-            </Tab.Content>
-          </Tab.Container>
+            </Box>
+          </Tabs>
         </MemoryRouter>
       </SymbolContext.Provider>
     </Provider>,
@@ -96,7 +98,8 @@ describe("BaseOrderTab", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("prefills the chart price and six-hour expiry, allowing both to be edited", () => {
+  it("prefills the chart price and six-hour expiry, allowing both to be edited", async () => {
+    const user = userEvent.setup();
     const now = new Date("2026-11-13T10:00:00Z").getTime();
     const clock = vi.spyOn(Date, "now").mockReturnValue(now);
     const store = renderLeverage({
@@ -109,16 +112,30 @@ describe("BaseOrderTab", () => {
     expect(store.getState().bot.bot.entry_expires_at).toBe(
       now + 6 * 60 * 60 * 1000,
     );
-    const expiry = testingScreen.getByLabelText(
-      "Entry expires at",
-    ) as HTMLInputElement;
-    expect(new Date(expiry.value).getTime()).toBe(now + 6 * 60 * 60 * 1000);
+    const expiry = testingScreen.getByLabelText("Entry expires at");
+    expect(expiry).toHaveTextContent(
+      moment(now + 6 * 60 * 60 * 1000).format("DD/MM/YYYY HH:mm:ss"),
+    );
     clock.mockRestore();
 
     fireEvent.change(testingScreen.getByLabelText("Entry limit price"), {
       target: { value: "90" },
     });
-    fireEvent.change(expiry, { target: { value: "2026-11-14T09:30" } });
+    await user.click(expiry);
+    await user.click(
+      testingScreen.getByRole("button", { name: "14 November 2026" }),
+    );
+    fireEvent.change(
+      testingScreen.getByRole("spinbutton", { name: "Expiry hours" }),
+      { target: { value: "09" } },
+    );
+    fireEvent.change(
+      testingScreen.getByRole("spinbutton", { name: "Expiry minutes" }),
+      { target: { value: "30" } },
+    );
+    await user.click(
+      testingScreen.getByRole("button", { name: "Apply entry expiry" }),
+    );
     expect(store.getState().bot.bot.entry_price).toBe(90);
     expect(store.getState().bot.bot.entry_expires_at).toBe(
       new Date("2026-11-14T09:30").getTime(),
@@ -180,7 +197,7 @@ describe("BaseOrderTab", () => {
 
   it("enables automatic recovery without exposing source metadata or changing order size", () => {
     const store = renderLeverage({ fiat_order_size: 25 });
-    const recoveryToggle = testingScreen.getByRole("checkbox", {
+    const recoveryToggle = testingScreen.getByRole("switch", {
       name: /^Recovery mode /,
     });
 
@@ -203,7 +220,7 @@ describe("BaseOrderTab", () => {
 
   it("keeps recovery unavailable while dynamic position sizing is enabled", () => {
     const store = renderLeverage({ dynamic_position_sizing: true });
-    const recoveryToggle = testingScreen.getByRole("checkbox", {
+    const recoveryToggle = testingScreen.getByRole("switch", {
       name: /^Recovery mode /,
     });
 
@@ -222,7 +239,7 @@ describe("BaseOrderTab", () => {
     const store = renderLeverage({ recovery_params: recoveryParams });
 
     expect(
-      testingScreen.getByRole("checkbox", { name: /^Recovery mode / }),
+      testingScreen.getByRole("switch", { name: /^Recovery mode / }),
     ).toBeChecked();
     expect(store.getState().bot.bot.recovery_params).toEqual(recoveryParams);
   });
@@ -289,11 +306,11 @@ describe("BaseOrderTab", () => {
       <Provider store={store}>
         <SymbolContext.Provider value={symbolContextValue}>
           <MemoryRouter initialEntries={["/bots/new"]}>
-            <Tab.Container activeKey={TabsKeys.MAIN}>
-              <Tab.Content>
+            <Tabs value={TabsKeys.MAIN}>
+              <Box>
                 <BaseOrderTab />
-              </Tab.Content>
-            </Tab.Container>
+              </Box>
+            </Tabs>
           </MemoryRouter>
         </SymbolContext.Provider>
       </Provider>,

@@ -1,18 +1,18 @@
 import React from "react";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router";
+import { vi } from "vitest";
 import {
   fireEvent,
   render,
   screen as rtlScreen,
   waitFor,
-} from "@testing-library/react";
-import { vi } from "vitest";
+} from "../../../utils/render";
 
-import FuturesBotDetail from "../FuturesBotDetail";
-import { store } from "../../store";
-import { MarketType } from "../../../utils/enums";
 import { resetBot, setBot } from "../../../features/bots/botSlice";
+import { MarketType } from "../../../utils/enums";
+import { store } from "../../store";
+import FuturesBotDetail from "../FuturesBotDetail";
 
 const mockUseGetSingleBotQuery = vi.hoisted(() => vi.fn());
 const { singleBot } = await import("../../../features/bots/botInitialState");

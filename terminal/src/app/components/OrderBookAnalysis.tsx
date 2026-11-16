@@ -1,9 +1,8 @@
-import { Alert, Col, Row } from "react-bootstrap";
+import { Alert, Grid } from "@mantine/core";
 import { getApiErrorMessage } from "../../utils/api";
 import { useMicrostructureData } from "../hooks/useMicrostructureData";
 import SpreadAndDepthCard from "./SpreadAndDepthCard";
 import SymbolCvdCard from "./SymbolCvdCard";
-
 const OrderBookAnalysis = ({
   enabled,
   showError = false,
@@ -13,16 +12,20 @@ const OrderBookAnalysis = ({
 }) => {
   const { symbol, liquidity, orderBookHistory } = useMicrostructureData();
   const { isFetching, isError, error, refetch } = liquidity;
-
   return (
     <>
       {enabled && showError && isError && (
-        <Alert variant="danger">
+        <Alert color="danger">
           {getApiErrorMessage(error, "KuCoin symbol request failed")}
         </Alert>
       )}
-      <Row>
-        <Col md="6" xs="12">
+      <Grid>
+        <Grid.Col
+          span={{
+            base: 12,
+            md: 6,
+          }}
+        >
           <SpreadAndDepthCard
             orderBookHistory={orderBookHistory}
             enabled={enabled}
@@ -30,13 +33,17 @@ const OrderBookAnalysis = ({
             isError={isError}
             onRetry={() => refetch()}
           />
-        </Col>
-        <Col md="6" xs="12">
+        </Grid.Col>
+        <Grid.Col
+          span={{
+            base: 12,
+            md: 6,
+          }}
+        >
           <SymbolCvdCard symbol={symbol} enabled={enabled} />
-        </Col>
-      </Row>
+        </Grid.Col>
+      </Grid>
     </>
   );
 };
-
 export default OrderBookAnalysis;

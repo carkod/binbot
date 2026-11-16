@@ -1,5 +1,4 @@
 import "@testing-library/jest-dom";
-import { render, screen as rtlScreen } from "@testing-library/react";
 import {
   beforeEach as beforeEachTest,
   describe as describeBlock,
@@ -8,6 +7,7 @@ import {
   vi,
 } from "vitest";
 import type { GainersLosersAggregatePoint } from "../../../features/marketApiSlice";
+import { render, screen as rtlScreen } from "../../../utils/render";
 
 type PlotlyProps = {
   data: Array<{

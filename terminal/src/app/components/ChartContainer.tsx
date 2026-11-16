@@ -1,21 +1,17 @@
-import { useEffect, useMemo, useRef, useState, type FC } from "react";
-import { useAppDispatch, useAppSelector, useSymbolData } from "../hooks";
-import { useImmer } from "use-immer";
-import { updateOrderLines } from "../../utils/charting/index";
-import { dealColors, updateTimescaleMarks } from "../../utils/charting";
-import TVChartContainer, { Exchange } from "binbot-charts";
-import { type ResolutionString } from "../../../charting_library/charting_library";
-import { type AppDispatch } from "../store";
-import { type Bot } from "../../features/bots/botInitialState";
+import { Text } from "@mantine/core";
 import { type PayloadActionCreator } from "@reduxjs/toolkit";
-import { BotPosition, BotStatus, MarketType } from "../../utils/enums";
+import TVChartContainer, { Exchange } from "binbot-charts";
+import { useEffect, useMemo, useRef, useState, type FC } from "react";
+import { useImmer } from "use-immer";
+import { type ResolutionString } from "../../../charting_library/charting_library";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
+import { type Bot } from "../../features/bots/botInitialState";
 import {
-  selectBot,
   focusOrderLine,
+  selectBot,
   setField,
 } from "../../features/bots/botSlice";
-
+import { dealColors, updateTimescaleMarks } from "../../utils/charting";
 import {
   canEditConditionalEntry,
   entryReferencePrice,
@@ -23,7 +19,10 @@ import {
   percentageFromOrderLine,
   type OrderLineField,
 } from "../../utils/charting/editing";
-
+import { updateOrderLines } from "../../utils/charting/index";
+import { BotPosition, BotStatus, MarketType } from "../../utils/enums";
+import { useAppDispatch, useAppSelector, useSymbolData } from "../hooks";
+import { type AppDispatch } from "../store";
 const ChartContainer: FC<{
   bot: Bot;
   setCurrentPrice: PayloadActionCreator<number>;
@@ -121,12 +120,13 @@ const ChartContainer: FC<{
       bot.status,
     ],
   );
-
   useEffect(() => {
     const leave = (event: Event) => {
       const target = event.target as HTMLElement;
       if (
         chartRef.current?.contains(target) ||
+        (entryEditable &&
+          target.closest('[data-chart-field="entry_expires_at"]')) ||
         (target instanceof HTMLInputElement &&
           (target.id in fieldOrderLines || target.id === "entry_expires_at") &&
           !target.disabled)
@@ -145,12 +145,10 @@ const ChartContainer: FC<{
       document.removeEventListener("pointerdown", leave);
       document.removeEventListener("keydown", escape);
     };
-  }, [dispatch, focusedOrderLine]);
-
+  }, [dispatch, focusedOrderLine, entryEditable]);
   useEffect(() => {
     setDragError("");
   }, [focusKey]);
-
   useEffect(() => {
     if (
       !entryEditable &&
@@ -160,14 +158,12 @@ const ChartContainer: FC<{
       dispatch(focusOrderLine(null));
     }
   }, [entryEditable, focusedOrderLine, dispatch]);
-
   useEffect(
     () => () => {
       dispatch(focusOrderLine(null));
     },
     [dispatch],
   );
-
   const handleOrderLineMove = (id: string, price: number) => {
     const field = (
       Object.entries(fieldOrderLines) as [OrderLineField, string][]
@@ -199,7 +195,6 @@ const ChartContainer: FC<{
     dispatch(setField({ name: field, value }));
     document.getElementById(field)?.focus({ preventScroll: true });
   };
-
   const handleTimeMarkerMove = (id: string, time: number) => {
     if (!expiryMarker || id !== expiryMarker.id || !Number.isFinite(time))
       return;
@@ -214,14 +209,12 @@ const ChartContainer: FC<{
     setDragError("");
     dispatch(setField({ name: "entry_expires_at", value: expiresAt }));
   };
-
   const updatedPrice = (price: number) => {
     // Keep exchange precision for entry prefills and dragged percentages.
     if (Number.isFinite(price) && price > 0 && currentChartPrice !== price) {
       setCurrentChartPrice(price);
     }
   };
-
   const handleInitialPrice = (price: number) => {
     if (
       !bot.deal.opening_price &&
@@ -232,22 +225,18 @@ const ChartContainer: FC<{
       setCurrentChartPrice(price);
     }
   };
-
   useEffect(() => {
     if (currentChartPrice === null) {
       return;
     }
-
     if (bot.deal?.current_price !== currentChartPrice) {
       dispatch(setCurrentPrice(currentChartPrice));
     }
   }, [bot, currentChartPrice, dispatch, setCurrentPrice]);
-
   useEffect(() => {
     if (!bot?.pair) {
       return;
     }
-
     setExchangeSymbol((draft) => {
       if (exchangeState === Exchange.KUCOIN) {
         const baseAsset = bot.pair.replace(quoteAsset, "");
@@ -262,7 +251,6 @@ const ChartContainer: FC<{
       }
     });
   }, [bot.pair, exchangeState, quoteAsset]);
-
   return (
     <div
       ref={chartRef}
@@ -271,24 +259,24 @@ const ChartContainer: FC<{
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         {focusedOrderLine === "stop_loss" &&
           bot.status !== BotStatus.COMPLETED && (
-            <p className="text-muted">
+            <Text c="dimmed">
               Drag the red stop-loss line{" "}
               {bot.position === BotPosition.SHORT
                 ? "at or above"
                 : "at or below"}{" "}
               the entry reference ({entryReferencePrice(bot, referencePrice)}).
-            </p>
+            </Text>
           )}
         {expiryMarker && (
-          <p className="text-muted">
+          <Text c="dimmed">
             Drag the magenta expiry line to change the time. Pan the chart if it
             is offscreen. Press Escape to finish.
-          </p>
+          </Text>
         )}
         {dragError && (
-          <p role="alert" className="text-danger">
+          <Text role="alert" c="danger.8">
             {dragError}
-          </p>
+          </Text>
         )}
         {bot?.pair && (
           <TVChartContainer
@@ -310,5 +298,4 @@ const ChartContainer: FC<{
     </div>
   );
 };
-
 export default ChartContainer;

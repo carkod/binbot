@@ -1,6 +1,8 @@
+import { Badge, Box, Card, Grid, Text, Title } from "@mantine/core";
+import TVChartContainer, { Exchange } from "binbot-charts";
 import { useMemo, useState, type FC } from "react";
-import { Badge, Card, Col, Container, Row } from "react-bootstrap";
 import { useParams } from "react-router";
+import type { ResolutionString } from "../../../charting_library/charting_library";
 import {
   calculateCloseAdjustmentPnl,
   calculateLevelPnlSum,
@@ -9,8 +11,6 @@ import {
 } from "../../features/gridLadders/gridLadders";
 import { useGetGridLadderQuery } from "../../features/gridLadders/gridLaddersApiSlice";
 import { useFuturesContractQuery } from "../../features/kucoinApiSlice";
-import TVChartContainer, { Exchange } from "binbot-charts";
-import type { ResolutionString } from "../../../charting_library/charting_library";
 import {
   buildGridOrderLines,
   buildGridTimescaleMarks,
@@ -24,7 +24,6 @@ import {
   statusBadgeBg,
 } from "../../utils/grid-ladder";
 import { roundDecimals } from "../../utils/math";
-
 const GridLadderDetail: FC = () => {
   const { id = "" } = useParams();
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
@@ -73,51 +72,64 @@ const GridLadderDetail: FC = () => {
   const gridReturnPct = ladder
     ? calculateGridLiveReturnPct(ladder, unrealizedPnl)
     : 0;
-
   const updateCurrentPrice = (price: number) => {
     if (!Number.isFinite(price)) {
       return;
     }
     setCurrentPrice(roundDecimals(price, 8));
   };
-
   if (!ladder) {
-    return <Container fluid>Grid ladder not found.</Container>;
+    return <Box w="100%">Grid ladder not found.</Box>;
   }
-
   return (
     <div className="content">
-      <Container fluid>
-        <Row>
-          <Col md="12" sm="12">
+      <Box w="100%">
+        <Grid>
+          <Grid.Col
+            span={{
+              base: 12,
+              sm: 12,
+              md: 12,
+            }}
+          >
             <Card
               style={{
                 display: "flex",
                 flexDirection: "column",
                 minHeight: "580px",
               }}
+              mb="md"
             >
-              <Card.Header>
-                <div className="d-flex justify-content-between align-items-center">
-                  <Card.Title as="h3" className="mb-0">
+              <Box mb="sm">
+                <Box
+                  display="flex"
+                  style={{
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                  component="div"
+                >
+                  <Title order={3} mb={0}>
                     {ladder.symbol}{" "}
                     <Badge
-                      bg={returnBadgeBg(gridReturnPct)}
                       className={prominentBadgeClass}
+                      color={returnBadgeBg(gridReturnPct)}
+                      variant="light"
                     >
                       {gridReturnPct}%
                     </Badge>{" "}
                     {ladder.exchange}/{ladder.market_type}
-                  </Card.Title>
+                  </Title>
                   <Badge
-                    bg={statusBadgeBg(ladder.status)}
                     className={prominentBadgeClass}
+                    color={statusBadgeBg(ladder.status)}
+                    variant="light"
                   >
                     {ladder.status}
                   </Badge>
-                </div>
-              </Card.Header>
-              <Card.Body
+                </Box>
+              </Box>
+              <Box
                 style={{ flex: 1, display: "flex", flexDirection: "column" }}
               >
                 <TVChartContainer
@@ -130,190 +142,353 @@ const GridLadderDetail: FC = () => {
                   exchange={exchange}
                   style={{ minHeight: "100%", height: "600px", width: "100%" }}
                 />
-              </Card.Body>
+              </Box>
             </Card>
-          </Col>
-        </Row>
+          </Grid.Col>
+        </Grid>
 
-        <Row>
-          <Col md="7" sm="12">
-            <Card>
-              <Card.Header className="d-flex justify-content-between align-items-center">
-                <h3 className="mb-0">Grid Ladder</h3>
-              </Card.Header>
-              <Card.Body>
-                <Row className="mb-2">
-                  <Col md={4}>
+        <Grid>
+          <Grid.Col
+            span={{
+              base: 12,
+              sm: 12,
+              md: 7,
+            }}
+          >
+            <Card mb="md">
+              <Box
+                mb="sm"
+                display="flex"
+                style={{
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Title order={3} mb={0}>
+                  Grid Ladder
+                </Title>
+              </Box>
+              <Box>
+                <Grid mb={8}>
+                  <Grid.Col
+                    span={{
+                      base: 12,
+                      md: 4,
+                    }}
+                  >
                     <strong>Algorithm</strong>
-                  </Col>
-                  <Col md={8}>{ladder.algorithm_name}</Col>
-                </Row>
-                <Row className="mb-2">
-                  <Col md={4}>
+                  </Grid.Col>
+                  <Grid.Col
+                    span={{
+                      base: 12,
+                      md: 8,
+                    }}
+                  >
+                    {ladder.algorithm_name}
+                  </Grid.Col>
+                </Grid>
+                <Grid mb={8}>
+                  <Grid.Col
+                    span={{
+                      base: 12,
+                      md: 4,
+                    }}
+                  >
                     <strong>Range</strong>
-                  </Col>
-                  <Col md={8}>
+                  </Grid.Col>
+                  <Grid.Col
+                    span={{
+                      base: 12,
+                      md: 8,
+                    }}
+                  >
                     {ladder.range_low} → {ladder.range_high}
-                  </Col>
-                </Row>
-                <Row className="mb-2">
-                  <Col md={4}>
+                  </Grid.Col>
+                </Grid>
+                <Grid mb={8}>
+                  <Grid.Col
+                    span={{
+                      base: 12,
+                      md: 4,
+                    }}
+                  >
                     <strong>Breakout</strong>
-                  </Col>
-                  <Col md={8}>
+                  </Grid.Col>
+                  <Grid.Col
+                    span={{
+                      base: 12,
+                      md: 8,
+                    }}
+                  >
                     {ladder.breakout_low} / {ladder.breakout_high}
-                  </Col>
-                </Row>
-                <Row className="mb-2">
-                  <Col md={4}>
+                  </Grid.Col>
+                </Grid>
+                <Grid mb={8}>
+                  <Grid.Col
+                    span={{
+                      base: 12,
+                      md: 4,
+                    }}
+                  >
                     <strong>Current Price</strong>
-                  </Col>
-                  <Col md={8}>{currentPrice ?? "-"}</Col>
-                </Row>
-                <Row className="mb-2">
-                  <Col md={4}>
+                  </Grid.Col>
+                  <Grid.Col
+                    span={{
+                      base: 12,
+                      md: 8,
+                    }}
+                  >
+                    {currentPrice ?? "-"}
+                  </Grid.Col>
+                </Grid>
+                <Grid mb={8}>
+                  <Grid.Col
+                    span={{
+                      base: 12,
+                      md: 4,
+                    }}
+                  >
                     <strong>Position</strong>
-                  </Col>
-                  <Col md={8}>
+                  </Grid.Col>
+                  <Grid.Col
+                    span={{
+                      base: 12,
+                      md: 8,
+                    }}
+                  >
                     {position.contracts > 0
                       ? position.label.toUpperCase()
                       : position.label}
-                  </Col>
-                </Row>
-                <Row className="mb-2">
-                  <Col md={4}>
+                  </Grid.Col>
+                </Grid>
+                <Grid mb={8}>
+                  <Grid.Col
+                    span={{
+                      base: 12,
+                      md: 4,
+                    }}
+                  >
                     <strong>Unrealized PnL</strong>
-                  </Col>
-                  <Col md={8}>{unrealizedPnl}</Col>
-                </Row>
+                  </Grid.Col>
+                  <Grid.Col
+                    span={{
+                      base: 12,
+                      md: 8,
+                    }}
+                  >
+                    {unrealizedPnl}
+                  </Grid.Col>
+                </Grid>
                 {!isActive && (levelPnl !== 0 || hasCloseAdjustment) && (
-                  <Row className="mb-2">
-                    <Col md={4}>
+                  <Grid mb={8}>
+                    <Grid.Col
+                      span={{
+                        base: 12,
+                        md: 4,
+                      }}
+                    >
                       <strong>TP Cycled PnL</strong>
-                    </Col>
-                    <Col md={8}>{levelPnl}</Col>
-                  </Row>
+                    </Grid.Col>
+                    <Grid.Col
+                      span={{
+                        base: 12,
+                        md: 8,
+                      }}
+                    >
+                      {levelPnl}
+                    </Grid.Col>
+                  </Grid>
                 )}
                 {!isActive && hasCloseAdjustment && (
-                  <Row className="mb-2">
-                    <Col md={4}>
+                  <Grid mb={8}>
+                    <Grid.Col
+                      span={{
+                        base: 12,
+                        md: 4,
+                      }}
+                    >
                       <strong>Close Adjustment</strong>
-                    </Col>
-                    <Col md={8}>{closeAdjustmentPnl}</Col>
-                  </Row>
+                    </Grid.Col>
+                    <Grid.Col
+                      span={{
+                        base: 12,
+                        md: 8,
+                      }}
+                    >
+                      {closeAdjustmentPnl}
+                    </Grid.Col>
+                  </Grid>
                 )}
-                <Row className="mb-2">
-                  <Col md={4}>
+                <Grid mb={8}>
+                  <Grid.Col
+                    span={{
+                      base: 12,
+                      md: 4,
+                    }}
+                  >
                     <strong>Total PnL</strong>
-                  </Col>
-                  <Col md={8}>{totalPnl}</Col>
-                </Row>
+                  </Grid.Col>
+                  <Grid.Col
+                    span={{
+                      base: 12,
+                      md: 8,
+                    }}
+                  >
+                    {totalPnl}
+                  </Grid.Col>
+                </Grid>
                 {ladder.orders.length > 0 && (
                   <>
-                    <h4 className="mt-4 mb-3">Orders</h4>
-                    <Row className="g-2 mb-3">
+                    <Title order={4} mt={24} mb={16}>
+                      Orders
+                    </Title>
+                    <Grid gap={16} mb={16}>
                       {ladder.orders.map((order) => (
-                        <Col key={order.id} lg={6}>
-                          <Card className="h-100">
-                            <Card.Body>
-                              <div className="d-flex justify-content-between">
+                        <Grid.Col
+                          key={order.id}
+                          span={{
+                            base: 12,
+                            lg: 6,
+                          }}
+                        >
+                          <Card mb="md" h="100%">
+                            <Box>
+                              <Box
+                                display="flex"
+                                style={{
+                                  justifyContent: "space-between",
+                                }}
+                                component="div"
+                              >
                                 <strong>{order.order_role}</strong>
                                 <Badge
-                                  bg={statusBadgeBg(order.status)}
                                   className={prominentBadgeClass}
+                                  color={statusBadgeBg(order.status)}
+                                  variant="light"
                                 >
                                   {order.status ?? "-"}
                                 </Badge>
-                              </div>
-                              <div className="small mt-2">
+                              </Box>
+                              <Box fz="xs" mt={8} component="div">
                                 Exchange order: {order.exchange_order_id}
-                              </div>
-                              <div className="small">
+                              </Box>
+                              <Box fz="xs" component="div">
                                 Side: {order.side ?? "-"}
-                              </div>
-                              <div className="small">
+                              </Box>
+                              <Box fz="xs" component="div">
                                 Price: {order.price ?? "-"}
-                              </div>
-                              <div className="small">
+                              </Box>
+                              <Box fz="xs" component="div">
                                 Contracts: {order.contracts}
-                              </div>
-                              <div className="small">
+                              </Box>
+                              <Box fz="xs" component="div">
                                 Filled: {order.filled_qty}
                                 {order.filled_price
                                   ? ` @ ${order.filled_price}`
                                   : ""}
-                              </div>
-                            </Card.Body>
+                              </Box>
+                            </Box>
                           </Card>
-                        </Col>
+                        </Grid.Col>
                       ))}
-                    </Row>
+                    </Grid>
                   </>
                 )}
-                <Row className="g-2 mt-2">
+                <Grid gap={16} mt={8}>
                   {ladder.levels.map((level) => (
-                    <Col key={level.id} lg={6}>
-                      <Card className="h-100">
-                        <Card.Body>
-                          <div className="d-flex justify-content-between">
+                    <Grid.Col
+                      key={level.id}
+                      span={{
+                        base: 12,
+                        lg: 6,
+                      }}
+                    >
+                      <Card mb="md" h="100%">
+                        <Box>
+                          <Box
+                            display="flex"
+                            style={{
+                              justifyContent: "space-between",
+                            }}
+                            component="div"
+                          >
                             <strong>Level #{level.level_index}</strong>
                             <Badge
-                              bg={statusBadgeBg(level.status)}
                               className={prominentBadgeClass}
+                              color={statusBadgeBg(level.status)}
+                              variant="light"
                             >
                               {level.status}
                             </Badge>
-                          </div>
-                          <div className="small mt-2">Price: {level.price}</div>
-                          <div className="small">Side: {level.side}</div>
-                          <div className="small">
+                          </Box>
+                          <Box fz="xs" mt={8} component="div">
+                            Price: {level.price}
+                          </Box>
+                          <Box fz="xs" component="div">
+                            Side: {level.side}
+                          </Box>
+                          <Box fz="xs" component="div">
                             Contracts: {level.contracts}
-                          </div>
-                          <div className="small">
+                          </Box>
+                          <Box fz="xs" component="div">
                             Filled Qty: {level.filled_entry_qty}
-                          </div>
-                          <div className="small">
+                          </Box>
+                          <Box fz="xs" component="div">
                             TP: {level.take_profit_price ?? "-"}
-                          </div>
-                          <div className="small">
+                          </Box>
+                          <Box fz="xs" component="div">
                             Realized PnL: {level.realized_pnl}
-                          </div>
-                        </Card.Body>
+                          </Box>
+                        </Box>
                       </Card>
-                    </Col>
+                    </Grid.Col>
                   ))}
-                </Row>
-              </Card.Body>
+                </Grid>
+              </Box>
             </Card>
-          </Col>
-          <Col md="5" sm="12">
-            <Card>
-              <Card.Header>
-                <h3 className="mb-0">Logs</h3>
-              </Card.Header>
-              <Card.Body>
+          </Grid.Col>
+          <Grid.Col
+            span={{
+              base: 12,
+              sm: 12,
+              md: 5,
+            }}
+          >
+            <Card mb="md">
+              <Box mb="sm">
+                <Title order={3} mb={0}>
+                  Logs
+                </Title>
+              </Box>
+              <Box>
                 {ladder.logs && ladder.logs.length > 0 ? (
-                  <pre
-                    className="small bg-light p-2 rounded mb-0"
+                  <Box
+                    fz="xs"
+                    bg="gray.0"
+                    p={8}
+                    mb={0}
                     style={{
-                      maxHeight: "420px",
-                      overflow: "auto",
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-word",
+                      ...{
+                        maxHeight: "420px",
+                        overflow: "auto",
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word",
+                      },
+                      borderRadius: "var(--mantine-radius-md)",
                     }}
+                    component="pre"
                   >
                     {ladder.logs.map(formatLogEntry).join("\n\n")}
-                  </pre>
+                  </Box>
                 ) : (
-                  <p className="mb-0">No logs recorded.</p>
+                  <Text mb={0}>No logs recorded.</Text>
                 )}
-              </Card.Body>
+              </Box>
             </Card>
-          </Col>
-        </Row>
-      </Container>
+          </Grid.Col>
+        </Grid>
+      </Box>
     </div>
   );
 };
-
 export default GridLadderDetail;

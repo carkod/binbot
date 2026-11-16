@@ -1,49 +1,41 @@
-import React, { type ReactElement, useEffect, useState, type FC } from "react";
-import { Button, Modal } from "react-bootstrap";
-
+import { Button, Group, Modal } from "@mantine/core";
+import type { ReactNode } from "react";
 type ConfirmModalProps = {
   handleActions: (value: number) => void;
   show: boolean;
-  primary?: ReactElement | string;
-  secondary?: ReactElement | string;
-  children?: React.ReactNode;
+  onClose: () => void;
+  primary?: ReactNode;
+  secondary?: ReactNode;
+  children?: ReactNode;
 };
-
-const ConfirmModal: FC<ConfirmModalProps> = ({
+const ConfirmModal = ({
   handleActions,
   show,
-  secondary,
+  onClose,
   primary,
+  secondary,
   children,
-}) => {
-  const [toggle, setToggle] = useState(show);
-
-  useEffect(() => {
-    setToggle(show);
-  }, [show]);
-
+}: ConfirmModalProps) => {
   return (
     <Modal
-      show={toggle}
-      onHide={() => setToggle(false)}
-      onEscapeKeyDown={() => setToggle(false)}
+      opened={show}
+      onClose={onClose}
+      title="Are you sure?"
+      centered
+      closeButtonProps={{ "aria-label": "Cancel" }}
     >
-      <Modal.Header closeButton closeLabel="Cancel">
-        Are you sure?
-      </Modal.Header>
-      <Modal.Body>{children}</Modal.Body>
-      <Modal.Footer className="d-flex flex-row justify-content-between border border-bottom-0">
-        <Button variant="danger" onClick={() => handleActions(1)}>
+      {children}
+      <Group justify="space-between" mt="lg">
+        <Button color="danger" onClick={() => handleActions(1)}>
           {primary}
         </Button>
         {secondary && (
-          <Button variant="warning" onClick={() => handleActions(2)}>
+          <Button color="warning" onClick={() => handleActions(2)}>
             {secondary}
           </Button>
         )}
-      </Modal.Footer>
+      </Group>
     </Modal>
   );
 };
-
 export default ConfirmModal;

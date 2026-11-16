@@ -1,14 +1,17 @@
-import { useEffect, type FC } from "react";
 import {
+  Box,
   Button,
   Card,
-  Col,
-  Container,
-  Form,
-  Row,
-  ToggleButton,
-  ButtonGroup,
-} from "react-bootstrap";
+  Grid,
+  Group,
+  Input,
+  NativeSelect,
+  Stack,
+  Switch,
+  Text,
+  Title,
+} from "@mantine/core";
+import { useEffect, type FC } from "react";
 import { useForm, type FieldValues } from "react-hook-form";
 import {
   useEditSettingsMutation,
@@ -20,18 +23,16 @@ import {
   setSettingsField,
   setSettingsToggle,
 } from "../../features/autotradeSlice";
+import { BinanceKlineintervals, ExchangeId } from "../../utils/enums";
 import LightSwitch from "../components/LightSwitch";
 import SettingsInput from "../components/SettingsInput";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { type AppDispatch } from "../store";
-import { BinanceKlineintervals, ExchangeId } from "../../utils/enums";
-
 export const AutotradePage: FC<{}> = () => {
   const { data } = useGetSettingsQuery();
   const dispatch: AppDispatch = useAppDispatch();
   const { settings } = useAppSelector(selectSettings);
   const [updateSettings] = useEditSettingsMutation();
-
   const {
     register,
     watch,
@@ -65,7 +66,6 @@ export const AutotradePage: FC<{}> = () => {
       enable_grid_ladders: settings.enable_grid_ladders,
     },
   });
-
   const handleBlur = (e) => {
     const { name, value } = e.target;
     if (name && value) {
@@ -76,17 +76,14 @@ export const AutotradePage: FC<{}> = () => {
       }
     }
   };
-
   const saveSettings = async (formData) => {
     await updateSettings({ ...settings, ...formData }).unwrap();
   };
-
   useEffect(() => {
     if (data) {
       dispatch(setSettings(data));
     }
   }, [data]);
-
   useEffect(() => {
     const { unsubscribe } = watch((v, { name, type }) => {
       if (v && v?.[name]) {
@@ -99,7 +96,6 @@ export const AutotradePage: FC<{}> = () => {
         }
       }
     });
-
     if (settings) {
       reset({
         candlestick_interval: settings.candlestick_interval,
@@ -124,39 +120,53 @@ export const AutotradePage: FC<{}> = () => {
         enable_grid_ladders: settings.enable_grid_ladders,
       });
     }
-
     return () => unsubscribe();
   }, [dispatch, settings]);
-
   return (
-    <Container>
-      <Form onSubmit={handleSubmit(saveSettings)}>
-        <Card className="mt-3">
-          <Card.Header>
-            <Row>
-              <Col md="12">
-                <Card.Title>General bot autotrade</Card.Title>
-                <p className="fs-6 fw-light lh-1">
+    <Box w="100%">
+      <form onSubmit={handleSubmit(saveSettings)}>
+        <Card mb="md" mt={16}>
+          <Box mb="sm">
+            <Grid>
+              <Grid.Col
+                span={{
+                  base: 12,
+                  md: 12,
+                }}
+              >
+                <Title order={4}>General bot autotrade</Title>
+                <Text fz=".875rem" fw={300} lh={1}>
                   These settings trigger Bots automatically given the
                   parameters. They use the same services and endpoints as Bots.
-                </p>
-                <p className="fs-6 fw-light lh-1">
+                </Text>
+                <Text fz=".875rem" fw={300} lh={1}>
                   Bots that are autotrade will be set with mode: autotrade
-                </p>
-              </Col>
-            </Row>
-          </Card.Header>
-          <Card.Body>
-            <Container>
-              <Row>
-                <Col md={"12"} sm="12">
-                  <Row>
-                    <Col md="3">
-                      <Form.Group>
-                        <Form.Label htmlFor="exchange_id">
+                </Text>
+              </Grid.Col>
+            </Grid>
+          </Box>
+          <Box>
+            <Box w="100%">
+              <Grid>
+                <Grid.Col
+                  span={{
+                    base: 12,
+                    sm: 12,
+                    md: 12,
+                  }}
+                >
+                  <Grid>
+                    <Grid.Col
+                      span={{
+                        base: 12,
+                        md: 3,
+                      }}
+                    >
+                      <Stack gap={4} mb="sm">
+                        <Input.Label htmlFor="exchange_id">
                           Select Exchange
-                        </Form.Label>
-                        <Form.Select
+                        </Input.Label>
+                        <NativeSelect
                           id="exchange_id"
                           name="exchange_id"
                           onChange={(e) => {
@@ -178,21 +188,26 @@ export const AutotradePage: FC<{}> = () => {
                               {exchange.toString()}
                             </option>
                           ))}
-                        </Form.Select>
+                        </NativeSelect>
                         {errors.exchange_id && (
-                          <Form.Control.Feedback>
+                          <Input.Error>
                             {errors.exchange_id.message as string}
-                          </Form.Control.Feedback>
+                          </Input.Error>
                         )}
-                        <Form.Control.Feedback tooltip>
+                        <Input.Description>
                           <strong>Attention:</strong> Critical setting. If this
                           is changed bots, balances, symbols/charts will be set
                           to use this exchange&apos;s data
-                        </Form.Control.Feedback>
-                      </Form.Group>
-                    </Col>
+                        </Input.Description>
+                      </Stack>
+                    </Grid.Col>
 
-                    <Col md="3">
+                    <Grid.Col
+                      span={{
+                        base: 12,
+                        md: 3,
+                      }}
+                    >
                       <label htmlFor="telegram_signals">
                         Send messages to telegram?
                       </label>
@@ -211,21 +226,28 @@ export const AutotradePage: FC<{}> = () => {
                           );
                         }}
                       />
-                    </Col>
-                    <Col md="3"></Col>
-                  </Row>
-                  <Row>
-                    <Col md="3">
+                    </Grid.Col>
+                    <Grid.Col
+                      span={{
+                        base: 12,
+                        md: 3,
+                      }}
+                    ></Grid.Col>
+                  </Grid>
+                  <Grid>
+                    <Grid.Col
+                      span={{
+                        base: 12,
+                        md: 3,
+                      }}
+                    >
                       <label htmlFor="autotrade">Autotrade?</label>
                       <br />
-                      <ButtonGroup>
-                        <ToggleButton
+                      <Group gap="xs">
+                        <Switch
                           id="autotrade"
-                          className="position-relative"
                           checked={settings.autotrade}
-                          value={1}
-                          variant={settings.autotrade ? "primary" : "secondary"}
-                          onClick={(e) => {
+                          onChange={(e) => {
                             dispatch(
                               setSettingsToggle({
                                 name: "autotrade",
@@ -233,13 +255,17 @@ export const AutotradePage: FC<{}> = () => {
                               }),
                             );
                           }}
-                        >
-                          {settings.autotrade ? "On" : "Off"}
-                        </ToggleButton>
-                      </ButtonGroup>
-                    </Col>
-                    <Col md="3">
-                      <Form.Select
+                          label={settings.autotrade ? "On" : "Off"}
+                        />
+                      </Group>
+                    </Grid.Col>
+                    <Grid.Col
+                      span={{
+                        base: 12,
+                        md: 3,
+                      }}
+                    >
+                      <NativeSelect
                         id="candlestick_interval"
                         name="candlestick_interval"
                         onChange={(e) => {
@@ -263,9 +289,14 @@ export const AutotradePage: FC<{}> = () => {
                             </option>
                           ),
                         )}
-                      </Form.Select>
-                    </Col>
-                    <Col md="3">
+                      </NativeSelect>
+                    </Grid.Col>
+                    <Grid.Col
+                      span={{
+                        base: 12,
+                        md: 3,
+                      }}
+                    >
                       <SettingsInput
                         value={settings.max_active_autotrade_bots}
                         name={"max_active_autotrade_bots"}
@@ -273,10 +304,15 @@ export const AutotradePage: FC<{}> = () => {
                         handleBlur={handleBlur}
                         register={register}
                       />
-                    </Col>
-                  </Row>
-                  <Row>
-                    <Col md="3">
+                    </Grid.Col>
+                  </Grid>
+                  <Grid>
+                    <Grid.Col
+                      span={{
+                        base: 12,
+                        md: 3,
+                      }}
+                    >
                       <SettingsInput
                         value={settings.base_order_size}
                         name={"base_order_size"}
@@ -284,8 +320,13 @@ export const AutotradePage: FC<{}> = () => {
                         type="text"
                         register={register}
                       />
-                    </Col>
-                    <Col md="3">
+                    </Grid.Col>
+                    <Grid.Col
+                      span={{
+                        base: 12,
+                        md: 3,
+                      }}
+                    >
                       <SettingsInput
                         value={settings.fiat}
                         name={"fiat"}
@@ -294,11 +335,16 @@ export const AutotradePage: FC<{}> = () => {
                         register={register}
                         infoText="Careful! This is a global change of everything, from candlesticks to charts and bots as well as Binquant analytics"
                       />
-                    </Col>
-                  </Row>
+                    </Grid.Col>
+                  </Grid>
                   <hr />
-                  <Row>
-                    <Col md="3">
+                  <Grid>
+                    <Grid.Col
+                      span={{
+                        base: 12,
+                        md: 3,
+                      }}
+                    >
                       <SettingsInput
                         value={settings.stop_loss}
                         name={"stop_loss"}
@@ -306,20 +352,20 @@ export const AutotradePage: FC<{}> = () => {
                         type="number"
                         register={register}
                       />
-                    </Col>
-                    <Col md="3">
+                    </Grid.Col>
+                    <Grid.Col
+                      span={{
+                        base: 12,
+                        md: 3,
+                      }}
+                    >
                       <label htmlFor="autoswitch">Autoswitch?</label>
                       <br />
-                      <ButtonGroup>
-                        <ToggleButton
+                      <Group gap="xs">
+                        <Switch
                           id="autoswitch"
-                          className="position-relative"
                           checked={settings.autoswitch}
-                          value={1}
-                          variant={
-                            settings.autoswitch ? "primary" : "secondary"
-                          }
-                          onClick={(e) => {
+                          onChange={(e) => {
                             dispatch(
                               setSettingsToggle({
                                 name: "autoswitch",
@@ -327,15 +373,19 @@ export const AutotradePage: FC<{}> = () => {
                               }),
                             );
                           }}
-                        >
-                          {settings.autoswitch ? "On" : "Off"}
-                        </ToggleButton>
-                      </ButtonGroup>
-                    </Col>
-                  </Row>
+                          label={settings.autoswitch ? "On" : "Off"}
+                        />
+                      </Group>
+                    </Grid.Col>
+                  </Grid>
                   <hr />
-                  <Row>
-                    <Col md="3">
+                  <Grid>
+                    <Grid.Col
+                      span={{
+                        base: 12,
+                        md: 3,
+                      }}
+                    >
                       <label htmlFor="trailing">Trailing</label>
                       <br />
                       <LightSwitch
@@ -352,11 +402,16 @@ export const AutotradePage: FC<{}> = () => {
                           );
                         }}
                       />
-                    </Col>
-                  </Row>
+                    </Grid.Col>
+                  </Grid>
                   {settings.trailing ? (
-                    <Row>
-                      <Col md="3">
+                    <Grid>
+                      <Grid.Col
+                        span={{
+                          base: 12,
+                          md: 3,
+                        }}
+                      >
                         <SettingsInput
                           value={settings.trailing_deviation}
                           name={"trailing_deviation"}
@@ -365,8 +420,13 @@ export const AutotradePage: FC<{}> = () => {
                           infoText="Should be kept as small as possible as this will increase funds needed to start base_order_size"
                           register={register}
                         />
-                      </Col>
-                      <Col md="3">
+                      </Grid.Col>
+                      <Grid.Col
+                        span={{
+                          base: 12,
+                          md: 3,
+                        }}
+                      >
                         <SettingsInput
                           value={settings.trailing_profit}
                           name={"trailing_profit"}
@@ -374,11 +434,16 @@ export const AutotradePage: FC<{}> = () => {
                           type="number"
                           register={register}
                         />
-                      </Col>
-                    </Row>
+                      </Grid.Col>
+                    </Grid>
                   ) : (
-                    <Row>
-                      <Col md="3">
+                    <Grid>
+                      <Grid.Col
+                        span={{
+                          base: 12,
+                          md: 3,
+                        }}
+                      >
                         <SettingsInput
                           value={settings.take_profit}
                           name={"take_profit"}
@@ -386,44 +451,49 @@ export const AutotradePage: FC<{}> = () => {
                           type="number"
                           register={register}
                         />
-                      </Col>
-                    </Row>
+                      </Grid.Col>
+                    </Grid>
                   )}
-                </Col>
-              </Row>
-            </Container>
-          </Card.Body>
+                </Grid.Col>
+              </Grid>
+            </Box>
+          </Box>
         </Card>
-        <Card className="mt-3">
-          <Card.Header>
-            <Row>
-              <Col md="12">
-                <Card.Title>Grid trading</Card.Title>
-                <p className="fs-6 fw-light lh-1">
+        <Card mb="md" mt={16}>
+          <Box mb="sm">
+            <Grid>
+              <Grid.Col
+                span={{
+                  base: 12,
+                  md: 12,
+                }}
+              >
+                <Title order={4}>Grid trading</Title>
+                <Text fz=".875rem" fw={300} lh={1}>
                   Allocation and ladder limits for automatic futures grid
                   deployments.
-                </p>
-              </Col>
-            </Row>
-          </Card.Header>
-          <Card.Body>
-            <Container>
-              <Row>
-                <Col md="3">
+                </Text>
+              </Grid.Col>
+            </Grid>
+          </Box>
+          <Box>
+            <Box w="100%">
+              <Grid>
+                <Grid.Col
+                  span={{
+                    base: 12,
+                    md: 3,
+                  }}
+                >
                   <label htmlFor="enable_grid_ladders">
                     Enable grid ladders?
                   </label>
                   <br />
-                  <ButtonGroup>
-                    <ToggleButton
+                  <Group gap="xs">
+                    <Switch
                       id="enable_grid_ladders"
-                      className="position-relative"
                       checked={settings.enable_grid_ladders}
-                      value={1}
-                      variant={
-                        settings.enable_grid_ladders ? "primary" : "secondary"
-                      }
-                      onClick={(e) => {
+                      onChange={(e) => {
                         dispatch(
                           setSettingsToggle({
                             name: "enable_grid_ladders",
@@ -431,17 +501,21 @@ export const AutotradePage: FC<{}> = () => {
                           }),
                         );
                       }}
-                    >
-                      {settings.enable_grid_ladders ? "On" : "Off"}
-                    </ToggleButton>
-                  </ButtonGroup>
-                </Col>
-              </Row>
+                      label={settings.enable_grid_ladders ? "On" : "Off"}
+                    />
+                  </Group>
+                </Grid.Col>
+              </Grid>
               {settings.enable_grid_ladders && (
                 <>
                   <hr />
-                  <Row>
-                    <Col md="3">
+                  <Grid>
+                    <Grid.Col
+                      span={{
+                        base: 12,
+                        md: 3,
+                      }}
+                    >
                       <SettingsInput
                         value={settings.grid_allocation_pct}
                         name={"grid_allocation_pct"}
@@ -449,8 +523,13 @@ export const AutotradePage: FC<{}> = () => {
                         type="number"
                         register={register}
                       />
-                    </Col>
-                    <Col md="3">
+                    </Grid.Col>
+                    <Grid.Col
+                      span={{
+                        base: 12,
+                        md: 3,
+                      }}
+                    >
                       <SettingsInput
                         value={settings.grid_cash_reserve_pct}
                         name={"grid_cash_reserve_pct"}
@@ -458,8 +537,13 @@ export const AutotradePage: FC<{}> = () => {
                         type="number"
                         register={register}
                       />
-                    </Col>
-                    <Col md="3">
+                    </Grid.Col>
+                    <Grid.Col
+                      span={{
+                        base: 12,
+                        md: 3,
+                      }}
+                    >
                       <SettingsInput
                         value={settings.grid_total_margin}
                         name={"grid_total_margin"}
@@ -467,10 +551,15 @@ export const AutotradePage: FC<{}> = () => {
                         type="number"
                         register={register}
                       />
-                    </Col>
-                  </Row>
-                  <Row>
-                    <Col md="3">
+                    </Grid.Col>
+                  </Grid>
+                  <Grid>
+                    <Grid.Col
+                      span={{
+                        base: 12,
+                        md: 3,
+                      }}
+                    >
                       <SettingsInput
                         value={settings.grid_level_count}
                         name={"grid_level_count"}
@@ -479,8 +568,13 @@ export const AutotradePage: FC<{}> = () => {
                         step={1}
                         register={register}
                       />
-                    </Col>
-                    <Col md="3">
+                    </Grid.Col>
+                    <Grid.Col
+                      span={{
+                        base: 12,
+                        md: 3,
+                      }}
+                    >
                       <SettingsInput
                         value={settings.grid_max_active_ladders}
                         name={"grid_max_active_ladders"}
@@ -489,8 +583,13 @@ export const AutotradePage: FC<{}> = () => {
                         step={1}
                         register={register}
                       />
-                    </Col>
-                    <Col md="3">
+                    </Grid.Col>
+                    <Grid.Col
+                      span={{
+                        base: 12,
+                        md: 3,
+                      }}
+                    >
                       <SettingsInput
                         value={settings.max_margin_per_ladder_pct}
                         name={"max_margin_per_ladder_pct"}
@@ -498,23 +597,26 @@ export const AutotradePage: FC<{}> = () => {
                         type="number"
                         register={register}
                       />
-                    </Col>
-                  </Row>
+                    </Grid.Col>
+                  </Grid>
                 </>
               )}
-            </Container>
-          </Card.Body>
+            </Box>
+          </Box>
         </Card>
-        <Row className="mt-3 mb-3">
-          <Col>
+        <Grid mt={16} mb={16}>
+          <Grid.Col
+            span={{
+              base: "auto",
+            }}
+          >
             <Button color="primary" type="submit">
               Save
             </Button>{" "}
-          </Col>
-        </Row>
-      </Form>
-    </Container>
+          </Grid.Col>
+        </Grid>
+      </form>
+    </Box>
   );
 };
-
 export default AutotradePage;

@@ -1,13 +1,14 @@
 import "@testing-library/jest-dom";
-import { render, screen as testingScreen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { vi } from "vitest";
+import moment from "moment";
 import { Provider } from "react-redux";
-import BotsPage from "../Bots";
-import { SpinnerContext } from "../../spinner-context";
+import { vi } from "vitest";
+import { render, screen as testingScreen } from "../../../utils/render";
 import { BulkAction } from "../../components/BotsActions";
-import { makeStore } from "../../store";
 import { SymbolContext } from "../../hooks";
+import { SpinnerContext } from "../../spinner-context";
+import { makeStore } from "../../store";
+import BotsPage from "../Bots";
 
 const mockRefetch = vi.fn();
 const mockMutation = vi.fn(() => ({
@@ -120,16 +121,25 @@ describe("BotsPage", () => {
   it("handles date filter changes", async () => {
     const { user } = renderWithProviders(<BotsPage />, { store: makeStore() });
 
-    const startDateInput =
-      testingScreen.getByLabelText(/Filter by start date/i);
-    const endDateInput = testingScreen.getByLabelText(/Filter by end date/i);
-    await user.clear(startDateInput);
-    await user.type(startDateInput, "2023-01-01");
-    await user.clear(endDateInput);
-    await user.type(endDateInput, "2023-12-31");
+    const startDateInput = testingScreen.getByRole("button", {
+      name: /^Filter by start date/,
+    });
+    const endDateInput = testingScreen.getByRole("button", {
+      name: /^Filter by end date/,
+    });
+    const start = moment().subtract(7, "days").startOf("month");
+    const end = moment().date(28);
+    await user.click(startDateInput);
+    await user.click(
+      testingScreen.getByRole("button", { name: start.format("D MMMM YYYY") }),
+    );
+    await user.click(endDateInput);
+    await user.click(
+      testingScreen.getByRole("button", { name: end.format("D MMMM YYYY") }),
+    );
 
-    expect(startDateInput).toHaveValue("2023-01-01");
-    expect(endDateInput).toHaveValue("2023-12-31");
+    expect(startDateInput).toHaveTextContent(start.format("DD/MM/YYYY"));
+    expect(endDateInput).toHaveTextContent(end.format("DD/MM/YYYY"));
   });
 
   it("handles bot deletion", async () => {

@@ -1,6 +1,5 @@
-import type { FC, ChangeEvent } from "react";
-import { Form } from "react-bootstrap";
-
+import { NativeSelect, Stack } from "@mantine/core";
+import type { ChangeEvent, FC } from "react";
 export enum BulkAction {
   NONE = "",
   DELETE = "delete-selected",
@@ -13,11 +12,10 @@ interface BotsActionsProps {
   defaultValue: string;
   handleChange: (e: ChangeEvent<HTMLSelectElement>) => void;
 }
-
 const BotsActions: FC<BotsActionsProps> = ({ defaultValue, handleChange }) => {
   return (
-    <Form.Group>
-      <Form.Select
+    <Stack gap={4} mb="sm">
+      <NativeSelect
         aria-label="Select bulk actions"
         name="bulkActions"
         id="bulk-actions"
@@ -30,9 +28,8 @@ const BotsActions: FC<BotsActionsProps> = ({ defaultValue, handleChange }) => {
         <option value={BulkAction.COMPLETED}>Show completed only</option>
         <option value={BulkAction.ACTIVE}>Show active only</option>
         <option value={BulkAction.SELECT_ALL}>Select all</option>
-      </Form.Select>
-    </Form.Group>
+      </NativeSelect>
+    </Stack>
   );
 };
-
 export default BotsActions;

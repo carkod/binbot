@@ -3,21 +3,13 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 
 export default defineConfig({
-  css: {
-    preprocessorOptions: {
-      scss: {
-        quietDeps: true,
-      },
-    },
-  },
   plugins: [react()],
   resolve: {
     alias: {
       "@public": path.resolve(import.meta.dirname, "charting_library"),
-      "~bootstrap": path.resolve(import.meta.dirname, "node_modules/bootstrap"),
     },
   },
-  publicDir: "/charting_library",
+  publicDir: "node_modules/binbot-charts/public",
   server: {
     open: true,
     port: 5173,

@@ -1,39 +1,32 @@
-import { useState, type FC } from "react";
-import { Form } from "react-bootstrap";
+import { DatePickerInput } from "@mantine/dates";
+import { type FC } from "react";
 import { convertTsToInputDate } from "../../utils/time";
-
 interface BotsDateFilterProps {
-  selectedDate: number;
+  selectedDate: number | undefined;
   title: string;
   controlId: string; // Unique ID to identify
-  handleDateChange: (ts: number) => void;
+  handleDateChange: (ts: number | undefined) => void;
 }
-
 const BotsDateFilter: FC<BotsDateFilterProps> = ({
   title,
   selectedDate,
   controlId,
   handleDateChange,
 }) => {
-  const defaultDate: string = selectedDate
-    ? convertTsToInputDate(selectedDate)
-    : "";
-  const [date, setDate] = useState(defaultDate);
-
   return (
-    <Form.Group controlId={controlId}>
-      <Form.Label>{title}</Form.Label>
-      <Form.Control
-        type="date"
-        value={date}
-        onChange={(e) => setDate(e.target.value)}
-        onBlur={(e) => {
-          const ts: number = new Date(e.target.value).getTime();
-          handleDateChange(ts);
-        }}
-      />
-    </Form.Group>
+    <DatePickerInput
+      id={controlId}
+      label={title}
+      placeholder="Select date"
+      value={selectedDate ? convertTsToInputDate(selectedDate) : null}
+      valueFormat="DD/MM/YYYY"
+      onChange={(date) =>
+        handleDateChange(date ? new Date(date).getTime() : undefined)
+      }
+      clearable
+      clearButtonProps={{ "aria-label": `Clear ${title.toLowerCase()}` }}
+      mb="sm"
+    />
   );
 };
-
 export default BotsDateFilter;

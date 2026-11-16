@@ -1,12 +1,10 @@
-import { Badge, Card, ListGroup } from "react-bootstrap";
-import { type GainersLosersProps } from "./GainersLosers";
-import { normalizePriceChangePercent } from "../../utils/gainers-losers";
+import { Anchor, Badge, Box, Stack, Title } from "@mantine/core";
 import { MarketType } from "../../utils/enums";
-
+import { normalizePriceChangePercent } from "../../utils/gainers-losers";
+import { type GainersLosersProps } from "./GainersLosers";
 interface GainersLosersCardProps extends GainersLosersProps {
   title: string;
 }
-
 const GainersLosersCard = ({
   data,
   market_type,
@@ -16,36 +14,37 @@ const GainersLosersCard = ({
     market_type === MarketType.FUTURES
       ? `/bots/futures/new/${symbol}`
       : `/bots/new/${symbol}`;
-
   return (
-    <Card.Body>
-      <Card.Title>{title}</Card.Title>
-      <ListGroup className="list-group-flush">
+    <Box>
+      <Title order={4}>{title}</Title>
+      <Stack gap={0}>
         {data.map((x, i) => {
           const priceChangePercent = normalizePriceChangePercent(x);
-
           return (
             parseFloat(priceChangePercent) !== 0 && (
-              <ListGroup.Item key={i}>
-                <Card.Link
+              <Box key={i} py="xs" className="detail-row">
+                <Anchor
                   href={getNewBotPath(x.symbol)}
-                  className="text-break"
+                  style={{
+                    overflowWrap: "anywhere",
+                  }}
                 >
                   {x.symbol}
-                </Card.Link>
+                </Anchor>
                 <Badge
-                  bg={parseFloat(priceChangePercent) > 0 ? "success" : "danger"}
-                  className="u-float-right"
+                  color={
+                    parseFloat(priceChangePercent) > 0 ? "success" : "danger"
+                  }
+                  variant="light"
                 >
                   {priceChangePercent + "%"}
                 </Badge>
-              </ListGroup.Item>
+              </Box>
             )
           );
         })}
-      </ListGroup>
-    </Card.Body>
+      </Stack>
+    </Box>
   );
 };
-
 export default GainersLosersCard;

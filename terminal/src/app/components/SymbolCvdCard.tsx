@@ -1,6 +1,6 @@
+import { Text } from "@mantine/core";
 import { useCvdSymbolQuery } from "../../features/marketApiSlice";
 import StoredCvdCard from "./StoredCvdCard";
-
 const SymbolCvdCard = ({
   symbol,
   enabled,
@@ -10,13 +10,13 @@ const SymbolCvdCard = ({
 }) => {
   const { currentData, isFetching, isError } = useCvdSymbolQuery(symbol, {
     skip: !enabled || !symbol,
-    pollingInterval: 30_000,
+    pollingInterval: 30000,
     refetchOnMountOrArgChange: true,
     refetchOnFocus: true,
     refetchOnReconnect: true,
   });
   if (!enabled || !symbol) {
-    return <p>Enter a symbol</p>;
+    return <Text>Enter a symbol</Text>;
   }
   return (
     <StoredCvdCard
@@ -28,5 +28,4 @@ const SymbolCvdCard = ({
     />
   );
 };
-
 export default SymbolCvdCard;

@@ -1,16 +1,10 @@
+import { Box, Tabs } from "@mantine/core";
 import "@testing-library/jest-dom";
-import {
-  act,
-  fireEvent,
-  render,
-  screen as testingScreen,
-} from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import moment from "moment";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router";
-import { Tab } from "react-bootstrap";
 import { vi } from "vitest";
-import { makeStore } from "../../store";
-import { SymbolContext, useAppSelector } from "../../hooks";
 import { singleBot, type Bot } from "../../../features/bots/botInitialState";
 import {
   selectBot,
@@ -25,11 +19,19 @@ import {
   MarketType,
   TabsKeys,
 } from "../../../utils/enums";
+import {
+  act,
+  fireEvent,
+  render,
+  screen as testingScreen,
+} from "../../../utils/render";
+import { matchTsToTimescale } from "../../../utils/time";
+import { SymbolContext, useAppSelector } from "../../hooks";
+import { makeStore } from "../../store";
+import BaseOrderTab from "../BaseOrderTab";
 import ChartContainer from "../ChartContainer";
 import StopLossTab from "../StopLossTab";
 import TakeProfit from "../TakeProfitTab";
-import BaseOrderTab from "../BaseOrderTab";
-import { matchTsToTimescale } from "../../../utils/time";
 const chart = vi.hoisted(() => ({ props: null as any }));
 vi.mock("binbot-charts", () => ({
   default: (props: any) => {
@@ -85,13 +87,13 @@ function setup(tab: TabsKeys, overrides: Partial<Bot> = {}) {
         }}
       >
         <MemoryRouter>
-          <Tab.Container activeKey={tab}>
-            <Tab.Content>
+          <Tabs value={tab}>
+            <Box>
               <StopLossTab />
               <TakeProfit />
               <BaseOrderTab />
-            </Tab.Content>
-          </Tab.Container>
+            </Box>
+          </Tabs>
           <BotChart />
           <button>Elsewhere</button>
         </MemoryRouter>
@@ -346,16 +348,15 @@ it.each([BotStatus.PENDING, BotStatus.ACTIVE, BotStatus.COMPLETED])(
   },
 );
 
-it("updates the expiry input and mark while dragging only its focused handle", () => {
+it("updates the expiry picker and mark while dragging only its focused handle", async () => {
+  const user = userEvent.setup();
   const expiresAt = Math.ceil(Date.now() / 60000) * 60000 + 6 * 60 * 60 * 1000;
   const store = setup(TabsKeys.MAIN, {
     entry_mode: EntryMode.CONDITIONAL_LIMIT,
     entry_price: 100,
     entry_expires_at: expiresAt,
   });
-  const input = testingScreen.getByLabelText(
-    "Entry expires at",
-  ) as HTMLInputElement;
+  const input = testingScreen.getByLabelText("Entry expires at");
   expect(chart.props.timeMarker).toBeUndefined();
   fireEvent.focus(input);
   expect(editable()).toContain("base_order");
@@ -363,12 +364,22 @@ it("updates the expiry input and mark while dragging only its focused handle", (
     id: "conditional_entry_expiry",
     time: expiresAt / 1000,
   });
+  await user.click(input);
+  await user.click(
+    testingScreen.getByRole("spinbutton", { name: "Expiry hours" }),
+  );
+  expect(chart.props.timeMarker.time).toBe(expiresAt / 1000);
+  await user.click(
+    testingScreen.getByRole("button", { name: "Apply entry expiry" }),
+  );
   fireEvent.pointerDown(testingScreen.getByTestId("chart"));
   for (const minutes of [15, 75]) {
     const time = expiresAt / 1000 + minutes * 60;
     act(() => chart.props.onTimeMarkerMove("conditional_entry_expiry", time));
     expect(store.getState().bot.bot.entry_expires_at).toBe(time * 1000);
-    expect(new Date(input.value).getTime()).toBe(time * 1000);
+    expect(input).toHaveTextContent(
+      moment(time * 1000).format("DD/MM/YYYY HH:mm:ss"),
+    );
     expect(chart.props.timeMarker.time).toBe(time);
     expect(
       chart.props.timescaleMarks.find(

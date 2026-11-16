@@ -1,20 +1,7 @@
-import type { FC } from "react";
-import { Container, Row } from "react-bootstrap";
-
-export const Footer: FC<{}> = () => {
-  return (
-    <footer className="footer footer-default mt-auto">
-      <Container fluid>
-        <Row>
-          <div className="credits ml-auto">
-            <div className="copyright">
-              &copy; {`2018 - ${new Date().getFullYear()} Binbot`}
-            </div>
-          </div>
-        </Row>
-      </Container>
-    </footer>
-  );
-};
-
+import { Text } from "@mantine/core";
+export const Footer = () => (
+  <Text component="footer" size="xs" c="dimmed" ta="right" mt="xl" py="md">
+    &copy; {`2018 - ${new Date().getFullYear()} Binbot`}
+  </Text>
+);
 export default Footer;

@@ -1,5 +1,4 @@
 import "@testing-library/jest-dom";
-import { render, screen as rtlScreen } from "@testing-library/react";
 import {
   beforeEach as beforeEachTest,
   describe as describeBlock,
@@ -7,6 +6,7 @@ import {
   it as testCase,
   vi,
 } from "vitest";
+import { render, screen as rtlScreen } from "../../../utils/render";
 
 type PlotlyTrace = {
   name?: string;

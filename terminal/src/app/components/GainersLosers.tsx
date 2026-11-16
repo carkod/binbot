@@ -1,17 +1,13 @@
-import Card from "react-bootstrap/Card";
-import Col from "react-bootstrap/Col";
-import Row from "react-bootstrap/Row";
+import { Card, Grid } from "@mantine/core";
 import { computeWinnerLoserProportions } from "../../utils/dashboard-computations";
+import { type MarketType } from "../../utils/enums";
 import { type DashboardTicker } from "../../utils/gainers-losers";
 import { roundDecimals, toPercentage } from "../../utils/math";
 import GainersLosersCard from "./GainersLosersCard";
-import { type MarketType } from "../../utils/enums";
-
 export interface GainersLosersProps {
   data: DashboardTicker[];
   market_type?: MarketType;
 }
-
 export default function GainersLosers({
   data,
   market_type,
@@ -26,13 +22,13 @@ export default function GainersLosers({
   const perLosers = `${toPercentage(loserCount / data.length) ?? 0}%`;
   return (
     <div>
-      <Card border="success">
+      <Card mb="md">
         <div className="p-line-chart">
           <div className="p-line-chart__box">
-            <div className="p-line-chart--left" style={{ width: perGainers }}>
+            <div style={{ width: perGainers }} className="p-line-chart--left">
               <span>{roundDecimals(gainerAccumulator)}</span>
             </div>
-            <div className="p-line-chart--right" style={{ width: perLosers }}>
+            <div style={{ width: perLosers }} className="p-line-chart--right">
               <span>{roundDecimals(loserAccumulator)}</span>
             </div>
           </div>
@@ -46,22 +42,30 @@ export default function GainersLosers({
           </div>
         </div>
 
-        <Row className="g-0">
-          <Col>
+        <Grid gap={0}>
+          <Grid.Col
+            span={{
+              base: "auto",
+            }}
+          >
             <GainersLosersCard
               data={gainersData}
               market_type={market_type}
               title="Today's gainers"
             />
-          </Col>
-          <Col>
+          </Grid.Col>
+          <Grid.Col
+            span={{
+              base: "auto",
+            }}
+          >
             <GainersLosersCard
               data={losersData}
               market_type={market_type}
               title="Today's losers"
             />
-          </Col>
-        </Row>
+          </Grid.Col>
+        </Grid>
       </Card>
     </div>
   );

@@ -1,18 +1,18 @@
 import "@testing-library/jest-dom";
+import type { ComponentProps } from "react";
+import { vi } from "vitest";
+import {
+  OBI_WINDOW_MS,
+  type ObiSnapshot,
+} from "../../../features/kucoinLiquidity";
 import {
   act,
   fireEvent,
   render,
   screen as testingScreen,
-} from "@testing-library/react";
-import { vi } from "vitest";
-import SpreadAndDepthCardView from "../SpreadAndDepthCard";
-import type { ComponentProps } from "react";
+} from "../../../utils/render";
 import { useOrderBookHistory } from "../../hooks/useOrderBookHistory";
-import {
-  OBI_WINDOW_MS,
-  type ObiSnapshot,
-} from "../../../features/kucoinLiquidity";
+import SpreadAndDepthCardView from "../SpreadAndDepthCard";
 
 const SpreadAndDepthCard = ({
   snapshot,

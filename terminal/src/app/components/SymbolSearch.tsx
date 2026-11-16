@@ -1,9 +1,7 @@
-import { type ChangeEvent, useEffect, useState, type FC } from "react";
-import { Typeahead } from "react-bootstrap-typeahead";
-import "react-bootstrap-typeahead/css/Typeahead.css";
-import Form from "react-bootstrap/Form";
+import { Autocomplete } from "@mantine/core";
+import type { ChangeEvent } from "react";
+import { useEffect, useState } from "react";
 import { useSymbolData } from "../hooks";
-
 type SymbolSearchProps = {
   name: string;
   label?: string;
@@ -19,80 +17,51 @@ type SymbolSearchProps = {
   onBlur?: (e: ChangeEvent<HTMLInputElement>) => void;
   errors?: object;
 };
-
-const SymbolSearch: FC<SymbolSearchProps> = ({
+const SymbolSearch = ({
   name,
-  label = null,
+  label,
   value,
-  onBlur = () => undefined,
+  defaultValue = "",
+  onBlur,
   required = false,
   disabled = false,
   errors = {},
   placeholder = "",
-  options: providedOptions,
+  options,
   size,
   onChange,
   onInputChange,
-}) => {
-  const [state, setState] = useState<string>(value ?? "");
-  const [options, setOptions] = useState<string[]>([]);
+}: SymbolSearchProps) => {
+  const [text, setText] = useState(value ?? defaultValue);
   const { symbolsList } = useSymbolData();
-  const availableOptions = providedOptions ?? symbolsList;
-
   useEffect(() => {
-    if (value !== undefined) {
-      setState(value);
-    }
+    if (value !== undefined) setText(value);
   }, [value]);
-
-  useEffect(() => {
-    if (availableOptions.length > 0) {
-      setOptions(availableOptions);
-    }
-  }, [availableOptions]);
-
+  const error = errors[name];
   return (
-    <Form.Group>
-      {label && (
-        <Form.Label htmlFor={name}>
-          {label}
-          {required && <span className="u-required">*</span>}
-        </Form.Label>
-      )}
-      <Typeahead
-        id={name}
-        size={size}
-        inputProps={{ id: name, name, required }}
-        options={options}
-        {...(required
-          ? { isInvalid: Boolean(errors?.[name]) || !state.trim() }
-          : {})}
-        disabled={disabled}
-        selected={state ? [state] : []}
-        onChange={(selected) => {
-          // Typeahead also emits an empty selection while the user types.
-          // Input changes already update the text through onInputChange.
-          if (selected.length > 0) {
-            const symbol = selected[0] as string;
-            setState(symbol);
-            onChange?.(symbol);
-          }
-        }}
-        onInputChange={(value) => {
-          setState(value);
-          onInputChange?.(value);
-        }}
-        onBlur={(e) => onBlur(e)}
-        placeholder={placeholder}
-      />
-
-      {errors[name] && (
-        <Form.Control.Feedback type="invalid" className="d-block" role="alert">
-          {errors[name]}
-        </Form.Control.Feedback>
-      )}
-    </Form.Group>
+    <Autocomplete
+      id={name}
+      name={name}
+      label={label}
+      required={required}
+      disabled={disabled}
+      placeholder={placeholder}
+      size={size}
+      data={options ?? symbolsList}
+      value={text}
+      limit={50}
+      error={error ? String(error.message ?? error) : required && !text.trim()}
+      onChange={(next) => {
+        setText(next);
+        onInputChange?.(next);
+      }}
+      onOptionSubmit={(next) => {
+        setText(next);
+        onChange?.(next);
+      }}
+      onBlur={onBlur}
+      comboboxProps={{ withinPortal: true }}
+    />
   );
 };
-
 export default SymbolSearch;

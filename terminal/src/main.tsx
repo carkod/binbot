@@ -1,20 +1,23 @@
-import React from "react";
+import { MantineProvider } from "@mantine/core";
+import "@mantine/core/styles.css";
+import "@mantine/dates/styles.css";
 import { MotionConfig } from "motion/react";
+import React from "react";
 import { createRoot } from "react-dom/client";
-import App from "./App";
-import { chartTransition } from "./utils/motion";
 import "react-toastify/dist/ReactToastify.css";
-import "./assets/scss/paper-dashboard.scss";
-
+import App from "./App";
+import "./styles/terminal.css";
+import { theme } from "./theme";
+import { chartTransition } from "./utils/motion";
 const container = document.getElementById("root");
-
 if (container) {
   const root = createRoot(container);
-
   root.render(
     <React.StrictMode>
       <MotionConfig reducedMotion="never" transition={chartTransition}>
-        <App />
+        <MantineProvider theme={theme} forceColorScheme="light">
+          <App />
+        </MantineProvider>
       </MotionConfig>
     </React.StrictMode>,
   );

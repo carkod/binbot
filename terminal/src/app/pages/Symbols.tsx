@@ -1,22 +1,30 @@
+import {
+  Box,
+  Button,
+  Card,
+  Grid,
+  Input,
+  Stack,
+  TextInput,
+  Title,
+  VisuallyHidden,
+} from "@mantine/core";
 import { type FC, useEffect, useState } from "react";
-import { Button, Card, Col, Row, Form } from "react-bootstrap";
-import SymbolSearch from "../components/SymbolSearch";
+import { type FieldValues, useForm } from "react-hook-form";
 import {
   type SymbolRequestPayload,
   useDeleteSymbolMutation,
-  useUpdateSymbolMutation,
   useGetSymbolsQuery,
+  useUpdateSymbolMutation,
 } from "../../features/symbolsApiSlice";
-import LightSwitch from "../components/LightSwitch";
-import { type FieldValues, useForm } from "react-hook-form";
 import ConfirmModal from "../components/ConfirmModal";
-
+import LightSwitch from "../components/LightSwitch";
+import SymbolSearch from "../components/SymbolSearch";
 const SymbolsPage: FC = () => {
   const { data: symbols } = useGetSymbolsQuery();
   const [updateSymbol] = useUpdateSymbolMutation();
   const [deleteSymbol] = useDeleteSymbolMutation();
   const [symbolsList, setSymbolsList] = useState<string[]>([]);
-
   const [seletedSymbolsItem, setSeletedSymbolsItem] =
     useState<SymbolRequestPayload>({
       id: "",
@@ -30,7 +38,6 @@ const SymbolsPage: FC = () => {
       quote_asset: "",
     });
   const [confirmDelete, setConfirmDelete] = useState<boolean>(false);
-
   const {
     register,
     setValue,
@@ -41,53 +48,68 @@ const SymbolsPage: FC = () => {
     mode: "onTouched",
     reValidateMode: "onBlur",
   });
-
   useEffect(() => {
     if (symbols && symbols.length > 0) {
       const pairs = symbols.map((symbol) => symbol.id);
       setSymbolsList(pairs);
     }
   }, [symbols]);
-
+  const selectSymbol = (pair: string) => {
+    const symbol = symbols.find((s) => s.id === pair);
+    if (symbol) {
+      setSeletedSymbolsItem({
+        id: symbol.id,
+        blacklist_reason: symbol.blacklist_reason,
+        active: symbol.active,
+        cooldown: symbol.cooldown,
+        cooldown_start_ts: symbol.cooldown_start_ts,
+        futures_leverage: symbol.futures_leverage,
+        exchange_id: symbol.exchange_id,
+        base_asset: symbol.base_asset,
+        quote_asset: symbol.quote_asset,
+      });
+    }
+  };
   return (
     <div className="content">
-      <Card>
-        <Card.Header>
-          <Card.Title>Symbols</Card.Title>
-        </Card.Header>
-        <Card.Body>
+      <Card mb="md">
+        <Box mb="sm">
+          <Title order={4}>Symbols</Title>
+        </Box>
+        <Box>
           {symbols && symbols.length > 0 && (
-            <Row>
-              <Col md="6">
+            <Grid>
+              <Grid.Col
+                span={{
+                  base: 12,
+                  md: 6,
+                }}
+              >
                 <SymbolSearch
                   name="pair"
                   label="Select pair"
                   options={symbolsList}
                   required
                   errors={errors}
-                  onBlur={(e) => {
-                    const symbol = symbols.find((s) => s.id === e.target.value);
-                    if (symbol) {
-                      setSeletedSymbolsItem({
-                        id: symbol.id,
-                        blacklist_reason: symbol.blacklist_reason,
-                        active: symbol.active,
-                        cooldown: symbol.cooldown,
-                        cooldown_start_ts: symbol.cooldown_start_ts,
-                        futures_leverage: symbol.futures_leverage,
-                        exchange_id: symbol.exchange_id,
-                        base_asset: symbol.base_asset,
-                        quote_asset: symbol.quote_asset,
-                      });
-                    }
-                  }}
+                  onChange={selectSymbol}
+                  onBlur={(event) => selectSymbol(event.target.value)}
                 />
-              </Col>
+              </Grid.Col>
               {symbolsList && seletedSymbolsItem.id !== "" && (
-                <Col md="6">
-                  <Row>
-                    <Col md="4">
-                      <Form.Group>
+                <Grid.Col
+                  span={{
+                    base: 12,
+                    md: 6,
+                  }}
+                >
+                  <Grid>
+                    <Grid.Col
+                      span={{
+                        base: 12,
+                        md: 4,
+                      }}
+                    >
+                      <Stack gap={4} mb="sm">
                         <label htmlFor="telegram_signals">Active?</label>
                         <br />
                         <LightSwitch
@@ -101,14 +123,19 @@ const SymbolsPage: FC = () => {
                             });
                           }}
                         />
-                      </Form.Group>
-                    </Col>
-                    <Col md="8">
-                      <Form.Group>
+                      </Stack>
+                    </Grid.Col>
+                    <Grid.Col
+                      span={{
+                        base: 12,
+                        md: 8,
+                      }}
+                    >
+                      <Stack gap={4} mb="sm">
                         <label htmlFor="blacklist_reason">
                           Blacklisted reason
                         </label>
-                        <Form.Control
+                        <TextInput
                           type="text"
                           name="blacklist_reason"
                           id="blacklist_reason"
@@ -120,15 +147,20 @@ const SymbolsPage: FC = () => {
                             })
                           }
                         />
-                      </Form.Group>
-                    </Col>
-                  </Row>
+                      </Stack>
+                    </Grid.Col>
+                  </Grid>
                   <br />
-                  <Row>
-                    <Col md="6">
-                      <Form.Group>
-                        <Form.Label htmlFor="cooldown">Cooldown</Form.Label>
-                        <Form.Control
+                  <Grid>
+                    <Grid.Col
+                      span={{
+                        base: 12,
+                        md: 6,
+                      }}
+                    >
+                      <Stack gap={4} mb="sm">
+                        <Input.Label htmlFor="cooldown">Cooldown</Input.Label>
+                        <TextInput
                           type="number"
                           name="cooldown"
                           id="cooldown"
@@ -143,14 +175,19 @@ const SymbolsPage: FC = () => {
                             });
                           }}
                         />
-                      </Form.Group>
-                    </Col>
-                    <Col md="6">
-                      <Form.Group>
-                        <Form.Label htmlFor="cooldown_start_ts">
+                      </Stack>
+                    </Grid.Col>
+                    <Grid.Col
+                      span={{
+                        base: 12,
+                        md: 6,
+                      }}
+                    >
+                      <Stack gap={4} mb="sm">
+                        <Input.Label htmlFor="cooldown_start_ts">
                           Cooldown start timestamp
-                        </Form.Label>
-                        <Form.Control
+                        </Input.Label>
+                        <TextInput
                           type="number"
                           name="cooldown_start_ts"
                           id="cooldown_start_ts"
@@ -162,16 +199,26 @@ const SymbolsPage: FC = () => {
                             })
                           }
                         />
-                      </Form.Group>
-                    </Col>
-                  </Row>
+                      </Stack>
+                    </Grid.Col>
+                  </Grid>
                   <br />
-                  <Row>
-                    <Col md="12">
-                      <div className="d-flex gap-2">
+                  <Grid>
+                    <Grid.Col
+                      span={{
+                        base: 12,
+                        md: 12,
+                      }}
+                    >
+                      <Box
+                        display="flex"
+                        style={{
+                          gap: 8,
+                        }}
+                        component="div"
+                      >
                         <Button
                           color="primary"
-                          className="mr-2"
                           onClick={() => {
                             if (seletedSymbolsItem.id !== "") {
                               updateSymbol({
@@ -192,34 +239,41 @@ const SymbolsPage: FC = () => {
                             }
                             return false;
                           }}
+                          type="button"
+                          mr={8}
                         >
                           Save
                         </Button>
                         <Button
-                          className="ml-2"
-                          variant="danger"
                           onClick={() => {
                             setConfirmDelete(true);
                           }}
+                          color="danger"
+                          type="button"
+                          ml={8}
                         >
                           Delete
                         </Button>
-                      </div>
-                    </Col>
-                  </Row>
-                </Col>
+                      </Box>
+                    </Grid.Col>
+                  </Grid>
+                </Grid.Col>
               )}
-            </Row>
+            </Grid>
           )}
-        </Card.Body>
+        </Box>
       </Card>
       <ConfirmModal
         show={confirmDelete}
-        handleActions={() => deleteSymbol(seletedSymbolsItem.id)}
+        onClose={() => setConfirmDelete(false)}
+        handleActions={async () => {
+          await deleteSymbol(seletedSymbolsItem.id).unwrap();
+          setConfirmDelete(false);
+        }}
         primary={
           <>
             <i className="fa-solid fa-trash" />
-            <span className="visually-hidden">Delete</span>
+            <VisuallyHidden>Delete</VisuallyHidden>
           </>
         }
       >
@@ -230,5 +284,4 @@ const SymbolsPage: FC = () => {
     </div>
   );
 };
-
 export default SymbolsPage;

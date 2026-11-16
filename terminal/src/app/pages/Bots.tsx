@@ -1,5 +1,5 @@
+import { Badge, Box, Button, Flex, Grid, VisuallyHidden } from "@mantine/core";
 import React, { useContext, useEffect, useState, type FC } from "react";
-import { Badge, Button, Col, Container, Row, Stack } from "react-bootstrap";
 import { useImmer } from "use-immer";
 import {
   useDeactivateBotMutation,
@@ -7,17 +7,16 @@ import {
   useGetBotsQuery,
   useGetOneBySymbolQuery,
 } from "../../features/bots/botsApiSlice";
+import { useGetSymbolsQuery } from "../../features/symbolsApiSlice";
+import { BotStatus } from "../../utils/enums";
 import { weekAgo } from "../../utils/time";
 import BotCard from "../components/BotCard";
 import BotsActions, { BulkAction } from "../components/BotsActions";
 import BotsDateFilter from "../components/BotsCalendar";
 import ConfirmModal from "../components/ConfirmModal";
-import { useAppDispatch } from "../hooks";
-import { BotStatus } from "../../utils/enums";
-import { SpinnerContext } from "../spinner-context";
 import SymbolSearch from "../components/SymbolSearch";
-import { useGetSymbolsQuery } from "../../features/symbolsApiSlice";
-
+import { useAppDispatch } from "../hooks";
+import { SpinnerContext } from "../spinner-context";
 export const BotsPage: FC<{}> = () => {
   const dispatch = useAppDispatch();
   const currentTs = new Date().getTime();
@@ -29,7 +28,6 @@ export const BotsPage: FC<{}> = () => {
     deactivateBot,
     { isLoading: isDeactivating, isSuccess: isDeactivated },
   ] = useDeactivateBotMutation();
-
   // Component states
   const [selectedCards, selectCards] = useImmer([]);
   const [botToDelete, setBotToDelete] = useState<string | null>(null);
@@ -39,7 +37,6 @@ export const BotsPage: FC<{}> = () => {
   const [endDate, setEndDate] = useState(currentTs);
   const [filterStatus, setFilterStatus] = useState<BotStatus>(BotStatus.ALL);
   const [symbolState, setSymbolState] = useState<string>("");
-
   // Fetch bots or single bot by symbol
   const {
     refetch: refetchBots,
@@ -55,7 +52,6 @@ export const BotsPage: FC<{}> = () => {
       refetchOnFocus: true,
     },
   );
-
   const {
     refetch: refetchSymbol,
     data: symbolData,
@@ -64,7 +60,6 @@ export const BotsPage: FC<{}> = () => {
     skip: !symbolState,
     refetchOnFocus: true,
   });
-
   // Unified data and refetch
   const data = symbolState
     ? {
@@ -79,11 +74,9 @@ export const BotsPage: FC<{}> = () => {
     : botsData;
   const refetch = symbolState ? refetchSymbol : refetchBots;
   const isFetching = symbolState ? isFetchingSymbol : isFetchingBots;
-
   // Symbols search dependencies
   const { data: allSymbols, isFetching: isFetchingSymbols } =
     useGetSymbolsQuery();
-
   const handleSelection = (id: string) => {
     let newCards = [];
     if (selectedCards.includes(id)) {
@@ -110,7 +103,6 @@ export const BotsPage: FC<{}> = () => {
     }
     return false;
   };
-
   const onSubmitBulkAction = async () => {
     switch (bulkActions) {
       case BulkAction.DELETE:
@@ -156,7 +148,6 @@ export const BotsPage: FC<{}> = () => {
       dispatch(() => refetch());
     }
   };
-
   /**
    * refetch will work without params
    * if we set all the states correctly before refetching (spinner, startDate, endDate, filterStatus)
@@ -176,7 +167,6 @@ export const BotsPage: FC<{}> = () => {
       setSpinner(false);
     }
   };
-
   useEffect(() => {
     if (isFetching || isDeactivating || isDeleting) {
       setSpinner(true);
@@ -184,12 +174,10 @@ export const BotsPage: FC<{}> = () => {
     if (data?.bots || isDeleted || isDeactivated) {
       setSpinner(false);
     }
-
     // Get symbols for symbol search field
     if (isFetchingSymbols) {
       setSpinner(true);
     }
-
     if (allSymbols?.length > 0 && !isFetchingSymbols) {
       setSpinner(false);
       const pairs = allSymbols.map((symbol) => symbol.id);
@@ -208,82 +196,68 @@ export const BotsPage: FC<{}> = () => {
     allSymbols,
     isFetchingSymbols,
   ]);
-
   return (
     <SpinnerContext.Provider value={{ spinner, setSpinner }}>
-      <Container fluid>
-        <div className="mb-3 d-flex flex-column flex-lg-row justify-content-between align-items-center">
-          <div id="bot-profits">
-            <h4>
-              {data?.bots?.ids.length > 0 && (
-                <Badge
-                  bg={data.totalProfit > 0 ? "success" : "danger"}
-                  title="Average price return of closed bots in this list"
-                >
-                  <i className="fas fa-building-columns" />{" "}
-                  <span className="visually-hidden">
-                    Average closed-bot return
-                  </span>
-                  {(data.totalProfit || 0) + "%"}
-                </Badge>
-              )}
-            </h4>
-          </div>
-          <div id="filters" className="mx-3 d-flex flex-column flex-md-row">
-            <Stack
-              direction="horizontal"
-              className="mx-3 d-flex flex-column flex-md-row mt-3 mt-md-0"
-            >
+      <Box w="100%">
+        <Flex
+          direction={{ base: "column", xl: "row" }}
+          gap="md"
+          align={{ base: "stretch", xl: "end" }}
+          justify="space-between"
+          mb="lg"
+        >
+          <Box id="bot-profits">
+            {data?.bots?.ids.length > 0 && (
+              <Badge
+                size="lg"
+                title="Average price return of closed bots in this list"
+                color={data.totalProfit > 0 ? "success" : "danger"}
+              >
+                <VisuallyHidden>Average closed-bot return</VisuallyHidden>
+                {(data.totalProfit || 0) + "%"}
+              </Badge>
+            )}
+          </Box>
+          <Flex id="filters" wrap="wrap" gap="md" align="end">
+            <Box flex="1 1 180px">
               <SymbolSearch
                 name="pair"
-                defaultValue=""
                 placeholder="Search by pair"
                 onBlur={handleSearchBySymbol}
               />
-            </Stack>
-            <Stack
-              direction="horizontal"
-              className="mx-3 d-flex flex-column flex-md-row"
-            >
-              <div className="p-3">
-                <BotsActions
-                  defaultValue={bulkActions}
-                  handleChange={(e) =>
-                    setBulkActions(e.target.value as BulkAction)
-                  }
-                />
-              </div>
-              <div className="p-3">
-                <Button onClick={onSubmitBulkAction}>Apply bulk action</Button>
-              </div>
-            </Stack>
-            <Stack
-              direction="horizontal"
-              className="mx-3 d-flex flex-column flex-md-row"
-            >
-              <div className="p-3">
-                <BotsDateFilter
-                  title="Filter by start date"
-                  controlId="startDate"
-                  selectedDate={startDate}
-                  handleDateChange={handleStartDate}
-                />
-              </div>
-              <div className="p-3">
-                <BotsDateFilter
-                  title="Filter by end date"
-                  controlId="endDate"
-                  selectedDate={endDate}
-                  handleDateChange={handleEndDate}
-                />
-              </div>
-            </Stack>
-          </div>
-        </div>
-        <Row md="3" xs="1" lg="4">
+            </Box>
+            <BotsActions
+              defaultValue={bulkActions}
+              handleChange={(e) => setBulkActions(e.target.value as BulkAction)}
+            />
+            <Button onClick={onSubmitBulkAction} mb="sm">
+              Apply bulk action
+            </Button>
+            <BotsDateFilter
+              title="Filter by start date"
+              controlId="startDate"
+              selectedDate={startDate}
+              handleDateChange={handleStartDate}
+            />
+            <BotsDateFilter
+              title="Filter by end date"
+              controlId="endDate"
+              selectedDate={endDate}
+              handleDateChange={handleEndDate}
+            />
+          </Flex>
+        </Flex>
+        <Grid>
           {data?.bots?.ids.length > 0
             ? Object.values(data.bots?.entities).map((x, i) => (
-                <Col key={i}>
+                <Grid.Col
+                  key={i}
+                  span={{
+                    base: 12,
+                    md: 4,
+                    lg: 3,
+                  }}
+                >
                   <BotCard
                     botIndex={i}
                     bot={x}
@@ -291,33 +265,31 @@ export const BotsPage: FC<{}> = () => {
                     handleDelete={handleDelete}
                     handleSelection={handleSelection}
                   />
-                </Col>
+                </Grid.Col>
               ))
             : ""}
-        </Row>
+        </Grid>
         <ConfirmModal
           show={!!botToDelete}
+          onClose={() => setBotToDelete(null)}
           handleActions={confirmDelete}
           primary={
             <>
               <i className="fa-solid fa-trash" />
-              <span className="visually-hidden">Delete</span>
+              <VisuallyHidden>Delete</VisuallyHidden>
             </>
           }
           secondary={
             <>
               <i className="fa-solid fa-power-off" />
-              <span title="Deactivate" className="visually-hidden">
-                Deactivate
-              </span>
+              <VisuallyHidden title="Deactivate">Deactivate</VisuallyHidden>
             </>
           }
         >
           To close orders, please deactivate. Deleting will only remove the bot.
         </ConfirmModal>
-      </Container>
+      </Box>
     </SpinnerContext.Provider>
   );
 };
-
 export default BotsPage;

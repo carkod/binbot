@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom";
-import { render, screen as rtlScreen } from "@testing-library/react";
+import { render, screen as rtlScreen } from "../../utils/render";
 import FastestMovers from "./FastestMovers";
 
 describe("FastestMovers", () => {
@@ -39,7 +39,7 @@ describe("FastestMovers", () => {
       rtlScreen.getByText(
         "When gainers dominate losers, look at Rising. When losers dominate gainers, look at Falling.",
       ),
-    ).toHaveClass("alert-warning", "alert-subtle");
+    ).toBeInTheDocument();
     expect(rtlScreen.getByText("Rising")).toBeInTheDocument();
     expect(rtlScreen.getByText("Falling")).toBeInTheDocument();
     expect(
@@ -49,8 +49,14 @@ describe("FastestMovers", () => {
       rtlScreen.getByRole("link", { name: "KOMAUSDTM" }).getAttribute("href"),
     ).toBe("/bots/futures/new/KOMAUSDTM");
     expect(rtlScreen.getByText("7.3% in 1h")).toBeInTheDocument();
-    expect(rtlScreen.getByText("5.4% in 3h")).toHaveClass("bg-success");
-    expect(rtlScreen.getByText("-6.1% in 3h")).toHaveClass("bg-danger");
+    expect(
+      rtlScreen.getByText("5.4% in 3h").closest(".mantine-Badge-root"),
+    ).toHaveAttribute("data-variant", "light");
+    expect(
+      rtlScreen.getByText("-6.1% in 3h").closest(".mantine-Badge-root"),
+    ).toHaveStyle({
+      "--badge-color": "var(--mantine-color-danger-light-color)",
+    });
   });
 
   it("shows the collection state before two snapshots exist", () => {

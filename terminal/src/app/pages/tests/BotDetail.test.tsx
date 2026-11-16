@@ -1,11 +1,11 @@
 import React from "react";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router";
-import BotDetail from "../BotDetail";
-import { store } from "../../store";
 import { vi } from "vitest";
-import { render, screen as rtlScreen, waitFor } from "@testing-library/react";
 import { singleBot } from "../../../features/bots/botInitialState";
+import { render, screen as rtlScreen, waitFor } from "../../../utils/render";
+import { store } from "../../store";
+import BotDetail from "../BotDetail";
 
 const mockUseGetSingleBotQuery = vi.hoisted(() => vi.fn());
 

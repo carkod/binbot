@@ -1,4 +1,4 @@
-import { renderHook } from "@testing-library/react";
+import { renderHook } from "../../utils/render";
 import type {
   BalanceData,
   BenchmarkCollection,
@@ -39,7 +39,7 @@ describe("usePortfolioPnlDetails", () => {
 
     expect(result.current.portfolioPnlValue).toBe(5);
     expect(result.current.portfolioPnlPercentage).toBeCloseTo(4.76, 2);
-    expect(result.current.portfolioPnlClass).toBe("text-success");
+    expect(result.current.portfolioPnlClass).toBe("tone-success");
   });
 
   it("returns empty details while its inputs are unavailable", () => {

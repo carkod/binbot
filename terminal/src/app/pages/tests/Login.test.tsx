@@ -1,7 +1,7 @@
-import { render } from "@testing-library/react";
 import { Provider } from "react-redux";
-import { store } from "../../store";
 import { MemoryRouter } from "react-router";
+import { render } from "../../../utils/render";
+import { store } from "../../store";
 import LoginPage from "../Login";
 
 describe("Login page", () => {
@@ -13,6 +13,6 @@ describe("Login page", () => {
         </MemoryRouter>
       </Provider>,
     );
-    expect(container.querySelector(".card-title")).not.toBeNull();
+    expect(container.querySelector("h4")?.textContent).toBe("Login");
   });
 });

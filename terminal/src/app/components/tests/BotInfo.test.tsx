@@ -1,4 +1,4 @@
-import { fireEvent, render } from "@testing-library/react";
+import { fireEvent, render } from "../../../utils/render";
 
 import { singleBot } from "../../../features/bots/botInitialState";
 import BotInfo from "../BotInfo";

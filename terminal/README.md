@@ -23,6 +23,27 @@ New packages or installing from scratch:
 2. Run `npm start`
 3. Attach vscode debugger if needed
 
+## UI components and palette
+
+The terminal uses Mantine for layout, forms, navigation, tables, dialogs, and
+typography. The application has a fixed light color scheme, a dark sidebar, and
+the original warm gray page background. There is no theme switch.
+
+Use the shared [theme](./src/theme.ts) for semantic colors: `primary`, `info`,
+`success`, `warning`, and `danger`. Shade 5 retains the original palette; darker
+shades are available for readable text on light surfaces. Prefer Mantine props
+and components over custom CSS: `Title` supports six heading levels, `Text`
+supports size, weight, and color, and `Highlight`, `Mark`, `Badge`, `Alert`, and
+`Blockquote` cover emphasized content. Keep domain-specific chart and trading
+styles in [terminal.css](./src/styles/terminal.css).
+
+Form inputs retain native events for React Hook Form and chart field focus.
+Keep chart components mounted across tab changes to preserve chart state, and
+dispatch a resize event after revealing a chart or changing the sidebar width.
+
+From this directory, validate changes with `npm run lint`, `npm run type-check`,
+`npm test`, and `npm run build`.
+
 ## UI animations
 
 Motion is installed as `motion`; import components and hooks from `motion/react`.
@@ -36,13 +57,9 @@ The dashboard reveals chart cards after their initial queries load. Use
 fade and 12 px upward slide elsewhere:
 
 ```tsx
-<motion.div
-  initial="hidden"
-  animate="visible"
-  variants={chartRevealVariants}
->
+<motion.div initial="hidden" animate="visible" variants={chartRevealVariants}>
   <Chart />
-</motion.div>;
+</motion.div>
 ```
 
 Keep the animated element mounted when data refreshes, so polling updates do not

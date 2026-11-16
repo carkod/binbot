@@ -1,16 +1,16 @@
+import { Provider } from "react-redux";
+import { MemoryRouter, Route, Routes } from "react-router";
+import { vi } from "vitest";
+import { singleBot } from "../../../features/bots/botInitialState";
+import { setBot } from "../../../features/bots/botSlice";
+import { BotStatus, MarketType } from "../../../utils/enums";
 import {
   fireEvent,
   render,
   screen as rtlScreen,
   waitFor,
-} from "@testing-library/react";
-import { Provider } from "react-redux";
-import { MemoryRouter, Route, Routes } from "react-router";
-import { vi } from "vitest";
+} from "../../../utils/render";
 import { makeStore } from "../../store";
-import { setBot } from "../../../features/bots/botSlice";
-import { singleBot } from "../../../features/bots/botInitialState";
-import { BotStatus, MarketType } from "../../../utils/enums";
 import BotDetailTabs from "../BotDetailTabs";
 
 const { updateBot } = vi.hoisted(() => ({ updateBot: vi.fn() }));

@@ -1,10 +1,11 @@
-import { fireEvent, render, screen as rtlScreen } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import { filterSymbolByBaseAsset } from "../../utils/api";
-import SymbolSearch from "./SymbolSearch";
-import { vi } from "vitest";
 import type { ReactElement } from "react";
+import userEvent from "@testing-library/user-event";
+import { vi } from "vitest";
+import { filterSymbolByBaseAsset } from "../../utils/api";
+import { fireEvent, render, screen as rtlScreen } from "../../utils/render";
 import { SymbolContext } from "../hooks";
+import SymbolSearch from "./SymbolSearch";
 
 vi.mock("../../features/autotradeApiSlice", () => ({
   useGetSettingsQuery: vi.fn(() => ({ data: {} })),
@@ -48,6 +49,37 @@ describe("Search symbols", () => {
 });
 
 describe("SymbolSearch component", () => {
+  it("selects a suggestion with the keyboard while keeping typing separate", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const onInputChange = vi.fn();
+    renderWithSymbolProvider(
+      <SymbolSearch
+        name="pair"
+        onChange={onChange}
+        onInputChange={onInputChange}
+      />,
+    );
+
+    const input = rtlScreen.getByRole("combobox");
+    await user.type(input, "ETH");
+    expect(onInputChange).toHaveBeenLastCalledWith("ETH");
+    expect(onChange).not.toHaveBeenCalled();
+    await user.keyboard("{ArrowDown}{Enter}");
+    expect(onChange).toHaveBeenCalledWith("ETHUSDT");
+    expect(input).toHaveValue("ETHUSDT");
+  });
+
+  it("selects a suggestion with the mouse", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    renderWithSymbolProvider(<SymbolSearch name="pair" onChange={onChange} />);
+
+    await user.click(rtlScreen.getByRole("combobox"));
+    await user.click(await rtlScreen.findByRole("option", { name: "BTCUSDT" }));
+    expect(onChange).toHaveBeenCalledWith("BTCUSDT");
+  });
+
   it("does not render label if not passed", () => {
     renderWithSymbolProvider(
       <SymbolSearch name="pair" options={["BTCUSDT"]} />,

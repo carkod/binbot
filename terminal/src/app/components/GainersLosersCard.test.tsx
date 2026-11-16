@@ -1,4 +1,4 @@
-import { render, screen as rtlScreen } from "@testing-library/react";
+import { render, screen as rtlScreen } from "../../utils/render";
 
 import { MarketType } from "../../utils/enums";
 import GainersLosersCard from "./GainersLosersCard";

@@ -1,5 +1,4 @@
 import "@testing-library/jest-dom";
-import { render, screen as rtlScreen } from "@testing-library/react";
 import {
   describe as describeBlock,
   expect as expectValue,
@@ -7,6 +6,7 @@ import {
   vi,
 } from "vitest";
 import { MarketType } from "../../../utils/enums";
+import { render, screen as rtlScreen } from "../../../utils/render";
 
 const useRiskBeta = vi.hoisted(() => vi.fn());
 

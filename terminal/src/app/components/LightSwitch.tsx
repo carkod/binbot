@@ -1,7 +1,5 @@
-import { type FC } from "react";
-import { ToggleButton, ToggleButtonGroup } from "react-bootstrap";
-import { type UseFormRegister, type FieldValues } from "react-hook-form";
-
+import { Switch } from "@mantine/core";
+import type { FieldValues, UseFormRegister } from "react-hook-form";
 export type LightSwitchProps = {
   value: boolean;
   name: string;
@@ -9,35 +7,27 @@ export type LightSwitchProps = {
   register?: UseFormRegister<FieldValues>;
   required?: boolean;
 };
-
-/**
- * Standard toggler that accepts boolean
- * @param {*} value: boolean
- * @returns React.Component
- */
-const LightSwitch: FC<LightSwitchProps> = ({
+const LightSwitch = ({
   value,
   name,
   toggle,
   register,
   required = false,
-}) => {
+}: LightSwitchProps) => {
+  const field = register?.(name, { required });
   return (
-    <ToggleButtonGroup type="checkbox">
-      <ToggleButton
-        type="checkbox"
-        id={name}
-        name={name}
-        value={name}
-        checked={value}
-        variant={value ? "success" : "secondary"}
-        onClick={() => toggle?.(name, value)}
-        {...register?.(name, { required })}
-      >
-        {value ? "On" : "Off"}
-      </ToggleButton>
-    </ToggleButtonGroup>
+    <Switch
+      {...field}
+      id={name}
+      name={name}
+      checked={value}
+      label={value ? "On" : "Off"}
+      color="success"
+      onChange={(event) => {
+        field?.onChange(event);
+        toggle?.(name, value);
+      }}
+    />
   );
 };
-
 export default LightSwitch;

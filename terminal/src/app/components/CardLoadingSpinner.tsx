@@ -1,27 +1,19 @@
-import { type FC } from "react";
-import { Card, Spinner } from "react-bootstrap";
-
-type CardLoadingSpinnerProps = {
-  label: string;
-  className?: string;
-};
-
-const CardLoadingSpinner: FC<CardLoadingSpinnerProps> = ({
+import { Card, Center, Loader } from "@mantine/core";
+const CardLoadingSpinner = ({
   label,
   className,
+}: {
+  label: string;
+  className?: string;
 }) => (
-  <Card className={`card-loading ${className ?? ""}`.trim()}>
-    <Card.Body className="d-flex justify-content-center align-items-center py-5">
-      <Spinner
-        animation="border"
-        variant="warning"
+  <Card className={`card-loading ${className ?? ""}`.trim()} mb="md">
+    <Center mih="inherit" h="100%" py="xl">
+      <Loader
+        color="warning"
         role="status"
         aria-label={`Loading ${label}...`}
-      >
-        <span className="visually-hidden">Loading {label}...</span>
-      </Spinner>
-    </Card.Body>
+      />
+    </Center>
   </Card>
 );
-
 export default CardLoadingSpinner;

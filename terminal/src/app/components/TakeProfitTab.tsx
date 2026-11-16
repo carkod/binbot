@@ -1,29 +1,28 @@
-import { useEffect, type FC } from "react";
+import { formGridBreakpoints } from "../../theme";
 import {
-  ButtonGroup,
-  Col,
-  Container,
-  Form,
-  InputGroup,
-  Row,
-  Tab,
-  ToggleButton,
-} from "react-bootstrap";
-import InputGroupText from "react-bootstrap/esm/InputGroupText";
+  Box,
+  Grid,
+  Group,
+  Input,
+  Stack,
+  Switch,
+  Tabs,
+  Text,
+  TextInput,
+} from "@mantine/core";
+import { useEffect, type FC } from "react";
 import { useForm } from "react-hook-form";
 import {
+  focusOrderLine,
   selectBot,
   setField,
   setToggle,
-  focusOrderLine,
 } from "../../features/bots/botSlice";
-import { useAppDispatch, useAppSelector } from "../hooks";
 import { TabsKeys } from "../../utils/enums";
-
+import { useAppDispatch, useAppSelector } from "../hooks";
 const TakeProfit: FC = () => {
   const dispatch = useAppDispatch();
   const { bot } = useAppSelector(selectBot);
-
   const {
     register,
     reset,
@@ -38,7 +37,6 @@ const TakeProfit: FC = () => {
       trailing_profit: bot.trailing_profit,
     },
   });
-
   useEffect(() => {
     reset({
       take_profit: bot.take_profit,
@@ -47,7 +45,6 @@ const TakeProfit: FC = () => {
     });
     // A new bot needs new defaults; local field edits must not reset the form.
   }, [bot.id, reset]);
-
   useEffect(() => {
     setValue("take_profit", bot.take_profit);
   }, [bot.take_profit, setValue]);
@@ -57,7 +54,6 @@ const TakeProfit: FC = () => {
   useEffect(() => {
     setValue("trailing_deviation", bot.trailing_deviation);
   }, [bot.trailing_deviation, setValue]);
-
   const commitPercentage = (
     name: "take_profit" | "trailing_profit" | "trailing_deviation",
     value: string,
@@ -68,18 +64,26 @@ const TakeProfit: FC = () => {
       dispatch(setField({ name, value: percentage }));
     }
   };
-
   return (
-    <Tab.Pane eventKey={TabsKeys.TAKEPROFIT}>
-      <Container>
-        <Row className="my-3">
+    <Tabs.Panel value={TabsKeys.TAKEPROFIT} pt="md">
+      <Box w="100%">
+        <Grid type="container" breakpoints={formGridBreakpoints} my={16}>
           {bot.trailing ? (
-            <Col md="6" sm="12">
-              <Form.Label htmlFor="trailing_profit">
-                Trail profit at <span className="u-required">*</span>
-              </Form.Label>
-              <InputGroup>
-                <Form.Control
+            <Grid.Col
+              span={{
+                base: 12,
+                sm: 12,
+                md: 6,
+              }}
+            >
+              <Input.Label htmlFor="trailing_profit">
+                Trail profit at{" "}
+                <Text c="danger.8" component="span">
+                  *
+                </Text>
+              </Input.Label>
+              <Group gap="xs" wrap="nowrap" className="field-row">
+                <TextInput
                   type="number"
                   name="trailing_profit"
                   id="trailing_profit"
@@ -101,16 +105,27 @@ const TakeProfit: FC = () => {
                       commitPercentage("trailing_profit", event.target.value),
                   })}
                 />
-                <InputGroupText>%</InputGroupText>
-              </InputGroup>
-            </Col>
+                <Text component="span" c="dimmed">
+                  %
+                </Text>
+              </Group>
+            </Grid.Col>
           ) : (
-            <Col md="6" sm="12">
-              <Form.Label htmlFor="take_profit">
-                Take profit at <span className="u-required">*</span>
-              </Form.Label>
-              <InputGroup size="sm">
-                <Form.Control
+            <Grid.Col
+              span={{
+                base: 12,
+                sm: 12,
+                md: 6,
+              }}
+            >
+              <Input.Label htmlFor="take_profit">
+                Take profit at{" "}
+                <Text c="danger.8" component="span">
+                  *
+                </Text>
+              </Input.Label>
+              <Group gap="xs" wrap="nowrap" className="field-row">
+                <TextInput
                   type="number"
                   name="take_profit"
                   id="take_profit"
@@ -129,57 +144,60 @@ const TakeProfit: FC = () => {
                       commitPercentage("take_profit", event.target.value),
                   })}
                 />
-                <InputGroupText>%</InputGroupText>
-              </InputGroup>
+                <Text component="span" c="dimmed">
+                  %
+                </Text>
+              </Group>
               {errors.take_profit && (
-                <Form.Control.Feedback type="invalid">
-                  {errors.take_profit.message}
-                </Form.Control.Feedback>
+                <Input.Error>{errors.take_profit.message}</Input.Error>
               )}
-            </Col>
+            </Grid.Col>
           )}
-          <Col md="3" sm="12">
-            <Form.Group>
-              <Form.Label htmlFor="trailing">Trailing</Form.Label>
+          <Grid.Col
+            span={{
+              base: 12,
+              sm: 12,
+              md: 3,
+            }}
+          >
+            <Stack gap={4} mb="sm">
+              <Input.Label htmlFor="trailing">Trailing</Input.Label>
               <br />
-              <ButtonGroup>
-                <ToggleButton
+              <Group gap="xs">
+                <Switch
                   id="trailing"
-                  type="checkbox"
                   name="trailing"
-                  className="position-relative"
                   checked={bot.trailing}
-                  value={1}
-                  variant={bot.trailing ? "primary" : "secondary"}
                   onChange={() => {
                     dispatch(
                       setToggle({ name: "trailing", value: !bot.trailing }),
                     );
                   }}
-                >
-                  {bot.trailing ? "On" : "Off"}
-                </ToggleButton>
-              </ButtonGroup>
-              <Form.Control.Feedback tooltip>
+                  label={bot.trailing ? "On" : "Off"}
+                />
+              </Group>
+              <Input.Description>
                 {"Trailing won't trigger until trailing_stop_loss > base"}
-              </Form.Control.Feedback>
-            </Form.Group>
-          </Col>
-          <Col md="3" sm="12">
-            <Form.Group>
-              <Form.Label htmlFor="dynamic_trailing">
+              </Input.Description>
+            </Stack>
+          </Grid.Col>
+          <Grid.Col
+            span={{
+              base: 12,
+              sm: 12,
+              md: 3,
+            }}
+          >
+            <Stack gap={4} mb="sm">
+              <Input.Label htmlFor="dynamic_trailing">
                 Dynamic trailing
-              </Form.Label>
+              </Input.Label>
               <br />
-              <ButtonGroup>
-                <ToggleButton
+              <Group gap="xs">
+                <Switch
                   id="dynamic_trailing"
-                  type="checkbox"
                   name="dynamic_trailing"
-                  className="position-relative"
                   checked={bot.dynamic_trailing}
-                  value={1}
-                  variant={bot.dynamic_trailing ? "primary" : "secondary"}
                   onChange={() => {
                     dispatch(
                       setToggle({
@@ -188,24 +206,29 @@ const TakeProfit: FC = () => {
                       }),
                     );
                   }}
-                >
-                  {bot.dynamic_trailing ? "On" : "Off"}
-                </ToggleButton>
-              </ButtonGroup>
-              <Form.Control.Feedback tooltip>
+                  label={bot.dynamic_trailing ? "On" : "Off"}
+                />
+              </Group>
+              <Input.Description>
                 {"Update the trailing_deviation according to volatility (SD)"}
-              </Form.Control.Feedback>
-            </Form.Group>
-          </Col>
-        </Row>
-        <Row className="my-3">
+              </Input.Description>
+            </Stack>
+          </Grid.Col>
+        </Grid>
+        <Grid type="container" breakpoints={formGridBreakpoints} my={16}>
           {bot.trailing && (
-            <Col md="6" sm="12">
-              <Form.Label htmlFor="trailing_deviation">
+            <Grid.Col
+              span={{
+                base: 12,
+                sm: 12,
+                md: 6,
+              }}
+            >
+              <Input.Label htmlFor="trailing_deviation">
                 Trailing deviation
-              </Form.Label>
-              <InputGroup>
-                <Form.Control
+              </Input.Label>
+              <Group gap="xs" wrap="nowrap" className="field-row">
+                <TextInput
                   type="number"
                   name="trailing_deviation"
                   id="trailing_deviation"
@@ -230,14 +253,15 @@ const TakeProfit: FC = () => {
                       ),
                   })}
                 />
-                <InputGroupText>%</InputGroupText>
-              </InputGroup>
-            </Col>
+                <Text component="span" c="dimmed">
+                  %
+                </Text>
+              </Group>
+            </Grid.Col>
           )}
-        </Row>
-      </Container>
-    </Tab.Pane>
+        </Grid>
+      </Box>
+    </Tabs.Panel>
   );
 };
-
 export default TakeProfit;

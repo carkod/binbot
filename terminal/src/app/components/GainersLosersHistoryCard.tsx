@@ -1,15 +1,12 @@
+import { Badge, Box, Card, Grid, Group, Text, Title } from "@mantine/core";
 import moment from "moment";
-import { Badge, Card, Col, Row } from "react-bootstrap";
 import type { FC } from "react";
 import type { GainersLosersAggregatePoint } from "../../features/marketApiSlice";
 import PlotlyChart from "./PlotlyChart";
-
 type GainersLosersHistoryCardProps = {
   points: GainersLosersAggregatePoint[];
 };
-
 const BALANCE_COLOR = "#51cbce";
-
 const GainersLosersHistoryCard: FC<GainersLosersHistoryCardProps> = ({
   points,
 }) => {
@@ -41,45 +38,69 @@ const GainersLosersHistoryCard: FC<GainersLosersHistoryCardProps> = ({
     point.advancers,
     point.decliners,
   ]);
-
   return (
-    <Card className="card-chart">
-      <Card.Header>
-        <Row>
-          <Col lg="1" md="1" sm="1">
-            <i className="fs-2 fa fa-chart-area text-success" />
-          </Col>
-          <Col lg="11" md="11" sm="11">
-            <Card.Title
-              as="h5"
-              className="mt-0 d-flex align-items-center gap-2"
+    <Card mb="md">
+      <Box mb="sm">
+        <Grid>
+          <Grid.Col
+            span={{
+              base: 12,
+              sm: 1,
+              md: 1,
+              lg: 1,
+            }}
+          >
+            <Box
+              fz="1.875rem"
+              c="success.5"
+              className="fa fa-chart-area"
+              component="i"
+            />
+          </Grid.Col>
+          <Grid.Col
+            span={{
+              base: 12,
+              sm: 11,
+              md: 11,
+              lg: 11,
+            }}
+          >
+            <Title
+              order={5}
+              mt={0}
+              display="flex"
+              style={{
+                alignItems: "center",
+                gap: 8,
+              }}
             >
               <span>Gainers vs Losers Trend</span>
               {latest?.balance !== null && latest?.balance !== undefined && (
                 <Badge
-                  bg={
+                  color={
                     latest.balance > 0
                       ? "success"
                       : latest.balance < 0
                         ? "danger"
                         : "secondary"
                   }
+                  variant="light"
                 >
                   Balance {latest.balance > 0 ? "+" : ""}
                   {latest.balance.toFixed(1)}%
                 </Badge>
               )}
-            </Card.Title>
-            <p className="u-text-left mb-0">
+            </Title>
+            <Text mb={0}>
               Every 15 minutes, this samples the rolling 24h moves of all
               registered, active KuCoin futures contracts. The line shows gain
               magnitude minus loss magnitude as a percentage of their combined
               magnitude. Above zero, gainers lead; below zero, losers lead.
-            </p>
-          </Col>
-        </Row>
-      </Card.Header>
-      <Card.Body>
+            </Text>
+          </Grid.Col>
+        </Grid>
+      </Box>
+      <Box>
         {hasHistory ? (
           <PlotlyChart
             data={[
@@ -127,22 +148,21 @@ const GainersLosersHistoryCard: FC<GainersLosersHistoryCardProps> = ({
             useResizeHandler={true}
           />
         ) : (
-          <div className="text-body-secondary">
+          <Box c="dimmed" component="div">
             Waiting for 15-minute futures price snapshots.
-          </div>
+          </Box>
         )}
-      </Card.Body>
-      <Card.Footer className="text-muted">
+      </Box>
+      <Group mt="sm" c="dimmed">
         <hr />
         {latest && (
-          <div className="card-stats">
+          <div>
             <i className="fa fa-check" /> Last updated{" "}
             {moment(latest.timestamp).format("DD/MM/YYYY HH:mm")}
           </div>
         )}
-      </Card.Footer>
+      </Group>
     </Card>
   );
 };
-
 export default GainersLosersHistoryCard;

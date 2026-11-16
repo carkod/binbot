@@ -1,13 +1,13 @@
 import "@testing-library/jest-dom";
-import { render, screen as rtlScreen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import {
   describe as describeBlock,
   expect as expectValue,
   it as testCase,
 } from "vitest";
-import { GridLadderStatus } from "../../../features/gridLadders/gridLadders";
 import type { GridLadder } from "../../../features/gridLadders/gridLadders";
+import { GridLadderStatus } from "../../../features/gridLadders/gridLadders";
+import { render, screen as rtlScreen } from "../../../utils/render";
 import GridLadderCard from "../GridLadderCard";
 
 const ladder: GridLadder = {
@@ -78,8 +78,9 @@ describeBlock("GridLadderCard", () => {
     const totalRealized = rtlScreen.getByText("Total realized");
 
     expectValue(rtlScreen.getByText("25 Aug, 16:45")).toBeInTheDocument();
-    expectValue(exitTime.closest(".row")?.nextElementSibling).toContainElement(
-      totalRealized,
-    );
+    expectValue(
+      exitTime.compareDocumentPosition(totalRealized) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });

@@ -1,13 +1,12 @@
+import { Box, Card, Grid, Table, Text, Title } from "@mantine/core";
 import { useMemo } from "react";
-import { Card, Col, Row, Table } from "react-bootstrap";
 import { useGetBalanceQuery } from "../../features/balanceApiSlice";
 import { useGetAlgoRankingQuery } from "../../features/bots/botsApiSlice";
 import { useGetSignalsQuery } from "../../features/signalsApiSlice";
 import { roundDecimals } from "../../utils/math";
 import { formatTimestamp } from "../../utils/time";
-import { useBinquantStrategyNames } from "../hooks/useBinquantStrategyNames";
 import CardLoadingSpinner from "../components/CardLoadingSpinner";
-
+import { useBinquantStrategyNames } from "../hooks/useBinquantStrategyNames";
 const SignalsPage = () => {
   const { data: accountData } = useGetBalanceQuery();
   const { data: algoRanking, isLoading: loadingAlgoRanking } =
@@ -20,7 +19,6 @@ const SignalsPage = () => {
   const { data: signals, isLoading: loadingSignals } = useGetSignalsQuery({
     limit: 1000,
   });
-
   const filteredAlgoRanking = useMemo(
     () =>
       algoRanking?.filter(
@@ -45,10 +43,8 @@ const SignalsPage = () => {
         count: number;
       }
     >();
-
     signals?.forEach(({ algorithm_name, generated_at, current_regime }) => {
       const algorithm = algorithms.get(algorithm_name);
-
       if (!algorithm) {
         algorithms.set(algorithm_name, {
           algorithm_name,
@@ -58,156 +54,186 @@ const SignalsPage = () => {
         });
         return;
       }
-
       algorithm.count += 1;
       if (new Date(generated_at) > new Date(algorithm.generated_at)) {
         algorithm.generated_at = generated_at;
         algorithm.current_regime = current_regime;
       }
     });
-
     return [...algorithms.values()].sort((left, right) => {
       const countDifference = right.count - left.count;
-
       if (countDifference !== 0) return countDifference;
-
       return (
         new Date(right.generated_at).getTime() -
         new Date(left.generated_at).getTime()
       );
     });
   }, [signals]);
-
   return (
     <div className="content">
-      <Row>
+      <Grid>
         {(loadingAlgoRanking ||
           loadingStrategyNames ||
           strategyNamesError ||
           filteredAlgoRanking.length > 0) && (
-          <Col lg="6" md="12" className="signals-ranking">
+          <Grid.Col
+            span={{
+              base: 12,
+              md: 12,
+              lg: 6,
+            }}
+            className="signals-ranking"
+          >
             {loadingAlgoRanking || loadingStrategyNames ? (
               <CardLoadingSpinner label="strategy ranking" />
             ) : (
-              <Card>
-                <Card.Header>
-                  <Card.Title
-                    as="h5"
-                    className="d-flex align-items-center gap-2"
+              <Card mb="md">
+                <Box mb="sm">
+                  <Title
+                    order={5}
+                    display="flex"
+                    style={{
+                      alignItems: "center",
+                      gap: 8,
+                    }}
                   >
-                    <i className="fa-solid fa-trophy text-warning" />
+                    <Box
+                      c="warning.9"
+                      className="fa-solid fa-trophy"
+                      component="i"
+                    />
                     <span>Strategy ranking</span>
-                  </Card.Title>
-                  <Card.Text className="text-body-secondary">
+                  </Title>
+                  <Text c="dimmed">
                     Strategies executed by Binquant and bots created in Terminal
-                  </Card.Text>
-                </Card.Header>
-                <Card.Body>
+                  </Text>
+                </Box>
+                <Box>
                   {strategyNamesError ? (
-                    <p className="text-danger" role="alert">
+                    <Text role="alert" c="danger.8">
                       {strategyNamesError}
-                    </p>
+                    </Text>
                   ) : (
-                    <Table hover responsive size="sm">
-                      <thead>
-                        <tr>
-                          <th>#</th>
-                          <th>Name</th>
-                          <th className="text-end">Count</th>
-                          <th className="text-end">
-                            Profit ({accountData?.fiat_currency})
-                          </th>
-                          <th className="text-end">Performance</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredAlgoRanking.map(
-                          ({ name, count, bot_profit }, index) => (
-                            <tr
-                              key={name}
-                              className={
-                                topAlgoCounts.has(count)
-                                  ? "table-secondary text-white"
-                                  : ""
-                              }
-                            >
-                              <td>{index + 1}</td>
-                              <td>{name}</td>
-                              <td className="text-end">{count}</td>
-                              <td className="text-end">
-                                {roundDecimals(bot_profit, 2)}%
-                              </td>
-                              <td className="text-end">
-                                {count > 0
-                                  ? ((bot_profit / count) * 100).toFixed(2) +
-                                    "%"
-                                  : ""}
-                              </td>
-                            </tr>
-                          ),
-                        )}
-                      </tbody>
-                    </Table>
+                    <Box className="table-scroll">
+                      <Table highlightOnHover>
+                        <Table.Thead>
+                          <Table.Tr>
+                            <Table.Th>#</Table.Th>
+                            <Table.Th>Name</Table.Th>
+                            <Table.Th ta="right">Count</Table.Th>
+                            <Table.Th ta="right">
+                              Profit ({accountData?.fiat_currency})
+                            </Table.Th>
+                            <Table.Th ta="right">Performance</Table.Th>
+                          </Table.Tr>
+                        </Table.Thead>
+                        <Table.Tbody>
+                          {filteredAlgoRanking.map(
+                            ({ name, count, bot_profit }, index) => (
+                              <Table.Tr
+                                key={name}
+                                className={
+                                  topAlgoCounts.has(count)
+                                    ? "table-secondary text-white"
+                                    : ""
+                                }
+                              >
+                                <Table.Td>{index + 1}</Table.Td>
+                                <Table.Td>{name}</Table.Td>
+                                <Table.Td ta="right">{count}</Table.Td>
+                                <Table.Td ta="right">
+                                  {roundDecimals(bot_profit, 2)}%
+                                </Table.Td>
+                                <Table.Td ta="right">
+                                  {count > 0
+                                    ? ((bot_profit / count) * 100).toFixed(2) +
+                                      "%"
+                                    : ""}
+                                </Table.Td>
+                              </Table.Tr>
+                            ),
+                          )}
+                        </Table.Tbody>
+                      </Table>
+                    </Box>
                   )}
-                </Card.Body>
+                </Box>
               </Card>
             )}
-          </Col>
+          </Grid.Col>
         )}
         {(loadingSignals || rankedSignalAlgorithms.length > 0) && (
-          <Col lg="6" md="12" className="signals-ranking">
+          <Grid.Col
+            span={{
+              base: 12,
+              md: 12,
+              lg: 6,
+            }}
+            className="signals-ranking"
+          >
             {loadingSignals ? (
               <CardLoadingSpinner label="signal ranking" />
             ) : (
-              <Card>
-                <Card.Header>
-                  <Card.Title
-                    as="h5"
-                    className="d-flex align-items-center gap-2"
+              <Card mb="md">
+                <Box mb="sm">
+                  <Title
+                    order={5}
+                    display="flex"
+                    style={{
+                      alignItems: "center",
+                      gap: 8,
+                    }}
                   >
-                    <i className="fa-solid fa-signal text-info" />
+                    <Box
+                      c="info.8"
+                      className="fa-solid fa-signal"
+                      component="i"
+                    />
                     <span>Signal Ranking</span>
-                  </Card.Title>
-                  <Card.Text className="text-body-secondary">
+                  </Title>
+                  <Text c="dimmed">
                     Latest strategy signals ranked by algorithm frequency
-                  </Card.Text>
-                </Card.Header>
-                <Card.Body>
-                  <Table hover responsive size="sm">
-                    <thead>
-                      <tr>
-                        <th>Algorithm</th>
-                        <th>Generated</th>
-                        <th>Regime</th>
-                        <th className="text-end">Count</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rankedSignalAlgorithms.map(
-                        ({
-                          algorithm_name,
-                          generated_at,
-                          current_regime,
-                          count,
-                        }) => (
-                          <tr key={algorithm_name}>
-                            <td>{algorithm_name}</td>
-                            <td>{formatTimestamp(generated_at)}</td>
-                            <td>{current_regime || "-"}</td>
-                            <td className="text-end">{count}</td>
-                          </tr>
-                        ),
-                      )}
-                    </tbody>
-                  </Table>
-                </Card.Body>
+                  </Text>
+                </Box>
+                <Box>
+                  <Box className="table-scroll">
+                    <Table highlightOnHover>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>Algorithm</Table.Th>
+                          <Table.Th>Generated</Table.Th>
+                          <Table.Th>Regime</Table.Th>
+                          <Table.Th ta="right">Count</Table.Th>
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {rankedSignalAlgorithms.map(
+                          ({
+                            algorithm_name,
+                            generated_at,
+                            current_regime,
+                            count,
+                          }) => (
+                            <Table.Tr key={algorithm_name}>
+                              <Table.Td>{algorithm_name}</Table.Td>
+                              <Table.Td>
+                                {formatTimestamp(generated_at)}
+                              </Table.Td>
+                              <Table.Td>{current_regime || "-"}</Table.Td>
+                              <Table.Td ta="right">{count}</Table.Td>
+                            </Table.Tr>
+                          ),
+                        )}
+                      </Table.Tbody>
+                    </Table>
+                  </Box>
+                </Box>
               </Card>
             )}
-          </Col>
+          </Grid.Col>
         )}
-      </Row>
+      </Grid>
     </div>
   );
 };
-
 export default SignalsPage;

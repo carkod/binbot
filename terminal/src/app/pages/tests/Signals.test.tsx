@@ -1,10 +1,10 @@
 import "@testing-library/jest-dom";
-import { render, screen as rtlScreen, within } from "@testing-library/react";
 import { vi } from "vitest";
-import SignalsPage from "../Signals";
 import { useGetAlgoRankingQuery } from "../../../features/bots/botsApiSlice";
 import { useGetSignalsQuery } from "../../../features/signalsApiSlice";
+import { render, screen as rtlScreen, within } from "../../../utils/render";
 import { useBinquantStrategyNames } from "../../hooks/useBinquantStrategyNames";
+import SignalsPage from "../Signals";
 
 vi.mock("../../../features/balanceApiSlice", () => ({
   useGetBalanceQuery: vi.fn(() => ({ data: { fiat_currency: "USDC" } })),
@@ -74,7 +74,7 @@ describe("Signals page", () => {
 
     const algorithmCard = rtlScreen
       .getByText("Strategy ranking")
-      .closest(".card");
+      .closest(".mantine-Card-root");
 
     expect(
       within(algorithmCard as HTMLElement).getByText(
@@ -137,7 +137,9 @@ describe("Signals page", () => {
 
     renderSignals();
 
-    const signalCard = rtlScreen.getByText("Signal Ranking").closest(".card");
+    const signalCard = rtlScreen
+      .getByText("Signal Ranking")
+      .closest(".mantine-Card-root");
 
     expect(signalCard).toBeInTheDocument();
     expect(

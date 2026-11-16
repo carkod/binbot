@@ -1,22 +1,20 @@
-import { useContext, useEffect, useMemo, useState, type FC } from "react";
 import {
-  AlertHeading,
   Badge,
+  Box,
   Button,
-  Col,
-  Container,
-  Form,
-  Row,
-  Stack,
-} from "react-bootstrap";
-import BotsDateFilter from "../components/BotsCalendar";
-import ConfirmModal from "../components/ConfirmModal";
-import GridLadderCard from "../components/GridLadderCard";
-import { SpinnerContext } from "../spinner-context";
+  Grid,
+  Group,
+  NativeSelect,
+  Text,
+  TextInput,
+  Title,
+} from "@mantine/core";
+import { useContext, useEffect, useMemo, useState, type FC } from "react";
+import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 import {
+  calculateLevelPnlSum,
   GridLadderStatus,
   isActiveGridLadder,
-  calculateLevelPnlSum,
   type GridLadder,
 } from "../../features/gridLadders/gridLadders";
 import {
@@ -24,10 +22,12 @@ import {
   useDeleteGridLadderMutation,
   useGetGridLaddersQuery,
 } from "../../features/gridLadders/gridLaddersApiSlice";
-import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 import { calculateGridReturnPct } from "../../utils/grid-ladder";
 import { weekAgo } from "../../utils/time";
-
+import BotsDateFilter from "../components/BotsCalendar";
+import ConfirmModal from "../components/ConfirmModal";
+import GridLadderCard from "../components/GridLadderCard";
+import { SpinnerContext } from "../spinner-context";
 const GridLaddersPage: FC = () => {
   const { setSpinner } = useContext(SpinnerContext);
   const [selectedCards, setSelectedCards] = useState<string[]>([]);
@@ -37,7 +37,6 @@ const GridLaddersPage: FC = () => {
   const [symbolState, setSymbolState] = useState<string>("");
   const [startDate, setStartDate] = useState<number>(weekAgo());
   const [endDate, setEndDate] = useState<number>(new Date().getTime());
-
   const {
     data: allLadders = [],
     isFetching,
@@ -47,14 +46,11 @@ const GridLaddersPage: FC = () => {
     { refetchOnFocus: true },
   );
   const { data: autotradeSettings } = useGetSettingsQuery();
-
   const [closeGridLadder, { isLoading: isClosing }] =
     useCloseGridLadderMutation();
   const [deleteGridLadder, { isLoading: isDeleting }] =
     useDeleteGridLadderMutation();
-
   const fiat = autotradeSettings?.fiat ?? "fiat";
-
   const filteredLadders = useMemo(() => {
     return allLadders.filter((ladder) => {
       const statusMatches =
@@ -65,7 +61,6 @@ const GridLaddersPage: FC = () => {
       return statusMatches && symbolMatches;
     });
   }, [allLadders, filterStatus, symbolState]);
-
   const summary = useMemo(() => {
     return filteredLadders.reduce(
       (acc, ladder) => {
@@ -94,11 +89,9 @@ const GridLaddersPage: FC = () => {
       },
     );
   }, [filteredLadders]);
-
   useEffect(() => {
     setSpinner(isFetching || isClosing || isDeleting);
   }, [isFetching, isClosing, isDeleting, setSpinner]);
-
   const handleSelect = (id: string) => {
     setSelectedCards((prev) =>
       prev.includes(id)
@@ -106,7 +99,6 @@ const GridLaddersPage: FC = () => {
         : prev.concat(id),
     );
   };
-
   const confirmDelete = async (action: number) => {
     if (action !== 1 || !ladderToDelete) {
       setLadderToDelete(null);
@@ -124,13 +116,11 @@ const GridLaddersPage: FC = () => {
       await refetch();
     }
   };
-
   const confirmClose = async (action: number) => {
     if (action !== 1 || !ladderToClose) {
       setLadderToClose(null);
       return;
     }
-
     await closeGridLadder({
       id: ladderToClose,
       reason: "manual_close",
@@ -139,50 +129,81 @@ const GridLaddersPage: FC = () => {
     setLadderToClose(null);
     await refetch();
   };
-
   return (
-    <Container fluid>
-      <Stack direction="horizontal" gap={4} className="flex-wrap">
-        <AlertHeading>
-          <Badge bg={summary.realized >= 0 ? "success" : "danger"}>
+    <Box w="100%">
+      <Group
+        gap={4}
+        wrap="wrap"
+        style={{
+          flexWrap: "wrap",
+        }}
+      >
+        <Title order={4}>
+          <Badge
+            color={summary.realized >= 0 ? "success" : "danger"}
+            variant="light"
+          >
             Realized PnL: {summary.realized.toFixed(4)}
           </Badge>
-        </AlertHeading>
-        <AlertHeading>
-          <Badge bg={summary.unrealized >= 0 ? "success" : "danger"}>
+        </Title>
+        <Title order={4}>
+          <Badge
+            color={summary.unrealized >= 0 ? "success" : "danger"}
+            variant="light"
+          >
             Unrealized PnL: {summary.unrealized.toFixed(4)}
           </Badge>
-        </AlertHeading>
-        <AlertHeading>
-          <Badge bg="success">Active ladders: {summary.active} / 3</Badge>
-        </AlertHeading>
-        <AlertHeading>
-          <Badge bg="secondary">
+        </Title>
+        <Title order={4}>
+          <Badge color="success" variant="light">
+            Active ladders: {summary.active} / 3
+          </Badge>
+        </Title>
+        <Title order={4}>
+          <Badge color="secondary" variant="light">
             Reserved margin: {summary.reserved.toFixed(2)} {fiat}
           </Badge>
-        </AlertHeading>
-        <AlertHeading>
-          <Badge bg="secondary">
+        </Title>
+        <Title order={4}>
+          <Badge color="secondary" variant="light">
             Used margin: {summary.used.toFixed(2)} {fiat}
           </Badge>
-        </AlertHeading>
-        <AlertHeading>
-          <Badge bg="info">Open levels: {summary.openLevels}</Badge>
-        </AlertHeading>
-      </Stack>
+        </Title>
+        <Title order={4}>
+          <Badge color="info" variant="light">
+            Open levels: {summary.openLevels}
+          </Badge>
+        </Title>
+      </Group>
 
       <hr />
 
-      <Row className="mb-3 g-2 align-items-end">
-        <Col md={2}>
-          <Form.Control
+      <Grid
+        mb={16}
+        gap={16}
+        style={{
+          alignItems: "flex-end",
+        }}
+      >
+        <Grid.Col
+          span={{
+            base: 12,
+            md: 2,
+          }}
+        >
+          <TextInput
             placeholder="Search by symbol"
             value={symbolState}
             onChange={(e) => setSymbolState(e.target.value)}
           />
-        </Col>
-        <Col md={2}>
-          <Form.Select
+        </Grid.Col>
+        <Grid.Col
+          span={{
+            base: 12,
+            md: 2,
+          }}
+        >
+          <NativeSelect
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
           >
@@ -192,55 +213,80 @@ const GridLaddersPage: FC = () => {
                 {status}
               </option>
             ))}
-          </Form.Select>
-        </Col>
-        <Col md={2}>
+          </NativeSelect>
+        </Grid.Col>
+        <Grid.Col
+          span={{
+            base: 12,
+            md: 2,
+          }}
+        >
           <BotsDateFilter
             title="Start date"
             controlId="gridStartDate"
             selectedDate={startDate}
             handleDateChange={setStartDate}
           />
-        </Col>
-        <Col md={2}>
+        </Grid.Col>
+        <Grid.Col
+          span={{
+            base: 12,
+            md: 2,
+          }}
+        >
           <BotsDateFilter
             title="End date"
             controlId="gridEndDate"
             selectedDate={endDate}
             handleDateChange={setEndDate}
           />
-        </Col>
-        <Col md="auto">
+        </Grid.Col>
+        <Grid.Col
+          span={{
+            base: 12,
+            md: "content",
+          }}
+        >
           <Button
-            variant="outline-secondary"
             onClick={() =>
               setSelectedCards(
                 filteredLadders.map((ladder: GridLadder) => ladder.id),
               )
             }
+            variant="outline"
+            color="secondary"
+            type="button"
           >
             Select all
           </Button>{" "}
           <Button
-            variant="outline-secondary"
             onClick={() => setSelectedCards([])}
+            variant="outline"
+            color="secondary"
+            type="button"
           >
             Unselect all
           </Button>
-        </Col>
-      </Row>
+        </Grid.Col>
+      </Grid>
 
       <hr />
 
       {filteredLadders.length === 0 ? (
-        <p>No grid ladders deployed yet</p>
+        <Text>No grid ladders deployed yet</Text>
       ) : (
-        <Row>
+        <Grid>
           {filteredLadders.map((ladder) => {
             const gridReturnPct = calculateGridReturnPct(ladder);
-
             return (
-              <Col key={ladder.id} lg={4} className="mb-3">
+              <Grid.Col
+                key={ladder.id}
+                span={{
+                  base: 12,
+                  lg: 4,
+                }}
+                mb={16}
+              >
                 <GridLadderCard
                   ladder={ladder}
                   gridReturnPct={gridReturnPct}
@@ -249,14 +295,15 @@ const GridLaddersPage: FC = () => {
                   onClose={setLadderToClose}
                   onDelete={setLadderToDelete}
                 />
-              </Col>
+              </Grid.Col>
             );
           })}
-        </Row>
+        </Grid>
       )}
 
       <ConfirmModal
         show={Boolean(ladderToClose)}
+        onClose={() => setLadderToClose(null)}
         handleActions={confirmClose}
         primary="Close ladder"
       >
@@ -267,6 +314,7 @@ const GridLaddersPage: FC = () => {
 
       <ConfirmModal
         show={Boolean(ladderToDelete)}
+        onClose={() => setLadderToDelete(null)}
         handleActions={confirmDelete}
         primary="Delete record"
       >
@@ -275,8 +323,7 @@ const GridLaddersPage: FC = () => {
         positions. Any active exchange activity will continue without this
         ladder record.
       </ConfirmModal>
-    </Container>
+    </Box>
   );
 };
-
 export default GridLaddersPage;

@@ -1,9 +1,9 @@
+import { Badge, Box, Button, Card, Grid, Group } from "@mantine/core";
 import type { FC } from "react";
-import { Badge, Button, Card, Col, Row } from "react-bootstrap";
 import { useNavigate } from "react-router";
 import {
-  calculateFilledLevelCount,
   calculateCloseAdjustmentPnl,
+  calculateFilledLevelCount,
   calculateGridPnl,
   calculateGridUtilization,
   calculateLevelPnlSum,
@@ -15,7 +15,6 @@ import {
 import { returnBadgeBg } from "../../utils/grid-ladder";
 import { roundDecimals } from "../../utils/math";
 import { formatTimestamp } from "../../utils/time";
-
 interface GridLadderCardProps {
   ladder: GridLadder;
   gridReturnPct: number;
@@ -24,7 +23,6 @@ interface GridLadderCardProps {
   onClose: (id: string) => void;
   onDelete: (id: string) => void;
 }
-
 const statusColorMap: Record<GridLadderStatus, string> = {
   pending: "secondary",
   active: "success",
@@ -33,7 +31,6 @@ const statusColorMap: Record<GridLadderStatus, string> = {
   range_broken: "danger",
   error: "danger",
 };
-
 const GridLadderCard: FC<GridLadderCardProps> = ({
   ladder,
   gridReturnPct,
@@ -54,176 +51,337 @@ const GridLadderCard: FC<GridLadderCardProps> = ({
   const firstBreachUpAt = ladder.context.first_breach_up_at as
     number | null | undefined;
   const showAlgorithmName = ladder.algorithm_name !== "grid_ladder";
-
   return (
-    <Card className={selected ? "border border-success" : ""}>
-      <Card.Header className="d-flex justify-content-between align-items-center">
+    <Card className={selected ? "selected-card" : ""} mb="md">
+      <Box
+        mb="sm"
+        display="flex"
+        style={{
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
         <div>
           <strong>{ladder.symbol}</strong>
           {(firstBreachAt != null || firstBreachUpAt != null) && (
-            <div className="d-flex flex-wrap gap-1">
+            <Box
+              display="flex"
+              style={{
+                flexWrap: "wrap",
+                gap: 4,
+              }}
+              component="div"
+            >
               {firstBreachAt != null && (
                 <Badge
-                  bg="warning"
-                  text="dark"
                   title={`Break-down breach started: ${new Date(firstBreachAt).toISOString()}`}
+                  color="warning"
+                  variant="light"
                 >
                   ⚠ BREAK DOWN
                 </Badge>
               )}
               {firstBreachUpAt != null && (
                 <Badge
-                  bg="warning"
-                  text="dark"
                   title={`Break-up breach started: ${new Date(firstBreachUpAt).toISOString()}`}
+                  color="warning"
+                  variant="light"
                 >
                   ⚠ BREAK UP
                 </Badge>
               )}
-            </div>
+            </Box>
           )}
           {showAlgorithmName && (
-            <div className="text-muted small">{ladder.algorithm_name}</div>
+            <Box c="dimmed" fz="xs" component="div">
+              {ladder.algorithm_name}
+            </Box>
           )}
         </div>
-        <div className="d-flex flex-column align-items-end gap-1">
-          <Badge bg={returnBadgeBg(gridReturnPct)}>{gridReturnPct}%</Badge>
-          <Badge bg={statusColorMap[ladder.status]}>
+        <Box
+          display="flex"
+          style={{
+            flexDirection: "column",
+            alignItems: "flex-end",
+            gap: 4,
+          }}
+          component="div"
+        >
+          <Badge color={returnBadgeBg(gridReturnPct)} variant="light">
+            {gridReturnPct}%
+          </Badge>
+          <Badge color={statusColorMap[ladder.status]} variant="light">
             {ladder.status.toUpperCase()}
           </Badge>
-        </div>
-      </Card.Header>
-      <Card.Body>
-        <div className="small text-muted mb-2">
+        </Box>
+      </Box>
+      <Box>
+        <Box fz="xs" c="dimmed" mb={8} component="div">
           {ladder.exchange} / {ladder.market_type}
-        </div>
-        <Row>
-          <Col xs={6}>Entry time</Col>
-          <Col xs={6} className="text-end">
+        </Box>
+        <Grid>
+          <Grid.Col
+            span={{
+              base: 6,
+            }}
+          >
+            Entry time
+          </Grid.Col>
+          <Grid.Col
+            span={{
+              base: 6,
+            }}
+            ta="right"
+          >
             {formatTimestamp(ladder.created_at)}
-          </Col>
-        </Row>
-        <Row>
-          <Col xs={6}>Range</Col>
-          <Col xs={6} className="text-end">
+          </Grid.Col>
+        </Grid>
+        <Grid>
+          <Grid.Col
+            span={{
+              base: 6,
+            }}
+          >
+            Range
+          </Grid.Col>
+          <Grid.Col
+            span={{
+              base: 6,
+            }}
+            ta="right"
+          >
             {ladder.range_low} → {ladder.range_high}
-          </Col>
-        </Row>
-        <Row>
-          <Col xs={6}>Breakout</Col>
-          <Col xs={6} className="text-end">
+          </Grid.Col>
+        </Grid>
+        <Grid>
+          <Grid.Col
+            span={{
+              base: 6,
+            }}
+          >
+            Breakout
+          </Grid.Col>
+          <Grid.Col
+            span={{
+              base: 6,
+            }}
+            ta="right"
+          >
             {roundDecimals(ladder.breakout_low)} /{" "}
             {roundDecimals(ladder.breakout_high)}
-          </Col>
-        </Row>
-        <Row>
-          <Col xs={6}>Levels</Col>
-          <Col xs={6} className="text-end">
+          </Grid.Col>
+        </Grid>
+        <Grid>
+          <Grid.Col
+            span={{
+              base: 6,
+            }}
+          >
+            Levels
+          </Grid.Col>
+          <Grid.Col
+            span={{
+              base: 6,
+            }}
+            ta="right"
+          >
             {ladder.level_count}
-          </Col>
-        </Row>
-        <Row>
-          <Col xs={6}>Step</Col>
-          <Col xs={6} className="text-end">
+          </Grid.Col>
+        </Grid>
+        <Grid>
+          <Grid.Col
+            span={{
+              base: 6,
+            }}
+          >
+            Step
+          </Grid.Col>
+          <Grid.Col
+            span={{
+              base: 6,
+            }}
+            ta="right"
+          >
             {roundDecimals(ladder.grid_step)}
-          </Col>
-        </Row>
-        <Row>
-          <Col xs={6}>Margin</Col>
-          <Col xs={6} className="text-end">
+          </Grid.Col>
+        </Grid>
+        <Grid>
+          <Grid.Col
+            span={{
+              base: 6,
+            }}
+          >
+            Margin
+          </Grid.Col>
+          <Grid.Col
+            span={{
+              base: 6,
+            }}
+            ta="right"
+          >
             {roundDecimals(ladder.reserved_margin)} /{" "}
             {roundDecimals(ladder.total_margin)}
-          </Col>
-        </Row>
-        <Row>
-          <Col xs={6}>Utilisation</Col>
-          <Col xs={6} className="text-end">
+          </Grid.Col>
+        </Grid>
+        <Grid>
+          <Grid.Col
+            span={{
+              base: 6,
+            }}
+          >
+            Utilisation
+          </Grid.Col>
+          <Grid.Col
+            span={{
+              base: 6,
+            }}
+            ta="right"
+          >
             {utilization.toFixed(2)}%
-          </Col>
-        </Row>
+          </Grid.Col>
+        </Grid>
         {isActive ? (
           <>
-            <Row>
-              <Col xs={6}>TP cycled</Col>
-              <Col
-                xs={6}
-                className={`text-end ${levelPnl >= 0 ? "text-success" : "text-danger"}`}
+            <Grid>
+              <Grid.Col
+                span={{
+                  base: 6,
+                }}
+              >
+                TP cycled
+              </Grid.Col>
+              <Grid.Col
+                className={`value-right ${levelPnl >= 0 ? "tone-success" : "tone-danger"}`}
+                span={{
+                  base: 6,
+                }}
               >
                 {levelPnl.toFixed(4)}
-              </Col>
-            </Row>
-            <Row>
-              <Col xs={6}>Unrealized</Col>
-              <Col
-                xs={6}
-                className={`text-end ${ladder.unrealized_pnl >= 0 ? "text-success" : "text-danger"}`}
+              </Grid.Col>
+            </Grid>
+            <Grid>
+              <Grid.Col
+                span={{
+                  base: 6,
+                }}
+              >
+                Unrealized
+              </Grid.Col>
+              <Grid.Col
+                className={`value-right ${ladder.unrealized_pnl >= 0 ? "tone-success" : "tone-danger"}`}
+                span={{
+                  base: 6,
+                }}
               >
                 {ladder.unrealized_pnl.toFixed(4)}
-              </Col>
-            </Row>
+              </Grid.Col>
+            </Grid>
           </>
         ) : (
           <>
             {(levelPnl !== 0 || hasCloseAdjustment) && (
-              <Row>
-                <Col xs={6}>TP cycled</Col>
-                <Col
-                  xs={6}
-                  className={`text-end ${levelPnl >= 0 ? "text-success" : "text-danger"}`}
+              <Grid>
+                <Grid.Col
+                  span={{
+                    base: 6,
+                  }}
+                >
+                  TP cycled
+                </Grid.Col>
+                <Grid.Col
+                  className={`value-right ${levelPnl >= 0 ? "tone-success" : "tone-danger"}`}
+                  span={{
+                    base: 6,
+                  }}
                 >
                   {levelPnl.toFixed(4)}
-                </Col>
-              </Row>
+                </Grid.Col>
+              </Grid>
             )}
             {hasCloseAdjustment && (
-              <Row>
-                <Col xs={6}>Close adjustment</Col>
-                <Col
-                  xs={6}
-                  className={`text-end ${closeAdjustmentPnl >= 0 ? "text-success" : "text-danger"}`}
+              <Grid>
+                <Grid.Col
+                  span={{
+                    base: 6,
+                  }}
+                >
+                  Close adjustment
+                </Grid.Col>
+                <Grid.Col
+                  className={`value-right ${closeAdjustmentPnl >= 0 ? "tone-success" : "tone-danger"}`}
+                  span={{
+                    base: 6,
+                  }}
                 >
                   {closeAdjustmentPnl.toFixed(4)}
-                </Col>
-              </Row>
+                </Grid.Col>
+              </Grid>
             )}
             {ladder.status === GridLadderStatus.CLOSED &&
               ladder.closed_at != null && (
-                <Row>
-                  <Col xs={6}>Exit time</Col>
-                  <Col xs={6} className="text-end">
+                <Grid>
+                  <Grid.Col
+                    span={{
+                      base: 6,
+                    }}
+                  >
+                    Exit time
+                  </Grid.Col>
+                  <Grid.Col
+                    span={{
+                      base: 6,
+                    }}
+                    ta="right"
+                  >
                     {formatTimestamp(ladder.closed_at)}
-                  </Col>
-                </Row>
+                  </Grid.Col>
+                </Grid>
               )}
-            <Row>
-              <Col xs={6}>Total realized</Col>
-              <Col
-                xs={6}
-                className={`text-end ${totalPnl >= 0 ? "text-success" : "text-danger"}`}
+            <Grid>
+              <Grid.Col
+                span={{
+                  base: 6,
+                }}
+              >
+                Total realized
+              </Grid.Col>
+              <Grid.Col
+                className={`value-right ${totalPnl >= 0 ? "tone-success" : "tone-danger"}`}
+                span={{
+                  base: 6,
+                }}
               >
                 {totalPnl.toFixed(4)}
-              </Col>
-            </Row>
+              </Grid.Col>
+            </Grid>
           </>
         )}
         <hr />
-        <div className="small">
+        <Box fz="xs" component="div">
           Open orders: {calculateOpenOrderCount(ladder)} · Filled levels:{" "}
           {calculateFilledLevelCount(ladder)}
-        </div>
-        <div className="d-flex flex-column gap-1 mt-2">
+        </Box>
+        <Box
+          display="flex"
+          mt={8}
+          style={{
+            flexDirection: "column",
+            gap: 4,
+          }}
+          component="div"
+        >
           {ladder.levels.map((level, index) => {
             const isFilled = level.filled_entry_qty > 0;
             const tone =
               index < ladder.levels.length / 2
-                ? "text-danger"
+                ? "tone-danger"
                 : index > ladder.levels.length / 2
-                  ? "text-success"
-                  : "text-secondary";
+                  ? "tone-success"
+                  : "tone-muted";
             return (
               <div
                 key={level.id}
-                className={`border rounded p-1 small ${isFilled ? "border-2" : ""}`}
+                className={`ladder-level ${isFilled ? "ladder-level-filled" : ""}`}
               >
                 <span className={tone}>
                   #{level.level_index} {level.side}
@@ -233,27 +391,42 @@ const GridLadderCard: FC<GridLadderCardProps> = ({
               </div>
             );
           })}
-        </div>
-      </Card.Body>
-      <Card.Footer className="d-flex justify-content-between">
+        </Box>
+      </Box>
+      <Group
+        mt="sm"
+        display="flex"
+        style={{
+          justifyContent: "space-between",
+        }}
+      >
         <Button
-          variant="info"
           onClick={() => navigate(`/grid-ladders/${ladder.id}`)}
+          color="info"
+          type="button"
         >
           View details
         </Button>
-        <Button variant="warning" onClick={() => onSelect(ladder.id)}>
+        <Button
+          onClick={() => onSelect(ladder.id)}
+          color="warning"
+          type="button"
+        >
           {selected ? "Unselect" : "Select"}
         </Button>
-        <Button variant="danger" onClick={() => onClose(ladder.id)}>
+        <Button onClick={() => onClose(ladder.id)} color="danger" type="button">
           Close ladder
         </Button>
-        <Button variant="outline-danger" onClick={() => onDelete(ladder.id)}>
+        <Button
+          onClick={() => onDelete(ladder.id)}
+          variant="outline"
+          color="danger"
+          type="button"
+        >
           Delete
         </Button>
-      </Card.Footer>
+      </Group>
     </Card>
   );
 };
-
 export default GridLadderCard;

@@ -1,0 +1,175 @@
+:root {
+  color-scheme: light;
+  --terminal-background: #f4f3ef;
+}
+body {
+  margin: 0;
+  background: var(--terminal-background);
+}
+a {
+  color: var(--mantine-color-primary-8);
+}
+.mantine-AppShell-main {
+  min-width: 0;
+  background: var(--terminal-background);
+}
+.terminal-sidebar {
+  background: #212120;
+  border-color: #363532;
+}
+.terminal-sidebar .mantine-NavLink-root {
+  color: #dedbd5;
+  border-radius: var(--mantine-radius-sm);
+}
+.terminal-sidebar .mantine-NavLink-root:hover {
+  background: #ffffff10;
+}
+.terminal-sidebar .mantine-NavLink-root[data-active] {
+  color: var(--mantine-color-primary-5);
+  background: #51cbce20;
+}
+.mantine-Card-root {
+  overflow: visible;
+}
+.mantine-Grid-col {
+  min-width: 0;
+}
+.content {
+  width: 100%;
+  min-width: 0;
+}
+.table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.table-scroll table {
+  min-width: 32rem;
+}
+.field-row > .mantine-InputWrapper-root {
+  flex: 1;
+  min-width: 0;
+}
+.detail-row {
+  border-bottom: 1px solid var(--mantine-color-gray-2);
+  overflow-wrap: anywhere;
+}
+.dashboard {
+  --dashboard-card-height: 190px;
+}
+.dashboard-balance {
+  --dashboard-card-height: 160px;
+}
+.dashboard-active-bots {
+  --dashboard-card-height: 130px;
+}
+.dashboard-benchmark {
+  --dashboard-card-height: 640px;
+}
+.dashboard-movers {
+  --dashboard-card-height: 550px;
+}
+.dashboard-trend {
+  --dashboard-card-height: 600px;
+}
+.dashboard .card-loading {
+  height: var(--dashboard-card-height);
+}
+.signals-ranking .card-loading {
+  height: 400px;
+}
+.p-line-chart {
+  margin-bottom: var(--mantine-spacing-lg);
+}
+.p-line-chart__box,
+.p-line-chart--legend {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+}
+.p-line-chart__box {
+  overflow: hidden;
+  border-radius: var(--mantine-radius-sm);
+}
+.p-line-chart--left,
+.p-line-chart--right {
+  min-width: 50px;
+  padding: 6px;
+}
+.p-line-chart--left {
+  background: var(--mantine-color-success-5);
+}
+.p-line-chart--right {
+  background: var(--mantine-color-danger-5);
+}
+.p-line-chart--legend {
+  margin-top: 6px;
+  font-size: var(--mantine-font-size-xs);
+}
+/* Dynamic trading states also appear on chart icons and native table values. */
+.tone-success {
+  color: var(--mantine-color-success-5);
+}
+.tone-danger {
+  color: var(--mantine-color-danger-5);
+}
+.tone-warning {
+  color: var(--mantine-color-warning-9);
+}
+.tone-info {
+  color: var(--mantine-color-info-8);
+}
+.tone-muted {
+  color: var(--mantine-color-dimmed);
+}
+.value-right {
+  text-align: right;
+}
+.metric-icon {
+  font-size: 1.875rem;
+}
+.metric-value {
+  font-size: 1.25rem;
+}
+.selected-card {
+  border: 1px solid var(--mantine-color-success-6);
+}
+.ladder-level {
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-sm);
+  padding: 4px;
+  font-size: var(--mantine-font-size-xs);
+}
+.ladder-level-filled {
+  border-width: 2px;
+}
+.live-dot {
+  display: inline-block;
+  width: 0.6rem;
+  height: 0.6rem;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: live-dot-pulse 1.8s ease-out infinite;
+}
+@keyframes live-dot-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 currentColor;
+    transform: scale(0.95);
+  }
+  70% {
+    box-shadow: 0 0 0 0.35rem transparent;
+    transform: scale(1);
+  }
+}
+@media (min-width: 48em) {
+  .responsive-row {
+    flex-direction: row;
+  }
+}
+
+.chart-legend-label {
+  display: inline-flex;
+  gap: 4px;
+  margin-right: 1rem;
+}
