@@ -6,11 +6,13 @@ import { SymbolProvider } from "./app/providers/SymbolProvider";
 import { routes } from "./app/routes";
 import { store } from "./app/store";
 import { getToken, removeToken } from "./utils/login";
+
 const rootRouter = createBrowserRouter([
   {
     path: "/login",
     Component: () => {
       const token = getToken();
+
       if (token) {
         return <Navigate to="/" replace />;
       } else {
@@ -37,6 +39,7 @@ const rootRouter = createBrowserRouter([
     },
   },
 ]);
+
 export const App = () => {
   return (
     <Provider store={store}>
@@ -44,4 +47,5 @@ export const App = () => {
     </Provider>
   );
 };
+
 export default App;

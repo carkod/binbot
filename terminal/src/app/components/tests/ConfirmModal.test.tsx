@@ -9,9 +9,12 @@ describe("confirmation dialog", () => {
     "can reopen after cancelling with %s",
     async (method) => {
       const user = userEvent.setup();
+
       const handleActions = vi.fn();
+
       function Confirmation() {
         const [show, setShow] = useState(false);
+
         return (
           <>
             <button onClick={() => setShow(true)}>Delete record</button>
@@ -26,6 +29,7 @@ describe("confirmation dialog", () => {
           </>
         );
       }
+
       render(<Confirmation />);
 
       await user.click(screen.getByRole("button", { name: "Delete record" }));
@@ -47,7 +51,9 @@ describe("confirmation dialog", () => {
 
   it("keeps primary and secondary action identifiers distinct", async () => {
     const user = userEvent.setup();
+
     const handleActions = vi.fn();
+
     render(
       <ConfirmModal
         show

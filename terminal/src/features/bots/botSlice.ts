@@ -99,4 +99,5 @@ export const {
   setCurrentPrice,
   resetBot,
 } = botSlice.actions;
+
 export const { selectBot } = botSlice.selectors;

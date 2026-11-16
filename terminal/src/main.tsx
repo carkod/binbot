@@ -9,9 +9,12 @@ import App from "./App";
 import "./styles/terminal.css";
 import { theme } from "./theme";
 import { chartTransition } from "./utils/motion";
+
 const container = document.getElementById("root");
+
 if (container) {
   const root = createRoot(container);
+
   root.render(
     <React.StrictMode>
       <MotionConfig reducedMotion="never" transition={chartTransition}>

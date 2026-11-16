@@ -7,18 +7,23 @@ import { roundDecimals } from "../../utils/math";
 import { formatTimestamp } from "../../utils/time";
 import CardLoadingSpinner from "../components/CardLoadingSpinner";
 import { useBinquantStrategyNames } from "../hooks/useBinquantStrategyNames";
+
 const SignalsPage = () => {
   const { data: accountData } = useGetBalanceQuery();
+
   const { data: algoRanking, isLoading: loadingAlgoRanking } =
     useGetAlgoRankingQuery();
+
   const {
     strategyNames,
     isLoading: loadingStrategyNames,
     error: strategyNamesError,
   } = useBinquantStrategyNames();
+
   const { data: signals, isLoading: loadingSignals } = useGetSignalsQuery({
     limit: 1000,
   });
+
   const filteredAlgoRanking = useMemo(
     () =>
       algoRanking?.filter(
@@ -27,12 +32,14 @@ const SignalsPage = () => {
       ) ?? [],
     [algoRanking, strategyNames],
   );
+
   const topAlgoCounts = new Set(
     filteredAlgoRanking
       .map(({ count }) => count)
       .sort((a, b) => b - a)
       .slice(0, 3),
   );
+
   const rankedSignalAlgorithms = useMemo(() => {
     const algorithms = new Map<
       string,
@@ -43,8 +50,10 @@ const SignalsPage = () => {
         count: number;
       }
     >();
+
     signals?.forEach(({ algorithm_name, generated_at, current_regime }) => {
       const algorithm = algorithms.get(algorithm_name);
+
       if (!algorithm) {
         algorithms.set(algorithm_name, {
           algorithm_name,
@@ -62,6 +71,7 @@ const SignalsPage = () => {
     });
     return [...algorithms.values()].sort((left, right) => {
       const countDifference = right.count - left.count;
+
       if (countDifference !== 0) return countDifference;
       return (
         new Date(right.generated_at).getTime() -
@@ -69,6 +79,7 @@ const SignalsPage = () => {
       );
     });
   }, [signals]);
+
   return (
     <div className="content">
       <SimpleGrid cols={{ base: 1, lg: 2 }}>
@@ -222,4 +233,5 @@ const SignalsPage = () => {
     </div>
   );
 };
+
 export default SignalsPage;

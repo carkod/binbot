@@ -40,6 +40,7 @@ export const signalsApiSlice = userApiSlice.injectEndpoints({
     getSignals: build.query<SignalRecord[], GetSignalsParams | void>({
       query: (queryParams) => {
         const params = (queryParams ?? {}) as GetSignalsParams;
+
         const {
           limit = 1000,
           offset = 0,

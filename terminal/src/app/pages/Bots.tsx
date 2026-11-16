@@ -24,26 +24,41 @@ import ConfirmModal from "../components/ConfirmModal";
 import SymbolSearch from "../components/SymbolSearch";
 import { useAppDispatch } from "../hooks";
 import { SpinnerContext } from "../spinner-context";
+
 export const BotsPage: FC<{}> = () => {
   const dispatch = useAppDispatch();
+
   const currentTs = new Date().getTime();
+
   const oneWeekAgo = weekAgo();
+
   const { spinner, setSpinner } = useContext(SpinnerContext);
+
   const [removeBots, { isLoading: isDeleting, isSuccess: isDeleted }] =
     useDeleteBotMutation();
+
   const [
     deactivateBot,
     { isLoading: isDeactivating, isSuccess: isDeactivated },
   ] = useDeactivateBotMutation();
+
   // Component states
   const [selectedCards, selectCards] = useImmer([]);
+
   const [botToDelete, setBotToDelete] = useState<string | null>(null);
+
   const [, setDateFilterError] = useState(null);
+
   const [bulkActions, setBulkActions] = useState<BulkAction>(BulkAction.NONE);
+
   const [startDate, setStartDate] = useState(oneWeekAgo);
+
   const [endDate, setEndDate] = useState(currentTs);
+
   const [filterStatus, setFilterStatus] = useState<BotStatus>(BotStatus.ALL);
+
   const [symbolState, setSymbolState] = useState<string>("");
+
   // Fetch bots or single bot by symbol
   const {
     refetch: refetchBots,
@@ -59,6 +74,7 @@ export const BotsPage: FC<{}> = () => {
       refetchOnFocus: true,
     },
   );
+
   const {
     refetch: refetchSymbol,
     data: symbolData,
@@ -67,6 +83,7 @@ export const BotsPage: FC<{}> = () => {
     skip: !symbolState,
     refetchOnFocus: true,
   });
+
   // Unified data and refetch
   const data = symbolState
     ? {
@@ -79,11 +96,15 @@ export const BotsPage: FC<{}> = () => {
         totalProfit: 0,
       }
     : botsData;
+
   const refetch = symbolState ? refetchSymbol : refetchBots;
+
   const isFetching = symbolState ? isFetchingSymbol : isFetchingBots;
+
   // Symbols search dependencies
   const { data: allSymbols, isFetching: isFetchingSymbols } =
     useGetSymbolsQuery();
+
   const handleSelection = (id: string) => {
     let newCards = [];
     if (selectedCards.includes(id)) {
@@ -93,9 +114,11 @@ export const BotsPage: FC<{}> = () => {
     }
     selectCards(newCards);
   };
+
   const handleDelete = (botId: string) => {
     setBotToDelete(botId);
   };
+
   const confirmDelete = async (index) => {
     if (index === 1) {
       await removeBots([botToDelete]).unwrap();
@@ -110,6 +133,7 @@ export const BotsPage: FC<{}> = () => {
     }
     return false;
   };
+
   const onSubmitBulkAction = async () => {
     switch (bulkActions) {
       case BulkAction.DELETE:
@@ -137,6 +161,7 @@ export const BotsPage: FC<{}> = () => {
         break;
     }
   };
+
   const handleStartDate = (ts: number) => {
     setStartDate(ts);
     if (ts > endDate) {
@@ -146,6 +171,7 @@ export const BotsPage: FC<{}> = () => {
       dispatch(() => refetch());
     }
   };
+
   const handleEndDate = (ts: number) => {
     setEndDate(ts);
     if (ts < startDate) {
@@ -155,6 +181,7 @@ export const BotsPage: FC<{}> = () => {
       dispatch(() => refetch());
     }
   };
+
   /**
    * refetch will work without params
    * if we set all the states correctly before refetching (spinner, startDate, endDate, filterStatus)
@@ -162,6 +189,7 @@ export const BotsPage: FC<{}> = () => {
    */
   const handleSearchBySymbol = (e: React.ChangeEvent<HTMLInputElement>) => {
     const pair = e.target.value;
+
     if (pair && pair.length > 0) {
       setSymbolState(pair);
       setSpinner(true);
@@ -174,6 +202,7 @@ export const BotsPage: FC<{}> = () => {
       setSpinner(false);
     }
   };
+
   useEffect(() => {
     if (isFetching || isDeactivating || isDeleting) {
       setSpinner(true);
@@ -187,6 +216,7 @@ export const BotsPage: FC<{}> = () => {
     }
     if (allSymbols?.length > 0 && !isFetchingSymbols) {
       setSpinner(false);
+
       const pairs = allSymbols.map((symbol) => symbol.id);
     }
   }, [
@@ -292,4 +322,5 @@ export const BotsPage: FC<{}> = () => {
     </SpinnerContext.Provider>
   );
 };
+
 export default BotsPage;

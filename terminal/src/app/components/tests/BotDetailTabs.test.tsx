@@ -36,6 +36,7 @@ vi.mock("../StopLossTab", () => ({ default: () => null }));
 
 it("submits both trailing edits after their fields lose focus", async () => {
   const store = makeStore();
+
   store.dispatch(
     setBot({
       bot: {
@@ -62,8 +63,11 @@ it("submits both trailing edits after their fields lose focus", async () => {
   );
 
   fireEvent.click(rtlScreen.getByRole("tab", { name: "Take Profit" }));
+
   const profit = rtlScreen.getByLabelText(/Trail profit at/);
+
   const deviation = rtlScreen.getByLabelText("Trailing deviation");
+
   fireEvent.change(profit, { target: { value: "4.5" } });
   fireEvent.blur(profit);
   fireEvent.change(deviation, { target: { value: "1.25" } });

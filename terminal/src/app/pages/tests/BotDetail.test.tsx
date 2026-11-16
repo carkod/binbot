@@ -26,21 +26,25 @@ vi.mock("../../../features/symbolsApiSlice", async () => ({
 
 vi.mock("../../components/BotChartTabs", () => {
   const ChartContainer = (_props: any) => <div data-testid="chart-container" />;
+
   ChartContainer.displayName = "ChartContainer";
   return { default: ChartContainer };
 });
 vi.mock("../../components/BotInfo", () => {
   const BotInfo = (_props: any) => <div data-testid="bot-info" />;
+
   BotInfo.displayName = "BotInfo";
   return { default: BotInfo };
 });
 vi.mock("../../components/LogsInfo", () => {
   const LogsInfo = (_props: any) => <div data-testid="logs-info" />;
+
   LogsInfo.displayName = "LogsInfo";
   return { default: LogsInfo };
 });
 vi.mock("../../components/BotDetailTabs", () => {
   const BotDetailTabs = (_props: any) => <div data-testid="bot-detail-tabs" />;
+
   BotDetailTabs.displayName = "BotDetailTabs";
   return { default: BotDetailTabs };
 });
@@ -48,6 +52,7 @@ vi.mock("../../components/BalanceAnalysis", () => {
   const BalanceAnalysis = (_props: any) => (
     <div data-testid="balance-analysis" />
   );
+
   BalanceAnalysis.displayName = "BalanceAnalysis";
   return { default: BalanceAnalysis };
 });
@@ -80,6 +85,7 @@ describe("BotDetail page", () => {
         </SpinnerContext.Provider>
       </Provider>,
     );
+
     expect(container.querySelector(".content")).not.toBeNull();
     expect(rtlScreen.getByTestId("chart-container")).toBeTruthy();
   });

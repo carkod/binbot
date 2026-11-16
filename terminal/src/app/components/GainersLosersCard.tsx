@@ -2,9 +2,11 @@ import { Anchor, Badge, Box, Stack, Title } from "@mantine/core";
 import { MarketType } from "../../utils/enums";
 import { normalizePriceChangePercent } from "../../utils/gainers-losers";
 import { type GainersLosersProps } from "./GainersLosers";
+
 interface GainersLosersCardProps extends GainersLosersProps {
   title: string;
 }
+
 const GainersLosersCard = ({
   data,
   market_type,
@@ -14,12 +16,14 @@ const GainersLosersCard = ({
     market_type === MarketType.FUTURES
       ? `/bots/futures/new/${symbol}`
       : `/bots/new/${symbol}`;
+
   return (
     <Box>
       <Title order={4}>{title}</Title>
       <Stack gap={0}>
         {data.map((x, i) => {
           const priceChangePercent = normalizePriceChangePercent(x);
+
           return (
             parseFloat(priceChangePercent) !== 0 && (
               <Box key={i} className="detail-row">
@@ -40,4 +44,5 @@ const GainersLosersCard = ({
     </Box>
   );
 };
+
 export default GainersLosersCard;

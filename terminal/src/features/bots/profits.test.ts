@@ -73,6 +73,7 @@ describe("bot profits", () => {
         closing_price: 110,
       },
     });
+
     const loser = makeBot({
       id: "loser",
       position: BotPosition.SHORT,
@@ -82,6 +83,7 @@ describe("bot profits", () => {
         closing_price: 210,
       },
     });
+
     const openBot = makeBot({
       id: "open",
       deal: {

@@ -20,6 +20,7 @@ import TakeProfitTab from "../TakeProfitTab";
 
 function renderTakeProfitTab(botOverrides: Partial<Bot> = {}) {
   const store = makeStore();
+
   store.dispatch(setBot({ bot: { ...singleBot, ...botOverrides } }));
   render(
     <Provider store={store}>
@@ -38,10 +39,12 @@ describe("TakeProfitTab trailing", () => {
     "keeps the original trailing controls for a %s bot with recovery enabled",
     (reversal_path) => {
       const recoveryParams = { ...defaultRecoveryParams, reversal_path };
+
       const store = renderTakeProfitTab({
         id: "saved-bot",
         recovery_params: recoveryParams,
       });
+
       const toggle = testingScreen.getByRole("switch", {
         name: /^Trailing /,
       });
@@ -135,7 +138,9 @@ describe("TakeProfitTab trailing", () => {
       trailing_profit: 2.3,
       trailing_deviation: 0.63,
     });
+
     const profit = testingScreen.getByLabelText(/Trail profit at/);
+
     const deviation = testingScreen.getByLabelText("Trailing deviation");
 
     fireEvent.change(profit, { target: { value: "4.5" } });

@@ -2,6 +2,7 @@ import { Autocomplete } from "@mantine/core";
 import type { ChangeEvent } from "react";
 import { useEffect, useState } from "react";
 import { useSymbolData } from "../hooks";
+
 type SymbolSearchProps = {
   name: string;
   label?: string;
@@ -17,6 +18,7 @@ type SymbolSearchProps = {
   onBlur?: (e: ChangeEvent<HTMLInputElement>) => void;
   errors?: object;
 };
+
 const SymbolSearch = ({
   name,
   label,
@@ -33,11 +35,15 @@ const SymbolSearch = ({
   onInputChange,
 }: SymbolSearchProps) => {
   const [text, setText] = useState(value ?? defaultValue);
+
   const { symbolsList } = useSymbolData();
+
   useEffect(() => {
     if (value !== undefined) setText(value);
   }, [value]);
+
   const error = errors[name];
+
   return (
     <Autocomplete
       id={name}
@@ -64,4 +70,5 @@ const SymbolSearch = ({
     />
   );
 };
+
 export default SymbolSearch;

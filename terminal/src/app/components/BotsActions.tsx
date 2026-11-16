@@ -1,5 +1,6 @@
 import { NativeSelect, Stack } from "@mantine/core";
 import type { ChangeEvent, FC } from "react";
+
 export enum BulkAction {
   NONE = "",
   DELETE = "delete-selected",
@@ -8,10 +9,12 @@ export enum BulkAction {
   ACTIVE = "active",
   SELECT_ALL = "select-all",
 }
+
 interface BotsActionsProps {
   defaultValue: string;
   handleChange: (e: ChangeEvent<HTMLSelectElement>) => void;
 }
+
 const BotsActions: FC<BotsActionsProps> = ({ defaultValue, handleChange }) => {
   return (
     <Stack gap={4} mb="sm">
@@ -32,4 +35,5 @@ const BotsActions: FC<BotsActionsProps> = ({ defaultValue, handleChange }) => {
     </Stack>
   );
 };
+
 export default BotsActions;

@@ -20,8 +20,10 @@ export const streamBotOperation = async (
         theme: "colored",
       })
     : null;
+
   try {
     const token = getToken();
+
     const response = await fetch(`${buildBackUrl()}${url}`, {
       method: "POST",
       headers: {
@@ -29,6 +31,7 @@ export const streamBotOperation = async (
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     });
+
     if (!response.ok) {
       throw new Error(`Bot operation failed (HTTP ${response.status})`);
     }
@@ -37,21 +40,29 @@ export const streamBotOperation = async (
     }
 
     const reader = response.body.getReader();
+
     const decoder = new TextDecoder();
+
     let buffer = "";
     let result: BotOperationResponse | undefined;
 
     const consumeEvent = (block: string) => {
       const lines = block.split("\n");
+
       const event = lines.find((line) => line.startsWith("event: "))?.slice(7);
+
       const data = lines
         .filter((line) => line.startsWith("data: "))
         .map((line) => line.slice(6))
         .join("\n");
+
       if (!event || !data) return;
+
       const payload = JSON.parse(data);
+
       if (event === "progress") {
         const percent = Math.max(0, Math.min(100, payload.percent));
+
         if (toastId !== null) {
           toast.update(toastId, {
             render: `${payload.message} (${percent}%)`,
@@ -67,6 +78,7 @@ export const streamBotOperation = async (
 
     while (true) {
       const { value, done } = await reader.read();
+
       buffer += decoder.decode(value, { stream: !done });
       buffer = buffer.replace(/\r\n/g, "\n");
       let boundary = buffer.indexOf("\n\n");
@@ -100,6 +112,7 @@ export const streamBotOperation = async (
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Bot operation failed";
+
     if (toastId !== null) {
       toast.update(toastId, {
         render: message,

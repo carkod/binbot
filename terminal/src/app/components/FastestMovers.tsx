@@ -15,6 +15,7 @@ import type {
 } from "../../features/marketApiSlice";
 import { roundDecimals } from "../../utils/math";
 import { formatTimestamp } from "../../utils/time";
+
 function MoverList({
   title,
   movers,
@@ -64,6 +65,7 @@ function MoverList({
     </Box>
   );
 }
+
 export default function FastestMovers({
   data,
 }: {

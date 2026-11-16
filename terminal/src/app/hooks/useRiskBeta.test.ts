@@ -9,6 +9,7 @@ import { ExchangeId } from "../../utils/enums";
 import { loadCandles } from "./useRiskBeta";
 
 const completedBefore = 1_710_000_900_000;
+
 const signal = new AbortController().signal;
 
 describeBlock("15-minute beta candle requests", () => {
@@ -19,6 +20,7 @@ describeBlock("15-minute beta candle requests", () => {
       ok: true,
       json: async () => [[completedBefore - 900_000, "1", "2", "0", "105"]],
     });
+
     vi.stubGlobal("fetch", fetchMock);
 
     const candles = await loadCandles(
@@ -46,6 +48,7 @@ describeBlock("15-minute beta candle requests", () => {
           ],
         }),
       });
+
       vi.stubGlobal("fetch", fetchMock);
 
       const candles = await loadCandles(
@@ -69,6 +72,7 @@ describeBlock("15-minute beta candle requests", () => {
         data: [[completedBefore - 900_000, "1", "2", "0", "107"]],
       }),
     });
+
     vi.stubGlobal("fetch", fetchMock);
 
     const candles = await loadCandles(

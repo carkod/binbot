@@ -41,6 +41,7 @@ const intervalOptions = [
 
 const matchNewRoutes = (pathname: string) => {
   const pathnames = ["/bots/futures/new/:symbol?", "/bots/new/:symbol?"];
+
   return pathnames.some((path) =>
     Boolean(matchPath({ path, end: true }, pathname)),
   );

@@ -29,15 +29,24 @@ import BotsDateFilter from "../components/BotsCalendar";
 import ConfirmModal from "../components/ConfirmModal";
 import GridLadderCard from "../components/GridLadderCard";
 import { SpinnerContext } from "../spinner-context";
+
 const GridLaddersPage: FC = () => {
   const { setSpinner } = useContext(SpinnerContext);
+
   const [selectedCards, setSelectedCards] = useState<string[]>([]);
+
   const [ladderToClose, setLadderToClose] = useState<string | null>(null);
+
   const [ladderToDelete, setLadderToDelete] = useState<string | null>(null);
+
   const [filterStatus, setFilterStatus] = useState<string>("all");
+
   const [symbolState, setSymbolState] = useState<string>("");
+
   const [startDate, setStartDate] = useState<number>(weekAgo());
+
   const [endDate, setEndDate] = useState<number>(new Date().getTime());
+
   const {
     data: allLadders = [],
     isFetching,
@@ -46,33 +55,43 @@ const GridLaddersPage: FC = () => {
     { limit: 100, offset: 0, startDate, endDate },
     { refetchOnFocus: true },
   );
+
   const { data: autotradeSettings } = useGetSettingsQuery();
+
   const [closeGridLadder, { isLoading: isClosing }] =
     useCloseGridLadderMutation();
+
   const [deleteGridLadder, { isLoading: isDeleting }] =
     useDeleteGridLadderMutation();
+
   const fiat = autotradeSettings?.fiat ?? "fiat";
+
   const filteredLadders = useMemo(() => {
     return allLadders.filter((ladder) => {
       const statusMatches =
         filterStatus === "all" || ladder.status === filterStatus;
+
       const symbolMatches =
         !symbolState ||
         ladder.symbol.toLowerCase().includes(symbolState.toLowerCase());
+
       return statusMatches && symbolMatches;
     });
   }, [allLadders, filterStatus, symbolState]);
+
   const summary = useMemo(() => {
     return filteredLadders.reduce(
       (acc, ladder) => {
         acc.active += isActiveGridLadder(ladder.status) ? 1 : 0;
         acc.reserved += ladder.reserved_margin;
         acc.used += ladder.used_margin;
+
         // Active ladders keep realized_pnl=0 until close; surface TP-cycle
         // profits from individual levels so the summary isn't misleadingly 0.
         const levelPnl = isActiveGridLadder(ladder.status)
           ? calculateLevelPnlSum(ladder)
           : 0;
+
         acc.realized += ladder.realized_pnl + levelPnl;
         acc.unrealized += ladder.unrealized_pnl;
         acc.openLevels += ladder.levels.filter(
@@ -90,9 +109,11 @@ const GridLaddersPage: FC = () => {
       },
     );
   }, [filteredLadders]);
+
   useEffect(() => {
     setSpinner(isFetching || isClosing || isDeleting);
   }, [isFetching, isClosing, isDeleting, setSpinner]);
+
   const handleSelect = (id: string) => {
     setSelectedCards((prev) =>
       prev.includes(id)
@@ -100,14 +121,17 @@ const GridLaddersPage: FC = () => {
         : prev.concat(id),
     );
   };
+
   const confirmDelete = async (action: number) => {
     if (action !== 1 || !ladderToDelete) {
       setLadderToDelete(null);
       return;
     }
+
     // Capture id and clear state immediately so the modal closes before the
     // request completes (and even if unwrap() throws).
     const id = ladderToDelete;
+
     setLadderToDelete(null);
     try {
       await deleteGridLadder(id).unwrap();
@@ -117,6 +141,7 @@ const GridLaddersPage: FC = () => {
       await refetch();
     }
   };
+
   const confirmClose = async (action: number) => {
     if (action !== 1 || !ladderToClose) {
       setLadderToClose(null);
@@ -130,6 +155,7 @@ const GridLaddersPage: FC = () => {
     setLadderToClose(null);
     await refetch();
   };
+
   return (
     <Box w="100%">
       <Group
@@ -254,6 +280,7 @@ const GridLaddersPage: FC = () => {
         <SimpleGrid cols={{ base: 1, lg: 3 }}>
           {filteredLadders.map((ladder) => {
             const gridReturnPct = calculateGridReturnPct(ladder);
+
             return (
               <Box key={ladder.id} mb={16}>
                 <GridLadderCard
@@ -295,4 +322,5 @@ const GridLaddersPage: FC = () => {
     </Box>
   );
 };
+
 export default GridLaddersPage;

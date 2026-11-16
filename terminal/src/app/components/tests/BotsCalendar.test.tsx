@@ -6,11 +6,14 @@ import BotsDateFilter from "../BotsCalendar";
 
 it("applies a calendar selection immediately and clears the date filter", async () => {
   const user = userEvent.setup();
+
   const onDateChange = vi.fn();
+
   function Filter() {
     const [selectedDate, setSelectedDate] = useState<number | undefined>(
       new Date(2026, 10, 9).getTime(),
     );
+
     return (
       <BotsDateFilter
         controlId="startDate"
@@ -23,9 +26,11 @@ it("applies a calendar selection immediately and clears the date filter", async 
       />
     );
   }
+
   render(<Filter />);
 
   const picker = screen.getByRole("button", { name: /^Start date/ });
+
   await user.click(picker);
   await user.click(screen.getByRole("button", { name: "10 November 2026" }));
   expect(onDateChange).toHaveBeenLastCalledWith(Date.UTC(2026, 10, 10));
@@ -41,13 +46,16 @@ it("reflects dates changed or reset by its parent", () => {
     title: "End date",
     handleDateChange: vi.fn(),
   };
+
   const { rerender } = render(
     <BotsDateFilter
       {...props}
       selectedDate={new Date(2026, 10, 12).getTime()}
     />,
   );
+
   const picker = screen.getByRole("button", { name: /^End date/ });
+
   expect(picker).toHaveTextContent("12/11/2026");
   rerender(
     <BotsDateFilter

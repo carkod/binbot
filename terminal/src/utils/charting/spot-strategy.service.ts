@@ -28,7 +28,9 @@ export default function spotTrading(
   previewTrailingDeviationSettings = false,
 ): OrderLine[] {
   const quoteAsset = bot.quote_asset;
+
   const price = entryReferencePrice(bot, currentPrice);
+
   let totalOrderLines: OrderLine[] = [];
   let baseOrderSize = 0;
 
@@ -57,6 +59,7 @@ export default function spotTrading(
       bot.deal.opening_qty > 0
         ? String(bot.deal.opening_qty)
         : String(baseOrderSize);
+
     if (bot.deal.closing_price > 0) {
       // If there is closing_price, it means it's completed
       totalOrderLines.push({
@@ -126,6 +129,7 @@ export default function spotTrading(
         const trailingProfitPrice = previewTrailingSettings
           ? bot.deal.opening_price * (1 + bot.trailing_profit / 100)
           : bot.deal.trailing_profit_price;
+
         totalOrderLines.push({
           id: "trailing_profit",
           text: `Trail profit ${bot.trailing_profit}%`,
@@ -154,6 +158,7 @@ export default function spotTrading(
       } else {
         // Inactive bot
         const trailingProfitPrice = price * (1 + bot.trailing_profit / 100);
+
         totalOrderLines.push({
           id: "trailing_profit",
           text: `Trailing profit ${bot.trailing_profit}%`,
@@ -208,6 +213,7 @@ export default function spotTrading(
       const stop_loss = previewStopLossSettings
         ? price * (1 - bot.stop_loss / 100)
         : bot.deal.stop_loss_price || price * (1 - bot.stop_loss / 100);
+
       totalOrderLines.push({
         id: "stop_loss",
         text: `Stop Loss ${bot.stop_loss}%`,

@@ -15,6 +15,7 @@ import {
 import { returnBadgeBg } from "../../utils/grid-ladder";
 import { roundDecimals } from "../../utils/math";
 import { formatTimestamp } from "../../utils/time";
+
 interface GridLadderCardProps {
   ladder: GridLadder;
   gridReturnPct: number;
@@ -23,6 +24,7 @@ interface GridLadderCardProps {
   onClose: (id: string) => void;
   onDelete: (id: string) => void;
 }
+
 const statusColorMap: Record<GridLadderStatus, string> = {
   pending: "secondary",
   active: "success",
@@ -31,6 +33,7 @@ const statusColorMap: Record<GridLadderStatus, string> = {
   range_broken: "danger",
   error: "danger",
 };
+
 const GridLadderCard: FC<GridLadderCardProps> = ({
   ladder,
   gridReturnPct,
@@ -40,17 +43,27 @@ const GridLadderCard: FC<GridLadderCardProps> = ({
   onDelete,
 }) => {
   const navigate = useNavigate();
+
   const totalPnl = calculateGridPnl(ladder);
+
   const utilization = calculateGridUtilization(ladder);
+
   const isActive = isActiveGridLadder(ladder.status);
+
   const levelPnl = calculateLevelPnlSum(ladder);
+
   const closeAdjustmentPnl = calculateCloseAdjustmentPnl(ladder);
+
   const hasCloseAdjustment = Math.abs(closeAdjustmentPnl) >= 0.00005;
+
   const firstBreachAt = ladder.context.first_breach_at as
     number | null | undefined;
+
   const firstBreachUpAt = ladder.context.first_breach_up_at as
     number | null | undefined;
+
   const showAlgorithmName = ladder.algorithm_name !== "grid_ladder";
+
   return (
     <Card className={selected ? "selected-card" : ""} mb="md">
       <Box
@@ -229,12 +242,14 @@ const GridLadderCard: FC<GridLadderCardProps> = ({
         >
           {ladder.levels.map((level, index) => {
             const isFilled = level.filled_entry_qty > 0;
+
             const tone =
               index < ladder.levels.length / 2
                 ? "tone-danger"
                 : index > ladder.levels.length / 2
                   ? "tone-success"
                   : "tone-muted";
+
             return (
               <div
                 key={level.id}
@@ -286,4 +301,5 @@ const GridLadderCard: FC<GridLadderCardProps> = ({
     </Card>
   );
 };
+
 export default GridLadderCard;

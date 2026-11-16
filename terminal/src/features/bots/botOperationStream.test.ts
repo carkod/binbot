@@ -24,7 +24,9 @@ it("activates without a percentage toast and waits for the final bot response", 
     ' the entry order"}\n\nevent: result\ndata: {"percent": 100, "response":',
     ' {"message": "Activated", "error": 0, "data": {"id": "bot-1"}}}\n\n',
   ];
+
   const read = vi.fn();
+
   for (const chunk of chunks) {
     read.mockResolvedValueOnce({
       value: new TextEncoder().encode(chunk),
@@ -40,6 +42,7 @@ it("activates without a percentage toast and waits for the final bot response", 
   );
 
   const store = makeStore();
+
   const result = await store.dispatch(
     botsApiSlice.endpoints.activateBot.initiate("bot-1"),
   );

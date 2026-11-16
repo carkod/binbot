@@ -5,11 +5,13 @@ import { type BalanceData } from "../../features/features.types";
 import { type MarketType } from "../../utils/enums";
 import { roundDecimals } from "../../utils/math";
 import { useRiskBeta } from "../hooks/useRiskBeta";
+
 const BalanceAnalysis: FC<{
   accountData: BalanceData;
   marketType: MarketType;
 }> = ({ accountData, marketType }) => {
   const { beta, isLoading: loadingBeta } = useRiskBeta(accountData, marketType);
+
   return (
     <Card mb="md">
       <Box
@@ -79,4 +81,5 @@ const BalanceAnalysis: FC<{
     </Card>
   );
 };
+
 export default BalanceAnalysis;

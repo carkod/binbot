@@ -21,11 +21,15 @@ import { store } from "../../store";
 import FuturesBotDetail from "../FuturesBotDetail";
 
 const mockUseGetSingleBotQuery = vi.hoisted(() => vi.fn());
+
 const { singleBot } = await import("../../../features/bots/botInitialState");
+
 // Mock singleBot to have market_type FUTURES for the relevant test(s)
 vi.mock("../../../features/bots/botInitialState", async () => {
   const { MarketType } = await import("../../../utils/enums");
+
   const original = await import("../../../features/bots/botInitialState");
+
   return {
     ...original,
     singleBot: { ...original.singleBot, market_type: MarketType.FUTURES },
@@ -34,6 +38,7 @@ vi.mock("../../../features/bots/botInitialState", async () => {
 
 vi.mock("../../../features/bots/botsApiSlice", async () => {
   const actual = await vi.importActual("../../../features/bots/botsApiSlice");
+
   return {
     ...actual,
     useGetSingleBotQuery: mockUseGetSingleBotQuery,
@@ -42,6 +47,7 @@ vi.mock("../../../features/bots/botsApiSlice", async () => {
 
 vi.mock("../../../features/balanceApiSlice", async () => {
   const actual = await vi.importActual("../../../features/balanceApiSlice");
+
   return {
     ...actual,
     useGetBalanceQuery: vi.fn(() => ({
@@ -58,6 +64,7 @@ vi.mock("../../../features/balanceApiSlice", async () => {
 
 vi.mock("../../../features/autotradeApiSlice", async () => {
   const actual = await vi.importActual("../../../features/autotradeApiSlice");
+
   return {
     ...actual,
     useGetSettingsQuery: vi.fn(() => ({
@@ -68,6 +75,7 @@ vi.mock("../../../features/autotradeApiSlice", async () => {
 
 vi.mock("../../../features/symbolsApiSlice", async () => {
   const actual = await vi.importActual("../../../features/symbolsApiSlice");
+
   return {
     ...actual,
     useGetSymbolsQuery: vi.fn(() => ({
@@ -85,6 +93,7 @@ vi.mock("../../components/BotChartTabs", () => {
       <button onClick={() => onTabChange("chart")}>Select chart</button>
     </div>
   );
+
   ChartContainer.displayName = "ChartContainer";
   return { default: ChartContainer };
 });
@@ -94,11 +103,13 @@ vi.mock("../../components/BotInfo", () => {
       <button onClick={() => onTabChange("deal")}>Select deal</button>
     </div>
   );
+
   BotInfo.displayName = "BotInfo";
   return { default: BotInfo };
 });
 vi.mock("../../components/LogsInfo", () => {
   const LogsInfo = (_props: any) => <div data-testid="logs-info" />;
+
   LogsInfo.displayName = "LogsInfo";
   return { default: LogsInfo };
 });
@@ -111,6 +122,7 @@ vi.mock("../../components/BotDetailTabs", () => {
       </button>
     </div>
   );
+
   BotDetailTabs.displayName = "BotDetailTabs";
   return { default: BotDetailTabs };
 });
@@ -118,6 +130,7 @@ vi.mock("../../components/BalanceAnalysis", () => {
   const BalanceAnalysis = (_props: any) => (
     <div data-testid="balance-analysis" />
   );
+
   BalanceAnalysis.displayName = "BalanceAnalysis";
   return { default: BalanceAnalysis };
 });
@@ -140,6 +153,7 @@ const NavigateToNew = () => {
 
 const CurrentLocation = () => {
   const location = useLocation();
+
   return (
     <output data-testid="location">
       {location.pathname + location.search}
@@ -170,11 +184,13 @@ describe("FuturesBotDetail page", () => {
 
   it("restores every selected tab after reloading the current URL", () => {
     const view = renderDetailAt("/bots/futures/edit/123?source=bots");
+
     fireEvent.click(rtlScreen.getByText("Select analysis"));
     fireEvent.click(rtlScreen.getByText("Select take profit"));
     fireEvent.click(rtlScreen.getByText("Select deal"));
 
     const url = rtlScreen.getByTestId("location").textContent!;
+
     expect(new URL(url, "http://localhost").searchParams.get("source")).toBe(
       "bots",
     );
@@ -203,6 +219,7 @@ describe("FuturesBotDetail page", () => {
       rtlScreen.getByTestId("location").textContent!,
       "http://localhost",
     );
+
     expect(url.searchParams.get("chartTab")).toBeNull();
     expect(url.searchParams.get("settingsTab")).toBe("stop-loss");
     expect(url.searchParams.get("infoTab")).toBe("deal");
@@ -262,6 +279,7 @@ describe("FuturesBotDetail page", () => {
     );
 
     const state = store.getState().bot.bot;
+
     // Existing bot is replaced with a FUTURES bot for this page
     expect(state.market_type).toBe(MarketType.FUTURES);
   });
@@ -296,6 +314,7 @@ describe("FuturesBotDetail page", () => {
     );
 
     const state = store.getState().bot.bot;
+
     expect(state.id).toBe("");
     expect(state.name).toBe("terminal");
     expect(state.pair).toBe("");
@@ -321,6 +340,7 @@ describe("FuturesBotDetail page", () => {
     );
 
     const state = store.getState().bot.bot;
+
     expect(state.pair).toBe("KOMAUSDTM");
     expect(state.market_type).toBe(MarketType.FUTURES);
   });
@@ -338,6 +358,7 @@ describe("FuturesBotDetail page", () => {
       },
       isLoading: false,
     };
+
     const newResponse = {
       data: undefined,
       isLoading: false,

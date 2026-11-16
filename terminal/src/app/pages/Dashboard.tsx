@@ -31,33 +31,46 @@ import GainersLosersHistoryCard from "../components/GainersLosersHistoryCard";
 import PortfolioBenchmarkChart from "../components/PortfolioBenchmark";
 import { useFilteredFuturesRankings } from "../hooks/useFilteredFuturesRankings";
 import { usePortfolioPnlDetails } from "../hooks/usePortfolioPnlDetails";
+
 export const DashboardPage: FC<{}> = () => {
   const { data: accountData, isLoading: loadingEstimates } =
     useGetBalanceQuery();
+
   const { data: activeBotEntities, isLoading: loadingActiveBots } =
     useGetBotsQuery({
       status: BotStatus.ACTIVE,
     });
+
   const { data: benchmark, isLoading: loadingBenchmark } =
     useGetBenchmarkQuery();
+
   const { data: fastestMovers, isLoading: loadingFastestMovers } =
     useFastestMoversQuery(undefined, { pollingInterval: 5 * 60 * 1000 });
+
   const {
     combined: combinedFuturesRankings,
     isLoading: loadingFuturesRankings,
   } = useFilteredFuturesRankings();
+
   const { data: gainersLosersHistory, isLoading: loadingGainersLosersHistory } =
     useGainersLosersAggregateQuery(undefined, {
       pollingInterval: 15 * 60 * 1000,
     });
+
   const { data: btcCloseSeries, isLoading: loadingBtcCloseSeries } =
     useBtcCloseSeriesQuery();
+
   const activeBotsCount = activeBotEntities?.bots.ids.length ?? 0;
+
   const { portfolioPnlValue, portfolioPnlPercentage, portfolioPnlClass } =
     usePortfolioPnlDetails(benchmark, accountData);
+
   const portfolioSharpe = benchmark?.portfolioStats?.sharpe;
+
   const netTotalBalance = accountData?.estimated_total_fiat ?? 0;
+
   const btcSharpe = benchmark?.portfolioStats?.btc_sharpe;
+
   return (
     <div className="content dashboard">
       <Box
@@ -391,4 +404,5 @@ export const DashboardPage: FC<{}> = () => {
     </div>
   );
 };
+
 export default DashboardPage;

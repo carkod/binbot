@@ -17,6 +17,7 @@ vi.mock("../LivePlotlyChart", () => ({
 }));
 
 const query = vi.mocked(useCvdSymbolQuery);
+
 const point = {
   timestamp: "2026-11-15T10:00:00Z",
   buy: 123.12345678,
@@ -30,6 +31,7 @@ const point = {
   current: false,
   universe_changed: false,
 };
+
 const result = {
   source: "kucoin_futures",
   symbol: "SOLUSDTM",
@@ -39,6 +41,7 @@ const result = {
   stale: false,
   partial: false,
 };
+
 function respond(response: Record<string, unknown>) {
   query.mockReturnValue({
     refetch: vi.fn(),
@@ -51,9 +54,13 @@ function respond(response: Record<string, unknown>) {
 describe("stored symbol CVD", () => {
   it("refits axes after a new snapshot replaces zoomed chart data without remounting", () => {
     respond({ currentData: result });
+
     const { rerender } = render(<SymbolCvdCard symbol="SOLUSDTM" enabled />);
+
     const chart = testingScreen.getByTestId("chart");
+
     const previousLayout = liveChart.mock.lastCall[0].layout;
+
     // Plotly writes zoomed ranges back into the supplied axis objects.
     Object.assign(previousLayout.xaxis, {
       autorange: false,
@@ -71,7 +78,9 @@ describe("stored symbol CVD", () => {
     rerender(<SymbolCvdCard symbol="SOLUSDTM" enabled />);
 
     expect(testingScreen.getByTestId("chart")).toBe(chart);
+
     const { data, layout } = liveChart.mock.lastCall[0];
+
     expect(data[0].y).toEqual([-500]);
     for (const axis of [layout.xaxis, layout.yaxis]) {
       expect(axis).toMatchObject({ autorange: true, uirevision: false });
@@ -90,10 +99,12 @@ describe("stored symbol CVD", () => {
         refetchOnMountOrArgChange: true,
       }),
     );
+
     const {
       data: [trace],
       layout,
     } = JSON.parse(testingScreen.getByTestId("chart").textContent);
+
     expect(trace.y).toEqual([100.12345678]);
     expect(trace.text[0]).toContain("123.12345678 USDT");
     expect(trace.text[0]).toContain("100.12345678 USDT");
@@ -110,7 +121,9 @@ describe("stored symbol CVD", () => {
 
   it("shows loading, empty and failed states independently of the order book", () => {
     respond({ isFetching: true });
+
     const { rerender } = render(<SymbolCvdCard symbol="SOLUSDTM" enabled />);
+
     expect(testingScreen.getByRole("status")).toHaveTextContent(
       "Loading SOLUSDTM CVD",
     );
@@ -128,7 +141,9 @@ describe("stored symbol CVD", () => {
 
   it("uses currentData so changing bots shows the requested symbol's loading state", () => {
     respond({ currentData: result, data: result });
+
     const { rerender } = render(<SymbolCvdCard symbol="SOLUSDTM" enabled />);
+
     expect(testingScreen.getByTestId("chart")).toBeInTheDocument();
     respond({ data: result, isFetching: true });
     rerender(<SymbolCvdCard symbol="XBTUSDTM" enabled />);
@@ -176,9 +191,11 @@ describe("stored symbol CVD", () => {
     expect(testingScreen.getByText(/checkpoint is stale/)).toBeInTheDocument();
     expect(testingScreen.getByText(/Partial coverage:/)).toBeInTheDocument();
     expect(testingScreen.getByRole("alert")).toBeInTheDocument();
+
     const {
       data: [trace],
     } = JSON.parse(testingScreen.getByTestId("chart").textContent);
+
     expect(trace.y).toEqual([100.12345678, null, null, null, 150]);
     expect(trace.connectgaps).toBe(false);
     expect(trace.marker.symbol.at(-1)).toBe("diamond-open");
@@ -188,7 +205,9 @@ describe("stored symbol CVD", () => {
 
   it("waits for an enabled selected symbol", () => {
     respond({});
+
     const { rerender } = render(<SymbolCvdCard symbol="" enabled />);
+
     expect(testingScreen.getByText("Enter a symbol")).toBeInTheDocument();
     expect(query).toHaveBeenLastCalledWith(
       "",

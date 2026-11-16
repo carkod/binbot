@@ -3,11 +3,14 @@ import moment from "moment";
 import { type FC } from "react";
 import type { BtcCloseSeries } from "../../features/kucoinApiSlice";
 import PlotlyChart from "./PlotlyChart";
+
 type BitcoinPriceCardProps = {
   btcCloseSeries: BtcCloseSeries;
 };
+
 const BitcoinPriceCard: FC<BitcoinPriceCardProps> = ({ btcCloseSeries }) => {
   const latestClose = btcCloseSeries.close.at(-1);
+
   return (
     <Card mb="md">
       <Box mb="sm">
@@ -95,4 +98,5 @@ const BitcoinPriceCard: FC<BitcoinPriceCardProps> = ({ btcCloseSeries }) => {
     </Card>
   );
 };
+
 export default BitcoinPriceCard;

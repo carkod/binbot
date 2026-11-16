@@ -46,7 +46,9 @@ it.each([BotPosition.LONG, BotPosition.SHORT])(
       trailing_profit: 6,
       trailing_deviation: 4,
     };
+
     const lines = updateOrderLines(bot, 120);
+
     expect(lines.find((line) => line.id === "base_order")).toMatchObject({
       price: 100,
       color: dealColors.base_order,

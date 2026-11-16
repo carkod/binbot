@@ -21,11 +21,16 @@ import {
 import ConfirmModal from "../components/ConfirmModal";
 import LightSwitch from "../components/LightSwitch";
 import SymbolSearch from "../components/SymbolSearch";
+
 const SymbolsPage: FC = () => {
   const { data: symbols } = useGetSymbolsQuery();
+
   const [updateSymbol] = useUpdateSymbolMutation();
+
   const [deleteSymbol] = useDeleteSymbolMutation();
+
   const [symbolsList, setSymbolsList] = useState<string[]>([]);
+
   const [seletedSymbolsItem, setSeletedSymbolsItem] =
     useState<SymbolRequestPayload>({
       id: "",
@@ -38,7 +43,9 @@ const SymbolsPage: FC = () => {
       base_asset: "",
       quote_asset: "",
     });
+
   const [confirmDelete, setConfirmDelete] = useState<boolean>(false);
+
   const {
     register,
     setValue,
@@ -49,14 +56,18 @@ const SymbolsPage: FC = () => {
     mode: "onTouched",
     reValidateMode: "onBlur",
   });
+
   useEffect(() => {
     if (symbols && symbols.length > 0) {
       const pairs = symbols.map((symbol) => symbol.id);
+
       setSymbolsList(pairs);
     }
   }, [symbols]);
+
   const selectSymbol = (pair: string) => {
     const symbol = symbols.find((s) => s.id === pair);
+
     if (symbol) {
       setSeletedSymbolsItem({
         id: symbol.id,
@@ -71,6 +82,7 @@ const SymbolsPage: FC = () => {
       });
     }
   };
+
   return (
     <div className="content">
       <Card mb="md">
@@ -240,4 +252,5 @@ const SymbolsPage: FC = () => {
     </div>
   );
 };
+
 export default SymbolsPage;

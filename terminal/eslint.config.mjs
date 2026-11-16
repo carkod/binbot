@@ -9,6 +9,7 @@ import { fileURLToPath } from "url";
 import path from "path";
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
+
 const compat = new FlatCompat({
   recommendedConfig: js.configs.recommended,
   allConfig: js.configs.all,
@@ -50,6 +51,21 @@ export default [
     },
 
     rules: {
+      "padding-line-between-statements": [
+        "error",
+        { blankLine: "always", prev: "import", next: "*" },
+        { blankLine: "any", prev: "import", next: "import" },
+        {
+          blankLine: "always",
+          prev: "*",
+          next: ["const", "function", "class", "export"],
+        },
+        {
+          blankLine: "always",
+          prev: ["const", "function", "class", "export"],
+          next: "*",
+        },
+      ],
       "no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars": "off",
       "@typescript-eslint/consistent-type-imports": [

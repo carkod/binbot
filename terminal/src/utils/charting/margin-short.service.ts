@@ -12,8 +12,11 @@ export default function marginTrading(
   previewTrailingDeviationSettings = false,
 ): OrderLine[] {
   const quoteAsset = bot.quote_asset;
+
   let totalOrderLines: OrderLine[] = [];
+
   const qtyText = bot.deal ? String(bot.deal.opening_qty) : "";
+
   const price = entryReferencePrice(
     bot,
     currentPrice || bot.deal.current_price,
@@ -71,6 +74,7 @@ export default function marginTrading(
       const trailingProfitPrice = previewTrailingSettings
         ? price * (1 - bot.trailing_profit / 100)
         : bot.deal.trailing_profit_price;
+
       if (trailingProfitPrice > 0) {
         totalOrderLines.push({
           id: "trailing_profit",
@@ -130,6 +134,7 @@ export default function marginTrading(
     ) {
       // Preview the short's trailing levels below the base order.
       const trailingProfitPrice = price * (1 - bot.trailing_profit / 100);
+
       totalOrderLines.push({
         id: "trailing_profit",
         text: `Trailing profit ${bot.trailing_profit}%`,
@@ -160,6 +165,7 @@ export default function marginTrading(
       previewTrailingSettings || bot.status === BotStatus.INACTIVE
         ? price * (1 - bot.take_profit / 100)
         : bot.deal.take_profit_price || price * (1 - bot.take_profit / 100);
+
     totalOrderLines.push({
       id: "take_profit",
       text: `Take profit ${bot.take_profit}% (Margin)`,
@@ -174,6 +180,7 @@ export default function marginTrading(
     const stopLossPrice = previewStopLossSettings
       ? price * (1 + bot.stop_loss / 100)
       : bot.deal.stop_loss_price || price * (1 + bot.stop_loss / 100);
+
     totalOrderLines.push({
       id: "stop_loss",
       text: `Stop Loss ${bot.stop_loss}%`,

@@ -15,17 +15,21 @@ export const formatTimestamp = (timestamp) => {
  */
 export function weekAgo() {
   const today = new Date();
+
   const lastWeek = new Date(
     today.getFullYear(),
     today.getMonth(),
     today.getDate() - 7,
   );
+
   return lastWeek.getTime();
 }
 
 export function botDuration(start, end) {
   const startTime = moment(start);
+
   const endTime = moment(end);
+
   const duration = moment.duration(endTime.diff(startTime));
 
   let days = Math.floor(duration.asDays());
@@ -38,6 +42,7 @@ export function botDuration(start, end) {
   duration.subtract(moment.duration(minutes, "minutes"));
 
   const seconds = duration.seconds();
+
   let dateStringify = `${seconds}s`;
 
   if (minutes > 0) {
@@ -93,6 +98,7 @@ export function matchTsToTimescale(
   ts: number | string | null | undefined,
 ): number {
   const date = new Date(Number(ts));
+
   date.setMinutes(0);
   date.setSeconds(0);
   date.setMilliseconds(0);

@@ -21,6 +21,7 @@ import {
   useRegisterUserMutation,
 } from "../../features/userApiSlice";
 import LightSwitch from "../components/LightSwitch";
+
 const defaultValues: UserPayload = {
   email: "",
   is_active: true,
@@ -30,18 +31,26 @@ const defaultValues: UserPayload = {
   username: "",
   description: "",
 };
+
 type UserFormPageProps = {
   mode: "new" | "edit";
 };
+
 const UserFormPage: FC<UserFormPageProps> = ({ mode }) => {
   const navigate = useNavigate();
+
   const [searchParams] = useSearchParams();
+
   const email = searchParams.get("email") || "";
+
   const [registerUser, { isLoading: isCreating }] = useRegisterUserMutation();
+
   const [editUser, { isLoading: isEditing }] = useEditUserMutation();
+
   const { data: user, isFetching } = useGetUserQuery(email, {
     skip: mode !== "edit" || !email,
   });
+
   const {
     register,
     setValue,
@@ -54,7 +63,9 @@ const UserFormPage: FC<UserFormPageProps> = ({ mode }) => {
     reValidateMode: "onBlur",
     defaultValues,
   });
+
   const isActive = watch("is_active", defaultValues.is_active);
+
   useEffect(() => {
     if (mode === "new") {
       reset(defaultValues);
@@ -73,6 +84,7 @@ const UserFormPage: FC<UserFormPageProps> = ({ mode }) => {
       });
     }
   }, [reset, user]);
+
   const saveUser = async (formData: FieldValues) => {
     const payload: UserPayload = {
       email: formData.email,
@@ -83,6 +95,7 @@ const UserFormPage: FC<UserFormPageProps> = ({ mode }) => {
       username: formData.username,
       description: formData.description,
     };
+
     if (mode === "edit" && !payload.password) {
       delete payload.password;
     }
@@ -93,6 +106,7 @@ const UserFormPage: FC<UserFormPageProps> = ({ mode }) => {
     }
     navigate("/user");
   };
+
   return (
     <Box w="100%">
       <form onSubmit={handleSubmit(saveUser)}>
@@ -228,4 +242,5 @@ const UserFormPage: FC<UserFormPageProps> = ({ mode }) => {
     </Box>
   );
 };
+
 export default UserFormPage;

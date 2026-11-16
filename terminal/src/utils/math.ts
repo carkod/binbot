@@ -7,8 +7,10 @@ const checkMinValue = (value) => {
    * Check float value reaches minimum
    */
   const a = parseFloat(value);
+
   // Min required to operate
   const b = parseFloat("0.001");
+
   if (a > b) {
     return true;
   }
@@ -44,7 +46,9 @@ const percentageToFloat = (value) => {
   if (checkValue(value)) {
     return null;
   }
+
   const tofloat = parseFloat(value) / 100;
+
   return tofloat;
 };
 
@@ -55,8 +59,11 @@ const replaceZeros = (value) => {
 const roundDecimals = (num: number, decimals: number = 2): number => {
   // Use Number.EPSILON to avoid floating point issues
   if (num < 0) return -roundDecimals(-num, decimals);
+
   const factor = Math.pow(10, decimals);
+
   const rounding = Math.round((num + Number.EPSILON) * factor) / factor;
+
   return parseFloat(rounding.toFixed(decimals));
 };
 

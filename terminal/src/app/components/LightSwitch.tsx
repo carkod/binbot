@@ -1,5 +1,6 @@
 import { Switch } from "@mantine/core";
 import type { FieldValues, UseFormRegister } from "react-hook-form";
+
 export type LightSwitchProps = {
   value: boolean;
   name: string;
@@ -7,6 +8,7 @@ export type LightSwitchProps = {
   register?: UseFormRegister<FieldValues>;
   required?: boolean;
 };
+
 const LightSwitch = ({
   value,
   name,
@@ -15,6 +17,7 @@ const LightSwitch = ({
   required = false,
 }: LightSwitchProps) => {
   const field = register?.(name, { required });
+
   return (
     <Switch
       {...field}
@@ -30,4 +33,5 @@ const LightSwitch = ({
     />
   );
 };
+
 export default LightSwitch;

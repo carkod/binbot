@@ -29,6 +29,7 @@ vi.mock("../../../features/autotradeApiSlice", async () => ({
 
 function BotChart() {
   const { bot } = useAppSelector(selectBot);
+
   return (
     <ChartContainer
       bot={bot}
@@ -40,6 +41,7 @@ function BotChart() {
 
 it("updates active bot order lines on blur and when saved prices arrive", () => {
   const store = makeStore();
+
   const bot = {
     ...singleBot,
     id: "active-bot",
@@ -57,6 +59,7 @@ it("updates active bot order lines on blur and when saved prices arrive", () => 
       trailing_stop_loss_price: 101,
     },
   };
+
   store.dispatch(setBot({ bot }));
   render(
     <Provider store={store}>
@@ -74,6 +77,7 @@ it("updates active bot order lines on blur and when saved prices arrive", () => 
       </SymbolContext.Provider>
     </Provider>,
   );
+
   const prices = () =>
     Object.fromEntries(
       JSON.parse(rtlScreen.getByTestId("chart-lines").textContent || "[]").map(

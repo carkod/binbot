@@ -81,13 +81,16 @@ const userMutationQuery = async <T>(
   }
 
   const response = result.data as StandardResponse & { data?: T };
+
   if (response.error && response.error === 1) {
     notifification("error", response.message);
+
     const error: FetchBaseQueryError = {
       status: "CUSTOM_ERROR",
       error: response.message,
       data: response,
     };
+
     return {
       error,
     };

@@ -14,6 +14,7 @@ import { useAppDispatch, useAppSelector } from "../hooks";
 import BaseOrderTab from "./BaseOrderTab";
 import StopLossTab from "./StopLossTab";
 import TakeProfit from "./TakeProfitTab";
+
 const BotDetailTabs: FC<{
   marketType: MarketType;
   fiatAvailable?: number | null;
@@ -21,27 +22,38 @@ const BotDetailTabs: FC<{
   onTabChange?: (tab: string | null) => void;
 }> = ({ marketType, fiatAvailable, activeTab, onTabChange }) => {
   const { bot } = useAppSelector(selectBot);
+
   const { id } = useParams<{
     id: string;
   }>();
+
   const navigate = useNavigate();
+
   const dispatch = useAppDispatch();
+
   const [updateBot] = useEditBotMutation();
+
   const [createBot] = useCreateBotMutation();
+
   const [trigger, { isLoading: isActivating, data: activatedBot }] =
     useActivateBotMutation();
+
   const [deactivateBot, { isLoading: isDeactivating, data: deactivatedBot }] =
     useDeactivateBotMutation();
+
   const [enableActivation, setEnableActivation] = useState(id ? true : false);
+
   const getEditPath = (botId: string) =>
     marketType === MarketType.FUTURES
       ? `/bots/futures/edit/${botId}`
       : `/bots/edit/${botId}`;
+
   // Activate and get bot again
   // Deals and orders information need to come from the server
   const handleActivation = async (id: string) => {
     try {
       const data = await updateBot({ body: bot, id }).unwrap();
+
       if (data?.bot) {
         await trigger(id).unwrap();
         navigate(getEditPath(id));
@@ -50,6 +62,7 @@ const BotDetailTabs: FC<{
       // The mutation displays the server error; keep the bot page open.
     }
   };
+
   const handlePanicSell = async (id: string) => {
     try {
       await deactivateBot(id).unwrap();
@@ -57,17 +70,21 @@ const BotDetailTabs: FC<{
       // The mutation displays the server error; keep the bot page open.
     }
   };
+
   const onSubmit = async () => {
     if (id && bot.status !== BotStatus.COMPLETED) {
       await updateBot({ body: bot, id });
       navigate(getEditPath(id));
     } else {
       const submitData = { ...bot, id: undefined };
+
       const { data } = await createBot(submitData);
+
       setEnableActivation(true);
       navigate(getEditPath(data.bot.id));
     }
   };
+
   useEffect(() => {
     if (isActivating || isDeactivating) {
       dispatch(setSpinner(true));
@@ -157,4 +174,5 @@ const BotDetailTabs: FC<{
     </Tabs>
   );
 };
+
 export default BotDetailTabs;

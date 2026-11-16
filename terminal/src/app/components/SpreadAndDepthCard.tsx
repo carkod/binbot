@@ -2,6 +2,7 @@ import { Box, Button, Group, Text, Title } from "@mantine/core";
 import { useMemo } from "react";
 import type { useOrderBookHistory } from "../hooks/useOrderBookHistory";
 import LivePlotlyChart from "./LivePlotlyChart";
+
 interface SpreadAndDepthCardProps {
   orderBookHistory: ReturnType<typeof useOrderBookHistory>;
   enabled: boolean;
@@ -10,6 +11,7 @@ interface SpreadAndDepthCardProps {
   onRetry: () => void;
   depthWindowMinutes?: number;
 }
+
 const SpreadAndDepthCard = ({
   orderBookHistory,
   enabled,
@@ -19,10 +21,12 @@ const SpreadAndDepthCard = ({
   depthWindowMinutes = 15,
 }: SpreadAndDepthCardProps) => {
   const { history, chartPoints, now } = orderBookHistory;
+
   const data = useMemo(() => {
     const timestamps = chartPoints.map(({ timestamp }) =>
       new Date(timestamp).toISOString(),
     );
+
     return [
       {
         ids: chartPoints.map(({ timestamp }) => String(timestamp)),
@@ -67,6 +71,7 @@ const SpreadAndDepthCard = ({
       },
     ];
   }, [chartPoints]);
+
   const layout = useMemo(
     () => ({
       autosize: true,
@@ -102,6 +107,7 @@ const SpreadAndDepthCard = ({
     }),
     [now, depthWindowMinutes],
   );
+
   return (
     <Box>
       <Box mb="sm">
@@ -149,4 +155,5 @@ const SpreadAndDepthCard = ({
     </Box>
   );
 };
+
 export default SpreadAndDepthCard;

@@ -1,6 +1,7 @@
 import { Box } from "@mantine/core";
 import type { Bot } from "../../features/bots/botInitialState";
 import { renderDuration } from "../../utils/time";
+
 const BotInfoDuration = (bot: Bot) => {
   if (bot.deal) {
     return (
@@ -13,4 +14,5 @@ const BotInfoDuration = (bot: Bot) => {
     return <></>;
   }
 };
+
 export default BotInfoDuration;

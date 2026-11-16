@@ -42,6 +42,7 @@ export const gridLevelLabel = (level: GridLevel): string => {
 export const buildGridOrderLines = (ladder: GridLadder): OrderLine[] =>
   ladder.levels.flatMap((level) => {
     const quantity = `${level.contracts} contracts`;
+
     const lines: OrderLine[] = [
       {
         id: `${level.id}-entry`,
@@ -84,6 +85,7 @@ export const buildGridTimescaleMarks = (
     .filter((order) => order.created_at && order.side)
     .map((order): TimescaleMark => {
       const isBuy = order.side === "buy";
+
       return {
         id: order.id,
         label: isBuy ? "B" : "S",
@@ -104,6 +106,7 @@ export const buildGridTimescaleMarks = (
     .filter((level) => level.side !== "neutral")
     .map((level): TimescaleMark => {
       const isBuy = level.side === "buy";
+
       return {
         id: level.id,
         label: isBuy ? "B" : "S",
@@ -119,6 +122,7 @@ export const buildGridTimescaleMarks = (
 
 export const chartSymbolForLadder = (ladder: GridLadder): string => {
   const exchange = ladder.exchange.toLowerCase();
+
   const marketType = ladder.market_type.toUpperCase();
 
   if (exchange !== Exchange.KUCOIN) {
@@ -132,11 +136,13 @@ export const chartSymbolForLadder = (ladder: GridLadder): string => {
   }
 
   const baseAsset = ladder.symbol.replace(ladder.fiat, "");
+
   return `${baseAsset}-${ladder.fiat}`;
 };
 
 export const isErrorStatus = (status?: string | null): boolean => {
   const value = status?.toLowerCase() ?? "";
+
   return ["error", "rejected", "expired", "range_broken"].some((errorStatus) =>
     value.includes(errorStatus),
   );
@@ -146,6 +152,7 @@ type BadgeBg = "success" | "danger" | "primary" | "secondary" | "warning";
 
 export const statusBadgeBg = (status?: string | null): BadgeBg => {
   const value = status?.toLowerCase() ?? "";
+
   if (isErrorStatus(status)) {
     return "danger";
   }
@@ -190,6 +197,7 @@ export const calculateGridLiveUnrealizedPnl = (
   contractMultiplier: number = 1,
 ): number => {
   const openPositionStatuses = new Set(["filled", "take_profit_open"]);
+
   const multiplier = Number.isFinite(contractMultiplier)
     ? contractMultiplier
     : 1;
@@ -200,16 +208,19 @@ export const calculateGridLiveUnrealizedPnl = (
     }
 
     const quantity = level.filled_entry_qty;
+
     if (!quantity) {
       return acc;
     }
 
     const direction = level.side === "buy" ? 1 : level.side === "sell" ? -1 : 0;
+
     if (!direction) {
       return acc;
     }
 
     const entryPrice = level.filled_entry_price || level.price;
+
     return (
       acc + (currentPrice - entryPrice) * quantity * multiplier * direction
     );

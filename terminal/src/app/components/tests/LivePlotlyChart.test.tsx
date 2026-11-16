@@ -14,10 +14,13 @@ vi.mock("../PlotlyChart", () => ({
 describe("live chart updates", () => {
   it("transitions new observations in the mounted plot while keeping gaps and hover data", () => {
     const layout = { xaxis: { type: "date" }, height: 380 };
+
     const { rerender } = render(
       <LivePlotlyChart data={[{ x: ["first"], y: [100] }]} layout={layout} />,
     );
+
     const mountedChart = testingScreen.getByTestId("live-chart");
+
     const data = [
       {
         ids: ["first", "gap", "latest"],
@@ -31,10 +34,13 @@ describe("live chart updates", () => {
         connectgaps: false,
       },
     ];
+
     rerender(<LivePlotlyChart data={data} layout={layout} />);
 
     expect(testingScreen.getByTestId("live-chart")).toBe(mountedChart);
+
     const props = plot.mock.lastCall[0];
+
     expect(props.data).toBe(data);
     expect(props.layout).toMatchObject({
       ...layout,
@@ -49,15 +55,20 @@ describe("live chart updates", () => {
 
   it("skips Plotly updates when parent status changes leave chart inputs unchanged", () => {
     const data = [{ y: [100] }];
+
     const layout = { height: 380 };
+
     const { rerender } = render(
       <LivePlotlyChart data={data} layout={layout} />,
     );
+
     const calls = plot.mock.calls.length;
+
     rerender(<LivePlotlyChart data={data} layout={layout} />);
     expect(plot).toHaveBeenCalledTimes(calls);
 
     const nextLayout = { ...layout, xaxis: { range: [1, 2] } };
+
     rerender(<LivePlotlyChart data={data} layout={nextLayout} />);
     expect(plot.mock.lastCall[0].layout.xaxis.range).toEqual([1, 2]);
   });

@@ -16,19 +16,25 @@ import {
   useGetUsersQuery,
 } from "../../features/userApiSlice";
 import ConfirmModal from "../components/ConfirmModal";
+
 const UsersPage: FC = () => {
   const navigate = useNavigate();
+
   const { data: users = [], isFetching } = useGetUsersQuery(undefined, {
     refetchOnFocus: true,
   });
+
   const [deleteUser] = useDeleteUserMutation();
+
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+
   const confirmDelete = async (index: number) => {
     if (index === 1 && userToDelete) {
       await deleteUser(userToDelete.email).unwrap();
     }
     setUserToDelete(null);
   };
+
   return (
     <Box w="100%">
       <Card mb="md" mt={16}>
@@ -136,4 +142,5 @@ const UsersPage: FC = () => {
     </Box>
   );
 };
+
 export default UsersPage;

@@ -3,6 +3,7 @@ import { getApiErrorMessage } from "../../utils/api";
 import { useMicrostructureData } from "../hooks/useMicrostructureData";
 import SpreadAndDepthCard from "./SpreadAndDepthCard";
 import SymbolCvdCard from "./SymbolCvdCard";
+
 const OrderBookAnalysis = ({
   enabled,
   showError = false,
@@ -13,7 +14,9 @@ const OrderBookAnalysis = ({
   depthWindowMinutes?: number;
 }) => {
   const { symbol, liquidity, orderBookHistory } = useMicrostructureData();
+
   const { isFetching, isError, error, refetch } = liquidity;
+
   return (
     <>
       {enabled && showError && isError && (
@@ -35,4 +38,5 @@ const OrderBookAnalysis = ({
     </>
   );
 };
+
 export default OrderBookAnalysis;

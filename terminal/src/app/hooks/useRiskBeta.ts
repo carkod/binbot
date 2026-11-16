@@ -19,6 +19,7 @@ async function fetchJson(url: string, signal: AbortSignal, token?: string) {
     signal,
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
+
   if (!response.ok)
     throw new Error(`Risk beta data request failed: ${response.status}`);
   return response.json();
@@ -33,6 +34,7 @@ export async function loadCandles(
 ): Promise<CandleClose[]> {
   const start =
     completedBefore - (RISK_BETA_CANDLE_COUNT + 2) * FIFTEEN_MINUTES_MS;
+
   let url: string;
   if (futures) {
     const params = new URLSearchParams({
@@ -41,6 +43,7 @@ export async function loadCandles(
       from: String(start),
       to: String(completedBefore - 1),
     });
+
     url = `/kucoin-futures/api/v1/kline/query?${params}`;
   } else if (exchange === ExchangeId.KUCOIN) {
     const params = new URLSearchParams({
@@ -49,6 +52,7 @@ export async function loadCandles(
       startAt: String(Math.floor(start / 1000)),
       endAt: String(Math.floor((completedBefore - 1) / 1000)),
     });
+
     url = `/kucoin/api/v1/market/candles?${params}`;
   } else {
     const params = new URLSearchParams({
@@ -57,12 +61,15 @@ export async function loadCandles(
       limit: String(RISK_BETA_CANDLE_COUNT),
       endTime: String(completedBefore - 1),
     });
+
     url = `/binance/api/v3/klines?${params}`;
   }
 
   const response = await fetchJson(url, signal);
+
   const rows =
     exchange === ExchangeId.BINANCE && !futures ? response : response.data;
+
   if (!Array.isArray(rows)) throw new Error("Invalid candlestick response");
   return rows.map((row: unknown) => {
     if (!Array.isArray(row)) throw new Error("Invalid candlestick row");
@@ -77,11 +84,14 @@ export async function loadCandles(
 
 export function useRiskBeta(accountData: BalanceData, marketType: MarketType) {
   const { data: settings, isLoading: loadingSettings } = useGetSettingsQuery();
+
   const { data: activeBots, isLoading: loadingBots } = useGetBotsQuery(
     { status: BotStatus.ACTIVE },
     { skip: marketType !== MarketType.FUTURES },
   );
+
   const [beta, setBeta] = useState<number | null>(null);
+
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -96,9 +106,13 @@ export function useRiskBeta(accountData: BalanceData, marketType: MarketType) {
     }
 
     const controller = new AbortController();
+
     const completedBefore = floorToMultiple(Date.now(), FIFTEEN_MINUTES_MS);
+
     const exchange = settings.exchange_id;
+
     const fiat = accountData.fiat_currency;
+
     setBeta(null);
     setIsLoading(true);
 
@@ -116,6 +130,7 @@ export function useRiskBeta(accountData: BalanceData, marketType: MarketType) {
           : exchange === ExchangeId.KUCOIN
             ? `BTC-${fiat}`
             : `BTC${fiat}`;
+
       const benchmark = await loadCandles(
         benchmarkSymbol,
         exchange,
@@ -123,6 +138,7 @@ export function useRiskBeta(accountData: BalanceData, marketType: MarketType) {
         controller.signal,
         marketType === MarketType.FUTURES,
       );
+
       let exposures: RiskExposure[];
 
       if (marketType === MarketType.FUTURES) {
@@ -134,6 +150,7 @@ export function useRiskBeta(accountData: BalanceData, marketType: MarketType) {
               .map((bot) => bot!.pair),
           ),
         ];
+
         exposures = (
           await Promise.all(
             pairs.map(async (pair) => {
@@ -142,13 +159,17 @@ export function useRiskBeta(accountData: BalanceData, marketType: MarketType) {
                 controller.signal,
                 getToken(),
               );
+
               if (positionResponse.error)
                 throw new Error("Position request failed");
+
               const position = positionResponse.data;
+
               if (!position?.is_open || !position.current_qty) return null;
               if (position.is_inverse || position.settle_currency !== fiat) {
                 throw new Error("Unsupported futures position");
               }
+
               const [contractResponse, candles] = await Promise.all([
                 fetchJson(
                   `/kucoin-futures/api/v1/contracts/${encodeURIComponent(pair)}`,
@@ -164,7 +185,9 @@ export function useRiskBeta(accountData: BalanceData, marketType: MarketType) {
                       true,
                     ),
               ]);
+
               const multiplier = Number(contractResponse.data?.multiplier);
+
               if (!Number.isFinite(multiplier) || multiplier <= 0) {
                 throw new Error("Invalid futures contract multiplier");
               }

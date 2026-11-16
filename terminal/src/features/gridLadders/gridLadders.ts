@@ -1,6 +1,7 @@
 import { GridLadderStatus, type GridLadder } from "./types";
 
 export { GridLadderStatus } from "./types";
+
 export type { GridLevel, GridLadder } from "./types";
 
 export type GridPositionSide = "long" | "short" | "flat";
@@ -50,6 +51,7 @@ export const calculateGridUtilization = (ladder: GridLadder): number => {
 
 export const resolveGridPosition = (ladder: GridLadder): GridPosition => {
   const openPositionStatuses = new Set(["filled", "take_profit_open"]);
+
   const isActive = isActiveGridLadder(ladder.status);
 
   const netContracts = ladder.levels.reduce((acc, level) => {
@@ -67,10 +69,12 @@ export const resolveGridPosition = (ladder: GridLadder): GridPosition => {
     }
 
     const direction = level.side === "buy" ? 1 : -1;
+
     return acc + level.filled_entry_qty * direction;
   }, 0);
 
   const contracts = Math.abs(netContracts);
+
   if (contracts <= 0) {
     return {
       side: "flat",
@@ -80,6 +84,7 @@ export const resolveGridPosition = (ladder: GridLadder): GridPosition => {
   }
 
   const side = netContracts > 0 ? "long" : "short";
+
   return {
     side,
     contracts,

@@ -13,6 +13,7 @@ describe("Login page", () => {
         </MemoryRouter>
       </Provider>,
     );
+
     expect(container.querySelector("h4")?.textContent).toBe("Login");
   });
 });

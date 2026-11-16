@@ -34,6 +34,7 @@ describe("userApiSlice", () => {
 
   it("shows an error toast when login returns an HTTP error", async () => {
     const toastSpy = vi.spyOn(toast, "error").mockImplementation(vi.fn());
+
     vi.stubGlobal("Request", MockRequest);
     vi.stubGlobal(
       "fetch",
@@ -47,7 +48,9 @@ describe("userApiSlice", () => {
     );
 
     const store = makeApiStore();
+
     const formData = new FormData();
+
     formData.append("username", "carlos@example.com");
     formData.append("password", "password");
 
@@ -61,6 +64,7 @@ describe("userApiSlice", () => {
 
   it("rejects registerUser when the API returns an application-level error", async () => {
     const toastSpy = vi.spyOn(toast, "error").mockImplementation(vi.fn());
+
     vi.stubGlobal("Request", MockRequest);
     vi.stubGlobal(
       "fetch",
@@ -79,6 +83,7 @@ describe("userApiSlice", () => {
     );
 
     const store = makeApiStore();
+
     const result = await store.dispatch(
       userApiSlice.endpoints.registerUser.initiate({
         email: "carlos@example.com",

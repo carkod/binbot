@@ -10,6 +10,7 @@ export function buildBackUrl(
   location: Pick<Location, "hostname" | "port" | "protocol"> = window.location,
 ) {
   const isSingleLabelHost = !location.hostname.includes(".");
+
   const isLocalDevHost =
     location.hostname === "localhost" || location.hostname === "127.0.0.1";
 
@@ -21,6 +22,7 @@ export function buildBackUrl(
     !isSingleLabelHost && !isLocalDevHost
       ? `api.${location.hostname}`
       : `${location.hostname}:8008`;
+
   return `${location.protocol}//${host}`;
 }
 
@@ -58,6 +60,7 @@ export const binanceBaseQuery = fetchBaseQuery({
 
 export const defaultResponseHandler = async (res: Response) => {
   const content = await res.json();
+
   return content.length ? JSON.parse(content) : null;
 };
 
@@ -142,6 +145,7 @@ export const getApiErrorMessage = (
   if (candidate && typeof candidate === "object") {
     if ("data" in candidate) {
       const dataMessage = apiErrorMessageFromData(candidate.data);
+
       if (dataMessage) {
         return dataMessage;
       }

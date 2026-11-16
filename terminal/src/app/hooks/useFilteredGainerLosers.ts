@@ -7,13 +7,16 @@ import { normalizePriceChangePercent } from "../../utils/gainers-losers";
 export function useFilteredGainerLosers() {
   const { data: gainerLosers = [], isLoading: loadingGL } =
     useGainerLosersQuery();
+
   const { data: apiSymbols = [], isLoading: loadingSymbols } =
     useGetSymbolsQuery();
+
   const { data: futuresRankings = [], isLoading: loadingFutures } =
     useFuturesRankingsQuery();
 
   const combined = useMemo(() => {
     const symbolMap = new Map(apiSymbols.map((symbol) => [symbol.id, symbol]));
+
     return gainerLosers
       .filter((gainerLoser) => symbolMap.has(gainerLoser.symbol))
       .map((gainerLoser) => ({

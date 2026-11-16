@@ -18,20 +18,27 @@ import LogsInfo from "../components/LogsInfo";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { SymbolProvider } from "../providers/SymbolProvider";
 import { SpinnerContext } from "../spinner-context";
+
 export const FuturesBotDetail: FC<{}> = () => {
   const { id, symbol } = useParams();
+
   const [searchParams, setSearchParams] = useSearchParams();
+
   const chartTab =
     searchParams.get("chartTab") === "analysis" ? "analysis" : "chart";
+
   const settingsTab =
     Object.values(TabsKeys).find(
       (tab) => tab === searchParams.get("settingsTab"),
     ) ?? TabsKeys.MAIN;
+
   const infoTab = searchParams.get("infoTab") === "deal" ? "deal" : "orders";
+
   const setTab = (key: string, value: string | null, defaultValue: string) => {
     setSearchParams(
       (current) => {
         const next = new URLSearchParams(current);
+
         if (value === null || value === defaultValue) next.delete(key);
         else next.set(key, value);
         return next;
@@ -39,16 +46,24 @@ export const FuturesBotDetail: FC<{}> = () => {
       { replace: true },
     );
   };
+
   const isNewBot = !id;
+
   const dispatch = useAppDispatch();
+
   const { bot } = useAppSelector(selectBot);
+
   const { data, isLoading: loadingBot } = useGetSingleBotQuery(id as string, {
     skip: Boolean(!id),
   });
+
   const { data: accountData, isLoading: loadingEstimates } =
     useGetBalanceQuery();
+
   const { setSpinner } = useContext(SpinnerContext);
+
   const currentMarketType = MarketType.FUTURES;
+
   useEffect(() => {
     if (isNewBot) {
       dispatch(
@@ -141,4 +156,5 @@ export const FuturesBotDetail: FC<{}> = () => {
     </SymbolProvider>
   );
 };
+
 export default FuturesBotDetail;

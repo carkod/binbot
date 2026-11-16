@@ -55,6 +55,7 @@ const symbolContextValue = {
 
 function renderLeverage(botOverrides: Partial<Bot> = {}) {
   const store = makeStore();
+
   store.dispatch(
     setBot({
       bot: {
@@ -86,6 +87,7 @@ function renderLeverage(botOverrides: Partial<Bot> = {}) {
 describe("BaseOrderTab", () => {
   it("defaults to immediate with a null price and hides conditional fields", () => {
     const store = renderLeverage();
+
     expect(testingScreen.getByLabelText("Entry")).toHaveValue(
       EntryMode.IMMEDIATE,
     );
@@ -100,11 +102,15 @@ describe("BaseOrderTab", () => {
 
   it("prefills the chart price and six-hour expiry, allowing both to be edited", async () => {
     const user = userEvent.setup();
+
     const now = new Date("2026-11-13T10:00:00Z").getTime();
+
     const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+
     const store = renderLeverage({
       deal: { ...singleBot.deal, current_price: 95 },
     });
+
     fireEvent.change(testingScreen.getByLabelText("Entry"), {
       target: { value: EntryMode.CONDITIONAL_LIMIT },
     });
@@ -112,7 +118,9 @@ describe("BaseOrderTab", () => {
     expect(store.getState().bot.bot.entry_expires_at).toBe(
       now + 6 * 60 * 60 * 1000,
     );
+
     const expiry = testingScreen.getByLabelText("Entry expires at");
+
     expect(expiry).toHaveTextContent(
       moment(now + 6 * 60 * 60 * 1000).format("DD/MM/YYYY HH:mm:ss"),
     );
@@ -163,6 +171,7 @@ describe("BaseOrderTab", () => {
 
   it("waits for the chart price and preserves an explicitly cleared price as null", () => {
     const store = renderLeverage();
+
     fireEvent.change(testingScreen.getByLabelText("Entry"), {
       target: { value: EntryMode.CONDITIONAL_LIMIT },
     });
@@ -191,12 +200,14 @@ describe("BaseOrderTab", () => {
       entry_expires_at: 1800000000000,
       deal: { ...singleBot.deal, current_price: 95 },
     });
+
     expect(testingScreen.getByLabelText("Entry limit price")).toHaveValue(90);
     expect(store.getState().bot.bot.entry_expires_at).toBe(1800000000000);
   });
 
   it("enables automatic recovery without exposing source metadata or changing order size", () => {
     const store = renderLeverage({ fiat_order_size: 25 });
+
     const recoveryToggle = testingScreen.getByRole("switch", {
       name: /^Recovery mode /,
     });
@@ -220,6 +231,7 @@ describe("BaseOrderTab", () => {
 
   it("keeps recovery unavailable while dynamic position sizing is enabled", () => {
     const store = renderLeverage({ dynamic_position_sizing: true });
+
     const recoveryToggle = testingScreen.getByRole("switch", {
       name: /^Recovery mode /,
     });
@@ -236,6 +248,7 @@ describe("BaseOrderTab", () => {
       source_bot_id: "source-bot",
       source_contracts: 7,
     };
+
     const store = renderLeverage({ recovery_params: recoveryParams });
 
     expect(
@@ -246,6 +259,7 @@ describe("BaseOrderTab", () => {
 
   it("inherits symbol leverage for a new futures bot without submitting an override", () => {
     const store = renderLeverage();
+
     expect(
       testingScreen.getByRole("combobox", { name: "Leverage" }),
     ).toHaveValue("3");
@@ -254,7 +268,9 @@ describe("BaseOrderTab", () => {
 
   it("allows only 1x through 5x and stores the chosen leverage as a number", () => {
     const store = renderLeverage();
+
     const leverage = testingScreen.getByRole("combobox", { name: "Leverage" });
+
     expect(
       Array.from(leverage.querySelectorAll("option"), (option) => option.value),
     ).toEqual(["1", "2", "3", "4", "5"]);
@@ -265,6 +281,7 @@ describe("BaseOrderTab", () => {
 
   it("shows the bot's saved leverage instead of the symbol default", () => {
     const store = renderLeverage({ futures_leverage: 4 });
+
     expect(
       testingScreen.getByRole("combobox", { name: "Leverage" }),
     ).toHaveValue("4");

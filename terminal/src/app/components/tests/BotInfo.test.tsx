@@ -22,6 +22,7 @@ describe("BotInfo", () => {
       ...singleBot.deal!,
       conditional_close_order: { order_id: "internal-close" },
     };
+
     const view = render(<BotInfo bot={{ ...singleBot, deal, orders: [{}] }} />);
 
     fireEvent.click(view.getByRole("tab", { name: "Deal information" }));

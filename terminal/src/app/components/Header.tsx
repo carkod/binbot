@@ -1,6 +1,7 @@
 import { ActionIcon, Burger, Group, Title } from "@mantine/core";
 import { Link, matchPath, useLocation } from "react-router";
 import { routes } from "../routes";
+
 export const Header = ({
   onExpand,
   expanded = false,
@@ -9,11 +10,13 @@ export const Header = ({
   expanded?: boolean;
 }) => {
   const location = useLocation();
+
   const route = routes.find((route) =>
     route.index
       ? location.pathname === "/"
       : route.path && matchPath(route.path, location.pathname),
   );
+
   return (
     <Group h="100%" px="lg" justify="space-between" wrap="nowrap">
       <Group wrap="nowrap">
@@ -39,4 +42,5 @@ export const Header = ({
     </Group>
   );
 };
+
 export default Header;

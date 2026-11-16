@@ -17,6 +17,7 @@ import { computeSingleBotProfit } from "../../features/bots/profits";
 import { MarketType } from "../../utils/enums";
 import { roundDecimals } from "../../utils/math";
 import { formatTimestamp, renderDuration } from "../../utils/time";
+
 type handleCallback = (id: string) => void;
 interface BotCardProps {
   bot: Bot;
@@ -25,6 +26,7 @@ interface BotCardProps {
   handleSelection?: handleCallback;
   handleDelete?: handleCallback;
 }
+
 /**
  * Dump component that displays bots
  * in a card format
@@ -40,9 +42,13 @@ const BotCard: FC<BotCardProps> = ({
   handleDelete,
 }) => {
   const botProfit = computeSingleBotProfit(bot);
+
   const navigate = useNavigate();
+
   const { pathname } = useLocation();
+
   const selectedIds = selectedCards ?? [];
+
   return (
     <Card
       tabIndex={botIndex}
@@ -280,4 +286,5 @@ const BotCard: FC<BotCardProps> = ({
     </Card>
   );
 };
+
 export default BotCard;

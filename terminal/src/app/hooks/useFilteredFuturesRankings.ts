@@ -6,11 +6,13 @@ import { normalizePriceChangePercent } from "../../utils/gainers-losers";
 export function useFilteredFuturesRankings() {
   const { data: apiSymbols = [], isLoading: loadingSymbols } =
     useGetSymbolsQuery();
+
   const { data: futuresRankings = [], isLoading: loadingFutures } =
     useFuturesRankingsQuery();
 
   const combined = useMemo(() => {
     const symbolMap = new Map(apiSymbols.map((symbol) => [symbol.id, symbol]));
+
     return futuresRankings
       .filter((ranking) => symbolMap.has(ranking.symbol))
       .map((ranking) => ({

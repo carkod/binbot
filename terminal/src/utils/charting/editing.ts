@@ -48,13 +48,16 @@ export function percentageFromOrderLine(
     reference <= 0
   )
     return null;
+
   const direction = position === BotPosition.SHORT ? -1 : 1;
+
   const percentage =
     100 *
     direction *
     (field === "trailing_profit" || field === "take_profit"
       ? price / reference - 1
       : 1 - price / reference);
+
   return percentage >= 0 && percentage < 100
     ? Math.round(percentage * 1e8) / 1e8
     : null;

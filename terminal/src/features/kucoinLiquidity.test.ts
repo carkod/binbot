@@ -31,6 +31,7 @@ describe("KuCoin futures liquidity", () => {
       },
       0.001,
     );
+
     expect(result.spreadRatio).toBeCloseTo(0.0008);
     expect(result.bidDepth).toBeCloseTo(29.972);
     expect(result.askDepth).toBeCloseTo(25.018);
@@ -172,6 +173,7 @@ describe("KuCoin futures liquidity", () => {
 
 describe("rolling OBI history", () => {
   const now = 1_790_000_000_000;
+
   const point: ObiSnapshot = {
     spreadRatio: 0.0008,
     bidDepth: 30_000,
@@ -184,7 +186,9 @@ describe("rolling OBI history", () => {
 
   it("retains only samples inside the preceding 15 minutes", () => {
     const old = { ...point, timestamp: now - OBI_WINDOW_MS - 1 };
+
     const boundary = { ...point, timestamp: now - OBI_WINDOW_MS };
+
     expect(updateObiHistory([old, boundary], point, now)).toEqual([
       boundary,
       point,
@@ -210,7 +214,9 @@ describe("rolling OBI history", () => {
         now,
       ),
     ).toEqual([]);
+
     const earlier = { ...point, timestamp: now - 15_000 };
+
     expect(updateObiHistory([point], earlier, now)).toEqual([earlier, point]);
   });
 });

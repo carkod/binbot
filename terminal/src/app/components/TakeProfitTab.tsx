@@ -21,9 +21,12 @@ import {
 } from "../../features/bots/botSlice";
 import { TabsKeys } from "../../utils/enums";
 import { useAppDispatch, useAppSelector } from "../hooks";
+
 const TakeProfit: FC = () => {
   const dispatch = useAppDispatch();
+
   const { bot } = useAppSelector(selectBot);
+
   const {
     register,
     reset,
@@ -38,6 +41,7 @@ const TakeProfit: FC = () => {
       trailing_profit: bot.trailing_profit,
     },
   });
+
   useEffect(() => {
     reset({
       take_profit: bot.take_profit,
@@ -55,16 +59,20 @@ const TakeProfit: FC = () => {
   useEffect(() => {
     setValue("trailing_deviation", bot.trailing_deviation);
   }, [bot.trailing_deviation, setValue]);
+
   const commitPercentage = (
     name: "take_profit" | "trailing_profit" | "trailing_deviation",
     value: string,
   ) => {
     if (value === "") return;
+
     const percentage = Number(value);
+
     if (Number.isFinite(percentage)) {
       dispatch(setField({ name, value: percentage }));
     }
   };
+
   return (
     <Tabs.Panel value={TabsKeys.TAKEPROFIT} pt="md">
       <Box w="100%">
@@ -239,4 +247,5 @@ const TakeProfit: FC = () => {
     </Tabs.Panel>
   );
 };
+
 export default TakeProfit;

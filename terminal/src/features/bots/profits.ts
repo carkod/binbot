@@ -10,11 +10,14 @@ export function getProfit(
 ) {
   if (base_price && current_price && qty) {
     const costBasis = base_price * qty;
+
     let realizedPnl = (current_price - base_price) * qty;
     if (position === BotPosition.SHORT) {
       realizedPnl = realizedPnl * -1;
     }
+
     const percent = (realizedPnl / costBasis) * 100;
+
     return parseFloat(percent.toFixed(2));
   }
   return 0;
@@ -51,13 +54,17 @@ export function computeSingleBotProfit(
         : realTimeCurrPrice > 0
           ? realTimeCurrPrice
           : bot.deal.current_price;
+
     const buyPrice = bot.deal.opening_price;
+
     if (currentPrice > 0) {
       const qty =
         bot.deal.closing_price > 0 && bot.deal.closing_qty > 0
           ? bot.deal.closing_qty
           : 1;
+
       const profitChange = getProfit(buyPrice, currentPrice, bot.position, qty);
+
       return roundDecimals(profitChange, 2);
     }
     return 0;
@@ -71,6 +78,7 @@ export function computeSingleBotProfit(
       bot.position,
       bot.deal.closing_qty,
     );
+
     return roundDecimals(profitChange, 2);
   }
 
@@ -83,19 +91,23 @@ export function computeSingleBotProfit(
   if (closePrice === 0) {
     return 0;
   }
+
   const profitChange = getProfit(
     bot.deal.opening_price,
     closePrice,
     bot.position,
   );
+
   return roundDecimals(profitChange, 2);
 }
 
 /** Average directional price return for bots with recorded opening and closing prices. */
 export function computeTotalProfit(bots: Bot[] = []) {
   let closedBots = 0;
+
   const totalProfit = bots.reduce((accumulator, bot) => {
     const openingPrice = bot?.deal?.opening_price ?? 0;
+
     const closingPrice = bot?.deal?.closing_price ?? 0;
 
     if (closingPrice <= 0 || openingPrice <= 0) {
@@ -103,11 +115,15 @@ export function computeTotalProfit(bots: Bot[] = []) {
     }
 
     closedBots += 1;
+
     const direction = bot.position === BotPosition.SHORT ? -1 : 1;
+
     const profit =
       ((closingPrice - openingPrice) / openingPrice) * 100 * direction;
+
     return accumulator + profit;
   }, 0);
+
   return closedBots > 0 ? roundDecimals(totalProfit / closedBots, 2) : 0;
 }
 

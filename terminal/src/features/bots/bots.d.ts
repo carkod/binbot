@@ -7,6 +7,7 @@ export interface DefaultBotsResponse {
   data?: string;
   message?: string;
 }
+
 export interface GetBotsResponse {
   bots: EntityState<Bot, EntityId>;
   totalProfit: number;

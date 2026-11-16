@@ -25,6 +25,7 @@ const SpreadAndDepthCard = ({
     props.enabled,
     props.isError,
   );
+
   return (
     <SpreadAndDepthCardView {...props} orderBookHistory={orderBookHistory} />
   );
@@ -39,6 +40,7 @@ vi.mock("../PlotlyChart", () => ({
 }));
 
 const now = 1_790_000_000_000;
+
 const snapshot: ObiSnapshot = {
   timestamp: now,
   obi: 0.2,
@@ -48,6 +50,7 @@ const snapshot: ObiSnapshot = {
   bidDepth: 30,
   askDepth: 20,
 };
+
 const props = {
   enabled: true,
   isFetching: false,
@@ -65,8 +68,11 @@ describe("spread and nearby depth chart", () => {
 
   it("charts USDT depth and percentage spread on separate axes", () => {
     render(<SpreadAndDepthCard {...props} snapshot={snapshot} />);
+
     const chart = testingScreen.getByTestId("spread-depth-chart");
+
     const traces = JSON.parse(chart.textContent);
+
     expect(traces.map(({ y }) => y)).toEqual([[30], [20], [0.08]]);
     expect(traces.map(({ name }) => name)).toEqual([
       "Bid depth",
@@ -74,7 +80,9 @@ describe("spread and nearby depth chart", () => {
       "Spread",
     ]);
     expect(traces[2].yaxis).toBe("y2");
+
     const layout = JSON.parse(chart.getAttribute("data-layout"));
+
     expect(layout.yaxis.title.text).toBe("Nearby depth (USDT)");
     expect(layout.yaxis2.title.text).toBe("Spread (%)");
     expect(layout.xaxis.range).toEqual([
@@ -93,6 +101,7 @@ describe("spread and nearby depth chart", () => {
         depthWindowMinutes={5}
       />,
     );
+
     act(() => vi.advanceTimersByTime(60_000));
     let layout = JSON.parse(
       testingScreen
@@ -128,6 +137,7 @@ describe("spread and nearby depth chart", () => {
     const { rerender } = render(
       <SpreadAndDepthCard {...props} snapshot={snapshot} />,
     );
+
     rerender(<SpreadAndDepthCard {...props} snapshot={snapshot} isError />);
     fireEvent.click(testingScreen.getByRole("button", { name: "Retry" }));
     expect(props.onRetry).toHaveBeenCalledOnce();
@@ -138,9 +148,11 @@ describe("spread and nearby depth chart", () => {
         snapshot={{ ...snapshot, timestamp: now + 60_000 }}
       />,
     );
+
     const traces = JSON.parse(
       testingScreen.getByTestId("spread-depth-chart").textContent,
     );
+
     expect(traces.map(({ y }) => y)).toEqual([
       [30, null, 30],
       [20, null, 20],
@@ -161,6 +173,7 @@ describe("spread and nearby depth chart", () => {
     const { rerender } = render(
       <SpreadAndDepthCard {...props} snapshot={snapshot} />,
     );
+
     rerender(
       <SpreadAndDepthCard {...props} snapshot={snapshot} enabled={false} />,
     );

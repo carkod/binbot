@@ -13,6 +13,7 @@ describe("NotFound page", () => {
         </MemoryRouter>
       </Provider>,
     );
+
     expect(container.querySelector(".content")).not.toBeNull();
   });
 });

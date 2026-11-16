@@ -14,6 +14,7 @@ const navigationRoutes = routes.filter((route) => route.nav);
 
 export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { pathname } = useLocation();
+
   const activeRoute = [...navigationRoutes]
     .sort((a, b) => (b.link ?? "").length - (a.link ?? "").length)
     .find((route) =>

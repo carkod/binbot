@@ -18,6 +18,7 @@ import StopLossTab from "../StopLossTab";
 
 const renderStopLossTab = (botOverrides: Partial<Bot> = {}) => {
   const store = makeStore();
+
   store.dispatch(setBot({ bot: { ...singleBot, ...botOverrides } }));
 
   render(
@@ -38,6 +39,7 @@ describe("StopLossTab recovery params", () => {
     const { store } = renderStopLossTab({
       recovery_params: { ...defaultRecoveryParams },
     });
+
     expect(testingScreen.queryByRole("checkbox")).toBeNull();
     expect(testingScreen.queryByLabelText("Reversal path")).toBeNull();
     expect(testingScreen.queryByLabelText("Source contracts")).toBeNull();
@@ -70,6 +72,7 @@ describe("StopLossTab recovery params", () => {
       source_close_order_id: "source-stop",
       stop_loss_pct: 3,
     };
+
     const { store } = renderStopLossTab({ recovery_params: recoveryParams });
 
     fireEvent.change(testingScreen.getByLabelText("Recovery stop loss"), {

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 const BINQUANT_TREE_URL =
   "https://api.github.com/repos/carkod/binquant/git/trees/master?recursive=1";
+
 const BINQUANT_RAW_URL =
   "https://raw.githubusercontent.com/carkod/binquant/master";
 
@@ -17,11 +18,14 @@ const getStrategyNamesFromFile = async (
   const relativePath = file.path
     .replace(/^strategies\//, "")
     .replace(/\.py$/, "");
+
   const fileName = relativePath.split("/").at(-1) ?? relativePath;
+
   const names = new Set([
     fileName.toLowerCase(),
     relativePath.replaceAll("/", "_").toLowerCase(),
   ]);
+
   const response = await fetch(`${BINQUANT_RAW_URL}/${file.path}`, { signal });
 
   if (!response.ok) return [...names];
@@ -51,10 +55,12 @@ export const fetchBinquantStrategyNames = async (
   }
 
   const { tree } = (await response.json()) as { tree: GitHubTreeEntry[] };
+
   const strategyFiles = tree.filter(
     ({ path, type }) =>
       type === "blob" && path.startsWith("strategies/") && path.endsWith(".py"),
   );
+
   const strategyNames = await Promise.all(
     strategyFiles.map((file) => getStrategyNamesFromFile(file, signal)),
   );
@@ -68,7 +74,9 @@ export const useBinquantStrategyNames = () => {
   const [strategyNames, setStrategyNames] = useState<Set<string>>(
     () => cachedStrategyNames ?? new Set(),
   );
+
   const [isLoading, setIsLoading] = useState(!cachedStrategyNames);
+
   const [error, setError] = useState<string>();
 
   useEffect(() => {
