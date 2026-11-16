@@ -60,7 +60,12 @@ export const Layout = () => {
           }
         />
       </AppShell.Header>
-      <AppShell.Navbar p="md" className="terminal-sidebar">
+      <AppShell.Navbar
+        p="md"
+        pr={0}
+        withBorder={false}
+        className="terminal-sidebar"
+      >
         <Sidebar onNavigate={() => setMobileOpened(false)} />
       </AppShell.Navbar>
       <AppShell.Main>
