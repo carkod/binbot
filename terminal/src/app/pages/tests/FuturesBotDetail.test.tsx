@@ -1,6 +1,12 @@
 import React from "react";
 import { Provider } from "react-redux";
-import { MemoryRouter, Route, Routes, useNavigate } from "react-router";
+import {
+  MemoryRouter,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router";
 import { vi } from "vitest";
 import {
   fireEvent,
@@ -73,12 +79,21 @@ vi.mock("../../../features/symbolsApiSlice", async () => {
 
 // Lightweight mocks for heavy child components
 vi.mock("../../components/BotChartTabs", () => {
-  const ChartContainer = (_props: any) => <div data-testid="chart-container" />;
+  const ChartContainer = ({ activeTab, onTabChange }: any) => (
+    <div data-testid="chart-container" data-active-tab={activeTab}>
+      <button onClick={() => onTabChange("analysis")}>Select analysis</button>
+      <button onClick={() => onTabChange("chart")}>Select chart</button>
+    </div>
+  );
   ChartContainer.displayName = "ChartContainer";
   return { default: ChartContainer };
 });
 vi.mock("../../components/BotInfo", () => {
-  const BotInfo = (_props: any) => <div data-testid="bot-info" />;
+  const BotInfo = ({ activeTab, onTabChange }: any) => (
+    <div data-testid="bot-info" data-active-tab={activeTab}>
+      <button onClick={() => onTabChange("deal")}>Select deal</button>
+    </div>
+  );
   BotInfo.displayName = "BotInfo";
   return { default: BotInfo };
 });
@@ -88,7 +103,14 @@ vi.mock("../../components/LogsInfo", () => {
   return { default: LogsInfo };
 });
 vi.mock("../../components/BotDetailTabs", () => {
-  const BotDetailTabs = (_props: any) => <div data-testid="bot-detail-tabs" />;
+  const BotDetailTabs = ({ activeTab, onTabChange }: any) => (
+    <div data-testid="bot-detail-tabs" data-active-tab={activeTab}>
+      <button onClick={() => onTabChange("stop-loss")}>Select stop loss</button>
+      <button onClick={() => onTabChange("take-profit")}>
+        Select take profit
+      </button>
+    </div>
+  );
   BotDetailTabs.displayName = "BotDetailTabs";
   return { default: BotDetailTabs };
 });
@@ -116,6 +138,27 @@ const NavigateToNew = () => {
   );
 };
 
+const CurrentLocation = () => {
+  const location = useLocation();
+  return (
+    <output data-testid="location">
+      {location.pathname + location.search}
+    </output>
+  );
+};
+
+const renderDetailAt = (url: string) =>
+  render(
+    <Provider store={store}>
+      <MemoryRouter initialEntries={[url]}>
+        <CurrentLocation />
+        <Routes>
+          <Route path="/bots/futures/edit/:id" element={<FuturesBotDetail />} />
+        </Routes>
+      </MemoryRouter>
+    </Provider>,
+  );
+
 describe("FuturesBotDetail page", () => {
   beforeEach(() => {
     store.dispatch(resetBot({ market_type: MarketType.FUTURES }));
@@ -123,6 +166,62 @@ describe("FuturesBotDetail page", () => {
       data: undefined,
       isLoading: false,
     });
+  });
+
+  it("restores every selected tab after reloading the current URL", () => {
+    const view = renderDetailAt("/bots/futures/edit/123?source=bots");
+    fireEvent.click(rtlScreen.getByText("Select analysis"));
+    fireEvent.click(rtlScreen.getByText("Select take profit"));
+    fireEvent.click(rtlScreen.getByText("Select deal"));
+
+    const url = rtlScreen.getByTestId("location").textContent!;
+    expect(new URL(url, "http://localhost").searchParams.get("source")).toBe(
+      "bots",
+    );
+    view.unmount();
+    renderDetailAt(url);
+
+    expect(
+      rtlScreen.getByTestId("chart-container").getAttribute("data-active-tab"),
+    ).toBe("analysis");
+    expect(
+      rtlScreen.getByTestId("bot-detail-tabs").getAttribute("data-active-tab"),
+    ).toBe("take-profit");
+    expect(
+      rtlScreen.getByTestId("bot-info").getAttribute("data-active-tab"),
+    ).toBe("deal");
+  });
+
+  it("updates one tab group while preserving the other selections", () => {
+    renderDetailAt(
+      "/bots/futures/edit/123?chartTab=analysis&settingsTab=take-profit&infoTab=deal",
+    );
+    fireEvent.click(rtlScreen.getByText("Select stop loss"));
+    fireEvent.click(rtlScreen.getByText("Select chart"));
+
+    const url = new URL(
+      rtlScreen.getByTestId("location").textContent!,
+      "http://localhost",
+    );
+    expect(url.searchParams.get("chartTab")).toBeNull();
+    expect(url.searchParams.get("settingsTab")).toBe("stop-loss");
+    expect(url.searchParams.get("infoTab")).toBe("deal");
+  });
+
+  it("uses the default tabs when the URL contains unknown selections", () => {
+    renderDetailAt(
+      "/bots/futures/edit/123?chartTab=unknown&settingsTab=unknown&infoTab=unknown",
+    );
+
+    expect(
+      rtlScreen.getByTestId("chart-container").getAttribute("data-active-tab"),
+    ).toBe("chart");
+    expect(
+      rtlScreen.getByTestId("bot-detail-tabs").getAttribute("data-active-tab"),
+    ).toBe("main");
+    expect(
+      rtlScreen.getByTestId("bot-info").getAttribute("data-active-tab"),
+    ).toBe("orders");
   });
 
   it("renders without crashing", () => {

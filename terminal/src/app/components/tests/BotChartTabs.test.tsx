@@ -110,6 +110,30 @@ describe("bot chart tabs", () => {
     expect(chart).toHaveValue("zoomed");
   });
 
+  it("restores the analysis tab and reports changes to the page", () => {
+    const onTabChange = vi.fn();
+    const { rerender } = render(
+      <BotChartTabs
+        {...props}
+        activeTab="analysis"
+        onTabChange={onTabChange}
+      />,
+    );
+    expect(
+      testingScreen.getByRole("tab", { name: "Order book analysis" }),
+    ).toHaveAttribute("aria-selected", "true");
+
+    fireEvent.click(testingScreen.getByRole("tab", { name: "Chart" }));
+    expect(onTabChange).toHaveBeenCalledWith("chart");
+    rerender(
+      <BotChartTabs {...props} activeTab="chart" onTabChange={onTabChange} />,
+    );
+    expect(testingScreen.getByRole("tab", { name: "Chart" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
   it("requests stored CVD for the changed futures symbol even when its order book fails", () => {
     const { rerender } = render(<BotChartTabs {...props} />);
     const context = vi.mocked(useMicrostructureData).mock.results[0].value;

@@ -4,6 +4,19 @@ import { singleBot } from "../../../features/bots/botInitialState";
 import BotInfo from "../BotInfo";
 
 describe("BotInfo", () => {
+  it("shows a restored deal tab even before orders have loaded", () => {
+    const view = render(
+      <BotInfo bot={{ ...singleBot, orders: [] }} activeTab="deal" />,
+    );
+
+    expect(
+      view
+        .getByRole("tab", { name: "Deal information" })
+        .getAttribute("aria-selected"),
+    ).toBe("true");
+    expect(view.getByText("opening_price")).toBeTruthy();
+  });
+
   it("hides the internal conditional close order from deal information", () => {
     const deal = {
       ...singleBot.deal!,

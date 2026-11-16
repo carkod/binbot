@@ -14,12 +14,18 @@ import type { Bot } from "../../features/bots/botInitialState";
 import { formatTimestamp, renderDuration } from "../../utils/time";
 interface BotInfoProps {
   bot: Bot;
+  activeTab?: "orders" | "deal";
+  onTabChange?: (tab: string | null) => void;
 }
-export default function BotInfo({ bot }: BotInfoProps) {
-  const [isExpanded, setExpanded] = useState<boolean>(bot.orders?.length > 0);
+export default function BotInfo({ bot, activeTab, onTabChange }: BotInfoProps) {
+  const [isExpanded, setExpanded] = useState<boolean>(
+    bot.orders?.length > 0 || activeTab === "deal",
+  );
   return (
     <Tabs
       defaultValue="orders"
+      value={activeTab}
+      onChange={onTabChange}
       keepMounted={false}
       keepMountedMode="display-none"
     >

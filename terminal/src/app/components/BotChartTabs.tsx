@@ -1,5 +1,6 @@
 import { Badge, Box, Card, Tabs, Text, Title } from "@mantine/core";
-import { useEffect, useId, useState, type ComponentProps } from "react";
+import { useUncontrolled } from "@mantine/hooks";
+import { useEffect, useId, type ComponentProps } from "react";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 import { computeSingleBotProfit } from "../../features/bots/profits";
 import { BotStatus, MarketType } from "../../utils/enums";
@@ -11,9 +12,18 @@ const BotChartTabs = ({
   bot,
   setCurrentPrice,
   marketType,
-}: ComponentProps<typeof ChartContainer>) => {
+  activeTab: controlledTab,
+  onTabChange,
+}: ComponentProps<typeof ChartContainer> & {
+  activeTab?: string;
+  onTabChange?: (tab: string | null) => void;
+}) => {
   const tabsId = useId();
-  const [activeTab, setActiveTab] = useState<string | null>("chart");
+  const [activeTab, setActiveTab] = useUncontrolled<string | null>({
+    value: controlledTab,
+    defaultValue: "chart",
+    onChange: onTabChange,
+  });
   useEffect(() => {
     const frame = requestAnimationFrame(() =>
       window.dispatchEvent(new Event("resize")),

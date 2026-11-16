@@ -1,6 +1,6 @@
 import { Box, Card, Grid } from "@mantine/core";
 import { useContext, useEffect, type FC } from "react";
-import { useParams } from "react-router";
+import { useParams, useSearchParams } from "react-router";
 import { useGetBalanceQuery } from "../../features/balanceApiSlice";
 import { useGetSingleBotQuery } from "../../features/bots/botsApiSlice";
 import {
@@ -9,7 +9,7 @@ import {
   setBot,
   setCurrentPrice,
 } from "../../features/bots/botSlice";
-import { MarketType } from "../../utils/enums";
+import { MarketType, TabsKeys } from "../../utils/enums";
 import BalanceAnalysis from "../components/BalanceAnalysis";
 import BotChartTabs from "../components/BotChartTabs";
 import BotDetailTabs from "../components/BotDetailTabs";
@@ -20,6 +20,25 @@ import { SymbolProvider } from "../providers/SymbolProvider";
 import { SpinnerContext } from "../spinner-context";
 export const FuturesBotDetail: FC<{}> = () => {
   const { id, symbol } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const chartTab =
+    searchParams.get("chartTab") === "analysis" ? "analysis" : "chart";
+  const settingsTab =
+    Object.values(TabsKeys).find(
+      (tab) => tab === searchParams.get("settingsTab"),
+    ) ?? TabsKeys.MAIN;
+  const infoTab = searchParams.get("infoTab") === "deal" ? "deal" : "orders";
+  const setTab = (key: string, value: string | null, defaultValue: string) => {
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        if (value === null || value === defaultValue) next.delete(key);
+        else next.set(key, value);
+        return next;
+      },
+      { replace: true },
+    );
+  };
   const isNewBot = !id;
   const dispatch = useAppDispatch();
   const { bot } = useAppSelector(selectBot);
@@ -74,11 +93,17 @@ export const FuturesBotDetail: FC<{}> = () => {
             bot={bot}
             setCurrentPrice={setCurrentPrice}
             marketType={currentMarketType}
+            activeTab={chartTab}
+            onTabChange={(tab) => setTab("chartTab", tab, "chart")}
           />
           {bot && id && (
             <Grid>
               <Grid.Col span={{ base: 12, md: 7 }}>
-                <BotInfo bot={bot} />
+                <BotInfo
+                  bot={bot}
+                  activeTab={infoTab}
+                  onTabChange={(tab) => setTab("infoTab", tab, "orders")}
+                />
               </Grid.Col>
               <Grid.Col span={{ base: 12, md: 5 }}>
                 {bot.logs?.length > 0 && <LogsInfo events={bot.logs} />}
@@ -93,6 +118,10 @@ export const FuturesBotDetail: FC<{}> = () => {
                   <BotDetailTabs
                     marketType={currentMarketType}
                     fiatAvailable={accountData?.fiat_available}
+                    activeTab={settingsTab}
+                    onTabChange={(tab) =>
+                      setTab("settingsTab", tab, TabsKeys.MAIN)
+                    }
                   />
                 </Box>
               </Card>

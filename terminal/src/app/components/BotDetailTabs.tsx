@@ -17,7 +17,9 @@ import TakeProfit from "./TakeProfitTab";
 const BotDetailTabs: FC<{
   marketType: MarketType;
   fiatAvailable?: number | null;
-}> = ({ marketType, fiatAvailable }) => {
+  activeTab?: TabsKeys;
+  onTabChange?: (tab: string | null) => void;
+}> = ({ marketType, fiatAvailable, activeTab, onTabChange }) => {
   const { bot } = useAppSelector(selectBot);
   const { id } = useParams<{
     id: string;
@@ -83,6 +85,8 @@ const BotDetailTabs: FC<{
     <Tabs
       key={`${marketType}-${id ?? "new"}-${bot.id}`}
       defaultValue={TabsKeys.MAIN}
+      value={activeTab}
+      onChange={onTabChange}
       keepMounted={true}
       keepMountedMode="display-none"
     >
