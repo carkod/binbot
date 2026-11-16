@@ -11,6 +11,12 @@ a {
   color: var(--mantine-color-primary-8);
   cursor: pointer;
 }
+button,
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+  cursor: pointer;
+}
 .mantine-AppShell-main {
   min-width: 0;
   background: var(--terminal-background);

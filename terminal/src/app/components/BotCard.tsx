@@ -3,6 +3,7 @@ import {
   Box,
   Button,
   Card,
+  Divider,
   Grid,
   Group,
   Text,
@@ -47,39 +48,17 @@ const BotCard: FC<BotCardProps> = ({
       tabIndex={botIndex}
       className={selectedIds.includes(bot.id) ? "selected-card" : ""}
       mb="md"
+      c="dimmed"
+      fz="sm"
     >
-      <Box
-        mb="sm"
-        c="white"
-        py={16}
-        bg="info.5"
-        style={{
-          border: 0,
-        }}
-      >
-        <Box
-          display="flex"
-          style={{
-            alignItems: "center",
-            gap: 8,
-          }}
-          component="div"
-        >
-          <Text fw={600} component="span">
-            <i className="fa-solid fa-chart-line fa-lg" />{" "}
-            {bot.market_type || String(MarketType.SPOT).toUpperCase()}
-          </Text>
-        </Box>
-      </Box>
-      <br aria-hidden="true" />
       <Box>
         <Box w="100%">
           <Grid>
             <Grid.Col span={{ base: 12, md: 7 }}>
-              <Title order={5}>{bot.pair}</Title>
-              <Text c="dimmed" fw={300}>
-                {bot.name}
-              </Text>
+              <Title order={5} fz="1.25rem" fw={700} c="info.8">
+                {bot.pair}
+              </Title>
+              <Text c="dimmed">{bot.name}</Text>
             </Grid.Col>
             <Grid.Col span={{ base: 12, md: 5 }}>
               <Badge
@@ -107,7 +86,15 @@ const BotCard: FC<BotCardProps> = ({
               </Badge>
             </Grid.Col>
           </Grid>
-          <hr />
+          <Divider my="sm" />
+          <Grid>
+            <Grid.Col span={{ base: 7, md: 6 }}>
+              <Text>Market</Text>
+            </Grid.Col>
+            <Grid.Col span={{ base: 5, md: 6 }}>
+              <Text>{bot.market_type || MarketType.SPOT}</Text>
+            </Grid.Col>
+          </Grid>
           <Grid>
             <Grid.Col span={{ base: 7, md: 6 }}>
               <Text>Mode</Text>
@@ -244,7 +231,7 @@ const BotCard: FC<BotCardProps> = ({
           )}
         </Box>
       </Box>
-      <hr />
+      <Divider my="sm" />
       <Group
         mt="sm"
         display="flex"

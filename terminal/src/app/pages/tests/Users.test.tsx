@@ -88,6 +88,8 @@ describe("user administration", () => {
         description: "",
       }),
     );
-    expect(screen.getByRole("button", { name: "Actions" })).toBeVisible();
+    expect(
+      await screen.findByRole("button", { name: "Actions" }),
+    ).toBeVisible();
   });
 });

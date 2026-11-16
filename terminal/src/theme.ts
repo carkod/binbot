@@ -15,6 +15,7 @@ export const theme = createTheme({
   primaryShade: 5,
   respectReducedMotion: false,
   autoContrast: true,
+  cursorType: "pointer",
   fontFamily: '"Montserrat", system-ui, sans-serif',
   fontSizes: {
     xs: "0.75rem",
