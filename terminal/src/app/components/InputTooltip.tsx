@@ -1,53 +1,40 @@
-import React, { type FC } from "react";
-import { Form, InputGroup, OverlayTrigger, Tooltip } from "react-bootstrap";
-import { type FieldErrors } from "react-hook-form";
-import { type Bot } from "../../features/bots/botInitialState";
-
+import { Group, Input, Stack, Tooltip } from "@mantine/core";
+import type { ReactNode } from "react";
+import type { FieldErrors } from "react-hook-form";
+import type { Bot } from "../../features/bots/botInitialState";
 interface InputTooltipProps {
   name: string;
   tooltip: string;
-  children: React.ReactNode;
+  children: ReactNode;
   label: string;
   errors?: FieldErrors<Bot>;
   required?: boolean;
   secondaryText?: string;
 }
-
-export const InputTooltip: FC<InputTooltipProps> = ({
+export const InputTooltip = ({
   name,
   tooltip,
   label,
   children,
-  errors,
+  errors = {},
   required = false,
-  secondaryText = undefined,
-}) => {
-  return (
-    <Form.Group>
-      <OverlayTrigger
-        placement="right"
-        overlay={
-          <Tooltip placement="top" className="in">
-            {tooltip}
-          </Tooltip>
-        }
-      >
-        <Form.Label htmlFor={name}>
-          {label}
-          {required && <span className="u-required">*</span>}
-        </Form.Label>
-      </OverlayTrigger>
-      <InputGroup>
-        {children}
-        {secondaryText && <InputGroup.Text>{secondaryText}</InputGroup.Text>}
-      </InputGroup>
-      {errors[name] && (
-        <Form.Control.Feedback type="invalid">
-          {errors[name]?.message}
-        </Form.Control.Feedback>
-      )}
-    </Form.Group>
-  );
-};
-
+  secondaryText,
+}: InputTooltipProps) => (
+  <Stack gap={4} w="100%" style={{ minWidth: 0 }}>
+    <Tooltip label={tooltip} multiline maw={320} withArrow>
+      <Input.Label htmlFor={name} required={required}>
+        {label}
+      </Input.Label>
+    </Tooltip>
+    <Group gap="xs" wrap="nowrap" className="field-row">
+      {children}
+      {secondaryText && <Input.Description>{secondaryText}</Input.Description>}
+    </Group>
+    {errors[name] && (
+      <Input.Error>
+        {String(errors[name]?.message ?? "Invalid value")}
+      </Input.Error>
+    )}
+  </Stack>
+);
 export default InputTooltip;

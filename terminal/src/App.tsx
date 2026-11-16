@@ -2,11 +2,10 @@ import { Provider } from "react-redux";
 import { createBrowserRouter, Navigate, RouterProvider } from "react-router";
 import { Layout } from "./app/Layout";
 import LoginPage from "./app/pages/Login";
-import { store } from "./app/store";
-import { getToken, removeToken } from "./utils/login";
 import { SymbolProvider } from "./app/providers/SymbolProvider";
 import { routes } from "./app/routes";
-
+import { store } from "./app/store";
+import { getToken, removeToken } from "./utils/login";
 const rootRouter = createBrowserRouter([
   {
     path: "/login",
@@ -38,7 +37,6 @@ const rootRouter = createBrowserRouter([
     },
   },
 ]);
-
 export const App = () => {
   return (
     <Provider store={store}>
@@ -46,5 +44,4 @@ export const App = () => {
     </Provider>
   );
 };
-
 export default App;

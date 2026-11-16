@@ -1,8 +1,7 @@
+import { Box, Card, Group, Text, Title } from "@mantine/core";
 import { useMemo } from "react";
-import { Card } from "react-bootstrap";
 import type { CvdAggregate } from "../../features/marketApiSlice";
 import LivePlotlyChart from "./LivePlotlyChart";
-
 interface StoredCvdCardProps {
   result?: CvdAggregate;
   isLoading: boolean;
@@ -10,7 +9,6 @@ interface StoredCvdCardProps {
   symbol?: string;
   embedded?: boolean;
 }
-
 const StoredCvdCard = ({
   result,
   isLoading,
@@ -18,7 +16,7 @@ const StoredCvdCard = ({
   symbol,
   embedded = false,
 }: StoredCvdCardProps) => {
-  const Container = embedded ? "div" : Card;
+  const Container = embedded ? Box : Card;
   const subject = symbol ? `${symbol} CVD` : "Market CVD";
   const changeLabel = symbol
     ? "Contract multiplier changed"
@@ -78,76 +76,83 @@ const StoredCvdCard = ({
     ];
   }, [result, subject, changeLabel]);
   const layout = useMemo(
-    () => ({
-      autosize: true,
-      height: 380,
-      showlegend: false,
-      margin: { t: 20, l: 105, r: 20, b: 60 },
-      xaxis: {
-        type: "date",
-        autorange: true,
-        uirevision: false,
-        title: {
-          text: `${symbol ? "1-minute" : "15-minute"} intervals`,
+    () => {
+      const now = Date.now();
+      return {
+        autosize: true,
+        height: 380,
+        showlegend: false,
+        margin: { t: 20, l: 105, r: 20, b: 60 },
+        xaxis: {
+          type: "date",
+          autorange: !!symbol,
+          ...(!symbol && {
+            range: [
+              new Date(now - 6 * 60 * 60 * 1000).toISOString(),
+              new Date(now).toISOString(),
+            ],
+          }),
+          uirevision: false,
+          title: {
+            text: `${symbol ? "1-minute" : "15-minute"} intervals`,
+          },
         },
-      },
-      yaxis: {
-        autorange: true,
-        uirevision: false,
-        title: { text: "Observed CVD (USDT)", standoff: 24 },
-        automargin: true,
-        zeroline: true,
-      },
-    }),
+        yaxis: {
+          autorange: true,
+          uirevision: false,
+          title: { text: "Observed CVD (USDT)", standoff: 24 },
+          automargin: true,
+          zeroline: true,
+        },
+      };
+    },
     // Plotly mutates axis ranges after zooming. Fresh axes let each snapshot
     // refit the rolling window without remounting the chart.
     [symbol, result],
   );
   return (
-    <Container className={embedded ? undefined : "card-chart p-3"}>
-      <div className="mb-3">
-        <h5 className="mt-0">
+    <Container mb={embedded ? 0 : "md"}>
+      <Box mb="sm">
+        <Title order={5}>
           {symbol
             ? "Cumulative Volume Delta"
             : "Market Cumulative Volume Delta"}
-        </h5>
-        <p className="text-body-secondary mb-0">
+        </Title>
+        <Text c="dimmed" mb={0}>
           {!symbol && "Registered active linear USDT KuCoin futures. "}
           Aggressive buy minus sell USDT notional, weighted by traded size.
-        </p>
-      </div>
-      <div>
-        <div style={{ minHeight: layout.height }}>
-          {isLoading && (
-            <p role="status">
-              Loading {symbol ? `${symbol} CVD` : "market CVD"}…
-            </p>
-          )}
-          {isError && <p role="alert">{subject} could not be refreshed.</p>}
-          {result?.stale && (
-            <p role="status" className="text-warning">
-              Collector checkpoint is stale. Recent executions may be missing.
-            </p>
-          )}
-          {!isLoading && !isError && !result?.data.length && (
-            <p>
-              Collection has no observations yet{symbol ? ` for ${symbol}` : ""}
-              .
-            </p>
-          )}
-          {result?.partial && (
-            <p className="text-warning">
-              Partial coverage: open diamonds mark incomplete intervals. Lines
-              break at gaps and {symbol ? "contract multiplier" : "universe"}{" "}
-              changes; CVD includes only observed trades.
-            </p>
-          )}
-          {!!result?.data.length && (
-            <LivePlotlyChart data={data} layout={layout} />
-          )}
-        </div>
-      </div>
-      <div className="text-body-secondary mt-3">
+        </Text>
+      </Box>
+      <Box mih={layout.height}>
+        {isLoading && (
+          <Text role="status">
+            Loading {symbol ? `${symbol} CVD` : "market CVD"}…
+          </Text>
+        )}
+        {isError && <Text role="alert">{subject} could not be refreshed.</Text>}
+        {result?.stale && (
+          <Text role="status" c="warning.9">
+            Collector checkpoint is stale. Recent executions may be missing.
+          </Text>
+        )}
+        {!isLoading && !isError && !result?.data.length && (
+          <Text>
+            Collection has no observations yet{symbol ? ` for ${symbol}` : ""}.
+          </Text>
+        )}
+        {result?.partial && (
+          <Text c="warning.9">
+            Partial coverage: open diamonds mark incomplete intervals. Lines
+            break at gaps and {symbol ? "contract multiplier" : "universe"}{" "}
+            changes; CVD includes only observed trades.
+          </Text>
+        )}
+        {!!result?.data.length && (
+          <LivePlotlyChart data={data} layout={layout} />
+        )}
+      </Box>
+      <Group mt="sm" c="dimmed">
+        {!symbol && "Showing the last 6 hours. "}
         {symbol ? "Rolling 15-minute" : "Seven-day"} window; CVD starts at zero
         at{" "}
         {result?.reset_at
@@ -158,9 +163,8 @@ const StoredCvdCard = ({
         closed minutes allow two minutes for late arrivals.
         {result?.updated_at &&
           ` Last checkpoint: ${new Date(result.updated_at).toISOString()}.`}
-      </div>
+      </Group>
     </Container>
   );
 };
-
 export default StoredCvdCard;

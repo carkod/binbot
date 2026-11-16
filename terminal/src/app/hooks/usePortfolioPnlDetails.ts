@@ -41,8 +41,8 @@ export const usePortfolioPnlDetails = (
     portfolioPnlValue === undefined
       ? ""
       : portfolioPnlValue > 0
-        ? "text-success"
-        : "text-danger";
+        ? "tone-success"
+        : "tone-danger";
 
   return {
     portfolioPnlValue,

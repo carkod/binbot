@@ -1,47 +1,49 @@
-import { type FC, useContext, useEffect, useRef, useState } from "react";
+import { formGridBreakpoints } from "../../theme";
 import {
+  Box,
   Button,
-  ButtonGroup,
-  Col,
-  Container,
-  Form,
-  InputGroup,
-  Row,
-  Tab,
-  ToggleButton,
-} from "react-bootstrap";
+  Grid,
+  Group,
+  Input,
+  NativeSelect,
+  SimpleGrid,
+  Stack,
+  Switch,
+  Tabs,
+  TextInput,
+} from "@mantine/core";
+import { DateTimePicker } from "@mantine/dates";
 import moment from "moment";
+import { type FC, useContext, useEffect, useRef, useState } from "react";
 import { type FieldValues, useForm } from "react-hook-form";
+import { useLocation, useParams } from "react-router";
 import { useImmer } from "use-immer";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
+import { defaultRecoveryParams } from "../../features/bots/botInitialState";
 import {
+  focusOrderLine,
   selectBot,
   setField,
-  focusOrderLine,
   setRecoveryParams,
   setToggle,
 } from "../../features/bots/botSlice";
-import { defaultRecoveryParams } from "../../features/bots/botInitialState";
+import { canEditConditionalEntry } from "../../utils/charting/editing";
 import {
-  BotStatus,
   BotPosition,
-  MarketType,
+  BotStatus,
   EntryMode,
+  MarketType,
   TabsKeys,
 } from "../../utils/enums";
+import { matchNewRoutes } from "../../utils/validations";
 import { useAppDispatch, useAppSelector, useSymbolData } from "../hooks";
+import { SpinnerContext } from "../spinner-context";
 import { type AppDispatch } from "../store";
 import { InputTooltip } from "./InputTooltip";
 import SymbolSearch from "./SymbolSearch";
-import { useLocation, useParams } from "react-router";
-import { SpinnerContext } from "../spinner-context";
-import { matchNewRoutes } from "../../utils/validations";
-import { canEditConditionalEntry } from "../../utils/charting/editing";
-
 interface ErrorsState {
   pair?: string;
 }
-
 const BaseOrderTab: FC<{
   fiatAvailable?: number | undefined;
 }> = ({ fiatAvailable = undefined }) => {
@@ -58,13 +60,10 @@ const BaseOrderTab: FC<{
   } = useSymbolData();
   const { bot } = useAppSelector(selectBot);
   const recoveryEnabled = bot.recovery_params != null;
-
   const isBusyBot =
     bot.status === BotStatus.ACTIVE || bot.status === BotStatus.COMPLETED;
-
   const { data: autotradeSettings, isLoading: loadingSettings } =
     useGetSettingsQuery();
-
   const [currentPrice, setCurrentPrice] = useState<number>(0);
   const [errorsState, setErrorsState] = useImmer<ErrorsState>({});
   const entryPriceEditedRef = useRef(false);
@@ -86,15 +85,11 @@ const BaseOrderTab: FC<{
     },
   });
   const { spinner, setSpinner } = useContext(SpinnerContext);
-
-  const handlePairBlur = (e) => {
+  const handlePairSelection = (pair: string) => {
     // Only when selected not typed in
     // this way we avoid any errors
-    if (e.target.value) {
-      const pair = e.target.value;
-
+    if (pair) {
       dispatch(setField({ name: "pair", value: pair }));
-
       setErrorsState((draft) => {
         delete draft["pair"];
       });
@@ -105,13 +100,11 @@ const BaseOrderTab: FC<{
       });
     }
   };
-
   const addAvailableFiat = () => {
     if (fiatAvailable) {
       dispatch(setField({ name: "fiat_order_size", value: fiatAvailable }));
     }
   };
-
   useEffect(() => {
     const { unsubscribe } = watch((v, { name }) => {
       if (v && v?.[name]) {
@@ -122,10 +115,8 @@ const BaseOrderTab: FC<{
         }
       }
     });
-
     return () => unsubscribe();
   }, [dispatch, watch]);
-
   useEffect(() => {
     if (
       bot.entry_mode === EntryMode.CONDITIONAL_LIMIT &&
@@ -147,35 +138,27 @@ const BaseOrderTab: FC<{
     dispatch,
     isBusyBot,
   ]);
-
   useEffect(() => {
     if (!touchedFields.fiat_order_size) {
       setValue("fiat_order_size", bot.fiat_order_size);
     }
   }, [bot.fiat_order_size, setValue, touchedFields.fiat_order_size]);
-
   useEffect(() => {
     if (!symbol || id) {
       initializedSymbolRef.current = null;
       return;
     }
-
     if (initializedSymbolRef.current === symbol) {
       return;
     }
-
     initializedSymbolRef.current = symbol;
-
     reset({
       ...bot,
       pair: symbol,
     });
-
     dispatch(setField({ name: "pair", value: symbol }));
-
     updateQuoteBaseState(symbol);
   }, [bot, dispatch, id, reset, symbol, updateQuoteBaseState]);
-
   useEffect(() => {
     if (
       bot.deal?.current_price !== currentPrice &&
@@ -183,15 +166,12 @@ const BaseOrderTab: FC<{
     ) {
       setCurrentPrice(bot.deal.current_price);
     }
-
     if (!loadingSettings && autotradeSettings) {
       setSpinner(false);
     }
-
     if (quoteAsset && bot.quote_asset !== quoteAsset) {
       dispatch(setField({ name: "quote_asset", value: quoteAsset }));
     }
-
     if (
       !touchedFields.fiat_order_size &&
       bot.fiat_order_size === 0 &&
@@ -202,11 +182,9 @@ const BaseOrderTab: FC<{
         fiatAvailable && fiatAvailable > 0
           ? fiatAvailable
           : autotradeSettings?.base_order_size;
-
       if (!defaultFiatOrderSize) {
         return;
       }
-
       dispatch(
         setField({
           name: "fiat_order_size",
@@ -214,7 +192,6 @@ const BaseOrderTab: FC<{
         }),
       );
     }
-
     if (autotradeSettings?.fiat && bot.fiat !== autotradeSettings.fiat) {
       dispatch(setField({ name: "fiat", value: autotradeSettings.fiat }));
     }
@@ -235,30 +212,37 @@ const BaseOrderTab: FC<{
     setSpinner,
     touchedFields.fiat_order_size,
   ]);
-
   return (
-    <Tab.Pane id="base-order-tab" eventKey={TabsKeys.MAIN} className="mb-3">
-      <Container>
-        <Row className="my-3">
-          <Col md="6" sm="12">
-            <SymbolSearch
-              name="pair"
-              label="Select pair"
-              disabled={bot.status === BotStatus.COMPLETED}
-              value={bot.pair}
-              onBlur={handlePairBlur}
-              required
-              errors={errorsState}
+    <Tabs.Panel id="base-order-tab" value={TabsKeys.MAIN} pt="md" mb={16}>
+      <Box w="100%">
+        <SimpleGrid
+          cols={{ base: 1, [formGridBreakpoints.md]: 2 }}
+          type="container"
+          my={16}
+        >
+          <SymbolSearch
+            name="pair"
+            label="Select pair"
+            disabled={bot.status === BotStatus.COMPLETED}
+            value={bot.pair}
+            onChange={handlePairSelection}
+            onBlur={(event) => handlePairSelection(event.target.value)}
+            required
+            errors={errorsState}
+          />
+          <Box>
+            <Input.Label htmlFor="name">Name</Input.Label>
+            <TextInput
+              type="text"
+              name="name"
+              {...register("name")}
+              id="name"
             />
-          </Col>
-          <Col md="6" sm="12">
-            <Form.Label htmlFor="name">Name</Form.Label>
-            <Form.Control type="text" name="name" {...register("name")} />
-          </Col>
-        </Row>
-        <Row className="my-3">
-          <Col md="6" sm="12">
-            <InputGroup className="mb-1">
+          </Box>
+        </SimpleGrid>
+        <Grid type="container" breakpoints={formGridBreakpoints} my={16}>
+          <Grid.Col span={{ base: 12, md: 6 }}>
+            <Group gap="xs" wrap="nowrap" mb={4} className="field-row">
               <InputTooltip
                 name="fiat_order_size"
                 tooltip={
@@ -269,7 +253,7 @@ const BaseOrderTab: FC<{
                 required={true}
                 secondaryText={autotradeSettings?.fiat}
               >
-                <Form.Control
+                <TextInput
                   type="number"
                   name="fiat_order_size"
                   autoComplete="off"
@@ -279,51 +263,53 @@ const BaseOrderTab: FC<{
                     required: "Fiat order size is required",
                     valueAsNumber: true,
                   })}
+                  id="fiat_order_size"
                 />
                 {errors.fiat_order_size && (
-                  <Form.Control.Feedback type="invalid">
+                  <Input.Error>
                     {errors.fiat_order_size.message as string}
-                  </Form.Control.Feedback>
+                  </Input.Error>
                 )}
                 {fiatAvailable && fiatAvailable > 0 && !isBusyBot && (
                   <Button
                     name="max-fiat-available"
-                    variant="outline-primary"
                     onClick={addAvailableFiat}
+                    variant="outline"
+                    color="primary"
+                    type="button"
                   >
                     Max
                   </Button>
                 )}
               </InputTooltip>
-            </InputGroup>
-          </Col>
-          <Col md="6" sm="12">
-            <Row>
-              <Col>
-                <Form.Group>
-                  <Form.Label htmlFor="position">Position</Form.Label>
-                  <Form.Select
-                    id="position"
-                    name="position"
-                    {...register("position", {
-                      required: "Position is required",
-                    })}
-                  >
-                    <option value={BotPosition.LONG}>Long</option>
-                    <option value={BotPosition.SHORT}>Margin short</option>
-                  </Form.Select>
-                  {errors.position && (
-                    <Form.Control.Feedback type="invalid">
-                      {errors.position.message as string}
-                    </Form.Control.Feedback>
-                  )}
-                </Form.Group>
-              </Col>
-            </Row>
-          </Col>
+            </Group>
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, md: 6 }}>
+            <SimpleGrid cols={1} type="container">
+              <Stack gap={4} mb="sm">
+                <Input.Label htmlFor="position">Position</Input.Label>
+                <NativeSelect
+                  id="position"
+                  name="position"
+                  {...register("position", {
+                    required: "Position is required",
+                  })}
+                >
+                  <option value={BotPosition.LONG}>Long</option>
+                  <option value={BotPosition.SHORT}>Margin short</option>
+                </NativeSelect>
+                {errors.position && (
+                  <Input.Error>{errors.position.message as string}</Input.Error>
+                )}
+              </Stack>
+            </SimpleGrid>
+          </Grid.Col>
           {bot.pair && (
-            <Row>
-              <Col md="6" sm="12" className="my-6">
+            <Grid.Col span={12}>
+              <SimpleGrid
+                cols={{ base: 1, [formGridBreakpoints.md]: 2 }}
+                type="container"
+              >
                 <InputTooltip
                   name="base_order_size"
                   tooltip={"Notional size (position size * leverage)"}
@@ -339,203 +325,232 @@ const BaseOrderTab: FC<{
                       : quoteAsset
                   }
                 >
-                  <Form.Control
+                  <TextInput
                     type="number"
                     name="base_order_size"
                     autoComplete="off"
                     disabled={true}
                     value={bot.deal.base_order_size}
+                    id="base_order_size"
                   />
                 </InputTooltip>
-              </Col>
-              <Col md="6" sm="12" className="my-6">
-                {bot.market_type === MarketType.FUTURES ? (
-                  <>
-                    <Form.Group controlId="entry_mode">
-                      <Form.Label>Entry</Form.Label>
-                      <Form.Select
-                        value={bot.entry_mode ?? EntryMode.IMMEDIATE}
-                        disabled={isBusyBot || bot.status === BotStatus.PENDING}
-                        onChange={(event) => {
-                          const entryMode = event.target.value as EntryMode;
-                          dispatch(
-                            setField({ name: "entry_mode", value: entryMode }),
-                          );
-                          if (entryMode === EntryMode.IMMEDIATE) {
-                            entryPriceEditedRef.current = false;
-                            dispatch(
-                              setField({ name: "entry_price", value: null }),
-                            );
+                <Box>
+                  {bot.market_type === MarketType.FUTURES ? (
+                    <>
+                      <Stack gap={4} mb="sm">
+                        <Input.Label htmlFor="entry_mode">Entry</Input.Label>
+                        <NativeSelect
+                          value={bot.entry_mode ?? EntryMode.IMMEDIATE}
+                          disabled={
+                            isBusyBot || bot.status === BotStatus.PENDING
                           }
-                          if (
-                            entryMode === EntryMode.CONDITIONAL_LIMIT &&
-                            bot.entry_expires_at == null
-                          ) {
+                          onChange={(event) => {
+                            const entryMode = event.target.value as EntryMode;
                             dispatch(
                               setField({
-                                name: "entry_expires_at",
-                                value: Date.now() + 6 * 60 * 60 * 1000,
+                                name: "entry_mode",
+                                value: entryMode,
                               }),
                             );
-                          }
-                        }}
-                      >
-                        <option value={EntryMode.IMMEDIATE}>Immediate</option>
-                        <option value={EntryMode.CONDITIONAL_LIMIT}>
-                          Conditional limit
-                        </option>
-                      </Form.Select>
-                    </Form.Group>
-                    <Form.Group controlId="futures_leverage">
-                      <Form.Label>Leverage</Form.Label>
-                      <Form.Select
-                        name="futures_leverage"
-                        value={bot.futures_leverage ?? futuresLeverage}
-                        disabled={isBusyBot || bot.status === BotStatus.PENDING}
-                        onChange={(event) =>
-                          dispatch(
-                            setField({
-                              name: "futures_leverage",
-                              value: Number(event.target.value),
-                            }),
-                          )
-                        }
-                      >
-                        {[1, 2, 3, 4, 5].map((leverage) => (
-                          <option key={leverage} value={leverage}>
-                            {leverage}x
+                            if (entryMode === EntryMode.IMMEDIATE) {
+                              entryPriceEditedRef.current = false;
+                              dispatch(
+                                setField({ name: "entry_price", value: null }),
+                              );
+                            }
+                            if (
+                              entryMode === EntryMode.CONDITIONAL_LIMIT &&
+                              bot.entry_expires_at == null
+                            ) {
+                              dispatch(
+                                setField({
+                                  name: "entry_expires_at",
+                                  value: Date.now() + 6 * 60 * 60 * 1000,
+                                }),
+                              );
+                            }
+                          }}
+                          id="entry_mode"
+                        >
+                          <option value={EntryMode.IMMEDIATE}>Immediate</option>
+                          <option value={EntryMode.CONDITIONAL_LIMIT}>
+                            Conditional limit
                           </option>
-                        ))}
-                      </Form.Select>
-                    </Form.Group>
-                  </>
-                ) : (
-                  <>
-                    <InputTooltip
-                      name="total_asset_amount"
-                      tooltip={"Amount of asset to trade"}
-                      label="Asset amount"
-                      errors={errors}
-                      secondaryText={baseAsset}
-                    >
-                      <Form.Control
-                        type="number"
+                        </NativeSelect>
+                      </Stack>
+                      <Stack gap={4} mb="sm">
+                        <Input.Label htmlFor="futures_leverage">
+                          Leverage
+                        </Input.Label>
+                        <NativeSelect
+                          name="futures_leverage"
+                          value={bot.futures_leverage ?? futuresLeverage}
+                          disabled={
+                            isBusyBot || bot.status === BotStatus.PENDING
+                          }
+                          onChange={(event) =>
+                            dispatch(
+                              setField({
+                                name: "futures_leverage",
+                                value: Number(event.target.value),
+                              }),
+                            )
+                          }
+                          id="futures_leverage"
+                        >
+                          {[1, 2, 3, 4, 5].map((leverage) => (
+                            <option key={leverage} value={leverage}>
+                              {leverage}x
+                            </option>
+                          ))}
+                        </NativeSelect>
+                      </Stack>
+                    </>
+                  ) : (
+                    <>
+                      <InputTooltip
                         name="total_asset_amount"
-                        autoComplete="off"
-                        disabled={true}
-                        value={bot.deal.base_order_size * currentPrice}
-                      />
-                    </InputTooltip>
-                  </>
-                )}
-              </Col>
-            </Row>
+                        tooltip={"Amount of asset to trade"}
+                        label="Asset amount"
+                        errors={errors}
+                        secondaryText={baseAsset}
+                      >
+                        <TextInput
+                          type="number"
+                          name="total_asset_amount"
+                          autoComplete="off"
+                          disabled={true}
+                          value={bot.deal.base_order_size * currentPrice}
+                          id="total_asset_amount"
+                        />
+                      </InputTooltip>
+                    </>
+                  )}
+                </Box>
+              </SimpleGrid>
+            </Grid.Col>
           )}
-        </Row>
+        </Grid>
         {bot.market_type === MarketType.FUTURES &&
           bot.entry_mode === EntryMode.CONDITIONAL_LIMIT && (
-            <Row className="my-3">
-              <Col md="6" sm="12">
-                <Form.Group controlId="entry_price">
-                  <Form.Label>Entry limit price</Form.Label>
-                  <Form.Control
-                    type="number"
-                    min="0"
-                    step="any"
-                    required
-                    value={bot.entry_price ?? ""}
-                    onFocus={() => dispatch(focusOrderLine("entry_price"))}
-                    disabled={!canEditConditionalEntry(bot)}
-                    onChange={(event) => {
-                      entryPriceEditedRef.current = true;
-                      dispatch(
-                        setField({
-                          name: "entry_price",
-                          value:
-                            event.target.value === ""
-                              ? null
-                              : Number(event.target.value),
-                        }),
-                      );
-                    }}
-                  />
-                  <Form.Text>
-                    Drag the entry line on the chart to update this price.
-                  </Form.Text>
-                </Form.Group>
-              </Col>
-              <Col md="6" sm="12">
-                <Form.Group controlId="entry_expires_at">
-                  <Form.Label>Entry expires at</Form.Label>
-                  <Form.Control
-                    type="datetime-local"
-                    step="1"
-                    required
-                    onFocus={() => dispatch(focusOrderLine("entry_expires_at"))}
-                    value={
-                      bot.entry_expires_at == null
-                        ? ""
-                        : moment(bot.entry_expires_at).format(
-                            "YYYY-MM-DDTHH:mm:ss",
-                          )
-                    }
-                    disabled={!canEditConditionalEntry(bot)}
-                    onChange={(event) =>
-                      dispatch(
-                        setField({
-                          name: "entry_expires_at",
-                          value:
-                            event.target.value === ""
-                              ? null
-                              : new Date(event.target.value).getTime(),
-                        }),
-                      )
-                    }
-                  />
-                  <Form.Text>
-                    Local time. Defaults to six hours from now. Focus this field
-                    to drag the expiry line on the chart.
-                  </Form.Text>
-                </Form.Group>
-              </Col>
-            </Row>
-          )}
-        <Row className="my-3">
-          <Col md="6" sm="12">
-            <Form.Group controlId="recovery_mode">
-              <Form.Label>Recovery mode</Form.Label>
-              <br />
-              <ButtonGroup>
-                <ToggleButton
-                  id="recovery_mode"
-                  type="checkbox"
-                  name="recovery_mode"
-                  variant={recoveryEnabled ? "primary" : "secondary"}
-                  value={1}
-                  checked={recoveryEnabled}
-                  disabled={bot.dynamic_position_sizing}
-                  onChange={() =>
+            <SimpleGrid
+              cols={{ base: 1, [formGridBreakpoints.md]: 2 }}
+              type="container"
+              my={16}
+            >
+              <Stack gap={4} mb="sm">
+                <Input.Label htmlFor="entry_price">
+                  Entry limit price
+                </Input.Label>
+                <TextInput
+                  type="number"
+                  min="0"
+                  step="any"
+                  required
+                  value={bot.entry_price ?? ""}
+                  onFocus={() => dispatch(focusOrderLine("entry_price"))}
+                  disabled={!canEditConditionalEntry(bot)}
+                  onChange={(event) => {
+                    entryPriceEditedRef.current = true;
                     dispatch(
-                      setRecoveryParams(
-                        recoveryEnabled ? null : { ...defaultRecoveryParams },
-                      ),
+                      setField({
+                        name: "entry_price",
+                        value:
+                          event.target.value === ""
+                            ? null
+                            : Number(event.target.value),
+                      }),
+                    );
+                  }}
+                  id="entry_price"
+                />
+                <Input.Description>
+                  Drag the entry line on the chart to update this price.
+                </Input.Description>
+              </Stack>
+              <Stack gap={4} mb="sm" data-chart-field="entry_expires_at">
+                <Input.Label htmlFor="entry_expires_at">
+                  Entry expires at
+                </Input.Label>
+                <DateTimePicker
+                  withSeconds
+                  timePickerProps={{
+                    hoursInputLabel: "Expiry hours",
+                    minutesInputLabel: "Expiry minutes",
+                    secondsInputLabel: "Expiry seconds",
+                  }}
+                  submitButtonProps={{ "aria-label": "Apply entry expiry" }}
+                  required
+                  clearable
+                  clearButtonProps={{ "aria-label": "Clear entry expiry" }}
+                  valueFormat="DD/MM/YYYY HH:mm:ss"
+                  popoverProps={{ withinPortal: false }}
+                  onFocus={() => dispatch(focusOrderLine("entry_expires_at"))}
+                  value={
+                    bot.entry_expires_at == null
+                      ? null
+                      : moment(bot.entry_expires_at).format(
+                          "YYYY-MM-DD HH:mm:ss",
+                        )
+                  }
+                  disabled={!canEditConditionalEntry(bot)}
+                  onChange={(value) =>
+                    dispatch(
+                      setField({
+                        name: "entry_expires_at",
+                        value:
+                          value === null
+                            ? null
+                            : moment(
+                                value,
+                                "YYYY-MM-DD HH:mm:ss",
+                                true,
+                              ).valueOf(),
+                      }),
                     )
                   }
-                >
-                  {recoveryEnabled ? "On" : "Off"}
-                </ToggleButton>
-              </ButtonGroup>
-              {bot.dynamic_position_sizing && (
-                <Form.Text className="d-block">
-                  Recovery is unavailable while position sizing is enabled.
-                </Form.Text>
-              )}
-            </Form.Group>
-          </Col>
-        </Row>
-      </Container>
-    </Tab.Pane>
+                  id="entry_expires_at"
+                />
+                <Input.Description>
+                  Local time. Defaults to six hours from now. Focus this field
+                  to drag the expiry line on the chart.
+                </Input.Description>
+              </Stack>
+            </SimpleGrid>
+          )}
+        <SimpleGrid
+          cols={{ base: 1, [formGridBreakpoints.md]: 2 }}
+          type="container"
+          my={16}
+        >
+          <Stack gap={4} mb="sm">
+            <Input.Label htmlFor="recovery_mode">Recovery mode</Input.Label>
+            <br />
+            <Group gap="xs">
+              <Switch
+                id="recovery_mode"
+                name="recovery_mode"
+                checked={recoveryEnabled}
+                disabled={bot.dynamic_position_sizing}
+                onChange={() =>
+                  dispatch(
+                    setRecoveryParams(
+                      recoveryEnabled ? null : { ...defaultRecoveryParams },
+                    ),
+                  )
+                }
+                label={recoveryEnabled ? "On" : "Off"}
+              />
+            </Group>
+            {bot.dynamic_position_sizing && (
+              <Input.Description display="block">
+                Recovery is unavailable while position sizing is enabled.
+              </Input.Description>
+            )}
+          </Stack>
+        </SimpleGrid>
+      </Box>
+    </Tabs.Panel>
   );
 };
-
 export default BaseOrderTab;

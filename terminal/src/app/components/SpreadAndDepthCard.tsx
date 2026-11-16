@@ -1,9 +1,8 @@
+import { Box, Button, Group, Text, Title } from "@mantine/core";
 import { useMemo } from "react";
-import { Button } from "react-bootstrap";
 import { OBI_WINDOW_MS } from "../../features/kucoinLiquidity";
 import type { useOrderBookHistory } from "../hooks/useOrderBookHistory";
 import LivePlotlyChart from "./LivePlotlyChart";
-
 interface SpreadAndDepthCardProps {
   orderBookHistory: ReturnType<typeof useOrderBookHistory>;
   enabled: boolean;
@@ -11,7 +10,6 @@ interface SpreadAndDepthCardProps {
   isError: boolean;
   onRetry: () => void;
 }
-
 const SpreadAndDepthCard = ({
   orderBookHistory,
   enabled,
@@ -20,7 +18,6 @@ const SpreadAndDepthCard = ({
   onRetry,
 }: SpreadAndDepthCardProps) => {
   const { history, chartPoints, now } = orderBookHistory;
-
   const data = useMemo(() => {
     const timestamps = chartPoints.map(({ timestamp }) =>
       new Date(timestamp).toISOString(),
@@ -102,50 +99,50 @@ const SpreadAndDepthCard = ({
     }),
     [now],
   );
-
   return (
-    <div>
-      <div className="mb-3">
-        <h5 className="mt-0">Spread and Nearby Depth</h5>
-        <p className="text-body-secondary mb-0">
+    <Box>
+      <Box mb="sm">
+        <Title order={5} mt={0}>
+          Spread and Nearby Depth
+        </Title>
+        <Text c="dimmed" mb={0}>
           Last 15 minutes. Spread as a percentage of the midpoint; bid and ask
           depth within ±0.5% of the midpoint, valued in USDT.
-        </p>
-      </div>
-      <div>
+        </Text>
+      </Box>
+      <Box>
         {!enabled ? (
-          <p className="text-body-secondary">Enter a symbol</p>
+          <Text c="dimmed">Enter a symbol</Text>
         ) : (
           <>
             {isError && (
-              <div role="status" className="mb-3">
+              <Box role="status" mb={16} component="div">
                 Spread and depth unavailable.{" "}
-                <Button variant="link" onClick={onRetry}>
+                <Button onClick={onRetry} variant="subtle" type="button">
                   Retry
                 </Button>
-              </div>
+              </Box>
             )}
             {history.length > 0 ? (
               <LivePlotlyChart data={data} layout={layout} />
             ) : (
               !isError && (
-                <p className="text-body-secondary" role="status">
+                <Text role="status" c="dimmed">
                   {isFetching
                     ? "Checking spread and depth…"
                     : "Waiting for order-book depth."}
-                </p>
+                </Text>
               )
             )}
           </>
         )}
-      </div>
-      <div className="text-body-secondary mt-3">
+      </Box>
+      <Group mt="sm" c="dimmed">
         Visible depth from up to 100 levels per side. History collects across
         navigation while the terminal is open for the selected symbol. Resets on
         reload or symbol change.
-      </div>
-    </div>
+      </Group>
+    </Box>
   );
 };
-
 export default SpreadAndDepthCard;

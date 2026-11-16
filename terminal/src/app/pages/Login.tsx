@@ -1,13 +1,17 @@
+import { Box, Card, Title } from "@mantine/core";
 import { type FC } from "react";
-import { Card } from "react-bootstrap";
-import { LoginForm } from "../components/LoginForm";
 import { Slide, ToastContainer } from "react-toastify";
-
+import { LoginForm } from "../components/LoginForm";
 export const LoginPage: FC<{}> = () => {
   return (
-    <div
-      className="d-flex justify-content-center align-items-center"
-      style={{ height: "100vh" }}
+    <Box
+      display="flex"
+      style={{
+        ...{ height: "100vh" },
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+      component="div"
     >
       <ToastContainer
         transition={Slide}
@@ -22,14 +26,15 @@ export const LoginPage: FC<{}> = () => {
         pauseOnHover
         theme="colored"
       />
-      <Card className="p-4">
-        <Card.Body>
-          <Card.Title className="p-2">Login</Card.Title>
+      <Card mb="md" p={24}>
+        <Box>
+          <Title order={4} p={8}>
+            Login
+          </Title>
           <LoginForm />
-        </Card.Body>
+        </Box>
       </Card>
-    </div>
+    </Box>
   );
 };
-
 export default LoginPage;

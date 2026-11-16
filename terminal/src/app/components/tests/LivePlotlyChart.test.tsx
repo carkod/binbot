@@ -1,5 +1,5 @@
-import { render, screen as testingScreen } from "@testing-library/react";
 import { vi } from "vitest";
+import { render, screen as testingScreen } from "../../../utils/render";
 import LivePlotlyChart from "../LivePlotlyChart";
 
 const { plot } = vi.hoisted(() => ({ plot: vi.fn() }));

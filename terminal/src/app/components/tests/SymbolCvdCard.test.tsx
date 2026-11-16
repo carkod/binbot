@@ -1,8 +1,8 @@
 import "@testing-library/jest-dom";
-import { render, screen as testingScreen } from "@testing-library/react";
 import { vi } from "vitest";
-import SymbolCvdCard from "../SymbolCvdCard";
 import { useCvdSymbolQuery } from "../../../features/marketApiSlice";
+import { render, screen as testingScreen } from "../../../utils/render";
+import SymbolCvdCard from "../SymbolCvdCard";
 
 const { liveChart } = vi.hoisted(() => ({ liveChart: vi.fn() }));
 

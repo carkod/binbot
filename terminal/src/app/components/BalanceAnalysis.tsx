@@ -1,56 +1,56 @@
+import { formGridBreakpoints } from "../../theme";
+import { Box, Card, Grid, Title } from "@mantine/core";
 import { type FC } from "react";
-import { Card, Col, Row } from "react-bootstrap";
 import { type BalanceData } from "../../features/features.types";
 import { type MarketType } from "../../utils/enums";
 import { roundDecimals } from "../../utils/math";
 import { useRiskBeta } from "../hooks/useRiskBeta";
-
 const BalanceAnalysis: FC<{
   accountData: BalanceData;
   marketType: MarketType;
 }> = ({ accountData, marketType }) => {
   const { beta, isLoading: loadingBeta } = useRiskBeta(accountData, marketType);
-
   return (
-    <Card>
-      <Card.Header className="d-flex justify-content-between align-items-center">
-        <Card.Title as="h5">Account breakdown</Card.Title>
-      </Card.Header>
-      <Card.Body>
-        <Row className="u-margin-bottom">
-          <Col md="8" sm="12">
-            Available fiat
-          </Col>
-          <Col md="4" sm="12">
-            <div className="u-primary-color">
+    <Card mb="md">
+      <Box
+        mb="sm"
+        display="flex"
+        style={{
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <Title order={5}>Account breakdown</Title>
+      </Box>
+      <Box>
+        <Grid type="container" breakpoints={formGridBreakpoints} mb="lg">
+          <Grid.Col span={{ base: 12, md: 8 }}>Available fiat</Grid.Col>
+          <Grid.Col span={{ base: 12, md: 4 }}>
+            <Box c="primary.8" component="div">
               <strong>{`${
                 accountData.fiat_available > 0
                   ? roundDecimals(accountData.fiat_available, 6)
                   : 0
               } ${accountData.fiat_currency}`}</strong>
-            </div>
-          </Col>
-        </Row>
-        <Row className="u-margin-bottom">
-          <Col md="8" sm="12">
-            Total fiat value
-          </Col>
-          <Col md="4" sm="12">
-            <div className="u-primary-color">
+            </Box>
+          </Grid.Col>
+        </Grid>
+        <Grid type="container" breakpoints={formGridBreakpoints} mb="lg">
+          <Grid.Col span={{ base: 12, md: 8 }}>Total fiat value</Grid.Col>
+          <Grid.Col span={{ base: 12, md: 4 }}>
+            <Box c="primary.8" component="div">
               <strong>{`${
                 accountData?.estimated_total_fiat > 0
                   ? accountData.estimated_total_fiat.toFixed(2)
                   : 0
               } ${accountData.fiat_currency}`}</strong>
-            </div>
-          </Col>
-        </Row>
-        <Row className="u-margin-bottom">
-          <Col md="8" sm="12">
-            Risk beta (BTC)
-          </Col>
-          <Col md="4" sm="12">
-            <div className="u-primary-color">
+            </Box>
+          </Grid.Col>
+        </Grid>
+        <Grid type="container" breakpoints={formGridBreakpoints} mb="lg">
+          <Grid.Col span={{ base: 12, md: 8 }}>Risk beta (BTC)</Grid.Col>
+          <Grid.Col span={{ base: 12, md: 4 }}>
+            <Box c="primary.8" component="div">
               <strong>
                 {loadingBeta
                   ? "Calculating..."
@@ -58,26 +58,25 @@ const BalanceAnalysis: FC<{
                     ? "—"
                     : beta.toFixed(2)}
               </strong>
-            </div>
-          </Col>
-        </Row>
-        <Row>
-          <Col md="8" sm="12">
+            </Box>
+          </Grid.Col>
+        </Grid>
+        <Grid type="container" breakpoints={formGridBreakpoints}>
+          <Grid.Col span={{ base: 12, md: 8 }}>
             Portfolio of assets
             <br />
             (actual)
-          </Col>
-          <Col md="4" sm="12">
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, md: 4 }}>
             {Object.entries(accountData.balances).map(([asset, amount], i) => (
-              <div key={i} className="u-primary-color">
+              <Box key={i} c="primary.8" component="div">
                 <strong>{`${amount} ${asset}`}</strong>
-              </div>
+              </Box>
             ))}
-          </Col>
-        </Row>
-      </Card.Body>
+          </Grid.Col>
+        </Grid>
+      </Box>
     </Card>
   );
 };
-
 export default BalanceAnalysis;

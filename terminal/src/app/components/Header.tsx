@@ -1,49 +1,42 @@
-import { type FC } from "react";
-import { Button, Container, Navbar } from "react-bootstrap";
+import { ActionIcon, Burger, Group, Title } from "@mantine/core";
 import { Link, matchPath, useLocation } from "react-router";
 import { routes } from "../routes";
-
-export const Header: FC<{ onExpand: () => void }> = ({ onExpand }) => {
+export const Header = ({
+  onExpand,
+  expanded = false,
+}: {
+  onExpand: () => void;
+  expanded?: boolean;
+}) => {
   const location = useLocation();
-  const loadData = routes.find((route) => {
-    if (route.index) {
-      return location.pathname === "/";
-    }
-
-    return route.path
-      ? Boolean(matchPath(route.path, location.pathname))
-      : false;
-  });
-
+  const route = routes.find((route) =>
+    route.index
+      ? location.pathname === "/"
+      : route.path && matchPath(route.path, location.pathname),
+  );
   return (
-    <Navbar className="bg-body-tertiary navbar-transparent navbar navbar-expand-lg">
-      <Container fluid>
-        <Button
-          aria-expanded="true"
-          type="button"
-          aria-label="Toggle navigation"
+    <Group h="100%" px="lg" justify="space-between" wrap="nowrap">
+      <Group wrap="nowrap">
+        <Burger
+          opened={expanded}
           onClick={onExpand}
-        >
-          <span className="navbar-toggler-icon"></span>
-        </Button>
-        <Navbar.Brand>
-          <div className="p-2 flex-fill">
-            <i className={`${loadData?.icon}`}></i> {loadData?.name}
-          </div>
-        </Navbar.Brand>
-        <Navbar.Collapse className="justify-content-end">
-          <Navbar.Text>
-            <Link to="/logout">
-              <i
-                className="fa-solid fa-right-from-bracket"
-                style={{ color: "black" }}
-              />
-            </Link>
-          </Navbar.Text>
-        </Navbar.Collapse>
-      </Container>
-    </Navbar>
+          size="sm"
+          aria-label="Toggle navigation"
+        />
+        <Title order={1} size="h4">
+          <i className={route?.icon} aria-hidden="true" /> {route?.name}
+        </Title>
+      </Group>
+      <ActionIcon
+        component={Link}
+        to="/logout"
+        variant="subtle"
+        color="secondary"
+        aria-label="Log out"
+      >
+        <i className="fa-solid fa-right-from-bracket" aria-hidden="true" />
+      </ActionIcon>
+    </Group>
   );
 };
-
 export default Header;

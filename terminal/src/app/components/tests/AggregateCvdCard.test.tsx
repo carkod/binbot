@@ -1,8 +1,8 @@
 import "@testing-library/jest-dom";
-import { render, screen as testingScreen } from "@testing-library/react";
 import { vi } from "vitest";
-import AggregateCvdCard from "../AggregateCvdCard";
 import { useCvdAggregateQuery } from "../../../features/marketApiSlice";
+import { render, screen as testingScreen } from "../../../utils/render";
+import AggregateCvdCard from "../AggregateCvdCard";
 
 vi.mock("../../../features/marketApiSlice", () => ({
   useCvdAggregateQuery: vi.fn(),

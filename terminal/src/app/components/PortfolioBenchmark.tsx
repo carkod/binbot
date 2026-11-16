@@ -1,47 +1,42 @@
+import { Box, Card, Grid, Group, Text, Title } from "@mantine/core";
 import {
   CategoryScale,
   Chart as ChartJS,
+  Title as ChartTitle,
   Legend,
   LinearScale,
   LineElement,
   PointElement,
   Tooltip as Tip,
-  Title,
 } from "chart.js";
 import { type FC } from "react";
-import { Card, Col, Row } from "react-bootstrap";
 import { type BenchmarkSeriesData } from "../../features/features.types";
+import { formatTimestamp } from "../../utils/time";
 import { listCssColors } from "../../utils/validations";
 import { useBreakpoint } from "../hooks";
-import { formatTimestamp } from "../../utils/time";
 import PlotlyChart from "./PlotlyChart";
-
 ChartJS.register(
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
-  Title,
+  ChartTitle,
   Tip,
   Legend,
 );
-
-const PortfolioBenchmarkChart: FC<{ chartData: BenchmarkSeriesData }> = ({
-  chartData,
-}) => {
+const PortfolioBenchmarkChart: FC<{
+  chartData: BenchmarkSeriesData;
+}> = ({ chartData }) => {
   const breakpoint = useBreakpoint();
   let processData = { ...chartData };
-
   if (breakpoint === "xs") {
     // Show only the last 5 data points due to size of the screen
     processData.datesSeries = chartData.datesSeries?.slice(-5);
     processData.fiatSeries = chartData.fiatSeries?.slice(-5);
     processData.btcSeries = chartData.btcSeries?.slice(-5);
   }
-
   const lastUsdt = processData.fiatSeries?.[processData.fiatSeries.length - 1];
   const lastBtc = processData.btcSeries?.[processData.btcSeries.length - 1];
-
   // Prepare Plotly data and layout for line plot
   const plotlyData = [
     {
@@ -61,7 +56,6 @@ const PortfolioBenchmarkChart: FC<{ chartData: BenchmarkSeriesData }> = ({
       line: { color: listCssColors[1], shape: "spline" },
     },
   ];
-
   const PBLayout = {
     title: false,
     autosize: true,
@@ -82,50 +76,49 @@ const PortfolioBenchmarkChart: FC<{ chartData: BenchmarkSeriesData }> = ({
     },
     responsive: true,
   };
-
   return (
-    <Card className="card-chart">
-      <Card.Header>
-        <Row>
-          <Col lg="1" md="1" sm="1">
+    <Card mb="md">
+      <Box mb="sm">
+        <Grid>
+          <Grid.Col span={{ base: 12, sm: 1 }}>
             <i
-              className={`fs-2 fa fa-suitcase ${lastUsdt > lastBtc ? "text-success" : lastUsdt < lastBtc ? "text-danger" : ""}`}
+              className={`metric-icon fa fa-suitcase ${lastUsdt > lastBtc ? "tone-success" : lastUsdt < lastBtc ? "tone-danger" : ""}`}
             />
-          </Col>
-          <Col lg="11" md="11" sm="11">
-            <Card.Title as="h5" className="mt-0">
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, sm: 11 }}>
+            <Title order={5} mt={0}>
               Portfolio benchmarking
-            </Card.Title>
+            </Title>
             <div>
-              <p className="u-text-left">
+              <Text>
                 Compare portfolio against BTC.
                 <br />
                 Values in % difference
-              </p>
+              </Text>
             </div>
-          </Col>
-        </Row>
-      </Card.Header>
-      <Card.Body className="px-0 w-10">
+          </Grid.Col>
+        </Grid>
+      </Box>
+      <Box px={0}>
         <PlotlyChart
           data={plotlyData}
           layout={PBLayout}
-          style={{ width: breakpoint === "xs" ? "100%" : "100%" }}
+          style={{ width: "100%" }}
+          config={{ responsive: true }}
           useResizeHandler
         />
-      </Card.Body>
-      <Card.Footer>
+      </Box>
+      <Group mt="sm">
         {chartData.datesSeries && (
-          <div className="card-stats">
+          <div>
             <i className="fa fa-check" /> Last updated{" "}
             {formatTimestamp(
               chartData.datesSeries[chartData.datesSeries.length - 1],
             )}
           </div>
         )}
-      </Card.Footer>
+      </Group>
     </Card>
   );
 };
-
 export default PortfolioBenchmarkChart;

@@ -1,51 +1,65 @@
-import { type FC } from "react";
-import { Nav } from "react-bootstrap";
-import { Link, NavLink, useLocation } from "react-router";
+import {
+  Anchor,
+  Group,
+  NavLink,
+  ScrollArea,
+  Stack,
+  ThemeIcon,
+  Title,
+} from "@mantine/core";
+import { Link, matchPath, useLocation } from "react-router";
 import { routes } from "../routes";
-
-export const Sidebar: FC = () => {
-  const location = useLocation();
-
-  const activeRoute = (routeName: string) => {
-    return location.pathname.indexOf(routeName) > -1 ? "active" : "";
-  };
-
+export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
+  const { pathname } = useLocation();
   return (
-    <div className={`sidebar nav-open`}>
-      <div className="logo">
-        <span className="logo__link text-decoration-none text-info">
-          <i className="fa-solid fa-wave-square" />
-          <h1 className="fs-4 ps-3">
-            <Link className="btn-reset btn" to="/">
-              Binbot
-            </Link>
-          </h1>
-        </span>
-      </div>
-      <div className="sidebar-wrapper">
-        <Nav defaultActiveKey="/dashboard" as="ul">
-          {...routes.map((prop, key) => {
-            if (prop.nav) {
-              return (
-                <Nav.Item
-                  as="li"
-                  className={`${!prop.icon ? "ps-5" : activeRoute(prop.link ?? prop.path)}`}
-                  key={key}
-                >
-                  <NavLink to={prop.link} className="nav-link">
-                    <i className={prop.icon} />
-                    <p>{prop.name}</p>
-                  </NavLink>
-                </Nav.Item>
-              );
-            } else {
-              return null;
-            }
-          })}
-        </Nav>
-      </div>
-    </div>
+    <Stack h="100%" gap="lg">
+      <Anchor
+        component={Link}
+        to="/"
+        onClick={onNavigate}
+        underline="never"
+        c="primary.5"
+      >
+        <Group gap="sm">
+          <ThemeIcon size="lg" variant="transparent" c="primary.1">
+            <i className="fa-solid fa-wave-square" />
+          </ThemeIcon>
+          <Title order={2} size="h3">
+            Binbot
+          </Title>
+        </Group>
+      </Anchor>
+      <ScrollArea flex={1}>
+        <Stack gap={4}>
+          {routes
+            .filter((route) => route.nav)
+            .map((route) => (
+              <NavLink
+                key={route.link ?? route.path}
+                component={Link}
+                to={route.link}
+                label={route.name}
+                active={
+                  route.index
+                    ? pathname === "/"
+                    : Boolean(
+                        matchPath(
+                          { path: route.link ?? route.path, end: false },
+                          pathname,
+                        ),
+                      )
+                }
+                leftSection={
+                  route.icon ? (
+                    <i className={route.icon} aria-hidden="true" />
+                  ) : undefined
+                }
+                pl={route.icon ? "sm" : "xl"}
+                onClick={onNavigate}
+              />
+            ))}
+        </Stack>
+      </ScrollArea>
+    </Stack>
   );
-};
-
-export default Sidebar;
+}

@@ -1,22 +1,19 @@
+import { Box, Button, Input, Stack, TextInput } from "@mantine/core";
 import { useEffect, type FC } from "react";
-import { Button, Container, Form } from "react-bootstrap";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { useLocation, useNavigate } from "react-router";
 import { usePostLoginMutation } from "../../features/userApiSlice";
 import { getToken, setToken } from "../../utils/login";
-
 export type LoginFormState = {
   email: string;
   password: string;
 };
-
 export const LoginForm: FC<{}> = () => {
   const [login, { data: login_data }] = usePostLoginMutation();
   const navigate = useNavigate();
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const from = params.get("from") || "/";
-
   const {
     register,
     handleSubmit,
@@ -29,14 +26,12 @@ export const LoginForm: FC<{}> = () => {
       password: "",
     },
   });
-
   const onSubmit: SubmitHandler<LoginFormState> = async (values) => {
     const formData = new FormData();
     formData.append("username", values.email);
     formData.append("password", values.password);
     await login(formData);
   };
-
   useEffect(() => {
     const token: string = getToken();
     if (token) {
@@ -44,14 +39,14 @@ export const LoginForm: FC<{}> = () => {
       navigate("/");
     }
   }, [navigate, from, login_data]);
-
   return (
-    <Container className="my-4">
-      <Form onSubmit={handleSubmit(onSubmit)}>
-        <Form.Group className="mb-3" controlId="formBasicEmail">
-          <Form.Label className="p-2">Email</Form.Label>
-          <Form.Control
-            className="p-2"
+    <Box w="100%" my={24}>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <Stack gap={4} mb={16}>
+          <Input.Label htmlFor="formBasicEmail" p={8}>
+            Email
+          </Input.Label>
+          <TextInput
             type="email"
             placeholder="Enter email"
             {...register("email", {
@@ -62,33 +57,38 @@ export const LoginForm: FC<{}> = () => {
                 message: "Please enter a valid email",
               },
             })}
+            id="formBasicEmail"
+            p={8}
           />
           {errors.email && (
-            <Form.Text className="text-danger">
+            <Input.Description c="danger.8">
               {errors.email.message}
-            </Form.Text>
+            </Input.Description>
           )}
-        </Form.Group>
+        </Stack>
 
-        <Form.Group className="mb-3" controlId="formBasicPassword">
-          <Form.Label className="p-2">Password</Form.Label>
-          <Form.Control
-            className="p-2"
+        <Stack gap={4} mb={16}>
+          <Input.Label htmlFor="formBasicPassword" p={8}>
+            Password
+          </Input.Label>
+          <TextInput
             type="password"
             placeholder="Password"
             {...register("password", { required: "Password is required" })}
+            id="formBasicPassword"
+            p={8}
           />
           {errors.password && (
-            <Form.Text className="text-danger">
+            <Input.Description c="danger.8">
               {errors.password.message}
-            </Form.Text>
+            </Input.Description>
           )}
-        </Form.Group>
+        </Stack>
 
-        <Button variant="primary" type="submit">
+        <Button type="submit" color="primary">
           Submit
         </Button>
-      </Form>
-    </Container>
+      </form>
+    </Box>
   );
 };

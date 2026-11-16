@@ -1,6 +1,5 @@
+import { Input, Stack, TextInput } from "@mantine/core";
 import React, { type FC } from "react";
-import { Form } from "react-bootstrap";
-
 type SettingsInputProps = {
   value?: string | number;
   name?: string;
@@ -14,7 +13,6 @@ type SettingsInputProps = {
   register?: any;
   required?: boolean;
 };
-
 const SettingsInput: FC<SettingsInputProps> = ({
   value,
   name,
@@ -29,26 +27,22 @@ const SettingsInput: FC<SettingsInputProps> = ({
   required = false,
 }) => {
   const inputStep = step ?? (type === "number" ? "any" : undefined);
-
   return (
-    <Form.Group>
-      <Form.Label htmlFor={name}>{label}</Form.Label>
-      <Form.Control
+    <Stack gap={4} mb="sm">
+      <Input.Label htmlFor={name}>{label}</Input.Label>
+      <TextInput
         id={name}
         onChange={handleChange}
         onBlur={handleBlur}
         defaultValue={type === "number" ? String(value) : value}
-        isInvalid={!!errorMsg}
         type={type}
         step={inputStep}
         {...register(name, { required: required })}
+        error={!!errorMsg}
       />
-      {errorMsg && <Form.Control.Feedback>{errorMsg}</Form.Control.Feedback>}
-      {infoText && (
-        <Form.Control.Feedback tooltip>{infoText}</Form.Control.Feedback>
-      )}
-    </Form.Group>
+      {errorMsg && <Input.Error>{errorMsg}</Input.Error>}
+      {infoText && <Input.Description>{infoText}</Input.Description>}
+    </Stack>
   );
 };
-
 export default SettingsInput;

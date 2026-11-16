@@ -1,18 +1,16 @@
-import React from "react";
 import type { IndexRouteObject, NonIndexRouteObject } from "react-router";
 import AutotradePage from "./pages/Autotrade";
 import BotDetail from "./pages/BotDetail";
-import FuturesBotDetail from "./pages/FuturesBotDetail";
 import BotsPage from "./pages/Bots";
 import DashboardPage from "./pages/Dashboard";
-import GridLaddersPage from "./pages/GridLadders";
+import FuturesBotDetail from "./pages/FuturesBotDetail";
 import GridLadderDetail from "./pages/GridLadderDetail";
+import GridLaddersPage from "./pages/GridLadders";
 import NotFound from "./pages/NotFound";
-import SymbolsPage from "./pages/Symbols";
 import SignalsPage from "./pages/Signals";
+import SymbolsPage from "./pages/Symbols";
 import UserFormPage from "./pages/UserForm";
 import UsersPage from "./pages/Users";
-
 interface RouteMetadata {
   name?: string;
   icon?: string;
@@ -20,13 +18,9 @@ interface RouteMetadata {
   id?: string;
   nav?: boolean;
 }
-
 interface AppIndexRoute extends IndexRouteObject, RouteMetadata {}
-
 interface AppNonIndexRoute extends NonIndexRouteObject, RouteMetadata {}
-
 type AppRoute = AppIndexRoute | AppNonIndexRoute;
-
 export const routes: AppRoute[] = [
   {
     index: true,

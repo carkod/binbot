@@ -1,6 +1,7 @@
-import { useContext, type FC, useEffect } from "react";
-import { Card, Col, Container, Row } from "react-bootstrap";
+import { Box, Card, Grid } from "@mantine/core";
+import { useContext, useEffect, type FC } from "react";
 import { useParams } from "react-router";
+import { useGetBalanceQuery } from "../../features/balanceApiSlice";
 import { useGetSingleBotQuery } from "../../features/bots/botsApiSlice";
 import {
   resetBot,
@@ -8,17 +9,15 @@ import {
   setBot,
   setCurrentPrice,
 } from "../../features/bots/botSlice";
+import { MarketType } from "../../utils/enums";
+import BalanceAnalysis from "../components/BalanceAnalysis";
+import BotChartTabs from "../components/BotChartTabs";
 import BotDetailTabs from "../components/BotDetailTabs";
 import BotInfo from "../components/BotInfo";
-import BotChartTabs from "../components/BotChartTabs";
-import { useAppDispatch, useAppSelector } from "../hooks";
 import LogsInfo from "../components/LogsInfo";
-import { SpinnerContext } from "../spinner-context";
-import { useGetBalanceQuery } from "../../features/balanceApiSlice";
-import BalanceAnalysis from "../components/BalanceAnalysis";
+import { useAppDispatch, useAppSelector } from "../hooks";
 import { SymbolProvider } from "../providers/SymbolProvider";
-import { MarketType } from "../../utils/enums";
-
+import { SpinnerContext } from "../spinner-context";
 export const FuturesBotDetail: FC<{}> = () => {
   const { id, symbol } = useParams();
   const isNewBot = !id;
@@ -31,7 +30,6 @@ export const FuturesBotDetail: FC<{}> = () => {
     useGetBalanceQuery();
   const { setSpinner } = useContext(SpinnerContext);
   const currentMarketType = MarketType.FUTURES;
-
   useEffect(() => {
     if (isNewBot) {
       dispatch(
@@ -54,7 +52,6 @@ export const FuturesBotDetail: FC<{}> = () => {
         }),
       );
     }
-
     if (!loadingBot && !loadingEstimates) {
       setSpinner(false);
     } else {
@@ -69,55 +66,49 @@ export const FuturesBotDetail: FC<{}> = () => {
     setSpinner,
     symbol,
   ]);
-
   return (
     <SymbolProvider marketType={currentMarketType}>
       <div className="content">
-        <Container fluid>
-          <Row>
-            <Col md="12" sm="12">
-              <BotChartTabs
-                bot={bot}
-                setCurrentPrice={setCurrentPrice}
-                marketType={currentMarketType}
-              />
-            </Col>
-          </Row>
+        <Box w="100%">
+          <BotChartTabs
+            bot={bot}
+            setCurrentPrice={setCurrentPrice}
+            marketType={currentMarketType}
+          />
           {bot && id && (
-            <Row>
-              <Col md="7" sm="12">
+            <Grid>
+              <Grid.Col span={{ base: 12, md: 7 }}>
                 <BotInfo bot={bot} />
-              </Col>
-              <Col md="5" sm="12">
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, md: 5 }}>
                 {bot.logs?.length > 0 && <LogsInfo events={bot.logs} />}
-              </Col>
-            </Row>
+              </Grid.Col>
+            </Grid>
           )}
 
-          <Row>
-            <Col md="7" sm="12">
-              <Card>
-                <Card.Body>
+          <Grid>
+            <Grid.Col span={{ base: 12, md: 7 }}>
+              <Card mb="md">
+                <Box>
                   <BotDetailTabs
                     marketType={currentMarketType}
                     fiatAvailable={accountData?.fiat_available}
                   />
-                </Card.Body>
+                </Box>
               </Card>
-            </Col>
-            <Col md="5" sm="12">
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 5 }}>
               {accountData && (
                 <BalanceAnalysis
                   accountData={accountData}
                   marketType={currentMarketType}
                 />
               )}
-            </Col>
-          </Row>
-        </Container>
+            </Grid.Col>
+          </Grid>
+        </Box>
       </div>
     </SymbolProvider>
   );
 };
-
 export default FuturesBotDetail;

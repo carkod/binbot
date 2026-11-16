@@ -1,10 +1,4 @@
 import "@testing-library/jest-dom";
-import {
-  act,
-  fireEvent,
-  render,
-  screen as testingScreen,
-} from "@testing-library/react";
 import { useEffect } from "react";
 import {
   MemoryRouter,
@@ -14,9 +8,15 @@ import {
   useParams,
 } from "react-router";
 import { vi } from "vitest";
-import { MicrostructureProvider } from "./MicrostructureProvider";
-import { useMicrostructureData } from "../hooks/useMicrostructureData";
 import { useFuturesLiquidityQuery } from "../../features/kucoinApiSlice";
+import {
+  act,
+  fireEvent,
+  render,
+  screen as testingScreen,
+} from "../../utils/render";
+import { useMicrostructureData } from "../hooks/useMicrostructureData";
+import { MicrostructureProvider } from "./MicrostructureProvider";
 
 vi.mock("../../features/kucoinApiSlice", () => ({
   useFuturesLiquidityQuery: vi.fn(),
@@ -59,8 +59,7 @@ const Controls = () => {
 };
 const Probe = () => {
   const { symbol: botSymbol } = useParams();
-  const { symbol, selectSymbol, orderBookHistory } =
-    useMicrostructureData();
+  const { symbol, selectSymbol, orderBookHistory } = useMicrostructureData();
   useEffect(() => {
     if (botSymbol) selectSymbol(botSymbol);
   }, [botSymbol, selectSymbol]);

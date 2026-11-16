@@ -1,17 +1,17 @@
 import "@testing-library/jest-dom";
+import { vi } from "vitest";
+import { useGetSettingsQuery } from "../../../features/autotradeApiSlice";
+import { singleBot } from "../../../features/bots/botInitialState";
+import { setCurrentPrice } from "../../../features/bots/botSlice";
+import { useCvdSymbolQuery } from "../../../features/marketApiSlice";
+import { BotStatus, MarketType } from "../../../utils/enums";
 import {
   fireEvent,
   render,
   screen as testingScreen,
-} from "@testing-library/react";
-import { vi } from "vitest";
-import { singleBot } from "../../../features/bots/botInitialState";
-import { setCurrentPrice } from "../../../features/bots/botSlice";
-import { BotStatus, MarketType } from "../../../utils/enums";
-import { useGetSettingsQuery } from "../../../features/autotradeApiSlice";
+} from "../../../utils/render";
 import { useMicrostructureData } from "../../hooks/useMicrostructureData";
 import BotChartTabs from "../BotChartTabs";
-import { useCvdSymbolQuery } from "../../../features/marketApiSlice";
 
 vi.mock("../../../features/autotradeApiSlice", () => ({
   useGetSettingsQuery: vi.fn(),
@@ -75,7 +75,11 @@ describe("bot chart tabs", () => {
         bot={{ ...bot, deal: { ...bot.deal, current_price: 90 } }}
       />,
     );
-    expect(testingScreen.getByText("-10%")).toHaveClass("bg-danger");
+    expect(
+      testingScreen.getByText("-10%").closest(".mantine-Badge-root"),
+    ).toHaveStyle({
+      "--badge-color": "var(--mantine-color-danger-light-color)",
+    });
   });
 
   it("loads analysis before the tab opens and preserves charts across tab changes", () => {

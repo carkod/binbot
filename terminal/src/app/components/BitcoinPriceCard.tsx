@@ -1,44 +1,51 @@
+import { Badge, Box, Card, Grid, Group, Text, Title } from "@mantine/core";
 import moment from "moment";
 import { type FC } from "react";
-import { Badge, Card, Col, Row } from "react-bootstrap";
 import type { BtcCloseSeries } from "../../features/kucoinApiSlice";
 import PlotlyChart from "./PlotlyChart";
-
 type BitcoinPriceCardProps = {
   btcCloseSeries: BtcCloseSeries;
 };
-
 const BitcoinPriceCard: FC<BitcoinPriceCardProps> = ({ btcCloseSeries }) => {
   const latestClose = btcCloseSeries.close.at(-1);
-
   return (
-    <Card className="card-chart">
-      <Card.Header>
-        <Row>
-          <Col lg="1" md="1" sm="1">
-            <i className="fs-2 fa-brands fa-bitcoin text-warning" />
-          </Col>
-          <Col lg="11" md="11" sm="11">
-            <Card.Title
-              as="h5"
-              className="mt-0 d-flex align-items-center gap-2"
+    <Card mb="md">
+      <Box mb="sm">
+        <Grid>
+          <Grid.Col span={{ base: 12, sm: 1 }}>
+            <Box
+              fz="1.875rem"
+              c="warning.5"
+              className="fa-brands fa-bitcoin"
+              component="i"
+            />
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, sm: 11 }}>
+            <Title
+              order={5}
+              mt={0}
+              display="flex"
+              style={{
+                alignItems: "center",
+                gap: 8,
+              }}
             >
               <span>BTC Price Trend</span>
               {latestClose !== undefined && (
-                <Badge bg="secondary">
+                <Badge color="secondary" variant="light">
                   {latestClose.toLocaleString(undefined, {
                     maximumFractionDigits: 2,
                   })}
                 </Badge>
               )}
-            </Card.Title>
-            <p className="u-text-left">
+            </Title>
+            <Text>
               {btcCloseSeries.symbol} 15-minute candlestick close price.
-            </p>
-          </Col>
-        </Row>
-      </Card.Header>
-      <Card.Body>
+            </Text>
+          </Grid.Col>
+        </Grid>
+      </Box>
+      <Box>
         <PlotlyChart
           data={[
             {
@@ -75,18 +82,17 @@ const BitcoinPriceCard: FC<BitcoinPriceCardProps> = ({ btcCloseSeries }) => {
           style={{ width: "100%", height: "100%" }}
           useResizeHandler={true}
         />
-      </Card.Body>
-      <Card.Footer className="text-muted">
+      </Box>
+      <Group mt="sm" c="dimmed">
         <hr />
         {btcCloseSeries.timestamp.length > 0 && (
-          <div className="card-stats">
+          <div>
             <i className="fa fa-check" /> Last updated{" "}
             {moment(btcCloseSeries.timestamp.at(-1)).format("DD/MM/YYYY HH:mm")}
           </div>
         )}
-      </Card.Footer>
+      </Group>
     </Card>
   );
 };
-
 export default BitcoinPriceCard;

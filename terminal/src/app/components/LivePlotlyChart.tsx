@@ -1,16 +1,13 @@
-import { memo, useMemo } from "react";
 import { motion } from "motion/react";
+import { memo, useMemo } from "react";
 import { chartRevealVariants, liveChartTransition } from "../../utils/motion";
 import PlotlyChart from "./PlotlyChart";
-
 interface LivePlotlyChartProps {
   data: Record<string, unknown>[];
   layout: Record<string, unknown> & { height: number };
 }
-
 const config = { responsive: true, displayModeBar: false };
 const style = { width: "100%", height: "100%" };
-
 const LivePlotlyChart = memo(function LivePlotlyChart({
   data,
   layout,
@@ -25,7 +22,6 @@ const LivePlotlyChart = memo(function LivePlotlyChart({
     }),
     [layout],
   );
-
   return (
     <motion.div
       style={{ height: layout.height }}
@@ -43,5 +39,4 @@ const LivePlotlyChart = memo(function LivePlotlyChart({
     </motion.div>
   );
 });
-
 export default LivePlotlyChart;

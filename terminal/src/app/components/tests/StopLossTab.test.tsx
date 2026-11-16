@@ -1,20 +1,20 @@
+import { Box, Tabs } from "@mantine/core";
+import { Provider } from "react-redux";
 import {
   fireEvent,
   render,
   screen as testingScreen,
-} from "@testing-library/react";
-import { Provider } from "react-redux";
-import { Tab } from "react-bootstrap";
+} from "../../../utils/render";
 
-import { makeStore } from "../../store";
-import StopLossTab from "../StopLossTab";
-import { TabsKeys } from "../../../utils/enums";
-import { setBot } from "../../../features/bots/botSlice";
 import {
   defaultRecoveryParams,
   singleBot,
   type Bot,
 } from "../../../features/bots/botInitialState";
+import { setBot } from "../../../features/bots/botSlice";
+import { TabsKeys } from "../../../utils/enums";
+import { makeStore } from "../../store";
+import StopLossTab from "../StopLossTab";
 
 const renderStopLossTab = (botOverrides: Partial<Bot> = {}) => {
   const store = makeStore();
@@ -22,11 +22,11 @@ const renderStopLossTab = (botOverrides: Partial<Bot> = {}) => {
 
   render(
     <Provider store={store}>
-      <Tab.Container activeKey={TabsKeys.STOPLOSS}>
-        <Tab.Content>
+      <Tabs value={TabsKeys.STOPLOSS}>
+        <Box>
           <StopLossTab />
-        </Tab.Content>
-      </Tab.Container>
+        </Box>
+      </Tabs>
     </Provider>,
   );
 

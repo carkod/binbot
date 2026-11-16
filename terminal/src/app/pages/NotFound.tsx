@@ -1,14 +1,5 @@
 import { type FC } from "react";
-import { Col, Row } from "react-bootstrap";
-
 const NotFound: FC = () => {
-  return (
-    <div className="content">
-      <Row>
-        <Col md="12">Page not found.</Col>
-      </Row>
-    </div>
-  );
+  return <div className="content">Page not found.</div>;
 };
-
 export default NotFound;

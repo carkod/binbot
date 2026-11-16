@@ -1,8 +1,5 @@
-import { act, render, screen as rtlScreen } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { vi } from "vitest";
-import { makeStore } from "../../store";
-import { SymbolContext, useAppSelector } from "../../hooks";
 import { singleBot } from "../../../features/bots/botInitialState";
 import {
   selectBot,
@@ -11,6 +8,9 @@ import {
   setField,
 } from "../../../features/bots/botSlice";
 import { BotStatus, MarketType } from "../../../utils/enums";
+import { act, render, screen as rtlScreen } from "../../../utils/render";
+import { SymbolContext, useAppSelector } from "../../hooks";
+import { makeStore } from "../../store";
 import ChartContainer from "../ChartContainer";
 
 vi.mock("binbot-charts", () => ({

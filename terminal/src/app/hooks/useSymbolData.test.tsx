@@ -1,6 +1,6 @@
-import { act, render, waitFor } from "@testing-library/react";
 import { useEffect } from "react";
 import { vi } from "vitest";
+import { act, render, waitFor } from "../../utils/render";
 
 import type { ISymbol } from "../../features/symbolsApiSlice";
 import { useSymbolDataProvider } from "./useSymbolData";

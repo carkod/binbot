@@ -1,7 +1,7 @@
-import { render } from "@testing-library/react";
 import { Provider } from "react-redux";
-import { store } from "../../store";
 import { MemoryRouter } from "react-router";
+import { render } from "../../../utils/render";
+import { store } from "../../store";
 import SymbolsPage from "../Symbols";
 
 describe("Symbols page", () => {

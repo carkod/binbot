@@ -1,5 +1,5 @@
-import { useEffect, useId, type ComponentProps } from "react";
-import { Badge, Card, Tab, Tabs } from "react-bootstrap";
+import { Badge, Box, Card, Tabs, Text, Title } from "@mantine/core";
+import { useEffect, useId, useState, type ComponentProps } from "react";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 import { computeSingleBotProfit } from "../../features/bots/profits";
 import { BotStatus, MarketType } from "../../utils/enums";
@@ -7,15 +7,19 @@ import { capitalizeFirst } from "../../utils/strings";
 import { useMicrostructureData } from "../hooks/useMicrostructureData";
 import ChartContainer from "./ChartContainer";
 import OrderBookAnalysis from "./OrderBookAnalysis";
-
-const resizeCharts = () => window.dispatchEvent(new Event("resize"));
-
 const BotChartTabs = ({
   bot,
   setCurrentPrice,
   marketType,
 }: ComponentProps<typeof ChartContainer>) => {
   const tabsId = useId();
+  const [activeTab, setActiveTab] = useState<string | null>("chart");
+  useEffect(() => {
+    const frame = requestAnimationFrame(() =>
+      window.dispatchEvent(new Event("resize")),
+    );
+    return () => cancelAnimationFrame(frame);
+  }, [activeTab]);
   const { data: settings } = useGetSettingsQuery();
   const { symbol, selectSymbol } = useMicrostructureData();
   const supportsAnalysis =
@@ -23,22 +27,21 @@ const BotChartTabs = ({
     settings?.exchange_id?.toLowerCase() === "kucoin";
   const pair = bot.pair.trim().toUpperCase();
   const profit = computeSingleBotProfit(bot);
-
   useEffect(() => {
     if (supportsAnalysis && pair) selectSymbol(pair);
   }, [supportsAnalysis, pair, selectSymbol]);
-
   return (
     <>
-      <h2 className="h4 mt-0 mb-4 text-body-secondary">
+      <Title order={2} size="h4" mt={0} mb={24} c="dimmed">
         {bot.pair}{" "}
         <Badge
-          bg={profit > 0 ? "success" : profit < 0 ? "danger" : "secondary"}
+          color={profit > 0 ? "success" : profit < 0 ? "danger" : "secondary"}
+          variant="light"
         >
           {profit}%
         </Badge>{" "}
         <Badge
-          bg={
+          color={
             bot.status === BotStatus.ACTIVE
               ? "success"
               : bot.status === BotStatus.ERROR
@@ -47,48 +50,58 @@ const BotChartTabs = ({
                   ? "info"
                   : "secondary"
           }
+          variant="light"
         >
           {bot.status}
         </Badge>{" "}
-        <Badge bg="info">{bot.position}</Badge>{" "}
-        <Badge bg="dark" className="text-uppercase">
+        <Badge color="info" variant="light">
+          {bot.position}
+        </Badge>{" "}
+        <Badge color="dark" variant="light" tt="uppercase">
           {capitalizeFirst(marketType.toLowerCase())}
         </Badge>
-      </h2>
-      <Card>
-        <Card.Body>
-          <Tabs id={tabsId} defaultActiveKey="chart" className="mb-3">
-            <Tab eventKey="chart" title="Chart" onEntered={resizeCharts}>
+      </Title>
+      <Card mb="md">
+        <Box>
+          <Tabs
+            id={tabsId}
+            value={activeTab}
+            onChange={setActiveTab}
+            keepMountedMode="display-none"
+            mb={16}
+          >
+            <Tabs.List>
+              <Tabs.Tab value="chart">Chart</Tabs.Tab>
+              <Tabs.Tab value="analysis">Order book analysis</Tabs.Tab>
+            </Tabs.List>
+            <Tabs.Panel value="chart" pt="md">
               <ChartContainer
                 bot={bot}
                 setCurrentPrice={setCurrentPrice}
                 marketType={marketType}
               />
-            </Tab>
-            <Tab
-              eventKey="analysis"
-              title="Order book analysis"
-              onEntered={resizeCharts}
-            >
-              {!supportsAnalysis ? (
-                <p className="text-body-secondary">
-                  Order book analysis is available for KuCoin futures bots.
-                </p>
-              ) : !pair ? (
-                <p className="text-body-secondary">
-                  Select a bot symbol to view order book analysis.
-                </p>
-              ) : symbol !== pair ? (
-                <p role="status">Starting order book analysis…</p>
-              ) : (
-                <OrderBookAnalysis enabled showError />
-              )}
-            </Tab>
+            </Tabs.Panel>
+            <Tabs.Panel value="analysis" pt="md">
+              <>
+                {!supportsAnalysis ? (
+                  <Text c="dimmed">
+                    Order book analysis is available for KuCoin futures bots.
+                  </Text>
+                ) : !pair ? (
+                  <Text c="dimmed">
+                    Select a bot symbol to view order book analysis.
+                  </Text>
+                ) : symbol !== pair ? (
+                  <Text role="status">Starting order book analysis…</Text>
+                ) : (
+                  <OrderBookAnalysis enabled showError />
+                )}
+              </>
+            </Tabs.Panel>
           </Tabs>
-        </Card.Body>
+        </Box>
       </Card>
     </>
   );
 };
-
 export default BotChartTabs;

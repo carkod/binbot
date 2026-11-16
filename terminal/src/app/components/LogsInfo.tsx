@@ -1,41 +1,38 @@
+import { Box, Button, Card, Stack, Text, Title } from "@mantine/core";
 import { type FC, useState } from "react";
-import { Button, Card, ListGroup } from "react-bootstrap";
-
 const LogInfo: FC<{
   events: string[];
 }> = ({ events }) => {
   const [showLogs, toggleLogInfo] = useState(events.length > 0);
   return (
-    <Card>
-      <Card.Header className="d-flex justify-content-between align-items-center">
+    <Card mb="md">
+      <Box
+        mb="sm"
+        display="flex"
+        style={{
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
         <div>
-          <Card.Title as="h5">Event logs</Card.Title>
+          <Title order={5}>Event logs</Title>
         </div>
-        <Button
-          onClick={() => toggleLogInfo(!showLogs)}
-          className="u-float-right u-space-bottom"
-        >
+        <Button onClick={() => toggleLogInfo(!showLogs)} type="button">
           {showLogs ? "Hide" : "Show"}
         </Button>
-      </Card.Header>
+      </Box>
       {showLogs && (
-        <Card.Body>
+        <Box>
           {[...events].reverse().map((item, i) => (
-            <ListGroup key={i} className="list-group-flush">
-              <ListGroup.Item
-                action
-                as="small"
-                key={i}
-                className="d-flex justify-content-between align-items-start"
-              >
-                <p>{item}</p>
-              </ListGroup.Item>
-            </ListGroup>
+            <Stack key={i} gap={0}>
+              <Box key={i} className="detail-row">
+                <Text>{item}</Text>
+              </Box>
+            </Stack>
           ))}
-        </Card.Body>
+        </Box>
       )}
     </Card>
   );
 };
-
 export default LogInfo;

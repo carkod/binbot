@@ -1,17 +1,8 @@
+import { Box, Tabs } from "@mantine/core";
 import "@testing-library/jest-dom";
-import {
-  act,
-  fireEvent,
-  render,
-  screen as testingScreen,
-  waitFor,
-} from "@testing-library/react";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router";
-import { Tab } from "react-bootstrap";
 import { vi } from "vitest";
-import { makeStore } from "../../store";
-import { SymbolContext, useAppSelector } from "../../hooks";
 import { singleBot } from "../../../features/bots/botInitialState";
 import {
   selectBot,
@@ -24,6 +15,15 @@ import {
   MarketType,
   TabsKeys,
 } from "../../../utils/enums";
+import {
+  act,
+  fireEvent,
+  render,
+  screen as testingScreen,
+  waitFor,
+} from "../../../utils/render";
+import { SymbolContext, useAppSelector } from "../../hooks";
+import { makeStore } from "../../store";
 import BaseOrderTab from "../BaseOrderTab";
 import ChartContainer from "../ChartContainer";
 
@@ -162,11 +162,11 @@ it.each([BotPosition.LONG, BotPosition.SHORT])(
           }}
         >
           <MemoryRouter>
-            <Tab.Container activeKey={TabsKeys.MAIN}>
-              <Tab.Content>
+            <Tabs value={TabsKeys.MAIN}>
+              <Box>
                 <BaseOrderTab />
-              </Tab.Content>
-            </Tab.Container>
+              </Box>
+            </Tabs>
             <BotChart />
           </MemoryRouter>
         </SymbolContext.Provider>

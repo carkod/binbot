@@ -1,33 +1,33 @@
+import { Box, Tabs } from "@mantine/core";
 import "@testing-library/jest-dom";
+import { Provider } from "react-redux";
 import {
   act,
   fireEvent,
   render,
   screen as testingScreen,
-} from "@testing-library/react";
-import { Provider } from "react-redux";
-import { Tab } from "react-bootstrap";
+} from "../../../utils/render";
 
-import { makeStore } from "../../store";
-import TakeProfitTab from "../TakeProfitTab";
-import { BotStatus, TabsKeys } from "../../../utils/enums";
-import { setBot, setRecoveryParams } from "../../../features/bots/botSlice";
 import {
   defaultRecoveryParams,
   singleBot,
   type Bot,
 } from "../../../features/bots/botInitialState";
+import { setBot, setRecoveryParams } from "../../../features/bots/botSlice";
+import { BotStatus, TabsKeys } from "../../../utils/enums";
+import { makeStore } from "../../store";
+import TakeProfitTab from "../TakeProfitTab";
 
 function renderTakeProfitTab(botOverrides: Partial<Bot> = {}) {
   const store = makeStore();
   store.dispatch(setBot({ bot: { ...singleBot, ...botOverrides } }));
   render(
     <Provider store={store}>
-      <Tab.Container activeKey={TabsKeys.TAKEPROFIT}>
-        <Tab.Content>
+      <Tabs value={TabsKeys.TAKEPROFIT}>
+        <Box>
           <TakeProfitTab />
-        </Tab.Content>
-      </Tab.Container>
+        </Box>
+      </Tabs>
     </Provider>,
   );
   return store;
@@ -42,7 +42,7 @@ describe("TakeProfitTab trailing", () => {
         id: "saved-bot",
         recovery_params: recoveryParams,
       });
-      const toggle = testingScreen.getByRole("checkbox", {
+      const toggle = testingScreen.getByRole("switch", {
         name: /^Trailing /,
       });
 
@@ -82,11 +82,9 @@ describe("TakeProfitTab trailing", () => {
     const store = renderTakeProfitTab();
 
     expect(
-      testingScreen.queryByRole("checkbox", { name: /^Recovery trailing / }),
+      testingScreen.queryByRole("switch", { name: /^Recovery trailing / }),
     ).toBeNull();
-    fireEvent.click(
-      testingScreen.getByRole("checkbox", { name: /^Trailing / }),
-    );
+    fireEvent.click(testingScreen.getByRole("switch", { name: /^Trailing / }));
     fireEvent.change(testingScreen.getByLabelText(/Trail profit at/), {
       target: { value: "0" },
     });
@@ -113,7 +111,7 @@ describe("TakeProfitTab trailing", () => {
       store.dispatch(setRecoveryParams({ ...defaultRecoveryParams }));
     });
     expect(
-      testingScreen.getByRole("checkbox", { name: /^Trailing / }),
+      testingScreen.getByRole("switch", { name: /^Trailing / }),
     ).toBeChecked();
     expect(testingScreen.queryByText("Recovery trailing")).toBeNull();
     expect(testingScreen.getByLabelText(/Trail profit at/)).toHaveValue(4);
@@ -123,7 +121,7 @@ describe("TakeProfitTab trailing", () => {
       store.dispatch(setRecoveryParams(null));
     });
     expect(
-      testingScreen.getByRole("checkbox", { name: /^Trailing / }),
+      testingScreen.getByRole("switch", { name: /^Trailing / }),
     ).toBeChecked();
     expect(store.getState().bot.bot.trailing_profit).toBe(4);
     expect(store.getState().bot.bot.trailing_deviation).toBe(1.5);

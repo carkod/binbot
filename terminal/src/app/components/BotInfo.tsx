@@ -1,105 +1,114 @@
-import { useState } from "react";
 import {
+  Badge,
+  Box,
   Button,
   Card,
-  ListGroup,
+  Stack,
   Table,
-  Container,
-  Badge,
-  Nav,
-  Tab,
-} from "react-bootstrap";
-import { renderDuration, formatTimestamp } from "../../utils/time";
+  Tabs,
+  Text,
+  Title,
+} from "@mantine/core";
+import { useState } from "react";
 import type { Bot } from "../../features/bots/botInitialState";
-
+import { formatTimestamp, renderDuration } from "../../utils/time";
 interface BotInfoProps {
   bot: Bot;
 }
-
 export default function BotInfo({ bot }: BotInfoProps) {
   const [isExpanded, setExpanded] = useState<boolean>(bot.orders?.length > 0);
   return (
-    <Tab.Container
-      defaultActiveKey="orders"
-      mountOnEnter
-      unmountOnExit
-      transition={false}
+    <Tabs
+      defaultValue="orders"
+      keepMounted={false}
+      keepMountedMode="display-none"
     >
-      <Card>
-        <Card.Header className="d-flex justify-content-between align-items-center">
-          <Card.Title as="h5">Bot information</Card.Title>
+      <Card mb="md">
+        <Box
+          mb="sm"
+          display="flex"
+          style={{
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <Title order={5}>Bot information</Title>
           <Button
             onClick={() => setExpanded(!isExpanded)}
-            className="u-float-right u-space-bottom"
             aria-expanded={isExpanded}
+            type="button"
           >
             {isExpanded ? "Hide" : "Show"}
           </Button>
-        </Card.Header>
+        </Box>
         {isExpanded && (
-          <Card.Body>
-            <Nav variant="tabs">
-              <Nav.Item>
-                <Nav.Link eventKey="orders">Orders information</Nav.Link>
-              </Nav.Item>
-              <Nav.Item>
-                <Nav.Link eventKey="deal">Deal information</Nav.Link>
-              </Nav.Item>
-            </Nav>
-            <Tab.Content>
-              <Tab.Pane eventKey="orders">
+          <Box>
+            <Tabs.List>
+              <>
+                <Tabs.Tab value="orders">Orders information</Tabs.Tab>
+              </>
+              <>
+                <Tabs.Tab value="deal">Deal information</Tabs.Tab>
+              </>
+            </Tabs.List>
+            <Box>
+              <Tabs.Panel value="orders" pt="md">
                 {bot.orders.length > 0 && (
-                  <Table responsive>
-                    <thead>
-                      <tr>
-                        <th>Order Id</th>
-                        <th>Timestamp</th>
-                        <th>Deal type</th>
-                        <th>Order type</th>
-                        <th>Price</th>
-                        <th>Qty</th>
-                        <th>Status</th>
-                        <th>Order Side</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {bot.orders.map((order, i) => {
-                        if (
-                          typeof order === "object" &&
-                          "order_type" in order
-                        ) {
+                  <Box className="table-scroll">
+                    <Table>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>Order Id</Table.Th>
+                          <Table.Th>Timestamp</Table.Th>
+                          <Table.Th>Deal type</Table.Th>
+                          <Table.Th>Order type</Table.Th>
+                          <Table.Th>Price</Table.Th>
+                          <Table.Th>Qty</Table.Th>
+                          <Table.Th>Status</Table.Th>
+                          <Table.Th>Order Side</Table.Th>
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {bot.orders.map((order, i) => {
+                          if (
+                            typeof order === "object" &&
+                            "order_type" in order
+                          ) {
+                            return (
+                              <Table.Tr key={order.order_id}>
+                                <Table.Th scope="row">
+                                  {order.order_id}
+                                </Table.Th>
+                                <Table.Td>
+                                  {formatTimestamp(parseFloat(order.timestamp))}
+                                </Table.Td>
+                                <Table.Td>{order.deal_type}</Table.Td>
+                                <Table.Td>{order.order_type}</Table.Td>
+                                <Table.Td>{order.price}</Table.Td>
+                                <Table.Td>{parseFloat(order.qty)}</Table.Td>
+                                <Table.Td>{order.status}</Table.Td>
+                                <Table.Td>{order.order_side}</Table.Td>
+                              </Table.Tr>
+                            );
+                          }
                           return (
-                            <tr key={order.order_id}>
-                              <th scope="row">{order.order_id}</th>
-                              <td>
-                                {formatTimestamp(parseFloat(order.timestamp))}
-                              </td>
-                              <td>{order.deal_type}</td>
-                              <td>{order.order_type}</td>
-                              <td>{order.price}</td>
-                              <td>{parseFloat(order.qty)}</td>
-                              <td>{order.status}</td>
-                              <td>{order.order_side}</td>
-                            </tr>
+                            <Table.Tr key={i}>
+                              <Table.Td></Table.Td>
+                            </Table.Tr>
                           );
-                        }
-                        return (
-                          <tr key={i}>
-                            <td></td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </Table>
+                        })}
+                      </Table.Tbody>
+                    </Table>
+                  </Box>
                 )}
-              </Tab.Pane>
-              <Tab.Pane eventKey="deal">
+              </Tabs.Panel>
+              <Tabs.Panel value="deal" pt="md">
                 {bot.deal && (
-                  <Container>
-                    <footer className="blockquote-footer">
-                      <p>Represented in the chart</p>
+                  <Box w="100%">
+                    <footer>
+                      <Text>Represented in the chart</Text>
                     </footer>
-                    <ListGroup className="list-group-flush">
+                    <Stack gap={0}>
                       {Object.keys(bot.deal)
                         .filter((k) => k !== "conditional_close_order")
                         .map((k, i) => {
@@ -118,36 +127,38 @@ export default function BotInfo({ bot }: BotInfoProps) {
                             dealData = JSON.stringify(dealData);
                           }
                           return (
-                            <ListGroup.Item
-                              action
-                              as="h5"
-                              key={i}
-                              className="d-flex justify-content-between align-items-start"
-                            >
-                              <small>{k}</small>
+                            <Box key={i} className="detail-row">
+                              <Text component="span" size="xs">
+                                {k}
+                              </Text>
                               {dealData || dealData > 0 ? (
-                                <Badge bg="secondary">{dealData}</Badge>
+                                <Badge color="secondary" variant="light">
+                                  {dealData}
+                                </Badge>
                               ) : (
-                                <small>{dealData}</small>
+                                <Text component="span" size="xs">
+                                  {dealData}
+                                </Text>
                               )}
-                            </ListGroup.Item>
+                            </Box>
                           );
                         })}
-                      <ListGroup.Item
-                        as="h5"
-                        className="d-flex justify-content-between align-items-start"
-                      >
-                        <small>deal duration</small>
-                        <Badge bg="secondary">{renderDuration(bot)}</Badge>
-                      </ListGroup.Item>
-                    </ListGroup>
-                  </Container>
+                      <Box className="detail-row">
+                        <Text component="span" size="xs">
+                          deal duration
+                        </Text>
+                        <Badge color="secondary" variant="light">
+                          {renderDuration(bot)}
+                        </Badge>
+                      </Box>
+                    </Stack>
+                  </Box>
                 )}
-              </Tab.Pane>
-            </Tab.Content>
-          </Card.Body>
+              </Tabs.Panel>
+            </Box>
+          </Box>
         )}
       </Card>
-    </Tab.Container>
+    </Tabs>
   );
 }

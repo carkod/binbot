@@ -1,26 +1,32 @@
-import { type FC, useEffect } from "react";
-import { Col, Container, Form, InputGroup, Row, Tab } from "react-bootstrap";
-import InputGroupText from "react-bootstrap/esm/InputGroupText";
-import { useForm } from "react-hook-form";
+import { formGridBreakpoints } from "../../theme";
 import {
+  Box,
+  Group,
+  Input,
+  SimpleGrid,
+  Tabs,
+  Text,
+  TextInput,
+} from "@mantine/core";
+import { type FC, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import type { RecoveryParams } from "../../features/bots/botInitialState";
+import { defaultRecoveryParams } from "../../features/bots/botInitialState";
+import {
+  focusOrderLine,
   selectBot,
   setField,
-  focusOrderLine,
   setRecoveryParams,
   setToggle,
 } from "../../features/bots/botSlice";
+import { TabsKeys } from "../../utils/enums";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { type AppDispatch } from "../store";
-import { TabsKeys } from "../../utils/enums";
-import type { RecoveryParams } from "../../features/bots/botInitialState";
-import { defaultRecoveryParams } from "../../features/bots/botInitialState";
-
 const StopLossTab: FC = () => {
   const dispatch: AppDispatch = useAppDispatch();
   const { bot: liveBot } = useAppSelector(selectBot);
   const bot = liveBot;
   const recoveryEnabled = bot.recovery_params != null;
-
   const {
     watch,
     register,
@@ -33,7 +39,6 @@ const StopLossTab: FC = () => {
       stop_loss: bot.stop_loss,
     },
   });
-
   useEffect(() => {
     const { unsubscribe } = watch((values, { name }) => {
       const value = name ? values[name] : undefined;
@@ -49,20 +54,16 @@ const StopLossTab: FC = () => {
         }
       }
     });
-
     return () => unsubscribe();
   }, [watch, dispatch]);
-
   useEffect(() => {
     setValue("stop_loss", bot.stop_loss);
   }, [bot.stop_loss, setValue]);
-
   const handleBlur = (e) => {
     if (e.target.value) {
       dispatch(setField({ name: e.target.name, value: watch(e.target.name) }));
     }
   };
-
   const handleRecoveryChange = (
     name: keyof RecoveryParams,
     value: RecoveryParams[keyof RecoveryParams],
@@ -75,27 +76,33 @@ const StopLossTab: FC = () => {
       }),
     );
   };
-
   return (
-    <Tab.Pane
+    <Tabs.Panel
       id={TabsKeys.STOPLOSS}
-      eventKey={TabsKeys.STOPLOSS}
-      className="mb-3"
+      value={TabsKeys.STOPLOSS}
+      pt="md"
+      mb={16}
     >
-      <Container>
-        <Row className="my-3">
-          <Col md={4} sm="12">
-            <Form.Label htmlFor="stop_loss">
-              Stop loss <span className="u-required">*</span>
-            </Form.Label>
-            <InputGroup size="sm">
-              <Form.Control
+      <Box w="100%">
+        <SimpleGrid
+          cols={{ base: 1, [formGridBreakpoints.md]: 3 }}
+          type="container"
+          my={16}
+        >
+          <Box>
+            <Input.Label htmlFor="stop_loss">
+              Stop loss{" "}
+              <Text c="danger.8" component="span">
+                *
+              </Text>
+            </Input.Label>
+            <Group gap="xs" wrap="nowrap" className="field-row">
+              <TextInput
                 type="number"
                 step="any"
                 name="stop_loss"
                 id="stop_loss"
                 onFocus={() => dispatch(focusOrderLine("stop_loss"))}
-                isInvalid={!!errors?.stop_loss}
                 onBlur={(e) => handleBlur(e)}
                 {...register("stop_loss", {
                   required: "Stop loss is required",
@@ -109,24 +116,29 @@ const StopLossTab: FC = () => {
                     message: "Maximum trailing deviation is 100",
                   },
                 })}
+                error={!!errors?.stop_loss}
               />
-              <InputGroupText>%</InputGroupText>
+              <Text component="span" c="dimmed">
+                %
+              </Text>
               {errors.stop_loss && (
-                <Form.Control.Feedback type="invalid">
-                  {errors.stop_loss?.message}
-                </Form.Control.Feedback>
+                <Input.Error>{errors.stop_loss?.message}</Input.Error>
               )}
-            </InputGroup>
-          </Col>
-        </Row>
+            </Group>
+          </Box>
+        </SimpleGrid>
         {recoveryEnabled && (
-          <Row className="my-3">
-            <Col md="3" sm="12">
-              <Form.Label htmlFor="recovery_stop_loss_pct">
+          <SimpleGrid
+            cols={{ base: 1, [formGridBreakpoints.md]: 4 }}
+            type="container"
+            my={16}
+          >
+            <Box>
+              <Input.Label htmlFor="recovery_stop_loss_pct">
                 Recovery stop loss
-              </Form.Label>
-              <InputGroup size="sm">
-                <Form.Control
+              </Input.Label>
+              <Group gap="xs" wrap="nowrap" className="field-row">
+                <TextInput
                   id="recovery_stop_loss_pct"
                   type="number"
                   min={0}
@@ -140,14 +152,15 @@ const StopLossTab: FC = () => {
                     )
                   }
                 />
-                <InputGroupText>%</InputGroupText>
-              </InputGroup>
-            </Col>
-          </Row>
+                <Text component="span" c="dimmed">
+                  %
+                </Text>
+              </Group>
+            </Box>
+          </SimpleGrid>
         )}
-      </Container>
-    </Tab.Pane>
+      </Box>
+    </Tabs.Panel>
   );
 };
-
 export default StopLossTab;

@@ -1,11 +1,10 @@
-import type { RenderOptions } from "@testing-library/react";
-import { render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { PropsWithChildren, ReactElement } from "react";
 import { Provider } from "react-redux";
 import type { AppStore, RootState } from "../app/store";
 import { makeStore } from "../app/store";
-
+import type { RenderOptions } from "./render";
+import { render } from "./render";
 /**
  * This type extends the default options for
  * React Testing Library's render function. It allows for
@@ -20,7 +19,6 @@ interface ExtendedRenderOptions extends Omit<RenderOptions, "queries"> {
    * with predetermined state conditions.
    */
   preloadedState?: Partial<RootState>;
-
   /**
    * Allows the use of a specific Redux store instance instead of a
    * default or global store. This flexibility is beneficial when
@@ -32,7 +30,6 @@ interface ExtendedRenderOptions extends Omit<RenderOptions, "queries"> {
    */
   store?: AppStore;
 }
-
 /**
  * Renders the given React element with Redux Provider and custom store.
  * This function is useful for testing components that are connected to the Redux store.
@@ -51,11 +48,9 @@ export const renderWithProviders = (
     store = makeStore(preloadedState),
     ...renderOptions
   } = extendedRenderOptions;
-
   const Wrapper = ({ children }: PropsWithChildren) => (
     <Provider store={store}>{children}</Provider>
   );
-
   // Return an object with the store and all of RTL's query functions
   return {
     store,

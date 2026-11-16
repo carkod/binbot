@@ -1,78 +1,87 @@
-import { useState, type FC } from "react";
+import { AppShell, Box, LoadingOverlay } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
+import { useEffect, useState } from "react";
 import { Navigate, Outlet } from "react-router";
 import { Slide, ToastContainer } from "react-toastify";
 import { getToken } from "../utils/login";
 import Footer from "./components/Footer";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
-import { useBreakpoint } from "./hooks";
-import { SpinnerContext } from "./spinner-context";
 import { MicrostructureProvider } from "./providers/MicrostructureProvider";
-
-export const Layout: FC<{}> = () => {
+import { SpinnerContext } from "./spinner-context";
+export const Layout = () => {
   const token = getToken();
-  const breakpoint = useBreakpoint();
+  const mobile = useMediaQuery("(max-width: 47.99em)", false, {
+    getInitialValueInEffect: false,
+  });
+  const [mobileOpened, setMobileOpened] = useState(false);
+  const [desktopOpened, setDesktopOpened] = useState(true);
   const [spinner, setSpinner] = useState(false);
-  const spinnerValue = { spinner, setSpinner };
-
-  // toggle sidebar by default on larger screens
-  // collapse sidebar by default on smaller screens
-  const [expand, setExpand] = useState(
-    breakpoint === "md" || breakpoint === "lg" || breakpoint === "xl",
-  );
-
-  const handleExpand = () => {
-    setExpand(!expand);
-  };
-
-  if (token) {
-    return (
-      <div className={`wrapper ${expand ? "nav-open" : ""}`}>
-        <ToastContainer
-          transition={Slide}
-          position="top-right"
-          autoClose={5000}
-          hideProgressBar
-          newestOnTop
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss={false}
-          draggable={false}
-          pauseOnHover
-          theme="colored"
+  useEffect(() => {
+    const timer = window.setTimeout(
+      () => window.dispatchEvent(new Event("resize")),
+      300,
+    );
+    return () => window.clearTimeout(timer);
+  }, [mobileOpened, desktopOpened]);
+  if (!token) return <Navigate to="/login" replace />;
+  return (
+    <AppShell
+      layout={mobile ? "default" : "alt"}
+      header={{ height: 64 }}
+      navbar={{
+        width: 240,
+        breakpoint: "md",
+        collapsed: { mobile: !mobileOpened, desktop: !desktopOpened },
+      }}
+      padding={{ base: "sm", md: "lg" }}
+      transitionDuration={300}
+    >
+      <ToastContainer
+        transition={Slide}
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss={false}
+        draggable={false}
+        pauseOnHover
+        theme="colored"
+      />
+      <AppShell.Header>
+        <Header
+          expanded={mobile ? mobileOpened : desktopOpened}
+          onExpand={() =>
+            mobile
+              ? setMobileOpened(!mobileOpened)
+              : setDesktopOpened(!desktopOpened)
+          }
         />
-        <Sidebar />
-        <div className="main-panel">
-          {spinner && (
-            <div
-              className="d-flex align-items-center justify-content-center"
-              style={{
-                position: "absolute",
-                zIndex: 99,
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: "rgba(0, 0, 0, 0.5)",
-              }}
-            >
-              <div className="spinner-border text-warning" role="status">
-                <span className="visually-hidden">Loading...</span>
-              </div>
-            </div>
-          )}
-
-          <SpinnerContext.Provider value={spinnerValue}>
-            <Header onExpand={handleExpand} />
+      </AppShell.Header>
+      <AppShell.Navbar p="md" className="terminal-sidebar">
+        <Sidebar onNavigate={() => setMobileOpened(false)} />
+      </AppShell.Navbar>
+      <AppShell.Main>
+        <Box pos="relative" mih="calc(100dvh - 110px)">
+          <LoadingOverlay
+            visible={spinner}
+            zIndex={200}
+            loaderProps={{
+              color: "warning",
+              "aria-label": "Loading",
+              role: "status",
+            }}
+          />
+          <SpinnerContext.Provider value={{ spinner, setSpinner }}>
             <MicrostructureProvider>
               <Outlet />
             </MicrostructureProvider>
-            <Footer />
           </SpinnerContext.Provider>
-        </div>
-      </div>
-    );
-  } else {
-    return <Navigate to="/login" replace />;
-  }
+        </Box>
+        <Footer />
+      </AppShell.Main>
+    </AppShell>
+  );
 };
