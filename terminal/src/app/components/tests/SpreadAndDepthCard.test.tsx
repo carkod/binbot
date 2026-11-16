@@ -81,6 +81,47 @@ describe("spread and nearby depth chart", () => {
       new Date(now - OBI_WINDOW_MS).toISOString(),
       new Date(now).toISOString(),
     ]);
+    expect(layout.xaxis.autorange).toBe(false);
+    expect(layout.xaxis.fixedrange).toBe(true);
+  });
+
+  it("advances the configured time window as the clock moves", () => {
+    const { rerender } = render(
+      <SpreadAndDepthCard
+        {...props}
+        snapshot={snapshot}
+        depthWindowMinutes={5}
+      />,
+    );
+    act(() => vi.advanceTimersByTime(60_000));
+    let layout = JSON.parse(
+      testingScreen
+        .getByTestId("spread-depth-chart")
+        .getAttribute("data-layout"),
+    );
+    expect(layout.xaxis.range).toEqual([
+      new Date(now + 60_000 - 5 * 60_000).toISOString(),
+      new Date(now + 60_000).toISOString(),
+    ]);
+    expect(testingScreen.getByText(/Last 5 minutes/)).toBeInTheDocument();
+
+    rerender(
+      <SpreadAndDepthCard
+        {...props}
+        snapshot={snapshot}
+        depthWindowMinutes={10}
+      />,
+    );
+    layout = JSON.parse(
+      testingScreen
+        .getByTestId("spread-depth-chart")
+        .getAttribute("data-layout"),
+    );
+    expect(layout.xaxis.range).toEqual([
+      new Date(now + 60_000 - 10 * 60_000).toISOString(),
+      new Date(now + 60_000).toISOString(),
+    ]);
+    expect(testingScreen.getByText(/Last 10 minutes/)).toBeInTheDocument();
   });
 
   it("keeps measurements on failure and leaves gaps in all three traces", () => {

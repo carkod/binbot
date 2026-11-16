@@ -93,6 +93,7 @@ export const FuturesBotDetail: FC<{}> = () => {
             bot={bot}
             setCurrentPrice={setCurrentPrice}
             marketType={currentMarketType}
+            depthWindowMinutes={15}
             activeTab={chartTab}
             onTabChange={(tab) => setTab("chartTab", tab, "chart")}
           />

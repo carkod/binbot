@@ -1,6 +1,5 @@
 import { Box, Button, Group, Text, Title } from "@mantine/core";
 import { useMemo } from "react";
-import { OBI_WINDOW_MS } from "../../features/kucoinLiquidity";
 import type { useOrderBookHistory } from "../hooks/useOrderBookHistory";
 import LivePlotlyChart from "./LivePlotlyChart";
 interface SpreadAndDepthCardProps {
@@ -9,6 +8,7 @@ interface SpreadAndDepthCardProps {
   isFetching: boolean;
   isError: boolean;
   onRetry: () => void;
+  depthWindowMinutes?: number;
 }
 const SpreadAndDepthCard = ({
   orderBookHistory,
@@ -16,6 +16,7 @@ const SpreadAndDepthCard = ({
   isFetching,
   isError,
   onRetry,
+  depthWindowMinutes = 15,
 }: SpreadAndDepthCardProps) => {
   const { history, chartPoints, now } = orderBookHistory;
   const data = useMemo(() => {
@@ -75,8 +76,10 @@ const SpreadAndDepthCard = ({
         title: { text: "Time" },
         type: "date",
         tickformat: "%H:%M:%S",
+        autorange: false,
+        fixedrange: true,
         range: [
-          new Date(now - OBI_WINDOW_MS).toISOString(),
+          new Date(now - depthWindowMinutes * 60_000).toISOString(),
           new Date(now).toISOString(),
         ],
         showgrid: false,
@@ -97,7 +100,7 @@ const SpreadAndDepthCard = ({
       legend: { orientation: "h", y: -0.25 },
       showlegend: true,
     }),
-    [now],
+    [now, depthWindowMinutes],
   );
   return (
     <Box>
@@ -106,8 +109,9 @@ const SpreadAndDepthCard = ({
           Spread and Nearby Depth
         </Title>
         <Text c="dimmed" mb={0}>
-          Last 15 minutes. Spread as a percentage of the midpoint; bid and ask
-          depth within ±0.5% of the midpoint, valued in USDT.
+          Last {depthWindowMinutes} minutes. Spread as a percentage of the
+          midpoint; bid and ask depth within ±0.5% of the midpoint, valued in
+          USDT.
         </Text>
       </Box>
       <Box>

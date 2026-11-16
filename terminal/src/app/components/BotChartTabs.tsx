@@ -14,9 +14,11 @@ const BotChartTabs = ({
   marketType,
   activeTab: controlledTab,
   onTabChange,
+  depthWindowMinutes,
 }: ComponentProps<typeof ChartContainer> & {
   activeTab?: string;
   onTabChange?: (tab: string | null) => void;
+  depthWindowMinutes?: number;
 }) => {
   const tabsId = useId();
   const [activeTab, setActiveTab] = useUncontrolled<string | null>({
@@ -104,7 +106,11 @@ const BotChartTabs = ({
                 ) : symbol !== pair ? (
                   <Text role="status">Starting order book analysis…</Text>
                 ) : (
-                  <OrderBookAnalysis enabled showError />
+                  <OrderBookAnalysis
+                    enabled
+                    showError
+                    depthWindowMinutes={depthWindowMinutes}
+                  />
                 )}
               </>
             </Tabs.Panel>
