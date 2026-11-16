@@ -76,27 +76,36 @@ const StoredCvdCard = ({
     ];
   }, [result, subject, changeLabel]);
   const layout = useMemo(
-    () => ({
-      autosize: true,
-      height: 380,
-      showlegend: false,
-      margin: { t: 20, l: 105, r: 20, b: 60 },
-      xaxis: {
-        type: "date",
-        autorange: true,
-        uirevision: false,
-        title: {
-          text: `${symbol ? "1-minute" : "15-minute"} intervals`,
+    () => {
+      const now = Date.now();
+      return {
+        autosize: true,
+        height: 380,
+        showlegend: false,
+        margin: { t: 20, l: 105, r: 20, b: 60 },
+        xaxis: {
+          type: "date",
+          autorange: !!symbol,
+          ...(!symbol && {
+            range: [
+              new Date(now - 6 * 60 * 60 * 1000).toISOString(),
+              new Date(now).toISOString(),
+            ],
+          }),
+          uirevision: false,
+          title: {
+            text: `${symbol ? "1-minute" : "15-minute"} intervals`,
+          },
         },
-      },
-      yaxis: {
-        autorange: true,
-        uirevision: false,
-        title: { text: "Observed CVD (USDT)", standoff: 24 },
-        automargin: true,
-        zeroline: true,
-      },
-    }),
+        yaxis: {
+          autorange: true,
+          uirevision: false,
+          title: { text: "Observed CVD (USDT)", standoff: 24 },
+          automargin: true,
+          zeroline: true,
+        },
+      };
+    },
     // Plotly mutates axis ranges after zooming. Fresh axes let each snapshot
     // refit the rolling window without remounting the chart.
     [symbol, result],
@@ -143,6 +152,7 @@ const StoredCvdCard = ({
         )}
       </Box>
       <Group mt="sm" c="dimmed">
+        {!symbol && "Showing the last 6 hours. "}
         {symbol ? "Rolling 15-minute" : "Seven-day"} window; CVD starts at zero
         at{" "}
         {result?.reset_at

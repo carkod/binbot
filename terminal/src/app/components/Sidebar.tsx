@@ -21,7 +21,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         c="primary.5"
       >
         <Group gap="sm">
-          <ThemeIcon size="lg" variant="light">
+          <ThemeIcon size="lg" variant="transparent" c="primary.1">
             <i className="fa-solid fa-wave-square" />
           </ThemeIcon>
           <Title order={2} size="h3">

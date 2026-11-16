@@ -7,7 +7,9 @@ body {
   background: var(--terminal-background);
 }
 a {
+  --mantine-cursor-type: pointer;
   color: var(--mantine-color-primary-8);
+  cursor: pointer;
 }
 .mantine-AppShell-main {
   min-width: 0;

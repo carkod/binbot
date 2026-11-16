@@ -225,7 +225,7 @@ export const BotsPage: FC<{}> = () => {
               </Badge>
             )}
           </Box>
-          <Flex id="filters" wrap="wrap" gap="md" align="end">
+          <Flex id="filters" flex={1} miw={0} wrap="wrap" gap="md" align="end">
             <Box flex="1 1 180px">
               <SymbolSearch
                 name="pair"

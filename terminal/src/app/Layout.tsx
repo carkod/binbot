@@ -27,6 +27,7 @@ export const Layout = () => {
   if (!token) return <Navigate to="/login" replace />;
   return (
     <AppShell
+      layout={mobile ? "default" : "alt"}
       header={{ height: 64 }}
       navbar={{
         width: 240,
