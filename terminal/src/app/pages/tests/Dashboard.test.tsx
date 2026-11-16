@@ -161,10 +161,10 @@ describe("Dashboard page", () => {
     }
   });
 
-  it("shows market CVD alongside the market trend charts", () => {
+  it("shows market CVD in the order book aggregation section", () => {
     renderDashboard();
     expect(
-      rtlScreen.getByRole("region", { name: "Market analysis" }),
+      rtlScreen.getByRole("region", { name: "Order book aggregation" }),
     ).toContainElement(rtlScreen.getByText("AggregateCvdCard"));
   });
 

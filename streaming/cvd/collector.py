@@ -3,7 +3,6 @@
 import asyncio
 from functools import partial
 import logging
-import signal
 import time
 
 from streaming.cvd.contracts import load_contracts
@@ -15,13 +14,7 @@ log = logging.getLogger("cvd")
 SHARD_SIZE = 100  # Operational choice; Classic Futures currently has no topic cap.
 
 
-async def run(stop: asyncio.Event | None = None) -> None:
-    if stop is None:
-        # Standalone diagnostics own signals; the shared worker supplies its stop event.
-        stop = asyncio.Event()
-        loop = asyncio.get_running_loop()
-        for sig in (signal.SIGTERM, signal.SIGINT):
-            loop.add_signal_handler(sig, stop.set)
+async def run(stop: asyncio.Event) -> None:
     # Never allow SQLAlchemy to reconnect this owner connection after failure.
     async with owner_connection() as connection:
         flow = Flow(await asyncio.to_thread(load_contracts), time.time_ns())

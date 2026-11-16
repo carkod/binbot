@@ -64,9 +64,9 @@ describe("bot chart tabs", () => {
 
   it("keeps the bot heading above the tabs and updates profit from current bot prices", () => {
     const { rerender } = render(<BotChartTabs {...props} />);
-    const heading = testingScreen.getByRole("heading", { level: 3 });
+    const heading = testingScreen.getByRole("heading", { level: 2 });
     expect(heading).toHaveTextContent("PROMUSDTM 10% active long Futures");
-    expect(heading.closest(".card").nextElementSibling).toContainElement(
+    expect(heading.nextElementSibling).toContainElement(
       testingScreen.getByRole("tablist"),
     );
     rerender(
@@ -78,9 +78,14 @@ describe("bot chart tabs", () => {
     expect(testingScreen.getByText("-10%")).toHaveClass("bg-danger");
   });
 
-  it("selects the bot symbol and preserves price chart state across tab changes", () => {
+  it("loads analysis before the tab opens and preserves charts across tab changes", () => {
     render(<BotChartTabs {...props} />);
     expect(selectSymbol).toHaveBeenCalledWith("PROMUSDTM");
+    expect(useCvdSymbolQuery).toHaveBeenCalledWith(
+      "PROMUSDTM",
+      expect.objectContaining({ skip: false, pollingInterval: 30_000 }),
+    );
+    const analysis = testingScreen.getByText("Shared order book charts");
     const chart = testingScreen.getByRole("textbox", { name: "Chart state" });
     fireEvent.change(chart, { target: { value: "zoomed" } });
     fireEvent.click(
@@ -94,6 +99,7 @@ describe("bot chart tabs", () => {
       expect.objectContaining({ skip: false, pollingInterval: 30_000 }),
     );
     fireEvent.click(testingScreen.getByRole("tab", { name: "Chart" }));
+    expect(testingScreen.getByText("Shared order book charts")).toBe(analysis);
     expect(testingScreen.getByRole("textbox", { name: "Chart state" })).toBe(
       chart,
     );

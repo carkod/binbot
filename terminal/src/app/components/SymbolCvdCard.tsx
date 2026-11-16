@@ -20,6 +20,7 @@ const SymbolCvdCard = ({
   }
   return (
     <StoredCvdCard
+      embedded
       symbol={symbol}
       result={currentData}
       isLoading={!currentData && isFetching}

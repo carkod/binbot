@@ -4,13 +4,16 @@ import { vi } from "vitest";
 import SymbolCvdCard from "../SymbolCvdCard";
 import { useCvdSymbolQuery } from "../../../features/marketApiSlice";
 
+const { liveChart } = vi.hoisted(() => ({ liveChart: vi.fn() }));
+
 vi.mock("../../../features/marketApiSlice", () => ({
   useCvdSymbolQuery: vi.fn(),
 }));
 vi.mock("../LivePlotlyChart", () => ({
-  default: ({ data, layout }: { data: unknown; layout: unknown }) => (
-    <div data-testid="chart">{JSON.stringify({ data, layout })}</div>
-  ),
+  default: (props: { data: unknown; layout: unknown }) => {
+    liveChart(props);
+    return <div data-testid="chart">{JSON.stringify(props)}</div>;
+  },
 }));
 
 const query = vi.mocked(useCvdSymbolQuery);
@@ -46,6 +49,36 @@ function respond(response: Record<string, unknown>) {
 }
 
 describe("stored symbol CVD", () => {
+  it("refits axes after a new snapshot replaces zoomed chart data without remounting", () => {
+    respond({ currentData: result });
+    const { rerender } = render(<SymbolCvdCard symbol="SOLUSDTM" enabled />);
+    const chart = testingScreen.getByTestId("chart");
+    const previousLayout = liveChart.mock.lastCall[0].layout;
+    // Plotly writes zoomed ranges back into the supplied axis objects.
+    Object.assign(previousLayout.xaxis, {
+      autorange: false,
+      range: ["2026-11-15T10:00:00Z", "2026-11-15T10:01:00Z"],
+    });
+    Object.assign(previousLayout.yaxis, { autorange: false, range: [90, 110] });
+
+    respond({
+      currentData: {
+        ...result,
+        data: [{ ...point, timestamp: "2026-11-15T10:16:00Z", cvd: -500 }],
+        updated_at: "2026-11-15T10:16:00Z",
+      },
+    });
+    rerender(<SymbolCvdCard symbol="SOLUSDTM" enabled />);
+
+    expect(testingScreen.getByTestId("chart")).toBe(chart);
+    const { data, layout } = liveChart.mock.lastCall[0];
+    expect(data[0].y).toEqual([-500]);
+    for (const axis of [layout.xaxis, layout.yaxis]) {
+      expect(axis).toMatchObject({ autorange: true, uirevision: false });
+      expect(axis.range).toBeUndefined();
+    }
+  });
+
   it("loads central history with symbol polling and preserves exact hover values", () => {
     respond({ currentData: result });
     render(<SymbolCvdCard symbol="SOLUSDTM" enabled />);
@@ -69,7 +102,9 @@ describe("stored symbol CVD", () => {
       testingScreen.getByText(/Rolling 15-minute window/),
     ).toHaveTextContent(new Date(result.reset_at).toISOString());
     expect(
-      testingScreen.getByText(/SOLUSDTM · KuCoin futures/),
+      testingScreen.getByText(
+        "Aggressive buy minus sell USDT notional, weighted by traded size.",
+      ),
     ).toBeInTheDocument();
   });
 

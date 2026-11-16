@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Button, Card } from "react-bootstrap";
+import { Button } from "react-bootstrap";
 import { OBI_WINDOW_MS } from "../../features/kucoinLiquidity";
 import type { useOrderBookHistory } from "../hooks/useOrderBookHistory";
 import LivePlotlyChart from "./LivePlotlyChart";
@@ -73,7 +73,7 @@ const SpreadAndDepthCard = ({
     () => ({
       autosize: true,
       height: 380,
-      margin: { t: 20, l: 90, r: 85, b: 80 },
+      margin: { t: 20, l: 105, r: 100, b: 80 },
       xaxis: {
         title: { text: "Time" },
         type: "date",
@@ -85,11 +85,13 @@ const SpreadAndDepthCard = ({
         showgrid: false,
       },
       yaxis: {
-        title: { text: "Nearby depth (USDT)" },
+        title: { text: "Nearby depth (USDT)", standoff: 24 },
+        automargin: true,
         rangemode: "tozero",
       },
       yaxis2: {
-        title: { text: "Spread (%)" },
+        title: { text: "Spread (%)", standoff: 24 },
+        automargin: true,
         overlaying: "y",
         side: "right",
         rangemode: "tozero",
@@ -102,17 +104,15 @@ const SpreadAndDepthCard = ({
   );
 
   return (
-    <Card className="card-chart">
-      <Card.Header>
-        <Card.Title as="h5" className="mt-0">
-          Spread and Nearby Depth
-        </Card.Title>
+    <div>
+      <div className="mb-3">
+        <h5 className="mt-0">Spread and Nearby Depth</h5>
         <p className="text-body-secondary mb-0">
           Last 15 minutes. Spread as a percentage of the midpoint; bid and ask
           depth within ±0.5% of the midpoint, valued in USDT.
         </p>
-      </Card.Header>
-      <Card.Body>
+      </div>
+      <div>
         {!enabled ? (
           <p className="text-body-secondary">Enter a symbol</p>
         ) : (
@@ -138,13 +138,13 @@ const SpreadAndDepthCard = ({
             )}
           </>
         )}
-      </Card.Body>
-      <Card.Footer className="text-body-secondary">
+      </div>
+      <div className="text-body-secondary mt-3">
         Visible depth from up to 100 levels per side. History collects across
         navigation while the terminal is open for the selected symbol. Resets on
         reload or symbol change.
-      </Card.Footer>
-    </Card>
+      </div>
+    </div>
   );
 };
 

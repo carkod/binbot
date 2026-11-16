@@ -8,6 +8,7 @@ interface StoredCvdCardProps {
   isLoading: boolean;
   isError: boolean;
   symbol?: string;
+  embedded?: boolean;
 }
 
 const StoredCvdCard = ({
@@ -15,7 +16,9 @@ const StoredCvdCard = ({
   isLoading,
   isError,
   symbol,
+  embedded = false,
 }: StoredCvdCardProps) => {
+  const Container = embedded ? "div" : Card;
   const subject = symbol ? `${symbol} CVD` : "Market CVD";
   const changeLabel = symbol
     ? "Contract multiplier changed"
@@ -79,61 +82,72 @@ const StoredCvdCard = ({
       autosize: true,
       height: 380,
       showlegend: false,
-      margin: { t: 20, l: 90, r: 20, b: 60 },
+      margin: { t: 20, l: 105, r: 20, b: 60 },
       xaxis: {
         type: "date",
+        autorange: true,
+        uirevision: false,
         title: {
-          text: `UTC time · ${symbol ? "1-minute" : "15-minute"} intervals`,
+          text: `${symbol ? "1-minute" : "15-minute"} intervals`,
         },
       },
-      yaxis: { title: { text: "Observed CVD (USDT)" }, zeroline: true },
+      yaxis: {
+        autorange: true,
+        uirevision: false,
+        title: { text: "Observed CVD (USDT)", standoff: 24 },
+        automargin: true,
+        zeroline: true,
+      },
     }),
-    [symbol],
+    // Plotly mutates axis ranges after zooming. Fresh axes let each snapshot
+    // refit the rolling window without remounting the chart.
+    [symbol, result],
   );
   return (
-    <Card className="card-chart">
-      <Card.Header>
-        <Card.Title as="h5">
+    <Container className={embedded ? undefined : "card-chart p-3"}>
+      <div className="mb-3">
+        <h5 className="mt-0">
           {symbol
             ? "Cumulative Volume Delta"
             : "Market Cumulative Volume Delta"}
-        </Card.Title>
+        </h5>
         <p className="text-body-secondary mb-0">
-          {symbol
-            ? `${symbol} · KuCoin futures. `
-            : "Registered active linear USDT KuCoin futures. "}
+          {!symbol && "Registered active linear USDT KuCoin futures. "}
           Aggressive buy minus sell USDT notional, weighted by traded size.
         </p>
-      </Card.Header>
-      <Card.Body>
-        {isLoading && (
-          <p role="status">
-            Loading {symbol ? `${symbol} CVD` : "market CVD"}…
-          </p>
-        )}
-        {isError && <p role="alert">{subject} could not be refreshed.</p>}
-        {result?.stale && (
-          <p role="status" className="text-warning">
-            Collector checkpoint is stale. Recent executions may be missing.
-          </p>
-        )}
-        {!isLoading && !isError && !result?.data.length && (
-          <p>
-            Collection has no observations yet{symbol ? ` for ${symbol}` : ""}.
-          </p>
-        )}
-        {result?.partial && (
-          <p className="text-warning">
-            Partial coverage: open diamonds mark incomplete intervals. Lines
-            break at gaps and {symbol ? "contract multiplier" : "universe"}{" "}
-            changes; CVD includes only observed trades.
-          </p>
-        )}
-        {!!result?.data.length && (
-          <LivePlotlyChart data={data} layout={layout} />
-        )}
-      </Card.Body>
-      <Card.Footer className="text-body-secondary">
+      </div>
+      <div>
+        <div style={{ minHeight: layout.height }}>
+          {isLoading && (
+            <p role="status">
+              Loading {symbol ? `${symbol} CVD` : "market CVD"}…
+            </p>
+          )}
+          {isError && <p role="alert">{subject} could not be refreshed.</p>}
+          {result?.stale && (
+            <p role="status" className="text-warning">
+              Collector checkpoint is stale. Recent executions may be missing.
+            </p>
+          )}
+          {!isLoading && !isError && !result?.data.length && (
+            <p>
+              Collection has no observations yet{symbol ? ` for ${symbol}` : ""}
+              .
+            </p>
+          )}
+          {result?.partial && (
+            <p className="text-warning">
+              Partial coverage: open diamonds mark incomplete intervals. Lines
+              break at gaps and {symbol ? "contract multiplier" : "universe"}{" "}
+              changes; CVD includes only observed trades.
+            </p>
+          )}
+          {!!result?.data.length && (
+            <LivePlotlyChart data={data} layout={layout} />
+          )}
+        </div>
+      </div>
+      <div className="text-body-secondary mt-3">
         {symbol ? "Rolling 15-minute" : "Seven-day"} window; CVD starts at zero
         at{" "}
         {result?.reset_at
@@ -144,8 +158,8 @@ const StoredCvdCard = ({
         closed minutes allow two minutes for late arrivals.
         {result?.updated_at &&
           ` Last checkpoint: ${new Date(result.updated_at).toISOString()}.`}
-      </Card.Footer>
-    </Card>
+      </div>
+    </Container>
   );
 };
 

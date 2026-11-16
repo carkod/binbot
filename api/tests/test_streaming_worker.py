@@ -152,8 +152,6 @@ async def test_embedded_collector_uses_worker_shutdown_and_flushes_final_checkpo
     connection = Mock(invalidated=False)
     persisted = []
     loop = asyncio.get_running_loop()
-    signal_handler = Mock()
-    monkeypatch.setattr(loop, "add_signal_handler", signal_handler)
 
     @asynccontextmanager
     async def owner():
@@ -174,7 +172,6 @@ async def test_embedded_collector_uses_worker_shutdown_and_flushes_final_checkpo
     assert len(persisted) == 2  # Regular flush, then graceful final checkpoint.
     assert persisted[0][1][0]["covered_symbols"] == 0
     assert persisted[1][1][0]["finalized"] is False
-    signal_handler.assert_not_called()
 
 
 @pytest.mark.asyncio

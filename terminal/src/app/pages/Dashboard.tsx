@@ -359,11 +359,6 @@ export const DashboardPage: FC<{}> = () => {
             )}
           </Col>
         </Row>
-        <Row>
-          <Col xs="12" className="dashboard-trend">
-            <AggregateCvdCard />
-          </Col>
-        </Row>
       </section>
       <section
         aria-labelledby="order-book-aggregation-heading"
@@ -375,6 +370,11 @@ export const DashboardPage: FC<{}> = () => {
         >
           Order book aggregation
         </h2>
+        <Row>
+          <Col xs="12" className="dashboard-trend">
+            <AggregateCvdCard />
+          </Col>
+        </Row>
       </section>
     </div>
   );
