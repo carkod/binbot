@@ -24,22 +24,8 @@ const BalanceAnalysis: FC<{
       </Box>
       <Box>
         <Grid type="container" breakpoints={formGridBreakpoints} mb="lg">
-          <Grid.Col
-            span={{
-              base: 12,
-              sm: 12,
-              md: 8,
-            }}
-          >
-            Available fiat
-          </Grid.Col>
-          <Grid.Col
-            span={{
-              base: 12,
-              sm: 12,
-              md: 4,
-            }}
-          >
+          <Grid.Col span={{ base: 12, md: 8 }}>Available fiat</Grid.Col>
+          <Grid.Col span={{ base: 12, md: 4 }}>
             <Box c="primary.8" component="div">
               <strong>{`${
                 accountData.fiat_available > 0
@@ -50,22 +36,8 @@ const BalanceAnalysis: FC<{
           </Grid.Col>
         </Grid>
         <Grid type="container" breakpoints={formGridBreakpoints} mb="lg">
-          <Grid.Col
-            span={{
-              base: 12,
-              sm: 12,
-              md: 8,
-            }}
-          >
-            Total fiat value
-          </Grid.Col>
-          <Grid.Col
-            span={{
-              base: 12,
-              sm: 12,
-              md: 4,
-            }}
-          >
+          <Grid.Col span={{ base: 12, md: 8 }}>Total fiat value</Grid.Col>
+          <Grid.Col span={{ base: 12, md: 4 }}>
             <Box c="primary.8" component="div">
               <strong>{`${
                 accountData?.estimated_total_fiat > 0
@@ -76,22 +48,8 @@ const BalanceAnalysis: FC<{
           </Grid.Col>
         </Grid>
         <Grid type="container" breakpoints={formGridBreakpoints} mb="lg">
-          <Grid.Col
-            span={{
-              base: 12,
-              sm: 12,
-              md: 8,
-            }}
-          >
-            Risk beta (BTC)
-          </Grid.Col>
-          <Grid.Col
-            span={{
-              base: 12,
-              sm: 12,
-              md: 4,
-            }}
-          >
+          <Grid.Col span={{ base: 12, md: 8 }}>Risk beta (BTC)</Grid.Col>
+          <Grid.Col span={{ base: 12, md: 4 }}>
             <Box c="primary.8" component="div">
               <strong>
                 {loadingBeta
@@ -104,24 +62,12 @@ const BalanceAnalysis: FC<{
           </Grid.Col>
         </Grid>
         <Grid type="container" breakpoints={formGridBreakpoints}>
-          <Grid.Col
-            span={{
-              base: 12,
-              sm: 12,
-              md: 8,
-            }}
-          >
+          <Grid.Col span={{ base: 12, md: 8 }}>
             Portfolio of assets
             <br />
             (actual)
           </Grid.Col>
-          <Grid.Col
-            span={{
-              base: 12,
-              sm: 12,
-              md: 4,
-            }}
-          >
+          <Grid.Col span={{ base: 12, md: 4 }}>
             {Object.entries(accountData.balances).map(([asset, amount], i) => (
               <Box key={i} c="primary.8" component="div">
                 <strong>{`${amount} ${asset}`}</strong>

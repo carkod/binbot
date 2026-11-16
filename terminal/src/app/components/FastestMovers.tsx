@@ -4,7 +4,7 @@ import {
   Badge,
   Box,
   Card,
-  Grid,
+  SimpleGrid,
   Stack,
   Text,
   Title,
@@ -27,23 +27,8 @@ function MoverList({
       <Title order={4}>{title}</Title>
       <Stack gap={0}>
         {movers.map((mover) => (
-          <Box
-            key={mover.symbol}
-            py="xs"
-            display="flex"
-            className="detail-row"
-            style={{
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-              gap: 8,
-            }}
-          >
-            <Anchor
-              href={`/bots/futures/new/${mover.symbol}`}
-              style={{
-                overflowWrap: "anywhere",
-              }}
-            >
+          <Box key={mover.symbol} className="detail-row">
+            <Anchor href={`/bots/futures/new/${mover.symbol}`}>
               {mover.symbol}
             </Anchor>
             <Box
@@ -99,22 +84,10 @@ export default function FastestMovers({
         </Alert>
       </Box>
       {data?.comparison_at ? (
-        <Grid gap={0}>
-          <Grid.Col
-            span={{
-              base: "auto",
-            }}
-          >
-            <MoverList title="Rising" movers={data.gainers} />
-          </Grid.Col>
-          <Grid.Col
-            span={{
-              base: "auto",
-            }}
-          >
-            <MoverList title="Falling" movers={data.losers} />
-          </Grid.Col>
-        </Grid>
+        <SimpleGrid cols={2} spacing="lg">
+          <MoverList title="Rising" movers={data.gainers} />
+          <MoverList title="Falling" movers={data.losers} />
+        </SimpleGrid>
       ) : (
         <Box>Waiting for futures price snapshots one hour apart.</Box>
       )}

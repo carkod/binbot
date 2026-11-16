@@ -37,6 +37,15 @@ supports size, weight, and color, and `Highlight`, `Mark`, `Badge`, `Alert`, and
 `Blockquote` cover emphasized content. Keep domain-specific chart and trading
 styles in [terminal.css](./src/styles/terminal.css).
 
+When an element has a `className`, keep its static styles in that class instead
+of a `style` prop. Inline styles are fine for elements without a class. Pass
+data-driven values, such as chart widths and legend colors, through CSS custom
+properties and define the corresponding CSS rules in the class.
+
+Use `SimpleGrid` for equal-width columns and `Grid` when columns need different
+widths. Remove grid wrappers around a single full-width item. Container-based
+`SimpleGrid` layouts use explicit breakpoint sizes from the shared theme.
+
 Form inputs retain native events for React Hook Form and chart field focus.
 Keep chart components mounted across tab changes to preserve chart state, and
 dispatch a resize event after revealing a chart or changing the sidebar width.

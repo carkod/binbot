@@ -1,4 +1,4 @@
-import { Badge, Box, Button, Card, Grid, Group } from "@mantine/core";
+import { Badge, Box, Button, Card, Group, SimpleGrid } from "@mantine/core";
 import type { FC } from "react";
 import { useNavigate } from "react-router";
 import {
@@ -119,241 +119,98 @@ const GridLadderCard: FC<GridLadderCardProps> = ({
         <Box fz="xs" c="dimmed" mb={8} component="div">
           {ladder.exchange} / {ladder.market_type}
         </Box>
-        <Grid>
-          <Grid.Col
-            span={{
-              base: 6,
-            }}
-          >
-            Entry time
-          </Grid.Col>
-          <Grid.Col
-            span={{
-              base: 6,
-            }}
-            ta="right"
-          >
-            {formatTimestamp(ladder.created_at)}
-          </Grid.Col>
-        </Grid>
-        <Grid>
-          <Grid.Col
-            span={{
-              base: 6,
-            }}
-          >
-            Range
-          </Grid.Col>
-          <Grid.Col
-            span={{
-              base: 6,
-            }}
-            ta="right"
-          >
+        <SimpleGrid cols={2}>
+          <Box>Entry time</Box>
+          <Box ta="right">{formatTimestamp(ladder.created_at)}</Box>
+        </SimpleGrid>
+        <SimpleGrid cols={2}>
+          <Box>Range</Box>
+          <Box ta="right">
             {ladder.range_low} → {ladder.range_high}
-          </Grid.Col>
-        </Grid>
-        <Grid>
-          <Grid.Col
-            span={{
-              base: 6,
-            }}
-          >
-            Breakout
-          </Grid.Col>
-          <Grid.Col
-            span={{
-              base: 6,
-            }}
-            ta="right"
-          >
+          </Box>
+        </SimpleGrid>
+        <SimpleGrid cols={2}>
+          <Box>Breakout</Box>
+          <Box ta="right">
             {roundDecimals(ladder.breakout_low)} /{" "}
             {roundDecimals(ladder.breakout_high)}
-          </Grid.Col>
-        </Grid>
-        <Grid>
-          <Grid.Col
-            span={{
-              base: 6,
-            }}
-          >
-            Levels
-          </Grid.Col>
-          <Grid.Col
-            span={{
-              base: 6,
-            }}
-            ta="right"
-          >
-            {ladder.level_count}
-          </Grid.Col>
-        </Grid>
-        <Grid>
-          <Grid.Col
-            span={{
-              base: 6,
-            }}
-          >
-            Step
-          </Grid.Col>
-          <Grid.Col
-            span={{
-              base: 6,
-            }}
-            ta="right"
-          >
-            {roundDecimals(ladder.grid_step)}
-          </Grid.Col>
-        </Grid>
-        <Grid>
-          <Grid.Col
-            span={{
-              base: 6,
-            }}
-          >
-            Margin
-          </Grid.Col>
-          <Grid.Col
-            span={{
-              base: 6,
-            }}
-            ta="right"
-          >
+          </Box>
+        </SimpleGrid>
+        <SimpleGrid cols={2}>
+          <Box>Levels</Box>
+          <Box ta="right">{ladder.level_count}</Box>
+        </SimpleGrid>
+        <SimpleGrid cols={2}>
+          <Box>Step</Box>
+          <Box ta="right">{roundDecimals(ladder.grid_step)}</Box>
+        </SimpleGrid>
+        <SimpleGrid cols={2}>
+          <Box>Margin</Box>
+          <Box ta="right">
             {roundDecimals(ladder.reserved_margin)} /{" "}
             {roundDecimals(ladder.total_margin)}
-          </Grid.Col>
-        </Grid>
-        <Grid>
-          <Grid.Col
-            span={{
-              base: 6,
-            }}
-          >
-            Utilisation
-          </Grid.Col>
-          <Grid.Col
-            span={{
-              base: 6,
-            }}
-            ta="right"
-          >
-            {utilization.toFixed(2)}%
-          </Grid.Col>
-        </Grid>
+          </Box>
+        </SimpleGrid>
+        <SimpleGrid cols={2}>
+          <Box>Utilisation</Box>
+          <Box ta="right">{utilization.toFixed(2)}%</Box>
+        </SimpleGrid>
         {isActive ? (
           <>
-            <Grid>
-              <Grid.Col
-                span={{
-                  base: 6,
-                }}
-              >
-                TP cycled
-              </Grid.Col>
-              <Grid.Col
+            <SimpleGrid cols={2}>
+              <Box>TP cycled</Box>
+              <Box
                 className={`value-right ${levelPnl >= 0 ? "tone-success" : "tone-danger"}`}
-                span={{
-                  base: 6,
-                }}
               >
                 {levelPnl.toFixed(4)}
-              </Grid.Col>
-            </Grid>
-            <Grid>
-              <Grid.Col
-                span={{
-                  base: 6,
-                }}
-              >
-                Unrealized
-              </Grid.Col>
-              <Grid.Col
+              </Box>
+            </SimpleGrid>
+            <SimpleGrid cols={2}>
+              <Box>Unrealized</Box>
+              <Box
                 className={`value-right ${ladder.unrealized_pnl >= 0 ? "tone-success" : "tone-danger"}`}
-                span={{
-                  base: 6,
-                }}
               >
                 {ladder.unrealized_pnl.toFixed(4)}
-              </Grid.Col>
-            </Grid>
+              </Box>
+            </SimpleGrid>
           </>
         ) : (
           <>
             {(levelPnl !== 0 || hasCloseAdjustment) && (
-              <Grid>
-                <Grid.Col
-                  span={{
-                    base: 6,
-                  }}
-                >
-                  TP cycled
-                </Grid.Col>
-                <Grid.Col
+              <SimpleGrid cols={2}>
+                <Box>TP cycled</Box>
+                <Box
                   className={`value-right ${levelPnl >= 0 ? "tone-success" : "tone-danger"}`}
-                  span={{
-                    base: 6,
-                  }}
                 >
                   {levelPnl.toFixed(4)}
-                </Grid.Col>
-              </Grid>
+                </Box>
+              </SimpleGrid>
             )}
             {hasCloseAdjustment && (
-              <Grid>
-                <Grid.Col
-                  span={{
-                    base: 6,
-                  }}
-                >
-                  Close adjustment
-                </Grid.Col>
-                <Grid.Col
+              <SimpleGrid cols={2}>
+                <Box>Close adjustment</Box>
+                <Box
                   className={`value-right ${closeAdjustmentPnl >= 0 ? "tone-success" : "tone-danger"}`}
-                  span={{
-                    base: 6,
-                  }}
                 >
                   {closeAdjustmentPnl.toFixed(4)}
-                </Grid.Col>
-              </Grid>
+                </Box>
+              </SimpleGrid>
             )}
             {ladder.status === GridLadderStatus.CLOSED &&
               ladder.closed_at != null && (
-                <Grid>
-                  <Grid.Col
-                    span={{
-                      base: 6,
-                    }}
-                  >
-                    Exit time
-                  </Grid.Col>
-                  <Grid.Col
-                    span={{
-                      base: 6,
-                    }}
-                    ta="right"
-                  >
-                    {formatTimestamp(ladder.closed_at)}
-                  </Grid.Col>
-                </Grid>
+                <SimpleGrid cols={2}>
+                  <Box>Exit time</Box>
+                  <Box ta="right">{formatTimestamp(ladder.closed_at)}</Box>
+                </SimpleGrid>
               )}
-            <Grid>
-              <Grid.Col
-                span={{
-                  base: 6,
-                }}
-              >
-                Total realized
-              </Grid.Col>
-              <Grid.Col
+            <SimpleGrid cols={2}>
+              <Box>Total realized</Box>
+              <Box
                 className={`value-right ${totalPnl >= 0 ? "tone-success" : "tone-danger"}`}
-                span={{
-                  base: 6,
-                }}
               >
                 {totalPnl.toFixed(4)}
-              </Grid.Col>
-            </Grid>
+              </Box>
+            </SimpleGrid>
           </>
         )}
         <hr />

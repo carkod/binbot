@@ -5,6 +5,7 @@ import {
   Grid,
   Group,
   NativeSelect,
+  SimpleGrid,
   Text,
   TextInput,
   Title,
@@ -185,24 +186,14 @@ const GridLaddersPage: FC = () => {
           alignItems: "flex-end",
         }}
       >
-        <Grid.Col
-          span={{
-            base: 12,
-            md: 2,
-          }}
-        >
+        <Grid.Col span={{ base: 12, md: 2 }}>
           <TextInput
             placeholder="Search by symbol"
             value={symbolState}
             onChange={(e) => setSymbolState(e.target.value)}
           />
         </Grid.Col>
-        <Grid.Col
-          span={{
-            base: 12,
-            md: 2,
-          }}
-        >
+        <Grid.Col span={{ base: 12, md: 2 }}>
           <NativeSelect
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
@@ -215,12 +206,7 @@ const GridLaddersPage: FC = () => {
             ))}
           </NativeSelect>
         </Grid.Col>
-        <Grid.Col
-          span={{
-            base: 12,
-            md: 2,
-          }}
-        >
+        <Grid.Col span={{ base: 12, md: 2 }}>
           <BotsDateFilter
             title="Start date"
             controlId="gridStartDate"
@@ -228,12 +214,7 @@ const GridLaddersPage: FC = () => {
             handleDateChange={setStartDate}
           />
         </Grid.Col>
-        <Grid.Col
-          span={{
-            base: 12,
-            md: 2,
-          }}
-        >
+        <Grid.Col span={{ base: 12, md: 2 }}>
           <BotsDateFilter
             title="End date"
             controlId="gridEndDate"
@@ -241,12 +222,7 @@ const GridLaddersPage: FC = () => {
             handleDateChange={setEndDate}
           />
         </Grid.Col>
-        <Grid.Col
-          span={{
-            base: 12,
-            md: "content",
-          }}
-        >
+        <Grid.Col span={{ base: 12, md: "content" }}>
           <Button
             onClick={() =>
               setSelectedCards(
@@ -275,18 +251,11 @@ const GridLaddersPage: FC = () => {
       {filteredLadders.length === 0 ? (
         <Text>No grid ladders deployed yet</Text>
       ) : (
-        <Grid>
+        <SimpleGrid cols={{ base: 1, lg: 3 }}>
           {filteredLadders.map((ladder) => {
             const gridReturnPct = calculateGridReturnPct(ladder);
             return (
-              <Grid.Col
-                key={ladder.id}
-                span={{
-                  base: 12,
-                  lg: 4,
-                }}
-                mb={16}
-              >
+              <Box key={ladder.id} mb={16}>
                 <GridLadderCard
                   ladder={ladder}
                   gridReturnPct={gridReturnPct}
@@ -295,10 +264,10 @@ const GridLaddersPage: FC = () => {
                   onClose={setLadderToClose}
                   onDelete={setLadderToDelete}
                 />
-              </Grid.Col>
+              </Box>
             );
           })}
-        </Grid>
+        </SimpleGrid>
       )}
 
       <ConfirmModal

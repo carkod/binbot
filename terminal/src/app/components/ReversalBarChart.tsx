@@ -1,6 +1,6 @@
 import { Box, Card, Grid, Group, Text, Title } from "@mantine/core";
 import moment from "moment";
-import { type FC } from "react";
+import { type CSSProperties, type FC } from "react";
 import { type GainerLosersData } from "../../features/marketApiSlice";
 import { useBreakpoint } from "../hooks";
 import BarChart from "./BarChart";
@@ -28,14 +28,7 @@ const ReversalBarChart: FC<ReversalBarChartProps> = ({ chartData, legend }) => {
     <Card mb="md">
       <Box mb="sm">
         <Grid>
-          <Grid.Col
-            span={{
-              base: 12,
-              sm: 1,
-              md: 1,
-              lg: 1,
-            }}
-          >
+          <Grid.Col span={{ base: 12, sm: 1 }}>
             <i
               className={`metric-icon fa fa-suitcase ${
                 gainers > losers
@@ -46,14 +39,7 @@ const ReversalBarChart: FC<ReversalBarChartProps> = ({ chartData, legend }) => {
               }`}
             />
           </Grid.Col>
-          <Grid.Col
-            span={{
-              base: 12,
-              sm: 11,
-              md: 11,
-              lg: 11,
-            }}
-          >
+          <Grid.Col span={{ base: 12, sm: 11 }}>
             <Title order={5} mt={0}>
               Gainers vs. Losers by Volume
             </Title>
@@ -75,7 +61,10 @@ const ReversalBarChart: FC<ReversalBarChartProps> = ({ chartData, legend }) => {
             legend.map((x, i) => {
               return (
                 <span key={i} className="chart-legend-label">
-                  <i style={{ color: x.color }} className="fa fa-circle" />
+                  <i
+                    style={{ "--chart-legend-color": x.color } as CSSProperties}
+                    className="fa fa-circle chart-legend-dot"
+                  />
                   {x.name}
                 </span>
               );

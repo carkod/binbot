@@ -1,4 +1,4 @@
-import { Badge, Box, Card, Grid, Text, Title } from "@mantine/core";
+import { Badge, Box, Card, Grid, SimpleGrid, Text, Title } from "@mantine/core";
 import TVChartContainer, { Exchange } from "binbot-charts";
 import { useMemo, useState, type FC } from "react";
 import { useParams } from "react-router";
@@ -84,77 +84,59 @@ const GridLadderDetail: FC = () => {
   return (
     <div className="content">
       <Box w="100%">
-        <Grid>
-          <Grid.Col
-            span={{
-              base: 12,
-              sm: 12,
-              md: 12,
-            }}
-          >
-            <Card
+        <Card
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            minHeight: "580px",
+          }}
+          mb="md"
+        >
+          <Box mb="sm">
+            <Box
+              display="flex"
               style={{
-                display: "flex",
-                flexDirection: "column",
-                minHeight: "580px",
+                justifyContent: "space-between",
+                alignItems: "center",
               }}
-              mb="md"
+              component="div"
             >
-              <Box mb="sm">
-                <Box
-                  display="flex"
-                  style={{
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                  component="div"
+              <Title order={3} mb={0}>
+                {ladder.symbol}{" "}
+                <Badge
+                  className={prominentBadgeClass}
+                  color={returnBadgeBg(gridReturnPct)}
+                  variant="light"
                 >
-                  <Title order={3} mb={0}>
-                    {ladder.symbol}{" "}
-                    <Badge
-                      className={prominentBadgeClass}
-                      color={returnBadgeBg(gridReturnPct)}
-                      variant="light"
-                    >
-                      {gridReturnPct}%
-                    </Badge>{" "}
-                    {ladder.exchange}/{ladder.market_type}
-                  </Title>
-                  <Badge
-                    className={prominentBadgeClass}
-                    color={statusBadgeBg(ladder.status)}
-                    variant="light"
-                  >
-                    {ladder.status}
-                  </Badge>
-                </Box>
-              </Box>
-              <Box
-                style={{ flex: 1, display: "flex", flexDirection: "column" }}
+                  {gridReturnPct}%
+                </Badge>{" "}
+                {ladder.exchange}/{ladder.market_type}
+              </Title>
+              <Badge
+                className={prominentBadgeClass}
+                color={statusBadgeBg(ladder.status)}
+                variant="light"
               >
-                <TVChartContainer
-                  symbol={chartSymbol}
-                  interval={"1h" as ResolutionString}
-                  timescaleMarks={timescaleMarks}
-                  orderLines={orderLines}
-                  onTick={(tick) => updateCurrentPrice(parseFloat(tick.close))}
-                  getLatestBar={(bar) => updateCurrentPrice(parseFloat(bar[3]))}
-                  exchange={exchange}
-                  style={{ minHeight: "100%", height: "600px", width: "100%" }}
-                />
-              </Box>
-            </Card>
-          </Grid.Col>
-        </Grid>
+                {ladder.status}
+              </Badge>
+            </Box>
+          </Box>
+          <Box style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            <TVChartContainer
+              symbol={chartSymbol}
+              interval={"1h" as ResolutionString}
+              timescaleMarks={timescaleMarks}
+              orderLines={orderLines}
+              onTick={(tick) => updateCurrentPrice(parseFloat(tick.close))}
+              getLatestBar={(bar) => updateCurrentPrice(parseFloat(bar[3]))}
+              exchange={exchange}
+              style={{ minHeight: "100%", height: "600px", width: "100%" }}
+            />
+          </Box>
+        </Card>
 
         <Grid>
-          <Grid.Col
-            span={{
-              base: 12,
-              sm: 12,
-              md: 7,
-            }}
-          >
+          <Grid.Col span={{ base: 12, md: 7 }}>
             <Card mb="md">
               <Box
                 mb="sm"
@@ -170,187 +152,87 @@ const GridLadderDetail: FC = () => {
               </Box>
               <Box>
                 <Grid mb={8}>
-                  <Grid.Col
-                    span={{
-                      base: 12,
-                      md: 4,
-                    }}
-                  >
+                  <Grid.Col span={{ base: 12, md: 4 }}>
                     <strong>Algorithm</strong>
                   </Grid.Col>
-                  <Grid.Col
-                    span={{
-                      base: 12,
-                      md: 8,
-                    }}
-                  >
+                  <Grid.Col span={{ base: 12, md: 8 }}>
                     {ladder.algorithm_name}
                   </Grid.Col>
                 </Grid>
                 <Grid mb={8}>
-                  <Grid.Col
-                    span={{
-                      base: 12,
-                      md: 4,
-                    }}
-                  >
+                  <Grid.Col span={{ base: 12, md: 4 }}>
                     <strong>Range</strong>
                   </Grid.Col>
-                  <Grid.Col
-                    span={{
-                      base: 12,
-                      md: 8,
-                    }}
-                  >
+                  <Grid.Col span={{ base: 12, md: 8 }}>
                     {ladder.range_low} → {ladder.range_high}
                   </Grid.Col>
                 </Grid>
                 <Grid mb={8}>
-                  <Grid.Col
-                    span={{
-                      base: 12,
-                      md: 4,
-                    }}
-                  >
+                  <Grid.Col span={{ base: 12, md: 4 }}>
                     <strong>Breakout</strong>
                   </Grid.Col>
-                  <Grid.Col
-                    span={{
-                      base: 12,
-                      md: 8,
-                    }}
-                  >
+                  <Grid.Col span={{ base: 12, md: 8 }}>
                     {ladder.breakout_low} / {ladder.breakout_high}
                   </Grid.Col>
                 </Grid>
                 <Grid mb={8}>
-                  <Grid.Col
-                    span={{
-                      base: 12,
-                      md: 4,
-                    }}
-                  >
+                  <Grid.Col span={{ base: 12, md: 4 }}>
                     <strong>Current Price</strong>
                   </Grid.Col>
-                  <Grid.Col
-                    span={{
-                      base: 12,
-                      md: 8,
-                    }}
-                  >
+                  <Grid.Col span={{ base: 12, md: 8 }}>
                     {currentPrice ?? "-"}
                   </Grid.Col>
                 </Grid>
                 <Grid mb={8}>
-                  <Grid.Col
-                    span={{
-                      base: 12,
-                      md: 4,
-                    }}
-                  >
+                  <Grid.Col span={{ base: 12, md: 4 }}>
                     <strong>Position</strong>
                   </Grid.Col>
-                  <Grid.Col
-                    span={{
-                      base: 12,
-                      md: 8,
-                    }}
-                  >
+                  <Grid.Col span={{ base: 12, md: 8 }}>
                     {position.contracts > 0
                       ? position.label.toUpperCase()
                       : position.label}
                   </Grid.Col>
                 </Grid>
                 <Grid mb={8}>
-                  <Grid.Col
-                    span={{
-                      base: 12,
-                      md: 4,
-                    }}
-                  >
+                  <Grid.Col span={{ base: 12, md: 4 }}>
                     <strong>Unrealized PnL</strong>
                   </Grid.Col>
-                  <Grid.Col
-                    span={{
-                      base: 12,
-                      md: 8,
-                    }}
-                  >
+                  <Grid.Col span={{ base: 12, md: 8 }}>
                     {unrealizedPnl}
                   </Grid.Col>
                 </Grid>
                 {!isActive && (levelPnl !== 0 || hasCloseAdjustment) && (
                   <Grid mb={8}>
-                    <Grid.Col
-                      span={{
-                        base: 12,
-                        md: 4,
-                      }}
-                    >
+                    <Grid.Col span={{ base: 12, md: 4 }}>
                       <strong>TP Cycled PnL</strong>
                     </Grid.Col>
-                    <Grid.Col
-                      span={{
-                        base: 12,
-                        md: 8,
-                      }}
-                    >
-                      {levelPnl}
-                    </Grid.Col>
+                    <Grid.Col span={{ base: 12, md: 8 }}>{levelPnl}</Grid.Col>
                   </Grid>
                 )}
                 {!isActive && hasCloseAdjustment && (
                   <Grid mb={8}>
-                    <Grid.Col
-                      span={{
-                        base: 12,
-                        md: 4,
-                      }}
-                    >
+                    <Grid.Col span={{ base: 12, md: 4 }}>
                       <strong>Close Adjustment</strong>
                     </Grid.Col>
-                    <Grid.Col
-                      span={{
-                        base: 12,
-                        md: 8,
-                      }}
-                    >
+                    <Grid.Col span={{ base: 12, md: 8 }}>
                       {closeAdjustmentPnl}
                     </Grid.Col>
                   </Grid>
                 )}
                 <Grid mb={8}>
-                  <Grid.Col
-                    span={{
-                      base: 12,
-                      md: 4,
-                    }}
-                  >
+                  <Grid.Col span={{ base: 12, md: 4 }}>
                     <strong>Total PnL</strong>
                   </Grid.Col>
-                  <Grid.Col
-                    span={{
-                      base: 12,
-                      md: 8,
-                    }}
-                  >
-                    {totalPnl}
-                  </Grid.Col>
+                  <Grid.Col span={{ base: 12, md: 8 }}>{totalPnl}</Grid.Col>
                 </Grid>
                 {ladder.orders.length > 0 && (
                   <>
                     <Title order={4} mt={24} mb={16}>
                       Orders
                     </Title>
-                    <Grid gap={16} mb={16}>
+                    <SimpleGrid cols={{ base: 1, lg: 2 }} spacing={16} mb={16}>
                       {ladder.orders.map((order) => (
-                        <Grid.Col
-                          key={order.id}
-                          span={{
-                            base: 12,
-                            lg: 6,
-                          }}
-                        >
+                        <Box key={order.id}>
                           <Card mb="md" h="100%">
                             <Box>
                               <Box
@@ -389,20 +271,14 @@ const GridLadderDetail: FC = () => {
                               </Box>
                             </Box>
                           </Card>
-                        </Grid.Col>
+                        </Box>
                       ))}
-                    </Grid>
+                    </SimpleGrid>
                   </>
                 )}
-                <Grid gap={16} mt={8}>
+                <SimpleGrid cols={{ base: 1, lg: 2 }} spacing={16} mt={8}>
                   {ladder.levels.map((level) => (
-                    <Grid.Col
-                      key={level.id}
-                      span={{
-                        base: 12,
-                        lg: 6,
-                      }}
-                    >
+                    <Box key={level.id}>
                       <Card mb="md" h="100%">
                         <Box>
                           <Box
@@ -441,19 +317,13 @@ const GridLadderDetail: FC = () => {
                           </Box>
                         </Box>
                       </Card>
-                    </Grid.Col>
+                    </Box>
                   ))}
-                </Grid>
+                </SimpleGrid>
               </Box>
             </Card>
           </Grid.Col>
-          <Grid.Col
-            span={{
-              base: 12,
-              sm: 12,
-              md: 5,
-            }}
-          >
+          <Grid.Col span={{ base: 12, md: 5 }}>
             <Card mb="md">
               <Box mb="sm">
                 <Title order={3} mb={0}>

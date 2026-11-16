@@ -4,6 +4,7 @@ import {
   Grid,
   Group,
   Input,
+  SimpleGrid,
   Stack,
   Switch,
   Tabs,
@@ -69,13 +70,7 @@ const TakeProfit: FC = () => {
       <Box w="100%">
         <Grid type="container" breakpoints={formGridBreakpoints} my={16}>
           {bot.trailing ? (
-            <Grid.Col
-              span={{
-                base: 12,
-                sm: 12,
-                md: 6,
-              }}
-            >
+            <Grid.Col span={{ base: 12, md: 6 }}>
               <Input.Label htmlFor="trailing_profit">
                 Trail profit at{" "}
                 <Text c="danger.8" component="span">
@@ -111,13 +106,7 @@ const TakeProfit: FC = () => {
               </Group>
             </Grid.Col>
           ) : (
-            <Grid.Col
-              span={{
-                base: 12,
-                sm: 12,
-                md: 6,
-              }}
-            >
+            <Grid.Col span={{ base: 12, md: 6 }}>
               <Input.Label htmlFor="take_profit">
                 Take profit at{" "}
                 <Text c="danger.8" component="span">
@@ -153,13 +142,7 @@ const TakeProfit: FC = () => {
               )}
             </Grid.Col>
           )}
-          <Grid.Col
-            span={{
-              base: 12,
-              sm: 12,
-              md: 3,
-            }}
-          >
+          <Grid.Col span={{ base: 12, md: 3 }}>
             <Stack gap={4} mb="sm">
               <Input.Label htmlFor="trailing">Trailing</Input.Label>
               <br />
@@ -181,13 +164,7 @@ const TakeProfit: FC = () => {
               </Input.Description>
             </Stack>
           </Grid.Col>
-          <Grid.Col
-            span={{
-              base: 12,
-              sm: 12,
-              md: 3,
-            }}
-          >
+          <Grid.Col span={{ base: 12, md: 3 }}>
             <Stack gap={4} mb="sm">
               <Input.Label htmlFor="dynamic_trailing">
                 Dynamic trailing
@@ -215,15 +192,13 @@ const TakeProfit: FC = () => {
             </Stack>
           </Grid.Col>
         </Grid>
-        <Grid type="container" breakpoints={formGridBreakpoints} my={16}>
+        <SimpleGrid
+          cols={{ base: 1, [formGridBreakpoints.md]: 2 }}
+          type="container"
+          my={16}
+        >
           {bot.trailing && (
-            <Grid.Col
-              span={{
-                base: 12,
-                sm: 12,
-                md: 6,
-              }}
-            >
+            <Box>
               <Input.Label htmlFor="trailing_deviation">
                 Trailing deviation
               </Input.Label>
@@ -257,9 +232,9 @@ const TakeProfit: FC = () => {
                   %
                 </Text>
               </Group>
-            </Grid.Col>
+            </Box>
           )}
-        </Grid>
+        </SimpleGrid>
       </Box>
     </Tabs.Panel>
   );

@@ -127,16 +127,7 @@ export default function BotInfo({ bot }: BotInfoProps) {
                             dealData = JSON.stringify(dealData);
                           }
                           return (
-                            <Box
-                              key={i}
-                              py="xs"
-                              display="flex"
-                              className="detail-row"
-                              style={{
-                                justifyContent: "space-between",
-                                alignItems: "flex-start",
-                              }}
-                            >
+                            <Box key={i} className="detail-row">
                               <Text component="span" size="xs">
                                 {k}
                               </Text>
@@ -152,15 +143,7 @@ export default function BotInfo({ bot }: BotInfoProps) {
                             </Box>
                           );
                         })}
-                      <Box
-                        py="xs"
-                        display="flex"
-                        className="detail-row"
-                        style={{
-                          justifyContent: "space-between",
-                          alignItems: "flex-start",
-                        }}
-                      >
+                      <Box className="detail-row">
                         <Text component="span" size="xs">
                           deal duration
                         </Text>

@@ -1,5 +1,13 @@
 import { formGridBreakpoints } from "../../theme";
-import { Box, Grid, Group, Input, Tabs, Text, TextInput } from "@mantine/core";
+import {
+  Box,
+  Group,
+  Input,
+  SimpleGrid,
+  Tabs,
+  Text,
+  TextInput,
+} from "@mantine/core";
 import { type FC, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import type { RecoveryParams } from "../../features/bots/botInitialState";
@@ -76,14 +84,12 @@ const StopLossTab: FC = () => {
       mb={16}
     >
       <Box w="100%">
-        <Grid type="container" breakpoints={formGridBreakpoints} my={16}>
-          <Grid.Col
-            span={{
-              base: 12,
-              sm: 12,
-              md: 4,
-            }}
-          >
+        <SimpleGrid
+          cols={{ base: 1, [formGridBreakpoints.md]: 3 }}
+          type="container"
+          my={16}
+        >
+          <Box>
             <Input.Label htmlFor="stop_loss">
               Stop loss{" "}
               <Text c="danger.8" component="span">
@@ -119,17 +125,15 @@ const StopLossTab: FC = () => {
                 <Input.Error>{errors.stop_loss?.message}</Input.Error>
               )}
             </Group>
-          </Grid.Col>
-        </Grid>
+          </Box>
+        </SimpleGrid>
         {recoveryEnabled && (
-          <Grid type="container" breakpoints={formGridBreakpoints} my={16}>
-            <Grid.Col
-              span={{
-                base: 12,
-                sm: 12,
-                md: 3,
-              }}
-            >
+          <SimpleGrid
+            cols={{ base: 1, [formGridBreakpoints.md]: 4 }}
+            type="container"
+            my={16}
+          >
+            <Box>
               <Input.Label htmlFor="recovery_stop_loss_pct">
                 Recovery stop loss
               </Input.Label>
@@ -152,8 +156,8 @@ const StopLossTab: FC = () => {
                   %
                 </Text>
               </Group>
-            </Grid.Col>
-          </Grid>
+            </Box>
+          </SimpleGrid>
         )}
       </Box>
     </Tabs.Panel>

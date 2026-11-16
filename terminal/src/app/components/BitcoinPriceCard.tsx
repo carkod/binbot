@@ -12,14 +12,7 @@ const BitcoinPriceCard: FC<BitcoinPriceCardProps> = ({ btcCloseSeries }) => {
     <Card mb="md">
       <Box mb="sm">
         <Grid>
-          <Grid.Col
-            span={{
-              base: 12,
-              sm: 1,
-              md: 1,
-              lg: 1,
-            }}
-          >
+          <Grid.Col span={{ base: 12, sm: 1 }}>
             <Box
               fz="1.875rem"
               c="warning.5"
@@ -27,14 +20,7 @@ const BitcoinPriceCard: FC<BitcoinPriceCardProps> = ({ btcCloseSeries }) => {
               component="i"
             />
           </Grid.Col>
-          <Grid.Col
-            span={{
-              base: 12,
-              sm: 11,
-              md: 11,
-              lg: 11,
-            }}
-          >
+          <Grid.Col span={{ base: 12, sm: 11 }}>
             <Title
               order={5}
               mt={0}

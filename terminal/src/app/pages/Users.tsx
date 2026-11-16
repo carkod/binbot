@@ -2,8 +2,8 @@ import {
   Box,
   Button,
   Card,
-  Grid,
   Menu,
+  SimpleGrid,
   Table,
   Title,
   VisuallyHidden,
@@ -33,29 +33,19 @@ const UsersPage: FC = () => {
     <Box w="100%">
       <Card mb="md" mt={16}>
         <Box mb="sm">
-          <Grid
+          <SimpleGrid
+            cols={2}
             style={{
               alignItems: "center",
             }}
           >
-            <Grid.Col
-              span={{
-                base: "auto",
-              }}
-            >
-              <Title order={4}>User</Title>
-            </Grid.Col>
-            <Grid.Col
-              span={{
-                base: "auto",
-              }}
-              ta="right"
-            >
+            <Title order={4}>User</Title>
+            <Box ta="right">
               <Button onClick={() => navigate("/user/new")} type="button">
                 Create User
               </Button>
-            </Grid.Col>
-          </Grid>
+            </Box>
+          </SimpleGrid>
         </Box>
         <Box>
           <Box className="table-scroll">

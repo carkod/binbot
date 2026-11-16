@@ -1,4 +1,4 @@
-import { Box, Button, Grid, Tabs } from "@mantine/core";
+import { Box, Button, SimpleGrid, Tabs } from "@mantine/core";
 import { useEffect, useState, type FC } from "react";
 import { useNavigate, useParams } from "react-router";
 import {
@@ -86,45 +86,26 @@ const BotDetailTabs: FC<{
       keepMounted={true}
       keepMountedMode="display-none"
     >
-      <Grid>
-        <Grid.Col
-          span={{
-            base: 12,
-            sm: 12,
-          }}
-        >
-          <Tabs.List>
-            <>
-              <Tabs.Tab value={TabsKeys.MAIN}>Base order</Tabs.Tab>
-            </>
-            <>
-              <Tabs.Tab value={TabsKeys.STOPLOSS}>Stop Loss</Tabs.Tab>
-            </>
-            <>
-              <Tabs.Tab value={TabsKeys.TAKEPROFIT}>Take Profit</Tabs.Tab>
-            </>
-          </Tabs.List>
-        </Grid.Col>
-        <Grid.Col
-          span={{
-            base: 12,
-            sm: 12,
-          }}
-        >
-          <Box>
-            <BaseOrderTab fiatAvailable={fiatAvailable} />
-            <StopLossTab />
-            <TakeProfit />
-          </Box>
-        </Grid.Col>
-      </Grid>
-      <Grid>
-        <Grid.Col
-          span={{
-            base: 12,
-            lg: 3,
-          }}
-        >
+      <SimpleGrid cols={1}>
+        <Tabs.List>
+          <>
+            <Tabs.Tab value={TabsKeys.MAIN}>Base order</Tabs.Tab>
+          </>
+          <>
+            <Tabs.Tab value={TabsKeys.STOPLOSS}>Stop Loss</Tabs.Tab>
+          </>
+          <>
+            <Tabs.Tab value={TabsKeys.TAKEPROFIT}>Take Profit</Tabs.Tab>
+          </>
+        </Tabs.List>
+        <Box>
+          <BaseOrderTab fiatAvailable={fiatAvailable} />
+          <StopLossTab />
+          <TakeProfit />
+        </Box>
+      </SimpleGrid>
+      <SimpleGrid cols={{ base: 1, lg: 4 }}>
+        <Box>
           {bot.status !== BotStatus.COMPLETED && (
             <Button
               color="primary"
@@ -141,13 +122,8 @@ const BotDetailTabs: FC<{
                 : "Deal"}
             </Button>
           )}
-        </Grid.Col>
-        <Grid.Col
-          span={{
-            base: 12,
-            lg: 3,
-          }}
-        >
+        </Box>
+        <Box>
           {bot.status === BotStatus.ACTIVE &&
             Object.keys(bot.deal).length > 0 && (
               <Button
@@ -159,13 +135,8 @@ const BotDetailTabs: FC<{
                 Panic close
               </Button>
             )}
-        </Grid.Col>
-        <Grid.Col
-          span={{
-            base: 12,
-            lg: 3,
-          }}
-        >
+        </Box>
+        <Box>
           {(bot.status !== BotStatus.ACTIVE ||
             Object.keys(bot.deal).length === 0) && (
             <Button
@@ -177,8 +148,8 @@ const BotDetailTabs: FC<{
               Save
             </Button>
           )}
-        </Grid.Col>
-      </Grid>
+        </Box>
+      </SimpleGrid>
     </Tabs>
   );
 };

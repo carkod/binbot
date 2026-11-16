@@ -75,23 +75,13 @@ const BotCard: FC<BotCardProps> = ({
       <Box>
         <Box w="100%">
           <Grid>
-            <Grid.Col
-              span={{
-                base: 12,
-                md: 7,
-              }}
-            >
+            <Grid.Col span={{ base: 12, md: 7 }}>
               <Title order={5}>{bot.pair}</Title>
               <Text c="dimmed" fw={300}>
                 {bot.name}
               </Text>
             </Grid.Col>
-            <Grid.Col
-              span={{
-                base: 12,
-                md: 5,
-              }}
-            >
+            <Grid.Col span={{ base: 12, md: 5 }}>
               <Badge
                 color={botProfit > 0 ? "success" : "danger"}
                 variant="light"
@@ -119,57 +109,27 @@ const BotCard: FC<BotCardProps> = ({
           </Grid>
           <hr />
           <Grid>
-            <Grid.Col
-              span={{
-                base: 7,
-                md: 6,
-              }}
-            >
+            <Grid.Col span={{ base: 7, md: 6 }}>
               <Text>Mode</Text>
             </Grid.Col>
-            <Grid.Col
-              span={{
-                base: 5,
-                md: 6,
-              }}
-            >
+            <Grid.Col span={{ base: 5, md: 6 }}>
               <Text tt="capitalize">{bot.mode ? bot.mode : "Unknown"}</Text>
             </Grid.Col>
           </Grid>
           <Grid>
-            <Grid.Col
-              span={{
-                base: 7,
-                md: 6,
-              }}
-            >
+            <Grid.Col span={{ base: 7, md: 6 }}>
               <Text>Position</Text>
             </Grid.Col>
-            <Grid.Col
-              span={{
-                base: 5,
-                md: 6,
-              }}
-            >
+            <Grid.Col span={{ base: 5, md: 6 }}>
               <Text tt="capitalize">{bot.position}</Text>
             </Grid.Col>
           </Grid>
           {bot.market_type === MarketType.FUTURES && (
             <Grid>
-              <Grid.Col
-                span={{
-                  base: 7,
-                  md: 6,
-                }}
-              >
+              <Grid.Col span={{ base: 7, md: 6 }}>
                 <Text>Leverage</Text>
               </Grid.Col>
-              <Grid.Col
-                span={{
-                  base: 5,
-                  md: 6,
-                }}
-              >
+              <Grid.Col span={{ base: 5, md: 6 }}>
                 <Text>
                   {bot.futures_leverage != null
                     ? `${bot.futures_leverage}x`
@@ -179,20 +139,10 @@ const BotCard: FC<BotCardProps> = ({
             </Grid>
           )}
           <Grid>
-            <Grid.Col
-              span={{
-                base: 7,
-                md: 6,
-              }}
-            >
+            <Grid.Col span={{ base: 7, md: 6 }}>
               <Text>Open @</Text>
             </Grid.Col>
-            <Grid.Col
-              span={{
-                base: 5,
-                md: 6,
-              }}
-            >
+            <Grid.Col span={{ base: 5, md: 6 }}>
               <Text>
                 {(bot.deal?.opening_price &&
                   roundDecimals(bot.deal.opening_price, 6)) ||
@@ -202,20 +152,10 @@ const BotCard: FC<BotCardProps> = ({
           </Grid>
           {bot.deal?.opening_timestamp > 0 && (
             <Grid>
-              <Grid.Col
-                span={{
-                  base: 7,
-                  md: 6,
-                }}
-              >
+              <Grid.Col span={{ base: 7, md: 6 }}>
                 <Text>Open time</Text>
               </Grid.Col>
-              <Grid.Col
-                span={{
-                  base: 5,
-                  md: 6,
-                }}
-              >
+              <Grid.Col span={{ base: 5, md: 6 }}>
                 <Text>{formatTimestamp(bot.deal.opening_timestamp)}</Text>
               </Grid.Col>
             </Grid>
@@ -223,58 +163,28 @@ const BotCard: FC<BotCardProps> = ({
           {bot.trailing ? (
             <>
               <Grid>
-                <Grid.Col
-                  span={{
-                    base: 7,
-                    md: 6,
-                  }}
-                >
+                <Grid.Col span={{ base: 7, md: 6 }}>
                   <Text>Trailing profit</Text>
                 </Grid.Col>
-                <Grid.Col
-                  span={{
-                    base: 5,
-                    md: 6,
-                  }}
-                >
+                <Grid.Col span={{ base: 5, md: 6 }}>
                   <Text>{roundDecimals(bot.trailing_profit) + "%"}</Text>
                 </Grid.Col>
               </Grid>
               <Grid>
-                <Grid.Col
-                  span={{
-                    base: 7,
-                    md: 6,
-                  }}
-                >
+                <Grid.Col span={{ base: 7, md: 6 }}>
                   <Text>Trailing deviation</Text>
                 </Grid.Col>
-                <Grid.Col
-                  span={{
-                    base: 5,
-                    md: 6,
-                  }}
-                >
+                <Grid.Col span={{ base: 5, md: 6 }}>
                   <Text>{roundDecimals(bot.trailing_deviation) + "%"}</Text>
                 </Grid.Col>
               </Grid>
             </>
           ) : (
             <Grid>
-              <Grid.Col
-                span={{
-                  base: 7,
-                  md: 6,
-                }}
-              >
+              <Grid.Col span={{ base: 7, md: 6 }}>
                 <Text>Take profit</Text>
               </Grid.Col>
-              <Grid.Col
-                span={{
-                  base: 5,
-                  md: 6,
-                }}
-              >
+              <Grid.Col span={{ base: 5, md: 6 }}>
                 <Text>{roundDecimals(bot.take_profit) + "%"}</Text>
               </Grid.Col>
             </Grid>
@@ -282,20 +192,10 @@ const BotCard: FC<BotCardProps> = ({
 
           {bot.stop_loss > 0 && (
             <Grid>
-              <Grid.Col
-                span={{
-                  base: 7,
-                  md: 6,
-                }}
-              >
+              <Grid.Col span={{ base: 7, md: 6 }}>
                 <Text>Stop loss</Text>
               </Grid.Col>
-              <Grid.Col
-                span={{
-                  base: 5,
-                  md: 6,
-                }}
-              >
+              <Grid.Col span={{ base: 5, md: 6 }}>
                 <Text>{roundDecimals(bot.stop_loss) + "%"}</Text>
               </Grid.Col>
             </Grid>
@@ -303,40 +203,20 @@ const BotCard: FC<BotCardProps> = ({
 
           {bot.deal?.total_commissions > 0 && (
             <Grid>
-              <Grid.Col
-                span={{
-                  base: 7,
-                  md: 6,
-                }}
-              >
+              <Grid.Col span={{ base: 7, md: 6 }}>
                 <Text>Commissions</Text>
               </Grid.Col>
-              <Grid.Col
-                span={{
-                  base: 5,
-                  md: 6,
-                }}
-              >
+              <Grid.Col span={{ base: 5, md: 6 }}>
                 <Text>{`${bot.deal.total_commissions} ${bot.quote_asset}`}</Text>
               </Grid.Col>
             </Grid>
           )}
           {bot.deal?.total_interests > 0 && (
             <Grid>
-              <Grid.Col
-                span={{
-                  base: 7,
-                  md: 6,
-                }}
-              >
+              <Grid.Col span={{ base: 7, md: 6 }}>
                 <Text>Interests</Text>
               </Grid.Col>
-              <Grid.Col
-                span={{
-                  base: 5,
-                  md: 6,
-                }}
-              >
+              <Grid.Col span={{ base: 5, md: 6 }}>
                 <Text>{`${bot.deal.total_interests} ${bot.quote_asset}`}</Text>
               </Grid.Col>
             </Grid>
@@ -344,40 +224,20 @@ const BotCard: FC<BotCardProps> = ({
 
           {bot.deal?.closing_timestamp > 0 && (
             <Grid>
-              <Grid.Col
-                span={{
-                  base: 7,
-                  md: 6,
-                }}
-              >
+              <Grid.Col span={{ base: 7, md: 6 }}>
                 <Text>Close time</Text>
               </Grid.Col>
-              <Grid.Col
-                span={{
-                  base: 5,
-                  md: 6,
-                }}
-              >
+              <Grid.Col span={{ base: 5, md: 6 }}>
                 <Text>{formatTimestamp(bot.deal.closing_timestamp)}</Text>
               </Grid.Col>
             </Grid>
           )}
           {bot.deal?.closing_timestamp > 0 && (
             <Grid>
-              <Grid.Col
-                span={{
-                  base: 7,
-                  md: 6,
-                }}
-              >
+              <Grid.Col span={{ base: 7, md: 6 }}>
                 <Text>Duration</Text>
               </Grid.Col>
-              <Grid.Col
-                span={{
-                  base: 5,
-                  md: 6,
-                }}
-              >
+              <Grid.Col span={{ base: 5, md: 6 }}>
                 <Text>{renderDuration(bot)}</Text>
               </Grid.Col>
             </Grid>
@@ -409,12 +269,7 @@ const BotCard: FC<BotCardProps> = ({
           color="info"
           type="button"
         >
-          <i
-            className="fa-solid fa-edit"
-            style={{
-              pointerEvents: "none",
-            }}
-          />
+          <i className="fa-solid fa-edit bot-edit-icon" />
         </Button>
         <Button
           onClick={() => handleSelection(bot.id)}

@@ -25,16 +25,7 @@ const LogInfo: FC<{
         <Box>
           {[...events].reverse().map((item, i) => (
             <Stack key={i} gap={0}>
-              <Box
-                key={i}
-                py="xs"
-                display="flex"
-                className="detail-row"
-                style={{
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                }}
-              >
+              <Box key={i} className="detail-row">
                 <Text>{item}</Text>
               </Box>
             </Stack>

@@ -1,4 +1,5 @@
-import { Card, Grid } from "@mantine/core";
+import { Card, SimpleGrid } from "@mantine/core";
+import type { CSSProperties } from "react";
 import { computeWinnerLoserProportions } from "../../utils/dashboard-computations";
 import { type MarketType } from "../../utils/enums";
 import { type DashboardTicker } from "../../utils/gainers-losers";
@@ -25,10 +26,16 @@ export default function GainersLosers({
       <Card mb="md">
         <div className="p-line-chart">
           <div className="p-line-chart__box">
-            <div style={{ width: perGainers }} className="p-line-chart--left">
+            <div
+              style={{ "--market-share": perGainers } as CSSProperties}
+              className="p-line-chart--left"
+            >
               <span>{roundDecimals(gainerAccumulator)}</span>
             </div>
-            <div style={{ width: perLosers }} className="p-line-chart--right">
+            <div
+              style={{ "--market-share": perLosers } as CSSProperties}
+              className="p-line-chart--right"
+            >
               <span>{roundDecimals(loserAccumulator)}</span>
             </div>
           </div>
@@ -42,30 +49,18 @@ export default function GainersLosers({
           </div>
         </div>
 
-        <Grid gap={0}>
-          <Grid.Col
-            span={{
-              base: "auto",
-            }}
-          >
-            <GainersLosersCard
-              data={gainersData}
-              market_type={market_type}
-              title="Today's gainers"
-            />
-          </Grid.Col>
-          <Grid.Col
-            span={{
-              base: "auto",
-            }}
-          >
-            <GainersLosersCard
-              data={losersData}
-              market_type={market_type}
-              title="Today's losers"
-            />
-          </Grid.Col>
-        </Grid>
+        <SimpleGrid cols={2} spacing="lg">
+          <GainersLosersCard
+            data={gainersData}
+            market_type={market_type}
+            title="Today's gainers"
+          />
+          <GainersLosersCard
+            data={losersData}
+            market_type={market_type}
+            title="Today's losers"
+          />
+        </SimpleGrid>
       </Card>
     </div>
   );

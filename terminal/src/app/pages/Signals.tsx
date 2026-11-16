@@ -1,4 +1,4 @@
-import { Box, Card, Grid, Table, Text, Title } from "@mantine/core";
+import { Box, Card, SimpleGrid, Table, Text, Title } from "@mantine/core";
 import { useMemo } from "react";
 import { useGetBalanceQuery } from "../../features/balanceApiSlice";
 import { useGetAlgoRankingQuery } from "../../features/bots/botsApiSlice";
@@ -71,19 +71,12 @@ const SignalsPage = () => {
   }, [signals]);
   return (
     <div className="content">
-      <Grid>
+      <SimpleGrid cols={{ base: 1, lg: 2 }}>
         {(loadingAlgoRanking ||
           loadingStrategyNames ||
           strategyNamesError ||
           filteredAlgoRanking.length > 0) && (
-          <Grid.Col
-            span={{
-              base: 12,
-              md: 12,
-              lg: 6,
-            }}
-            className="signals-ranking"
-          >
+          <Box className="signals-ranking">
             {loadingAlgoRanking || loadingStrategyNames ? (
               <CardLoadingSpinner label="strategy ranking" />
             ) : (
@@ -160,17 +153,10 @@ const SignalsPage = () => {
                 </Box>
               </Card>
             )}
-          </Grid.Col>
+          </Box>
         )}
         {(loadingSignals || rankedSignalAlgorithms.length > 0) && (
-          <Grid.Col
-            span={{
-              base: 12,
-              md: 12,
-              lg: 6,
-            }}
-            className="signals-ranking"
-          >
+          <Box className="signals-ranking">
             {loadingSignals ? (
               <CardLoadingSpinner label="signal ranking" />
             ) : (
@@ -230,9 +216,9 @@ const SignalsPage = () => {
                 </Box>
               </Card>
             )}
-          </Grid.Col>
+          </Box>
         )}
-      </Grid>
+      </SimpleGrid>
     </div>
   );
 };

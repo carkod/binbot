@@ -4,15 +4,7 @@ import { renderDuration } from "../../utils/time";
 const BotInfoDuration = (bot: Bot) => {
   if (bot.deal) {
     return (
-      <Box
-        py="xs"
-        display="flex"
-        className="detail-row"
-        style={{
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-        }}
-      >
+      <Box className="detail-row">
         <strong>duration</strong>
         {renderDuration(bot)}
       </Box>

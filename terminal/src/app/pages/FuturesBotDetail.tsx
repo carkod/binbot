@@ -70,52 +70,24 @@ export const FuturesBotDetail: FC<{}> = () => {
     <SymbolProvider marketType={currentMarketType}>
       <div className="content">
         <Box w="100%">
-          <Grid>
-            <Grid.Col
-              span={{
-                base: 12,
-                sm: 12,
-                md: 12,
-              }}
-            >
-              <BotChartTabs
-                bot={bot}
-                setCurrentPrice={setCurrentPrice}
-                marketType={currentMarketType}
-              />
-            </Grid.Col>
-          </Grid>
+          <BotChartTabs
+            bot={bot}
+            setCurrentPrice={setCurrentPrice}
+            marketType={currentMarketType}
+          />
           {bot && id && (
             <Grid>
-              <Grid.Col
-                span={{
-                  base: 12,
-                  sm: 12,
-                  md: 7,
-                }}
-              >
+              <Grid.Col span={{ base: 12, md: 7 }}>
                 <BotInfo bot={bot} />
               </Grid.Col>
-              <Grid.Col
-                span={{
-                  base: 12,
-                  sm: 12,
-                  md: 5,
-                }}
-              >
+              <Grid.Col span={{ base: 12, md: 5 }}>
                 {bot.logs?.length > 0 && <LogsInfo events={bot.logs} />}
               </Grid.Col>
             </Grid>
           )}
 
           <Grid>
-            <Grid.Col
-              span={{
-                base: 12,
-                sm: 12,
-                md: 7,
-              }}
-            >
+            <Grid.Col span={{ base: 12, md: 7 }}>
               <Card mb="md">
                 <Box>
                   <BotDetailTabs
@@ -125,13 +97,7 @@ export const FuturesBotDetail: FC<{}> = () => {
                 </Box>
               </Card>
             </Grid.Col>
-            <Grid.Col
-              span={{
-                base: 12,
-                sm: 12,
-                md: 5,
-              }}
-            >
+            <Grid.Col span={{ base: 12, md: 5 }}>
               {accountData && (
                 <BalanceAnalysis
                   accountData={accountData}

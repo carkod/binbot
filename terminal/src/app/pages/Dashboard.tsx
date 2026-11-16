@@ -1,4 +1,12 @@
-import { Box, Card, Grid, Group, Text, Title } from "@mantine/core";
+import {
+  Box,
+  Card,
+  Divider,
+  Grid,
+  SimpleGrid,
+  Text,
+  Title,
+} from "@mantine/core";
 import { motion } from "motion/react";
 import { type FC } from "react";
 import {
@@ -68,12 +76,7 @@ export const DashboardPage: FC<{}> = () => {
           Account overview
         </Title>
         <Grid>
-          <Grid.Col
-            span={{
-              base: 12,
-              lg: 3,
-            }}
-          >
+          <Grid.Col span={{ base: 12, lg: 3 }}>
             {loadingEstimates ? (
               <CardLoadingSpinner
                 label="total balance"
@@ -85,10 +88,7 @@ export const DashboardPage: FC<{}> = () => {
                   <Box>
                     <Grid>
                       <Grid.Col
-                        span={{
-                          base: 5,
-                          md: 4,
-                        }}
+                        span={{ base: 5, md: 4 }}
                         display="flex"
                         style={{
                           justifyContent: "center",
@@ -99,12 +99,7 @@ export const DashboardPage: FC<{}> = () => {
                           <i className="fa-solid fa-money-bill" />
                         </Box>
                       </Grid.Col>
-                      <Grid.Col
-                        span={{
-                          base: 7,
-                          md: 8,
-                        }}
-                      >
+                      <Grid.Col span={{ base: 7, md: 8 }}>
                         <Text c="dimmed" ta="right">
                           Total Balance
                         </Text>
@@ -115,30 +110,16 @@ export const DashboardPage: FC<{}> = () => {
                       </Grid.Col>
                     </Grid>
                   </Box>
-                  <Group mt="sm" pt={0}>
-                    <Box mt={0} component="hr" />
-                    <Grid>
-                      <Grid.Col
-                        span={{
-                          base: "auto",
-                        }}
-                      >
-                        <Text c="dimmed" fz=".75rem" lh={1}>
-                          Left to allocate:
-                        </Text>
-                      </Grid.Col>
-                      <Grid.Col
-                        span={{
-                          base: "auto",
-                        }}
-                      >
-                        <Text c="dimmed" ta="right">
-                          {roundDecimals(accountData.fiat_available)}{" "}
-                          {accountData.fiat_currency}
-                        </Text>
-                      </Grid.Col>
-                    </Grid>
-                  </Group>
+                  <Divider my="sm" />
+                  <SimpleGrid cols={2}>
+                    <Text c="dimmed" fz=".75rem">
+                      Left to allocate:
+                    </Text>
+                    <Text c="dimmed" ta="right">
+                      {roundDecimals(accountData.fiat_available)}{" "}
+                      {accountData.fiat_currency}
+                    </Text>
+                  </SimpleGrid>
                 </Card>
               )
             )}
@@ -149,10 +130,7 @@ export const DashboardPage: FC<{}> = () => {
                 <Box>
                   <Grid>
                     <Grid.Col
-                      span={{
-                        base: 5,
-                        md: 4,
-                      }}
+                      span={{ base: 5, md: 4 }}
                       display="flex"
                       style={{
                         justifyContent: "center",
@@ -165,12 +143,7 @@ export const DashboardPage: FC<{}> = () => {
                         />
                       </Box>
                     </Grid.Col>
-                    <Grid.Col
-                      span={{
-                        base: 7,
-                        md: 8,
-                      }}
-                    >
+                    <Grid.Col span={{ base: 7, md: 8 }}>
                       <div>
                         <Text ta="right" c="dimmed">
                           <span
@@ -193,28 +166,14 @@ export const DashboardPage: FC<{}> = () => {
                     </Grid.Col>
                   </Grid>
                 </Box>
-                <Group mt="sm" pt={0}>
-                  <Box mt={0} component="hr" />
-                  <Grid>
-                    <Grid.Col
-                      span={{
-                        base: "auto",
-                      }}
-                    >
-                      <Text>(Last balance - Current real time)</Text>
-                    </Grid.Col>
-                    <Grid.Col
-                      span={{
-                        base: "auto",
-                      }}
-                    >
-                      <Text ta="right">
-                        {portfolioPnlValue !== undefined &&
-                          `${roundDecimals(portfolioPnlValue)} USDC`}
-                      </Text>
-                    </Grid.Col>
-                  </Grid>
-                </Group>
+                <Divider my="sm" />
+                <SimpleGrid cols={2}>
+                  <Text>(Last balance - Current real time)</Text>
+                  <Text ta="right">
+                    {portfolioPnlValue !== undefined &&
+                      `${roundDecimals(portfolioPnlValue)} USDC`}
+                  </Text>
+                </SimpleGrid>
               </Card>
             )}
             {loadingBenchmark ? (
@@ -224,10 +183,7 @@ export const DashboardPage: FC<{}> = () => {
                 <Box>
                   <Grid>
                     <Grid.Col
-                      span={{
-                        base: 5,
-                        md: 4,
-                      }}
+                      span={{ base: 5, md: 4 }}
                       display="flex"
                       style={{
                         justifyContent: "center",
@@ -244,12 +200,7 @@ export const DashboardPage: FC<{}> = () => {
                         />
                       </Box>
                     </Grid.Col>
-                    <Grid.Col
-                      span={{
-                        base: 7,
-                        md: 8,
-                      }}
-                    >
+                    <Grid.Col span={{ base: 7, md: 8 }}>
                       <div>
                         <Text ta="right" c="dimmed">
                           Sharpe ratio
@@ -271,29 +222,15 @@ export const DashboardPage: FC<{}> = () => {
                     </Grid.Col>
                   </Grid>
                 </Box>
-                <Group mt="sm" pt={0}>
-                  <Box mt={0} component="hr" />
-                  <Grid>
-                    <Grid.Col
-                      span={{
-                        base: "auto",
-                      }}
-                    >
-                      <Text>(How efficient are we with risk?)</Text>
-                    </Grid.Col>
-                    <Grid.Col
-                      span={{
-                        base: "auto",
-                      }}
-                    >
-                      <Text ta="right">
-                        {btcSharpe !== undefined
-                          ? `${roundDecimals(btcSharpe)} BTC`
-                          : ""}
-                      </Text>
-                    </Grid.Col>
-                  </Grid>
-                </Group>
+                <Divider my="sm" />
+                <SimpleGrid cols={2}>
+                  <Text>(How efficient are we with risk?)</Text>
+                  <Text ta="right">
+                    {btcSharpe !== undefined
+                      ? `${roundDecimals(btcSharpe)} BTC`
+                      : ""}
+                  </Text>
+                </SimpleGrid>
               </Card>
             )}
             {loadingActiveBots ? (
@@ -305,66 +242,40 @@ export const DashboardPage: FC<{}> = () => {
               activeBotsCount > 0 && (
                 <Card mb="md" className="dashboard-active-bots">
                   <Box>
-                    <Grid>
-                      <Grid.Col
-                        span={{
-                          base: 12,
-                          md: 12,
-                        }}
-                      >
-                        <div className="stats">
-                          <Grid>
-                            <Grid.Col
-                              span={{
-                                base: 5,
-                                md: 4,
-                              }}
-                              display="flex"
-                              style={{
-                                justifyContent: "center",
-                                alignItems: "center",
-                              }}
-                            >
-                              <div>
-                                <Box
-                                  c="success.5"
-                                  fz="2.25rem"
-                                  className="fa-solid fa-laptop-code"
-                                  component="i"
-                                />
-                              </div>
-                            </Grid.Col>
-                            <Grid.Col
-                              span={{
-                                base: 7,
-                                md: 8,
-                              }}
-                            >
-                              <Text ta="right">Active bots</Text>
-                              <Title order={3} ta="right">
-                                {activeBotsCount}
-                              </Title>
-                            </Grid.Col>
-                          </Grid>
-                        </div>
-                      </Grid.Col>
-                    </Grid>
+                    <div className="stats">
+                      <Grid>
+                        <Grid.Col
+                          span={{ base: 5, md: 4 }}
+                          display="flex"
+                          style={{
+                            justifyContent: "center",
+                            alignItems: "center",
+                          }}
+                        >
+                          <div>
+                            <Box
+                              c="success.5"
+                              fz="2.25rem"
+                              className="fa-solid fa-laptop-code"
+                              component="i"
+                            />
+                          </div>
+                        </Grid.Col>
+                        <Grid.Col span={{ base: 7, md: 8 }}>
+                          <Text ta="right">Active bots</Text>
+                          <Title order={3} ta="right">
+                            {activeBotsCount}
+                          </Title>
+                        </Grid.Col>
+                      </Grid>
+                    </div>
                   </Box>
-                  <Group mt="sm" pt={0}>
-                    <Box mt={0} component="hr" />
-                  </Group>
+                  <Divider mt="sm" />
                 </Card>
               )
             )}
           </Grid.Col>
-          <Grid.Col
-            span={{
-              base: 12,
-              sm: 12,
-              lg: 9,
-            }}
-            className="dashboard-benchmark"
-          >
+          <Grid.Col span={{ base: 12, lg: 9 }} className="dashboard-benchmark">
             {loadingBenchmark ? (
               <CardLoadingSpinner label="portfolio benchmark" />
             ) : (
@@ -398,29 +309,15 @@ export const DashboardPage: FC<{}> = () => {
         >
           Market analysis
         </Title>
-        <Grid>
-          <Grid.Col
-            span={{
-              base: 12,
-              md: 12,
-              lg: 6,
-            }}
-            className="dashboard-movers"
-          >
+        <SimpleGrid cols={{ base: 1, lg: 2 }}>
+          <Box className="dashboard-movers">
             {loadingFastestMovers ? (
               <CardLoadingSpinner label="fastest futures movers" />
             ) : (
               <FastestMovers data={fastestMovers} />
             )}
-          </Grid.Col>
-          <Grid.Col
-            span={{
-              base: 12,
-              md: 12,
-              lg: 6,
-            }}
-            className="dashboard-movers"
-          >
+          </Box>
+          <Box className="dashboard-movers">
             {loadingFuturesRankings ? (
               <CardLoadingSpinner label="futures gainers and losers" />
             ) : (
@@ -437,17 +334,10 @@ export const DashboardPage: FC<{}> = () => {
                 </motion.div>
               )
             )}
-          </Grid.Col>
-        </Grid>
-        <Grid>
-          <Grid.Col
-            span={{
-              base: 12,
-              md: 12,
-              lg: 6,
-            }}
-            className="dashboard-trend"
-          >
+          </Box>
+        </SimpleGrid>
+        <SimpleGrid cols={{ base: 1, lg: 2 }}>
+          <Box className="dashboard-trend">
             {loadingGainersLosersHistory ? (
               <CardLoadingSpinner label="gainers versus losers trend" />
             ) : (
@@ -461,15 +351,8 @@ export const DashboardPage: FC<{}> = () => {
                 </motion.div>
               )
             )}
-          </Grid.Col>
-          <Grid.Col
-            span={{
-              base: 12,
-              md: 12,
-              lg: 6,
-            }}
-            className="dashboard-trend"
-          >
+          </Box>
+          <Box className="dashboard-trend">
             {loadingBtcCloseSeries ? (
               <CardLoadingSpinner label="Bitcoin price trend" />
             ) : (
@@ -483,8 +366,8 @@ export const DashboardPage: FC<{}> = () => {
                 </motion.div>
               )
             )}
-          </Grid.Col>
-        </Grid>
+          </Box>
+        </SimpleGrid>
       </Box>
       <Box
         aria-labelledby="order-book-aggregation-heading"
@@ -501,16 +384,9 @@ export const DashboardPage: FC<{}> = () => {
         >
           Order book aggregation
         </Title>
-        <Grid>
-          <Grid.Col
-            span={{
-              base: 12,
-            }}
-            className="dashboard-trend"
-          >
-            <AggregateCvdCard />
-          </Grid.Col>
-        </Grid>
+        <Box className="dashboard-trend">
+          <AggregateCvdCard />
+        </Box>
       </Box>
     </div>
   );

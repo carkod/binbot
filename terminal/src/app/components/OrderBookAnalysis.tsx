@@ -1,4 +1,4 @@
-import { Alert, Grid } from "@mantine/core";
+import { Alert, SimpleGrid } from "@mantine/core";
 import { getApiErrorMessage } from "../../utils/api";
 import { useMicrostructureData } from "../hooks/useMicrostructureData";
 import SpreadAndDepthCard from "./SpreadAndDepthCard";
@@ -19,30 +19,16 @@ const OrderBookAnalysis = ({
           {getApiErrorMessage(error, "KuCoin symbol request failed")}
         </Alert>
       )}
-      <Grid>
-        <Grid.Col
-          span={{
-            base: 12,
-            md: 6,
-          }}
-        >
-          <SpreadAndDepthCard
-            orderBookHistory={orderBookHistory}
-            enabled={enabled}
-            isFetching={isFetching}
-            isError={isError}
-            onRetry={() => refetch()}
-          />
-        </Grid.Col>
-        <Grid.Col
-          span={{
-            base: 12,
-            md: 6,
-          }}
-        >
-          <SymbolCvdCard symbol={symbol} enabled={enabled} />
-        </Grid.Col>
-      </Grid>
+      <SimpleGrid cols={{ base: 1, md: 2 }}>
+        <SpreadAndDepthCard
+          orderBookHistory={orderBookHistory}
+          enabled={enabled}
+          isFetching={isFetching}
+          isError={isError}
+          onRetry={() => refetch()}
+        />
+        <SymbolCvdCard symbol={symbol} enabled={enabled} />
+      </SimpleGrid>
     </>
   );
 };

@@ -80,26 +80,12 @@ const PortfolioBenchmarkChart: FC<{
     <Card mb="md">
       <Box mb="sm">
         <Grid>
-          <Grid.Col
-            span={{
-              base: 12,
-              sm: 1,
-              md: 1,
-              lg: 1,
-            }}
-          >
+          <Grid.Col span={{ base: 12, sm: 1 }}>
             <i
               className={`metric-icon fa fa-suitcase ${lastUsdt > lastBtc ? "tone-success" : lastUsdt < lastBtc ? "tone-danger" : ""}`}
             />
           </Grid.Col>
-          <Grid.Col
-            span={{
-              base: 12,
-              sm: 11,
-              md: 11,
-              lg: 11,
-            }}
-          >
+          <Grid.Col span={{ base: 12, sm: 11 }}>
             <Title order={5} mt={0}>
               Portfolio benchmarking
             </Title>

@@ -4,6 +4,7 @@ import {
   Card,
   Grid,
   Input,
+  SimpleGrid,
   Stack,
   TextInput,
   Title,
@@ -78,37 +79,20 @@ const SymbolsPage: FC = () => {
         </Box>
         <Box>
           {symbols && symbols.length > 0 && (
-            <Grid>
-              <Grid.Col
-                span={{
-                  base: 12,
-                  md: 6,
-                }}
-              >
-                <SymbolSearch
-                  name="pair"
-                  label="Select pair"
-                  options={symbolsList}
-                  required
-                  errors={errors}
-                  onChange={selectSymbol}
-                  onBlur={(event) => selectSymbol(event.target.value)}
-                />
-              </Grid.Col>
+            <SimpleGrid cols={{ base: 1, md: 2 }}>
+              <SymbolSearch
+                name="pair"
+                label="Select pair"
+                options={symbolsList}
+                required
+                errors={errors}
+                onChange={selectSymbol}
+                onBlur={(event) => selectSymbol(event.target.value)}
+              />
               {symbolsList && seletedSymbolsItem.id !== "" && (
-                <Grid.Col
-                  span={{
-                    base: 12,
-                    md: 6,
-                  }}
-                >
+                <Box>
                   <Grid>
-                    <Grid.Col
-                      span={{
-                        base: 12,
-                        md: 4,
-                      }}
-                    >
+                    <Grid.Col span={{ base: 12, md: 4 }}>
                       <Stack gap={4} mb="sm">
                         <label htmlFor="telegram_signals">Active?</label>
                         <br />
@@ -125,12 +109,7 @@ const SymbolsPage: FC = () => {
                         />
                       </Stack>
                     </Grid.Col>
-                    <Grid.Col
-                      span={{
-                        base: 12,
-                        md: 8,
-                      }}
-                    >
+                    <Grid.Col span={{ base: 12, md: 8 }}>
                       <Stack gap={4} mb="sm">
                         <label htmlFor="blacklist_reason">
                           Blacklisted reason
@@ -151,115 +130,92 @@ const SymbolsPage: FC = () => {
                     </Grid.Col>
                   </Grid>
                   <br />
-                  <Grid>
-                    <Grid.Col
-                      span={{
-                        base: 12,
-                        md: 6,
-                      }}
-                    >
-                      <Stack gap={4} mb="sm">
-                        <Input.Label htmlFor="cooldown">Cooldown</Input.Label>
-                        <TextInput
-                          type="number"
-                          name="cooldown"
-                          id="cooldown"
-                          value={seletedSymbolsItem.cooldown}
-                          onChange={(e) => {
-                            setSeletedSymbolsItem({
-                              ...seletedSymbolsItem,
-                              cooldown: parseInt(e.target.value),
-                              cooldown_start_ts:
-                                parseInt(e.target.value) > 0 &&
-                                new Date().getTime(),
-                            });
-                          }}
-                        />
-                      </Stack>
-                    </Grid.Col>
-                    <Grid.Col
-                      span={{
-                        base: 12,
-                        md: 6,
-                      }}
-                    >
-                      <Stack gap={4} mb="sm">
-                        <Input.Label htmlFor="cooldown_start_ts">
-                          Cooldown start timestamp
-                        </Input.Label>
-                        <TextInput
-                          type="number"
-                          name="cooldown_start_ts"
-                          id="cooldown_start_ts"
-                          value={seletedSymbolsItem.cooldown_start_ts}
-                          onChange={(e) =>
-                            setSeletedSymbolsItem({
-                              ...seletedSymbolsItem,
-                              cooldown_start_ts: parseInt(e.target.value),
-                            })
-                          }
-                        />
-                      </Stack>
-                    </Grid.Col>
-                  </Grid>
-                  <br />
-                  <Grid>
-                    <Grid.Col
-                      span={{
-                        base: 12,
-                        md: 12,
-                      }}
-                    >
-                      <Box
-                        display="flex"
-                        style={{
-                          gap: 8,
+                  <SimpleGrid cols={{ base: 1, md: 2 }}>
+                    <Stack gap={4} mb="sm">
+                      <Input.Label htmlFor="cooldown">Cooldown</Input.Label>
+                      <TextInput
+                        type="number"
+                        name="cooldown"
+                        id="cooldown"
+                        value={seletedSymbolsItem.cooldown}
+                        onChange={(e) => {
+                          setSeletedSymbolsItem({
+                            ...seletedSymbolsItem,
+                            cooldown: parseInt(e.target.value),
+                            cooldown_start_ts:
+                              parseInt(e.target.value) > 0 &&
+                              new Date().getTime(),
+                          });
                         }}
-                        component="div"
-                      >
-                        <Button
-                          color="primary"
-                          onClick={() => {
-                            if (seletedSymbolsItem.id !== "") {
-                              updateSymbol({
-                                id: seletedSymbolsItem.id,
-                                symbol: seletedSymbolsItem.id,
-                                blacklist_reason:
-                                  seletedSymbolsItem.blacklist_reason,
-                                active: seletedSymbolsItem.active,
-                                cooldown: seletedSymbolsItem.cooldown,
-                                cooldown_start_ts:
-                                  seletedSymbolsItem.cooldown_start_ts,
-                                futures_leverage:
-                                  seletedSymbolsItem.futures_leverage,
-                                exchange_id: seletedSymbolsItem.exchange_id,
-                                base_asset: seletedSymbolsItem.base_asset,
-                                quote_asset: seletedSymbolsItem.quote_asset,
-                              });
-                            }
-                            return false;
-                          }}
-                          type="button"
-                          mr={8}
-                        >
-                          Save
-                        </Button>
-                        <Button
-                          onClick={() => {
-                            setConfirmDelete(true);
-                          }}
-                          color="danger"
-                          type="button"
-                          ml={8}
-                        >
-                          Delete
-                        </Button>
-                      </Box>
-                    </Grid.Col>
-                  </Grid>
-                </Grid.Col>
+                      />
+                    </Stack>
+                    <Stack gap={4} mb="sm">
+                      <Input.Label htmlFor="cooldown_start_ts">
+                        Cooldown start timestamp
+                      </Input.Label>
+                      <TextInput
+                        type="number"
+                        name="cooldown_start_ts"
+                        id="cooldown_start_ts"
+                        value={seletedSymbolsItem.cooldown_start_ts}
+                        onChange={(e) =>
+                          setSeletedSymbolsItem({
+                            ...seletedSymbolsItem,
+                            cooldown_start_ts: parseInt(e.target.value),
+                          })
+                        }
+                      />
+                    </Stack>
+                  </SimpleGrid>
+                  <br />
+                  <Box
+                    display="flex"
+                    style={{
+                      gap: 8,
+                    }}
+                    component="div"
+                  >
+                    <Button
+                      color="primary"
+                      onClick={() => {
+                        if (seletedSymbolsItem.id !== "") {
+                          updateSymbol({
+                            id: seletedSymbolsItem.id,
+                            symbol: seletedSymbolsItem.id,
+                            blacklist_reason:
+                              seletedSymbolsItem.blacklist_reason,
+                            active: seletedSymbolsItem.active,
+                            cooldown: seletedSymbolsItem.cooldown,
+                            cooldown_start_ts:
+                              seletedSymbolsItem.cooldown_start_ts,
+                            futures_leverage:
+                              seletedSymbolsItem.futures_leverage,
+                            exchange_id: seletedSymbolsItem.exchange_id,
+                            base_asset: seletedSymbolsItem.base_asset,
+                            quote_asset: seletedSymbolsItem.quote_asset,
+                          });
+                        }
+                        return false;
+                      }}
+                      type="button"
+                      mr={8}
+                    >
+                      Save
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setConfirmDelete(true);
+                      }}
+                      color="danger"
+                      type="button"
+                      ml={8}
+                    >
+                      Delete
+                    </Button>
+                  </Box>
+                </Box>
               )}
-            </Grid>
+            </SimpleGrid>
           )}
         </Box>
       </Card>

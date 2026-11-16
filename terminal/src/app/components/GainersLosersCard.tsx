@@ -22,15 +22,8 @@ const GainersLosersCard = ({
           const priceChangePercent = normalizePriceChangePercent(x);
           return (
             parseFloat(priceChangePercent) !== 0 && (
-              <Box key={i} py="xs" className="detail-row">
-                <Anchor
-                  href={getNewBotPath(x.symbol)}
-                  style={{
-                    overflowWrap: "anywhere",
-                  }}
-                >
-                  {x.symbol}
-                </Anchor>
+              <Box key={i} className="detail-row">
+                <Anchor href={getNewBotPath(x.symbol)}>{x.symbol}</Anchor>
                 <Badge
                   color={
                     parseFloat(priceChangePercent) > 0 ? "success" : "danger"

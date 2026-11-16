@@ -6,6 +6,7 @@ import {
   Group,
   Input,
   NativeSelect,
+  SimpleGrid,
   Stack,
   Switch,
   Tabs,
@@ -214,32 +215,22 @@ const BaseOrderTab: FC<{
   return (
     <Tabs.Panel id="base-order-tab" value={TabsKeys.MAIN} pt="md" mb={16}>
       <Box w="100%">
-        <Grid type="container" breakpoints={formGridBreakpoints} my={16}>
-          <Grid.Col
-            span={{
-              base: 12,
-              sm: 12,
-              md: 6,
-            }}
-          >
-            <SymbolSearch
-              name="pair"
-              label="Select pair"
-              disabled={bot.status === BotStatus.COMPLETED}
-              value={bot.pair}
-              onChange={handlePairSelection}
-              onBlur={(event) => handlePairSelection(event.target.value)}
-              required
-              errors={errorsState}
-            />
-          </Grid.Col>
-          <Grid.Col
-            span={{
-              base: 12,
-              sm: 12,
-              md: 6,
-            }}
-          >
+        <SimpleGrid
+          cols={{ base: 1, [formGridBreakpoints.md]: 2 }}
+          type="container"
+          my={16}
+        >
+          <SymbolSearch
+            name="pair"
+            label="Select pair"
+            disabled={bot.status === BotStatus.COMPLETED}
+            value={bot.pair}
+            onChange={handlePairSelection}
+            onBlur={(event) => handlePairSelection(event.target.value)}
+            required
+            errors={errorsState}
+          />
+          <Box>
             <Input.Label htmlFor="name">Name</Input.Label>
             <TextInput
               type="text"
@@ -247,16 +238,10 @@ const BaseOrderTab: FC<{
               {...register("name")}
               id="name"
             />
-          </Grid.Col>
-        </Grid>
+          </Box>
+        </SimpleGrid>
         <Grid type="container" breakpoints={formGridBreakpoints} my={16}>
-          <Grid.Col
-            span={{
-              base: 12,
-              sm: 12,
-              md: 6,
-            }}
-          >
+          <Grid.Col span={{ base: 12, md: 6 }}>
             <Group gap="xs" wrap="nowrap" mb={4} className="field-row">
               <InputTooltip
                 name="fiat_order_size"
@@ -299,82 +284,57 @@ const BaseOrderTab: FC<{
               </InputTooltip>
             </Group>
           </Grid.Col>
-          <Grid.Col
-            span={{
-              base: 12,
-              sm: 12,
-              md: 6,
-            }}
-          >
-            <Grid type="container" breakpoints={formGridBreakpoints}>
-              <Grid.Col
-                span={{
-                  base: "auto",
-                }}
-              >
-                <Stack gap={4} mb="sm">
-                  <Input.Label htmlFor="position">Position</Input.Label>
-                  <NativeSelect
-                    id="position"
-                    name="position"
-                    {...register("position", {
-                      required: "Position is required",
-                    })}
-                  >
-                    <option value={BotPosition.LONG}>Long</option>
-                    <option value={BotPosition.SHORT}>Margin short</option>
-                  </NativeSelect>
-                  {errors.position && (
-                    <Input.Error>
-                      {errors.position.message as string}
-                    </Input.Error>
-                  )}
-                </Stack>
-              </Grid.Col>
-            </Grid>
+          <Grid.Col span={{ base: 12, md: 6 }}>
+            <SimpleGrid cols={1} type="container">
+              <Stack gap={4} mb="sm">
+                <Input.Label htmlFor="position">Position</Input.Label>
+                <NativeSelect
+                  id="position"
+                  name="position"
+                  {...register("position", {
+                    required: "Position is required",
+                  })}
+                >
+                  <option value={BotPosition.LONG}>Long</option>
+                  <option value={BotPosition.SHORT}>Margin short</option>
+                </NativeSelect>
+                {errors.position && (
+                  <Input.Error>{errors.position.message as string}</Input.Error>
+                )}
+              </Stack>
+            </SimpleGrid>
           </Grid.Col>
           {bot.pair && (
             <Grid.Col span={12}>
-              <Grid type="container" breakpoints={formGridBreakpoints}>
-                <Grid.Col
-                  span={{
-                    base: 12,
-                    sm: 12,
-                    md: 6,
-                  }}
+              <SimpleGrid
+                cols={{ base: 1, [formGridBreakpoints.md]: 2 }}
+                type="container"
+              >
+                <InputTooltip
+                  name="base_order_size"
+                  tooltip={"Notional size (position size * leverage)"}
+                  label={
+                    bot.market_type === MarketType.FUTURES
+                      ? "Contract size"
+                      : "Base order size"
+                  }
+                  errors={errors}
+                  secondaryText={
+                    bot.market_type === MarketType.FUTURES
+                      ? baseAsset
+                      : quoteAsset
+                  }
                 >
-                  <InputTooltip
+                  <TextInput
+                    type="number"
                     name="base_order_size"
-                    tooltip={"Notional size (position size * leverage)"}
-                    label={
-                      bot.market_type === MarketType.FUTURES
-                        ? "Contract size"
-                        : "Base order size"
-                    }
-                    errors={errors}
-                    secondaryText={
-                      bot.market_type === MarketType.FUTURES
-                        ? baseAsset
-                        : quoteAsset
-                    }
-                  >
-                    <TextInput
-                      type="number"
-                      name="base_order_size"
-                      autoComplete="off"
-                      disabled={true}
-                      value={bot.deal.base_order_size}
-                      id="base_order_size"
-                    />
-                  </InputTooltip>
-                </Grid.Col>
-                <Grid.Col
-                  span={{
-                    base: 12,
-                    sm: 12,
-                    md: 6,
-                  }}
-                >
+                    autoComplete="off"
+                    disabled={true}
+                    value={bot.deal.base_order_size}
+                    id="base_order_size"
+                  />
+                </InputTooltip>
+                <Box>
                   {bot.market_type === MarketType.FUTURES ? (
                     <>
                       <Stack gap={4} mb="sm">
@@ -466,145 +426,129 @@ const BaseOrderTab: FC<{
                       </InputTooltip>
                     </>
                   )}
-                </Grid.Col>
-              </Grid>
+                </Box>
+              </SimpleGrid>
             </Grid.Col>
           )}
         </Grid>
         {bot.market_type === MarketType.FUTURES &&
           bot.entry_mode === EntryMode.CONDITIONAL_LIMIT && (
-            <Grid type="container" breakpoints={formGridBreakpoints} my={16}>
-              <Grid.Col
-                span={{
-                  base: 12,
-                  sm: 12,
-                  md: 6,
-                }}
-              >
-                <Stack gap={4} mb="sm">
-                  <Input.Label htmlFor="entry_price">
-                    Entry limit price
-                  </Input.Label>
-                  <TextInput
-                    type="number"
-                    min="0"
-                    step="any"
-                    required
-                    value={bot.entry_price ?? ""}
-                    onFocus={() => dispatch(focusOrderLine("entry_price"))}
-                    disabled={!canEditConditionalEntry(bot)}
-                    onChange={(event) => {
-                      entryPriceEditedRef.current = true;
-                      dispatch(
-                        setField({
-                          name: "entry_price",
-                          value:
-                            event.target.value === ""
-                              ? null
-                              : Number(event.target.value),
-                        }),
-                      );
-                    }}
-                    id="entry_price"
-                  />
-                  <Input.Description>
-                    Drag the entry line on the chart to update this price.
-                  </Input.Description>
-                </Stack>
-              </Grid.Col>
-              <Grid.Col
-                span={{
-                  base: 12,
-                  sm: 12,
-                  md: 6,
-                }}
-              >
-                <Stack gap={4} mb="sm" data-chart-field="entry_expires_at">
-                  <Input.Label htmlFor="entry_expires_at">
-                    Entry expires at
-                  </Input.Label>
-                  <DateTimePicker
-                    withSeconds
-                    timePickerProps={{
-                      hoursInputLabel: "Expiry hours",
-                      minutesInputLabel: "Expiry minutes",
-                      secondsInputLabel: "Expiry seconds",
-                    }}
-                    submitButtonProps={{ "aria-label": "Apply entry expiry" }}
-                    required
-                    clearable
-                    clearButtonProps={{ "aria-label": "Clear entry expiry" }}
-                    valueFormat="DD/MM/YYYY HH:mm:ss"
-                    popoverProps={{ withinPortal: false }}
-                    onFocus={() => dispatch(focusOrderLine("entry_expires_at"))}
-                    value={
-                      bot.entry_expires_at == null
-                        ? null
-                        : moment(bot.entry_expires_at).format(
-                            "YYYY-MM-DD HH:mm:ss",
-                          )
-                    }
-                    disabled={!canEditConditionalEntry(bot)}
-                    onChange={(value) =>
-                      dispatch(
-                        setField({
-                          name: "entry_expires_at",
-                          value:
-                            value === null
-                              ? null
-                              : moment(
-                                  value,
-                                  "YYYY-MM-DD HH:mm:ss",
-                                  true,
-                                ).valueOf(),
-                        }),
-                      )
-                    }
-                    id="entry_expires_at"
-                  />
-                  <Input.Description>
-                    Local time. Defaults to six hours from now. Focus this field
-                    to drag the expiry line on the chart.
-                  </Input.Description>
-                </Stack>
-              </Grid.Col>
-            </Grid>
-          )}
-        <Grid type="container" breakpoints={formGridBreakpoints} my={16}>
-          <Grid.Col
-            span={{
-              base: 12,
-              sm: 12,
-              md: 6,
-            }}
-          >
-            <Stack gap={4} mb="sm">
-              <Input.Label htmlFor="recovery_mode">Recovery mode</Input.Label>
-              <br />
-              <Group gap="xs">
-                <Switch
-                  id="recovery_mode"
-                  name="recovery_mode"
-                  checked={recoveryEnabled}
-                  disabled={bot.dynamic_position_sizing}
-                  onChange={() =>
+            <SimpleGrid
+              cols={{ base: 1, [formGridBreakpoints.md]: 2 }}
+              type="container"
+              my={16}
+            >
+              <Stack gap={4} mb="sm">
+                <Input.Label htmlFor="entry_price">
+                  Entry limit price
+                </Input.Label>
+                <TextInput
+                  type="number"
+                  min="0"
+                  step="any"
+                  required
+                  value={bot.entry_price ?? ""}
+                  onFocus={() => dispatch(focusOrderLine("entry_price"))}
+                  disabled={!canEditConditionalEntry(bot)}
+                  onChange={(event) => {
+                    entryPriceEditedRef.current = true;
                     dispatch(
-                      setRecoveryParams(
-                        recoveryEnabled ? null : { ...defaultRecoveryParams },
-                      ),
+                      setField({
+                        name: "entry_price",
+                        value:
+                          event.target.value === ""
+                            ? null
+                            : Number(event.target.value),
+                      }),
+                    );
+                  }}
+                  id="entry_price"
+                />
+                <Input.Description>
+                  Drag the entry line on the chart to update this price.
+                </Input.Description>
+              </Stack>
+              <Stack gap={4} mb="sm" data-chart-field="entry_expires_at">
+                <Input.Label htmlFor="entry_expires_at">
+                  Entry expires at
+                </Input.Label>
+                <DateTimePicker
+                  withSeconds
+                  timePickerProps={{
+                    hoursInputLabel: "Expiry hours",
+                    minutesInputLabel: "Expiry minutes",
+                    secondsInputLabel: "Expiry seconds",
+                  }}
+                  submitButtonProps={{ "aria-label": "Apply entry expiry" }}
+                  required
+                  clearable
+                  clearButtonProps={{ "aria-label": "Clear entry expiry" }}
+                  valueFormat="DD/MM/YYYY HH:mm:ss"
+                  popoverProps={{ withinPortal: false }}
+                  onFocus={() => dispatch(focusOrderLine("entry_expires_at"))}
+                  value={
+                    bot.entry_expires_at == null
+                      ? null
+                      : moment(bot.entry_expires_at).format(
+                          "YYYY-MM-DD HH:mm:ss",
+                        )
+                  }
+                  disabled={!canEditConditionalEntry(bot)}
+                  onChange={(value) =>
+                    dispatch(
+                      setField({
+                        name: "entry_expires_at",
+                        value:
+                          value === null
+                            ? null
+                            : moment(
+                                value,
+                                "YYYY-MM-DD HH:mm:ss",
+                                true,
+                              ).valueOf(),
+                      }),
                     )
                   }
-                  label={recoveryEnabled ? "On" : "Off"}
+                  id="entry_expires_at"
                 />
-              </Group>
-              {bot.dynamic_position_sizing && (
-                <Input.Description display="block">
-                  Recovery is unavailable while position sizing is enabled.
+                <Input.Description>
+                  Local time. Defaults to six hours from now. Focus this field
+                  to drag the expiry line on the chart.
                 </Input.Description>
-              )}
-            </Stack>
-          </Grid.Col>
-        </Grid>
+              </Stack>
+            </SimpleGrid>
+          )}
+        <SimpleGrid
+          cols={{ base: 1, [formGridBreakpoints.md]: 2 }}
+          type="container"
+          my={16}
+        >
+          <Stack gap={4} mb="sm">
+            <Input.Label htmlFor="recovery_mode">Recovery mode</Input.Label>
+            <br />
+            <Group gap="xs">
+              <Switch
+                id="recovery_mode"
+                name="recovery_mode"
+                checked={recoveryEnabled}
+                disabled={bot.dynamic_position_sizing}
+                onChange={() =>
+                  dispatch(
+                    setRecoveryParams(
+                      recoveryEnabled ? null : { ...defaultRecoveryParams },
+                    ),
+                  )
+                }
+                label={recoveryEnabled ? "On" : "Off"}
+              />
+            </Group>
+            {bot.dynamic_position_sizing && (
+              <Input.Description display="block">
+                Recovery is unavailable while position sizing is enabled.
+              </Input.Description>
+            )}
+          </Stack>
+        </SimpleGrid>
       </Box>
     </Tabs.Panel>
   );

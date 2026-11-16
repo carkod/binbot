@@ -31,7 +31,8 @@ a {
 .mantine-Card-root {
   overflow: visible;
 }
-.mantine-Grid-col {
+.mantine-Grid-col,
+.mantine-SimpleGrid-root > * {
   min-width: 0;
 }
 .content {
@@ -50,6 +51,11 @@ a {
   min-width: 0;
 }
 .detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding-block: var(--mantine-spacing-xs);
   border-bottom: 1px solid var(--mantine-color-gray-2);
   overflow-wrap: anywhere;
 }
@@ -92,6 +98,7 @@ a {
 }
 .p-line-chart--left,
 .p-line-chart--right {
+  width: var(--market-share);
   min-width: 50px;
   padding: 6px;
 }
@@ -133,6 +140,9 @@ a {
 .selected-card {
   border: 1px solid var(--mantine-color-success-6);
 }
+.bot-edit-icon {
+  pointer-events: none;
+}
 .ladder-level {
   border: 1px solid var(--mantine-color-default-border);
   border-radius: var(--mantine-radius-sm);
@@ -172,4 +182,7 @@ a {
   display: inline-flex;
   gap: 4px;
   margin-right: 1rem;
+}
+.chart-legend-dot {
+  color: var(--chart-legend-color);
 }

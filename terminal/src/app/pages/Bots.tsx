@@ -1,4 +1,11 @@
-import { Badge, Box, Button, Flex, Grid, VisuallyHidden } from "@mantine/core";
+import {
+  Badge,
+  Box,
+  Button,
+  Flex,
+  SimpleGrid,
+  VisuallyHidden,
+} from "@mantine/core";
 import React, { useContext, useEffect, useState, type FC } from "react";
 import { useImmer } from "use-immer";
 import {
@@ -247,17 +254,10 @@ export const BotsPage: FC<{}> = () => {
             />
           </Flex>
         </Flex>
-        <Grid>
+        <SimpleGrid cols={{ base: 1, md: 3, lg: 4 }}>
           {data?.bots?.ids.length > 0
             ? Object.values(data.bots?.entities).map((x, i) => (
-                <Grid.Col
-                  key={i}
-                  span={{
-                    base: 12,
-                    md: 4,
-                    lg: 3,
-                  }}
-                >
+                <Box key={i}>
                   <BotCard
                     botIndex={i}
                     bot={x}
@@ -265,10 +265,10 @@ export const BotsPage: FC<{}> = () => {
                     handleDelete={handleDelete}
                     handleSelection={handleSelection}
                   />
-                </Grid.Col>
+                </Box>
               ))
             : ""}
-        </Grid>
+        </SimpleGrid>
         <ConfirmModal
           show={!!botToDelete}
           onClose={() => setBotToDelete(null)}
