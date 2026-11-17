@@ -243,10 +243,11 @@ export const BotsPage: FC<{}> = () => {
           justify="space-between"
           mb="lg"
         >
-          <Box id="bot-profits">
+          <Box id="bot-profits" mb="sm">
             {data?.bots?.ids.length > 0 && (
               <Badge
-                size="lg"
+                size="xl"
+                h={36}
                 title="Average price return of closed bots in this list"
                 color={data.totalProfit > 0 ? "success" : "danger"}
               >

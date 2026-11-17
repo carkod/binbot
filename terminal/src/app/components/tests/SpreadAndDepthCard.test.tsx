@@ -85,15 +85,11 @@ describe("spread and nearby depth chart", () => {
 
     expect(layout.yaxis.title.text).toBe("Nearby depth (USDT)");
     expect(layout.yaxis2.title.text).toBe("Spread (%)");
-    expect(layout.xaxis.range).toEqual([
-      new Date(now - OBI_WINDOW_MS).toISOString(),
-      new Date(now).toISOString(),
-    ]);
-    expect(layout.xaxis.autorange).toBe(false);
-    expect(layout.xaxis.fixedrange).toBe(true);
+    expect(layout.xaxis.autorange).toBe(true);
+    expect(layout.xaxis.fixedrange).toBe(false);
   });
 
-  it("advances the configured time window as the clock moves", () => {
+  it("fits available observations within the configured lookback", () => {
     const { rerender } = render(
       <SpreadAndDepthCard
         {...props}
@@ -102,33 +98,33 @@ describe("spread and nearby depth chart", () => {
       />,
     );
 
-    act(() => vi.advanceTimersByTime(60_000));
-    let layout = JSON.parse(
-      testingScreen
-        .getByTestId("spread-depth-chart")
-        .getAttribute("data-layout"),
+    act(() => vi.advanceTimersByTime(6 * 60_000));
+    rerender(
+      <SpreadAndDepthCard
+        {...props}
+        snapshot={{ ...snapshot, timestamp: now + 6 * 60_000 }}
+        depthWindowMinutes={5}
+      />,
     );
-    expect(layout.xaxis.range).toEqual([
-      new Date(now + 60_000 - 5 * 60_000).toISOString(),
-      new Date(now + 60_000).toISOString(),
+
+    const chart = testingScreen.getByTestId("spread-depth-chart");
+
+    expect(JSON.parse(chart.textContent)[0].x).toEqual([
+      new Date(now + 6 * 60_000).toISOString(),
     ]);
     expect(testingScreen.getByText(/Last 5 minutes/)).toBeInTheDocument();
 
     rerender(
       <SpreadAndDepthCard
         {...props}
-        snapshot={snapshot}
+        snapshot={{ ...snapshot, timestamp: now + 6 * 60_000 }}
         depthWindowMinutes={10}
       />,
     );
-    layout = JSON.parse(
-      testingScreen
-        .getByTestId("spread-depth-chart")
-        .getAttribute("data-layout"),
-    );
-    expect(layout.xaxis.range).toEqual([
-      new Date(now + 60_000 - 10 * 60_000).toISOString(),
-      new Date(now + 60_000).toISOString(),
+    expect(JSON.parse(chart.textContent)[0].x).toEqual([
+      new Date(now).toISOString(),
+      new Date(now + 15_000).toISOString(),
+      new Date(now + 6 * 60_000).toISOString(),
     ]);
     expect(testingScreen.getByText(/Last 10 minutes/)).toBeInTheDocument();
   });
