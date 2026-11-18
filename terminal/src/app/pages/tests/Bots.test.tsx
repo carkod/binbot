@@ -11,12 +11,14 @@ import { makeStore } from "../../store";
 import BotsPage from "../Bots";
 
 const mockRefetch = vi.fn();
+
 const mockMutation = vi.fn(() => ({
   unwrap: vi.fn().mockResolvedValue({}),
 }));
 
 vi.mock("../../../features/bots/botsApiSlice", async () => {
   const actual = await vi.importActual("../../../features/bots/botsApiSlice");
+
   return {
     ...actual,
     useDeleteBotMutation: vi.fn(() => [
@@ -48,6 +50,7 @@ vi.mock("../../../features/bots/botsApiSlice", async () => {
 
 vi.mock("../../../features/symbolsApiSlice", async () => {
   const actual = await vi.importActual("../../../features/symbolsApiSlice");
+
   return {
     ...actual,
     useGetSymbolsQuery: vi.fn(() => ({
@@ -59,6 +62,7 @@ vi.mock("../../../features/symbolsApiSlice", async () => {
 
 vi.mock("../../../features/autotradeApiSlice", async () => {
   const actual = await vi.importActual("../../../features/autotradeApiSlice");
+
   return {
     ...actual,
     useGetSettingsQuery: vi.fn(() => ({
@@ -124,11 +128,15 @@ describe("BotsPage", () => {
     const startDateInput = testingScreen.getByRole("button", {
       name: /^Filter by start date/,
     });
+
     const endDateInput = testingScreen.getByRole("button", {
       name: /^Filter by end date/,
     });
+
     const start = moment().subtract(7, "days").startOf("month");
+
     const end = moment().date(28);
+
     await user.click(startDateInput);
     await user.click(
       testingScreen.getByRole("button", { name: start.format("D MMMM YYYY") }),
@@ -144,7 +152,9 @@ describe("BotsPage", () => {
 
   it("handles bot deletion", async () => {
     const { user } = renderWithProviders(<BotsPage />, { store: makeStore() });
+
     const deleteBtn = testingScreen.queryByRole("button", { name: /delete/i });
+
     if (!deleteBtn) {
       return;
     }
@@ -156,6 +166,7 @@ describe("BotsPage", () => {
 
   it("filters bots by symbol when searching", async () => {
     const setSpinnerMock = vi.fn();
+
     const { user } = renderWithProviders(<BotsPage />, {
       store: makeStore(),
       spinnerContextValue: {
@@ -163,7 +174,9 @@ describe("BotsPage", () => {
         setSpinner: setSpinnerMock,
       },
     });
+
     const input = testingScreen.getByPlaceholderText(/Search by pair/i);
+
     await user.type(input, "ARBTC");
     await user.tab();
 

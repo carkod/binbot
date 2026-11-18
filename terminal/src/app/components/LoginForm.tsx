@@ -4,16 +4,23 @@ import { useForm, type SubmitHandler } from "react-hook-form";
 import { useLocation, useNavigate } from "react-router";
 import { usePostLoginMutation } from "../../features/userApiSlice";
 import { getToken, setToken } from "../../utils/login";
+
 export type LoginFormState = {
   email: string;
   password: string;
 };
+
 export const LoginForm: FC<{}> = () => {
   const [login, { data: login_data }] = usePostLoginMutation();
+
   const navigate = useNavigate();
+
   const location = useLocation();
+
   const params = new URLSearchParams(location.search);
+
   const from = params.get("from") || "/";
+
   const {
     register,
     handleSubmit,
@@ -26,14 +33,18 @@ export const LoginForm: FC<{}> = () => {
       password: "",
     },
   });
+
   const onSubmit: SubmitHandler<LoginFormState> = async (values) => {
     const formData = new FormData();
+
     formData.append("username", values.email);
     formData.append("password", values.password);
     await login(formData);
   };
+
   useEffect(() => {
     const token: string = getToken();
+
     if (token) {
       setToken(token);
       navigate("/");

@@ -32,7 +32,9 @@ import BaseOrderTab from "../BaseOrderTab";
 import ChartContainer from "../ChartContainer";
 import StopLossTab from "../StopLossTab";
 import TakeProfit from "../TakeProfitTab";
+
 const chart = vi.hoisted(() => ({ props: null as any }));
+
 vi.mock("binbot-charts", () => ({
   default: (props: any) => {
     chart.props = props;
@@ -47,8 +49,10 @@ vi.mock("../../../features/autotradeApiSlice", async () => ({
     isLoading: false,
   }),
 }));
+
 function BotChart() {
   const { bot } = useAppSelector(selectBot);
+
   return (
     <ChartContainer
       bot={bot}
@@ -57,8 +61,10 @@ function BotChart() {
     />
   );
 }
+
 function setup(tab: TabsKeys, overrides: Partial<Bot> = {}) {
   const store = makeStore();
+
   store.dispatch(
     setBot({
       bot: {
@@ -102,8 +108,10 @@ function setup(tab: TabsKeys, overrides: Partial<Bot> = {}) {
   );
   return store;
 }
+
 const editable = () =>
   chart.props.orderLines.filter((line) => line.editable).map((line) => line.id);
+
 it.each([
   [BotPosition.LONG, "stop_loss", "stop_loss", 95, 5],
   [BotPosition.SHORT, "stop_loss", "stop_loss", 105, 5],
@@ -124,6 +132,7 @@ it.each([
       entry_mode: EntryMode.CONDITIONAL_LIMIT,
       entry_price: 100,
     });
+
     expect(store.getState().bot.focusedOrderLine).toBeNull();
     expect(editable()).toContain(lineId);
     act(() => chart.props.onOrderLineMove(lineId, price));
@@ -136,6 +145,7 @@ it.each([
 );
 it("updates the dropped line's field even when another input is focused", () => {
   const store = setup(TabsKeys.TAKEPROFIT);
+
   fireEvent.focus(testingScreen.getByLabelText(/Trail profit at/));
   act(() => chart.props.onOrderLineMove("stop_loss", 95));
   expect(store.getState().bot.bot.stop_loss).toBe(5);
@@ -158,6 +168,7 @@ it.each([
         trailing_stop_loss_price: profitPrice,
       },
     });
+
     act(() => chart.props.onOrderLineMove("trailing_stop_loss", stopPrice));
     expect(store.getState().bot.bot.trailing_deviation).toBe(5);
     expect(
@@ -172,6 +183,7 @@ it.each([
 );
 it("keeps completed bots and an immediate entry read-only", () => {
   const store = setup(TabsKeys.MAIN);
+
   expect(editable()).not.toContain("base_order");
   act(() => chart.props.onOrderLineMove("base_order", 110));
   expect(store.getState().bot.bot.entry_price).toBe(singleBot.entry_price);
@@ -190,12 +202,16 @@ it.each([BotPosition.LONG, BotPosition.SHORT])(
   "updates the %s stop input without scrolling and remains draggable after leaving",
   (position) => {
     const store = setup(TabsKeys.STOPLOSS, { position });
+
     fireEvent.focus(testingScreen.getByLabelText(/Stop loss/));
     expect(editable()).toContain("stop_loss");
     fireEvent.pointerDown(testingScreen.getByTestId("chart"));
     expect(editable()).toContain("stop_loss");
+
     const input = testingScreen.getByLabelText(/Stop loss/);
+
     const focus = vi.spyOn(input, "focus");
+
     act(() => {
       chart.props.onOrderLineMove(
         "stop_loss",
@@ -215,6 +231,7 @@ it.each([BotPosition.LONG, BotPosition.SHORT])(
 );
 it("updates each trailing field from its own line", () => {
   const store = setup(TabsKeys.TAKEPROFIT);
+
   fireEvent.focus(testingScreen.getByLabelText(/Trail profit at/));
   expect(editable()).toContain("trailing_profit");
   act(() => {
@@ -241,6 +258,7 @@ it.each([BotPosition.LONG, BotPosition.SHORT])(
       entry_price: 100,
       entry_expires_at: 1800000000000,
     });
+
     fireEvent.focus(testingScreen.getByLabelText("Entry limit price"));
     expect(editable()).toContain("base_order");
     expect(
@@ -285,7 +303,9 @@ it.each([
       entry_mode: EntryMode.CONDITIONAL_LIMIT,
       entry_price: 100,
     });
+
     const input = testingScreen.getByLabelText("Entry limit price");
+
     fireEvent.focus(input);
     if (interaction === "typing") {
       fireEvent.change(input, { target: { value: "110" } });
@@ -305,6 +325,7 @@ it.each([
           ?.price,
       ).toBeCloseTo(stopPrice);
     };
+
     expect(input).toHaveValue(110);
     expect(store.getState().bot.bot.entry_price).toBe(110);
     expect(store.getState().bot.bot.trailing_profit).toBe(6);
@@ -325,16 +346,20 @@ it.each([BotStatus.PENDING, BotStatus.ACTIVE, BotStatus.COMPLETED])(
   "keeps submitted or finished entry lines locked (%s)",
   (status) => {
     const expiresAt = Date.now() + 6 * 60 * 60 * 1000;
+
     const store = setup(TabsKeys.MAIN, {
       status,
       entry_mode: EntryMode.CONDITIONAL_LIMIT,
       entry_price: 100,
       entry_expires_at: expiresAt,
     });
+
     expect(testingScreen.getByLabelText("Entry limit price")).toBeDisabled();
     fireEvent.focus(testingScreen.getByLabelText("Entry limit price"));
     expect(editable()).not.toContain("base_order");
+
     const expiry = testingScreen.getByLabelText("Entry expires at");
+
     expect(expiry).toBeDisabled();
     fireEvent.focus(expiry);
     expect(chart.props.timeMarker).toBeUndefined();
@@ -350,13 +375,17 @@ it.each([BotStatus.PENDING, BotStatus.ACTIVE, BotStatus.COMPLETED])(
 
 it("updates the expiry picker and mark while dragging only its focused handle", async () => {
   const user = userEvent.setup();
+
   const expiresAt = Math.ceil(Date.now() / 60000) * 60000 + 6 * 60 * 60 * 1000;
+
   const store = setup(TabsKeys.MAIN, {
     entry_mode: EntryMode.CONDITIONAL_LIMIT,
     entry_price: 100,
     entry_expires_at: expiresAt,
   });
+
   const input = testingScreen.getByLabelText("Entry expires at");
+
   expect(chart.props.timeMarker).toBeUndefined();
   fireEvent.focus(input);
   expect(editable()).toContain("base_order");
@@ -375,6 +404,7 @@ it("updates the expiry picker and mark while dragging only its focused handle", 
   fireEvent.pointerDown(testingScreen.getByTestId("chart"));
   for (const minutes of [15, 75]) {
     const time = expiresAt / 1000 + minutes * 60;
+
     act(() => chart.props.onTimeMarkerMove("conditional_entry_expiry", time));
     expect(store.getState().bot.bot.entry_expires_at).toBe(time * 1000);
     expect(input).toHaveTextContent(
@@ -404,11 +434,13 @@ it("updates the expiry picker and mark while dragging only its focused handle", 
 
 it("rejects past or invalid expiry drags and hides the handle in immediate mode", () => {
   const expiresAt = Date.now() + 6 * 60 * 60 * 1000;
+
   const store = setup(TabsKeys.MAIN, {
     entry_mode: EntryMode.CONDITIONAL_LIMIT,
     entry_price: 100,
     entry_expires_at: expiresAt,
   });
+
   fireEvent.focus(testingScreen.getByLabelText("Entry expires at"));
   for (const time of [Date.now() / 1000 - 60, NaN, Infinity, 1e30]) {
     act(() => chart.props.onTimeMarkerMove("conditional_entry_expiry", time));
@@ -456,6 +488,7 @@ it("preserves low-price quote precision for conditional entry prefills", () => {
   const store = setup(TabsKeys.MAIN, {
     deal: { ...singleBot.deal, current_price: 0 },
   });
+
   act(() => chart.props.onTick({ close: "0.00001234" }));
   fireEvent.change(testingScreen.getByLabelText("Entry"), {
     target: { value: EntryMode.CONDITIONAL_LIMIT },
@@ -473,10 +506,13 @@ it.each([BotPosition.LONG, BotPosition.SHORT])(
       position,
       deal: { ...singleBot.deal, current_price: 0 },
     });
+
     fireEvent.focus(testingScreen.getByLabelText(/Stop loss/));
     act(() => chart.props.onTick({ close: "100" }));
     act(() => chart.props.onTick({ close: "120" }));
+
     const price = position === BotPosition.LONG ? 95 : 105;
+
     act(() => chart.props.onOrderLineMove("stop_loss", price));
     expect(store.getState().bot.bot.stop_loss).toBe(5);
     expect(testingScreen.getByLabelText(/Stop loss/)).toHaveValue(5);
@@ -489,6 +525,7 @@ it.each([BotPosition.LONG, BotPosition.SHORT])(
 
 it("keeps cleared stop-loss text out of chart calculations", () => {
   const store = setup(TabsKeys.STOPLOSS);
+
   fireEvent.change(testingScreen.getByLabelText(/Stop loss/), {
     target: { value: "" },
   });

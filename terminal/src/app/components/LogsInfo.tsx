@@ -1,9 +1,11 @@
 import { Box, Button, Card, Stack, Text, Title } from "@mantine/core";
 import { type FC, useState } from "react";
+
 const LogInfo: FC<{
   events: string[];
 }> = ({ events }) => {
   const [showLogs, toggleLogInfo] = useState(events.length > 0);
+
   return (
     <Card mb="md">
       <Box
@@ -35,4 +37,5 @@ const LogInfo: FC<{
     </Card>
   );
 };
+
 export default LogInfo;

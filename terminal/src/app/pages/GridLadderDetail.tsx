@@ -24,30 +24,40 @@ import {
   statusBadgeBg,
 } from "../../utils/grid-ladder";
 import { roundDecimals } from "../../utils/math";
+
 const GridLadderDetail: FC = () => {
   const { id = "" } = useParams();
+
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
+
   const { data: ladder } = useGetGridLadderQuery(id, {
     skip: !id,
     refetchOnFocus: true,
   });
+
   const orderLines = useMemo(
     () => (ladder ? buildGridOrderLines(ladder) : []),
     [ladder],
   );
+
   const timescaleMarks = useMemo(
     () => (ladder ? buildGridTimescaleMarks(ladder) : []),
     [ladder],
   );
+
   const exchange =
     ladder?.exchange.toLowerCase() === Exchange.KUCOIN
       ? Exchange.KUCOIN
       : Exchange.BINANCE;
+
   const chartSymbol = ladder ? chartSymbolForLadder(ladder) : "";
+
   const { data: contract } = useFuturesContractQuery(chartSymbol, {
     skip: !ladder || exchange !== Exchange.KUCOIN,
   });
+
   const contractMultiplier = contract?.multiplier ?? null;
+
   const unrealizedPnl = useMemo(() => {
     if (!ladder) {
       return 0;
@@ -61,23 +71,32 @@ const GridLadderDetail: FC = () => {
       contractMultiplier,
     );
   }, [ladder, currentPrice, contractMultiplier]);
+
   const totalPnl = ladder ? calculateGridLivePnl(ladder, unrealizedPnl) : 0;
+
   const isActive = ladder ? isActiveGridLadder(ladder.status) : false;
+
   const levelPnl = ladder ? calculateLevelPnlSum(ladder) : 0;
+
   const closeAdjustmentPnl = ladder ? calculateCloseAdjustmentPnl(ladder) : 0;
+
   const hasCloseAdjustment = Math.abs(closeAdjustmentPnl) >= 0.00000001;
+
   const position = ladder
     ? resolveGridPosition(ladder)
     : { side: "flat", contracts: 0, label: "No position" };
+
   const gridReturnPct = ladder
     ? calculateGridLiveReturnPct(ladder, unrealizedPnl)
     : 0;
+
   const updateCurrentPrice = (price: number) => {
     if (!Number.isFinite(price)) {
       return;
     }
     setCurrentPrice(roundDecimals(price, 8));
   };
+
   if (!ladder) {
     return <Box w="100%">Grid ladder not found.</Box>;
   }
@@ -361,4 +380,5 @@ const GridLadderDetail: FC = () => {
     </div>
   );
 };
+
 export default GridLadderDetail;

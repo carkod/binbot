@@ -3,10 +3,13 @@ import moment from "moment";
 import type { FC } from "react";
 import type { GainersLosersAggregatePoint } from "../../features/marketApiSlice";
 import PlotlyChart from "./PlotlyChart";
+
 type GainersLosersHistoryCardProps = {
   points: GainersLosersAggregatePoint[];
 };
+
 const BALANCE_COLOR = "#51cbce";
+
 const GainersLosersHistoryCard: FC<GainersLosersHistoryCardProps> = ({
   points,
 }) => {
@@ -18,8 +21,11 @@ const GainersLosersHistoryCard: FC<GainersLosersHistoryCardProps> = ({
     )
     .map((point) => {
       const gain = point.gainer_magnitude;
+
       const loss = point.loser_magnitude;
+
       const magnitude = gain + loss;
+
       return {
         timestamp: point.timestamp,
         gainShare: magnitude > 0 ? (gain / magnitude) * 100 : null,
@@ -29,15 +35,20 @@ const GainersLosersHistoryCard: FC<GainersLosersHistoryCardProps> = ({
         decliners: point.decliners,
       };
     });
+
   const latest = history.at(-1);
+
   const hasHistory = history.some((point) => point.balance !== null);
+
   const timestamps = history.map((point) => point.timestamp);
+
   const hoverData = history.map((point) => [
     point.gainShare ?? 0,
     point.lossShare ?? 0,
     point.advancers,
     point.decliners,
   ]);
+
   return (
     <Card mb="md">
       <Box mb="sm">
@@ -151,4 +162,5 @@ const GainersLosersHistoryCard: FC<GainersLosersHistoryCardProps> = ({
     </Card>
   );
 };
+
 export default GainersLosersHistoryCard;

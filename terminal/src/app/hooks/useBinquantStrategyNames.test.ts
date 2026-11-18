@@ -56,6 +56,7 @@ describe("fetchBinquantStrategyNames", () => {
 
       throw new Error(`Unexpected URL: ${url}`);
     });
+
     vi.stubGlobal("fetch", fetchMock);
 
     const names = await fetchBinquantStrategyNames(

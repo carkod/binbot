@@ -23,40 +23,53 @@ import { updateOrderLines } from "../../utils/charting/index";
 import { BotPosition, BotStatus, MarketType } from "../../utils/enums";
 import { useAppDispatch, useAppSelector, useSymbolData } from "../hooks";
 import { type AppDispatch } from "../store";
+
 const ChartContainer: FC<{
   bot: Bot;
   setCurrentPrice: PayloadActionCreator<number>;
   marketType: MarketType;
 }> = ({ bot, setCurrentPrice }) => {
   const dispatch: AppDispatch = useAppDispatch();
+
   const {
     previewTrailingSettings,
     previewTrailingDeviationSettings,
     previewStopLossSettings,
     focusedOrderLine,
   } = useAppSelector(selectBot);
+
   const chartRef = useRef<HTMLDivElement>(null);
+
   const [dragError, setDragError] = useState("");
+
   const { quoteAsset } = useSymbolData();
+
   const [currentChartPrice, setCurrentChartPrice] = useImmer<number | null>(
     null,
   );
+
   const [exchangeSymbol, setExchangeSymbol] = useImmer<string>(bot.pair);
+
   const { data: autotradeSettings } = useGetSettingsQuery();
+
   const exchangeState =
     autotradeSettings?.exchange_id?.toLowerCase() === "kucoin"
       ? Exchange.KUCOIN
       : Exchange.BINANCE;
+
   const orderLinePrice =
     currentChartPrice ??
     (bot.deal.current_price || bot.deal.opening_price || 0);
+
   // Freeze the quote reference while an input is selected so live ticks cannot
   // change the percentage represented by a dragged price.
   const focusKey = `${bot.id}:${bot.pair}:${bot.position}:${bot.entry_mode}:${focusedOrderLine}`;
+
   const [focusQuote, setFocusQuote] = useState({
     key: focusKey,
     price: orderLinePrice,
   });
+
   // Capture the first available quote even when focus preceded chart loading.
   // Refocusing the same field after a drop must keep the original reference.
   if (
@@ -65,11 +78,14 @@ const ChartContainer: FC<{
   ) {
     setFocusQuote({ key: focusKey, price: orderLinePrice });
   }
+
   const referencePrice =
     focusedOrderLine && focusQuote.price > 0
       ? focusQuote.price
       : orderLinePrice;
+
   const entryEditable = canEditConditionalEntry(bot);
+
   const expiryMarker =
     entryEditable &&
     focusedOrderLine === "entry_expires_at" &&
@@ -82,6 +98,7 @@ const ChartContainer: FC<{
           color: dealColors.entry_price,
         }
       : undefined;
+
   const currentOrderLines = useMemo(
     () =>
       updateOrderLines(
@@ -106,6 +123,7 @@ const ChartContainer: FC<{
       entryEditable,
     ],
   );
+
   const timescaleMarks = useMemo(
     () => updateTimescaleMarks(bot),
     [
@@ -120,9 +138,11 @@ const ChartContainer: FC<{
       bot.status,
     ],
   );
+
   useEffect(() => {
     const leave = (event: Event) => {
       const target = event.target as HTMLElement;
+
       if (
         chartRef.current?.contains(target) ||
         (entryEditable &&
@@ -134,9 +154,11 @@ const ChartContainer: FC<{
         return;
       dispatch(focusOrderLine(null));
     };
+
     const escape = (event: KeyboardEvent) => {
       if (event.key === "Escape") dispatch(focusOrderLine(null));
     };
+
     document.addEventListener("focusin", leave);
     document.addEventListener("pointerdown", leave);
     document.addEventListener("keydown", escape);
@@ -164,25 +186,30 @@ const ChartContainer: FC<{
     },
     [dispatch],
   );
+
   const handleOrderLineMove = (id: string, price: number) => {
     const field = (
       Object.entries(fieldOrderLines) as [OrderLineField, string][]
     ).find(([, lineId]) => lineId === id)?.[0];
+
     if (
       !field ||
       !currentOrderLines.some((line) => line.id === id && line.editable)
     )
       return;
+
     const reference =
       field === "trailing_deviation"
         ? currentOrderLines.find((line) => line.id === "trailing_profit")?.price
         : entryReferencePrice(bot, referencePrice);
+
     const value =
       field === "entry_price"
         ? Number.isFinite(price) && price > 0
           ? price
           : null
         : percentageFromOrderLine(field, price, reference, bot.position);
+
     if (value == null) {
       setDragError(
         field === "stop_loss"
@@ -195,10 +222,13 @@ const ChartContainer: FC<{
     dispatch(setField({ name: field, value }));
     document.getElementById(field)?.focus({ preventScroll: true });
   };
+
   const handleTimeMarkerMove = (id: string, time: number) => {
     if (!expiryMarker || id !== expiryMarker.id || !Number.isFinite(time))
       return;
+
     const expiresAt = time * 1000;
+
     if (
       !Number.isFinite(new Date(expiresAt).getTime()) ||
       expiresAt <= Date.now()
@@ -209,12 +239,14 @@ const ChartContainer: FC<{
     setDragError("");
     dispatch(setField({ name: "entry_expires_at", value: expiresAt }));
   };
+
   const updatedPrice = (price: number) => {
     // Keep exchange precision for entry prefills and dragged percentages.
     if (Number.isFinite(price) && price > 0 && currentChartPrice !== price) {
       setCurrentChartPrice(price);
     }
   };
+
   const handleInitialPrice = (price: number) => {
     if (
       !bot.deal.opening_price &&
@@ -225,6 +257,7 @@ const ChartContainer: FC<{
       setCurrentChartPrice(price);
     }
   };
+
   useEffect(() => {
     if (currentChartPrice === null) {
       return;
@@ -240,6 +273,7 @@ const ChartContainer: FC<{
     setExchangeSymbol((draft) => {
       if (exchangeState === Exchange.KUCOIN) {
         const baseAsset = bot.pair.replace(quoteAsset, "");
+
         let symbol = `${baseAsset}-${quoteAsset}`;
         if (bot.market_type === MarketType.FUTURES) {
           symbol = bot.pair;
@@ -298,4 +332,5 @@ const ChartContainer: FC<{
     </div>
   );
 };
+
 export default ChartContainer;

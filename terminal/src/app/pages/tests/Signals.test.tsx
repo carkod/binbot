@@ -156,6 +156,7 @@ describe("Signals page", () => {
     ).not.toBeInTheDocument();
 
     const rows = within(signalCard as HTMLElement).getAllByRole("row");
+
     expect(within(rows[1]).getByText("apex_flow")).toBeInTheDocument();
     expect(within(rows[1]).getByText("2")).toBeInTheDocument();
     expect(within(rows[2]).getByText("mean_reversion")).toBeInTheDocument();

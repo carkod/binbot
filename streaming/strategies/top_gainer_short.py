@@ -32,6 +32,7 @@ class TopGainerShortLifecycleStrategy(DefaultLifecycleStrategy):
     """
 
     algorithm_names = frozenset({"top_gainer_short"})
+    MAX_STOP_LOSS = 2.5
     PRICE_CROSSING_EXIT_THRESHOLD = 3
     MIN_CROSSING_EXIT_HOLD_MS = 6 * 60 * 60 * 1000
     LOWER_HIGH_LOOKBACK_BARS = 40
@@ -41,8 +42,8 @@ class TopGainerShortLifecycleStrategy(DefaultLifecycleStrategy):
     # trailing_profit - trailing_deviation equals the candle swing range, so the
     # deviation never drops below this floor on very large swings.
     MIN_TRAILING_DEVIATION_PCT = 0.5
-    # Existing positions retain their original stop policy. This feature only
-    # manages positions opened after the 2026-11-01 16:00 UTC rollout boundary.
+    # Structural trailing only applies to positions opened after the
+    # 2026-11-01 16:00 UTC rollout boundary.
     STRUCTURAL_TRAIL_MIN_ENTRY_TIMESTAMP_MS = 1_793_548_800_000
     candlestick_interval: ClassVar[BinanceKlineIntervals | None] = (
         BinanceKlineIntervals.fifteen_minutes
@@ -139,6 +140,21 @@ class TopGainerShortLifecycleStrategy(DefaultLifecycleStrategy):
                 )
         default_signal = super().signal(context)
         bot = context.bot
+        if (
+            default_signal.parameter_update is None
+            and bot.stop_loss > self.MAX_STOP_LOSS
+        ):
+            return LifecycleSignal(
+                parameter_update=LifecycleParameterUpdate(
+                    stop_loss=self.MAX_STOP_LOSS,
+                    trailing_profit=bot.trailing_profit,
+                    trailing_deviation=bot.trailing_deviation,
+                ),
+                log_messages=(
+                    f"[top_gainer_short] Tightening stop loss from {bot.stop_loss}% "
+                    f"to the {self.MAX_STOP_LOSS}% maximum.",
+                ),
+            )
         if (
             default_signal.parameter_update is not None
             or bot.position != Position.short

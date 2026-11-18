@@ -2,6 +2,7 @@ import { Box, Card, Title } from "@mantine/core";
 import { type FC } from "react";
 import { Slide, ToastContainer } from "react-toastify";
 import { LoginForm } from "../components/LoginForm";
+
 export const LoginPage: FC<{}> = () => {
   return (
     <Box
@@ -37,4 +38,5 @@ export const LoginPage: FC<{}> = () => {
     </Box>
   );
 };
+
 export default LoginPage;

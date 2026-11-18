@@ -24,7 +24,9 @@ afterEach(() => {
 
 it("returns the edited bot from the API data field so Deal can activate it", async () => {
   const bot = { ...singleBot, id: "bot-1" };
+
   vi.stubGlobal("Request", MockRequest);
+
   const fetchMock = vi.fn(
     async () =>
       new Response(
@@ -36,6 +38,7 @@ it("returns the edited bot from the API data field so Deal can activate it", asy
         { status: 200, headers: { "content-type": "application/json" } },
       ),
   );
+
   vi.stubGlobal("fetch", fetchMock);
 
   const result = await makeStore().dispatch(

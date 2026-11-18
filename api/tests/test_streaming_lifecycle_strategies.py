@@ -607,11 +607,56 @@ def test_top_gainer_short_only_applies_default_protection(monkeypatch) -> None:
 
     assert signal.exit_intent is None
     assert signal.parameter_update is not None
-    assert signal.parameter_update.stop_loss <= 4.0
+    assert signal.parameter_update.stop_loss <= 2.5
     assert signal.parameter_update.trailing_profit <= 3.5
     assert signal.parameter_update.trailing_deviation <= 2.5
     assert TopGainerShortLifecycleStrategy.policy.low_price_stop_floor_pct is None
     assert TopGainerShortLifecycleStrategy.policy.recovery_enabled is False
+
+
+@pytest.mark.parametrize("stop_loss", [2.6, 4.0])
+def test_top_gainer_short_tightens_existing_stop_to_maximum(stop_loss) -> None:
+    context = _context(
+        name="top_gainer_short", position=Position.short, stop_loss=stop_loss
+    )
+
+    signal = TopGainerShortLifecycleStrategy().signal(context)
+
+    assert signal.parameter_update is not None
+    assert signal.parameter_update.stop_loss == 2.5
+    assert signal.parameter_update.trailing_profit == context.bot.trailing_profit
+    assert signal.parameter_update.trailing_deviation == context.bot.trailing_deviation
+    assert signal.parameter_update.allow_stop_loss_widening is False
+
+
+@pytest.mark.parametrize("stop_loss", [0.0, 2.0, 2.5])
+def test_top_gainer_short_preserves_stops_within_maximum(stop_loss) -> None:
+    context = _context(
+        name="top_gainer_short", position=Position.short, stop_loss=stop_loss
+    )
+
+    assert TopGainerShortLifecycleStrategy().signal(context).parameter_update is None
+
+
+@pytest.mark.parametrize("stop_loss", [0.0, 4.0])
+def test_top_gainer_short_dynamic_stop_never_exceeds_maximum(
+    monkeypatch, stop_loss
+) -> None:
+    monkeypatch.setattr(
+        "streaming.strategies.default.ApexFlowClose", FakeApexFlowCloseDowntrend
+    )
+    context = _context(
+        name="top_gainer_short",
+        position=Position.short,
+        stop_loss=stop_loss,
+        dynamic_trailing=True,
+        bb_metrics=(5.0, 6.0),
+    )
+
+    signal = TopGainerShortLifecycleStrategy().signal(context)
+
+    assert signal.parameter_update is not None
+    assert signal.parameter_update.stop_loss == 2.5
 
 
 def test_top_gainer_short_lifecycle_uses_15m_candles_when_default_is_5m() -> None:

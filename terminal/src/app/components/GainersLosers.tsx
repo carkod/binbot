@@ -5,22 +5,29 @@ import { type MarketType } from "../../utils/enums";
 import { type DashboardTicker } from "../../utils/gainers-losers";
 import { roundDecimals, toPercentage } from "../../utils/math";
 import GainersLosersCard from "./GainersLosersCard";
+
 export interface GainersLosersProps {
   data: DashboardTicker[];
   market_type?: MarketType;
 }
+
 export default function GainersLosers({
   data,
   market_type,
 }: GainersLosersProps) {
   const { gainerCount, gainerAccumulator, loserAccumulator, loserCount } =
     computeWinnerLoserProportions(data);
+
   // Top 10
   const gainersData = data.slice(0, 10);
+
   const perGainers = `${toPercentage(gainerCount / data.length) ?? 0}%`;
+
   // Bottom 10
   const losersData = data.slice(-10).reverse();
+
   const perLosers = `${toPercentage(loserCount / data.length) ?? 0}%`;
+
   return (
     <div>
       <Card mb="md">

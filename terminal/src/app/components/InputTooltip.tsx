@@ -2,6 +2,7 @@ import { Group, Input, Stack, Tooltip } from "@mantine/core";
 import type { ReactNode } from "react";
 import type { FieldErrors } from "react-hook-form";
 import type { Bot } from "../../features/bots/botInitialState";
+
 interface InputTooltipProps {
   name: string;
   tooltip: string;
@@ -11,6 +12,7 @@ interface InputTooltipProps {
   required?: boolean;
   secondaryText?: string;
 }
+
 export const InputTooltip = ({
   name,
   tooltip,
@@ -37,4 +39,5 @@ export const InputTooltip = ({
     )}
   </Stack>
 );
+
 export default InputTooltip;

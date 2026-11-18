@@ -9,6 +9,7 @@ import Autotrade from "../Autotrade";
 
 vi.mock("../../../features/autotradeApiSlice", async () => {
   const actual = await vi.importActual("../../../features/autotradeApiSlice");
+
   return {
     ...actual,
     useGetSettingsQuery: vi.fn(() => ({ data: undefined })),
@@ -27,7 +28,9 @@ const renderAutotradePage = () =>
 
 const enableGridLadders = async () => {
   const user = userEvent.setup();
+
   const toggle = rtlScreen.getByRole("switch", { name: /Enable grid ladders/ });
+
   await user.click(toggle as HTMLElement);
 };
 

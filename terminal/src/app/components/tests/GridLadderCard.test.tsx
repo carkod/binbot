@@ -75,6 +75,7 @@ describeBlock("GridLadderCard", () => {
     );
 
     const exitTime = rtlScreen.getByText("Exit time");
+
     const totalRealized = rtlScreen.getByText("Total realized");
 
     expectValue(rtlScreen.getByText("25 Aug, 16:45")).toBeInTheDocument();

@@ -26,10 +26,13 @@ export interface KucoinOrderBook {
 // with at least 10,000 USDT on EACH side within 0.5% of the midpoint.
 // Visible depth is a snapshot, not a prediction of direction or future fills.
 const MAX_SPREAD_RATIO = 0.001;
+
 const DEPTH_BAND_RATIO = 0.005;
+
 const MIN_SIDE_NOTIONAL_USDT = 10_000;
 
 export const OBI_WINDOW_MS = 15 * 60 * 1000;
+
 export const OBI_POLL_INTERVAL_MS = 15_000;
 
 export const analyzeKucoinOrderBook = (
@@ -51,29 +54,40 @@ export const analyzeKucoinOrderBook = (
       if (!Array.isArray(level) || level.length < 2) {
         throw new Error("Invalid KuCoin order-book level");
       }
+
       const price = Number(level[0]);
+
       const contracts = Number(level[1]);
+
       if (![price, contracts].every(isPositiveFinite)) {
         throw new Error("Invalid KuCoin order-book level");
       }
       return { price, notional: price * contracts * multiplier };
     }),
   );
+
   const bestBid = Math.max(...bids.map(({ price }) => price));
+
   const bestAsk = Math.min(...asks.map(({ price }) => price));
+
   if (bestAsk <= bestBid) {
     throw new Error("Crossed KuCoin order book");
   }
+
   const midpoint = (bestBid + bestAsk) / 2;
+
   const spreadRatio = (bestAsk - bestBid) / midpoint;
+
   const bidDepth = bids
     .filter(({ price }) => price >= midpoint * (1 - DEPTH_BAND_RATIO))
     .reduce((total, { notional }) => total + notional, 0);
+
   const askDepth = asks
     .filter(({ price }) => price <= midpoint * (1 + DEPTH_BAND_RATIO))
     .reduce((total, { notional }) => total + notional, 0);
 
   const totalDepth = bidDepth + askDepth;
+
   return {
     liquidity:
       spreadRatio <= MAX_SPREAD_RATIO &&
@@ -93,7 +107,9 @@ export const updateObiHistory = (
   now: number,
 ): ObiSnapshot[] => {
   const cutoff = now - OBI_WINDOW_MS;
+
   const retained = history.filter(({ timestamp }) => timestamp >= cutoff);
+
   if (
     !snapshot ||
     snapshot.timestamp < cutoff ||

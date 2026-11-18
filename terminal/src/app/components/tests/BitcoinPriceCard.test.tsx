@@ -54,6 +54,7 @@ const btcCloseSeries = {
 
 const latestPlotlyProps = () => {
   const call = plotlyChartMock.mock.calls.at(-1);
+
   expectValue(call).toBeDefined();
 
   return call?.[0] as PlotlyProps;

@@ -13,6 +13,7 @@ const resolveBreakpoint = (width: number): Breakpoint => {
 
 export const useBreakpoint = () => {
   const [size, setSize] = useState(() => resolveBreakpoint(window.innerWidth));
+
   const update = useCallback(
     () => setSize(resolveBreakpoint(window.innerWidth)),
     [setSize],

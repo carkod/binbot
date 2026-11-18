@@ -12,7 +12,9 @@ vi.mock("../LivePlotlyChart", () => ({
     <div data-testid="chart">{JSON.stringify(data)}</div>
   ),
 }));
+
 const query = vi.mocked(useCvdAggregateQuery);
+
 const point = {
   timestamp: "2026-11-15T10:00:00Z",
   buy: 123.12345678,
@@ -26,6 +28,7 @@ const point = {
   current: false,
   universe_changed: false,
 };
+
 const result = {
   source: "kucoin_futures",
   data: [point],
@@ -34,6 +37,7 @@ const result = {
   stale: false,
   partial: false,
 };
+
 function respond(response: Record<string, unknown>) {
   query.mockReturnValue({
     refetch: vi.fn(),
@@ -46,7 +50,9 @@ function respond(response: Record<string, unknown>) {
 describe("market CVD card", () => {
   it("shows loading, empty and fetch failures", () => {
     respond({ isLoading: true });
+
     const { rerender } = render(<AggregateCvdCard />);
+
     expect(testingScreen.getByRole("status")).toHaveTextContent(
       "Loading market CVD",
     );
@@ -102,7 +108,9 @@ describe("market CVD card", () => {
       },
     });
     render(<AggregateCvdCard />);
+
     const trace = JSON.parse(testingScreen.getByTestId("chart").textContent)[0];
+
     expect(trace.y).toEqual([100.12345678, null, null, null, 150]);
     expect(trace.customdata[0]).toEqual([
       123.12345678,

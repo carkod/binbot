@@ -77,4 +77,5 @@ export const autotradeSettingsSlice = createAppSlice({
 
 export const { setSettingsField, setSettingsToggle, setSettings } =
   autotradeSettingsSlice.actions;
+
 export const { selectSettings } = autotradeSettingsSlice.selectors;

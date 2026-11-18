@@ -18,18 +18,27 @@ import LogsInfo from "../components/LogsInfo";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { SymbolProvider } from "../providers/SymbolProvider";
 import { SpinnerContext } from "../spinner-context";
+
 export const BotDetail: FC<{}> = () => {
   const { id, symbol } = useParams();
+
   const isNewBot = !id;
+
   const dispatch = useAppDispatch();
+
   const { bot } = useAppSelector(selectBot);
+
   const { data, isLoading: loadingBot } = useGetSingleBotQuery(id, {
     skip: Boolean(!id),
   });
+
   const { data: accountData, isLoading: loadingEstimates } =
     useGetBalanceQuery();
+
   const { setSpinner } = useContext(SpinnerContext);
+
   const currentMarketType = MarketType.SPOT;
+
   useEffect(() => {
     if (data && !isNewBot) {
       dispatch(setBot(data));
@@ -100,4 +109,5 @@ export const BotDetail: FC<{}> = () => {
     </SymbolProvider>
   );
 };
+
 export default BotDetail;

@@ -5,7 +5,6 @@ import {
   Group,
   Input,
   SimpleGrid,
-  Stack,
   Switch,
   Tabs,
   Text,
@@ -21,9 +20,12 @@ import {
 } from "../../features/bots/botSlice";
 import { TabsKeys } from "../../utils/enums";
 import { useAppDispatch, useAppSelector } from "../hooks";
+
 const TakeProfit: FC = () => {
   const dispatch = useAppDispatch();
+
   const { bot } = useAppSelector(selectBot);
+
   const {
     register,
     reset,
@@ -38,6 +40,7 @@ const TakeProfit: FC = () => {
       trailing_profit: bot.trailing_profit,
     },
   });
+
   useEffect(() => {
     reset({
       take_profit: bot.take_profit,
@@ -55,16 +58,20 @@ const TakeProfit: FC = () => {
   useEffect(() => {
     setValue("trailing_deviation", bot.trailing_deviation);
   }, [bot.trailing_deviation, setValue]);
+
   const commitPercentage = (
     name: "take_profit" | "trailing_profit" | "trailing_deviation",
     value: string,
   ) => {
     if (value === "") return;
+
     const percentage = Number(value);
+
     if (Number.isFinite(percentage)) {
       dispatch(setField({ name, value: percentage }));
     }
   };
+
   return (
     <Tabs.Panel value={TabsKeys.TAKEPROFIT} pt="md">
       <Box w="100%">
@@ -143,10 +150,9 @@ const TakeProfit: FC = () => {
             </Grid.Col>
           )}
           <Grid.Col span={{ base: 12, md: 3 }}>
-            <Stack gap={4} mb="sm">
+            <Box>
               <Input.Label htmlFor="trailing">Trailing</Input.Label>
-              <br />
-              <Group gap="xs">
+              <Group gap="xs" mih={36}>
                 <Switch
                   id="trailing"
                   name="trailing"
@@ -159,18 +165,14 @@ const TakeProfit: FC = () => {
                   label={bot.trailing ? "On" : "Off"}
                 />
               </Group>
-              <Input.Description>
-                {"Trailing won't trigger until trailing_stop_loss > base"}
-              </Input.Description>
-            </Stack>
+            </Box>
           </Grid.Col>
           <Grid.Col span={{ base: 12, md: 3 }}>
-            <Stack gap={4} mb="sm">
+            <Box>
               <Input.Label htmlFor="dynamic_trailing">
                 Dynamic trailing
               </Input.Label>
-              <br />
-              <Group gap="xs">
+              <Group gap="xs" mih={36}>
                 <Switch
                   id="dynamic_trailing"
                   name="dynamic_trailing"
@@ -186,10 +188,7 @@ const TakeProfit: FC = () => {
                   label={bot.dynamic_trailing ? "On" : "Off"}
                 />
               </Group>
-              <Input.Description>
-                {"Update the trailing_deviation according to volatility (SD)"}
-              </Input.Description>
-            </Stack>
+            </Box>
           </Grid.Col>
         </Grid>
         <SimpleGrid
@@ -239,4 +238,5 @@ const TakeProfit: FC = () => {
     </Tabs.Panel>
   );
 };
+
 export default TakeProfit;

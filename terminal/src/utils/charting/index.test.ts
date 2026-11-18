@@ -40,6 +40,7 @@ describe("chart order lines", () => {
       trailing: false,
       take_profit: 6.5,
     };
+
     const inactiveLines = updateOrderLines(bot, 100);
 
     expect(inactiveLines.find((line) => line.id === "base_order")?.price).toBe(
@@ -64,6 +65,7 @@ describe("chart order lines", () => {
       },
       101,
     );
+
     expect(activeLines.find((line) => line.id === "take_profit")?.price).toBe(
       92,
     );
@@ -84,17 +86,22 @@ describe("chart order lines", () => {
         trailing_stop_loss_price: 101,
       },
     };
+
     const actual = updateOrderLines(bot, 100);
+
     const shortActual = updateOrderLines(
       { ...bot, position: BotPosition.SHORT },
       100,
     );
+
     const longPreview = updateOrderLines(bot, 100, true);
+
     const shortPreview = updateOrderLines(
       { ...bot, position: BotPosition.SHORT },
       100,
       true,
     );
+
     const price = (lines: ReturnType<typeof updateOrderLines>, id: string) =>
       lines.find((line) => line.id === id)?.price;
 
@@ -151,7 +158,9 @@ describe("chart order lines", () => {
         trailing_deviation: 4,
         orders,
       };
+
       const lines = updateOrderLines(bot, 100);
+
       const marks = updateTimescaleMarks(bot);
 
       expect(lines.find((line) => line.id === DealType.STOP_LOSS)?.color).toBe(
@@ -184,11 +193,14 @@ describe("chart order lines", () => {
       trailing_deviation: 4,
       stop_loss: 3,
     };
+
     const price = 100;
+
     const line = (lines: ReturnType<typeof updateOrderLines>, id: string) =>
       lines.find((orderLine) => orderLine.id === id);
 
     const longLines = updateOrderLines(bot, price);
+
     const shortLines = updateOrderLines(
       { ...bot, position: BotPosition.SHORT },
       price,
@@ -227,6 +239,7 @@ describe("chart order lines", () => {
 
   it("falls back to the closing price for legacy deals without a trailing-profit price", () => {
     const bot = completedTrailingFuturesLong();
+
     bot.deal!.trailing_profit_price = 0;
 
     const lines = updateOrderLines(bot, 0.01052);

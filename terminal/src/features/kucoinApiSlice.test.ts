@@ -54,6 +54,7 @@ describeBlock("futuresLiquidity query", () => {
       asks: [[100.04, 200]],
     },
   };
+
   const contractResponse = {
     code: "200000",
     data: {
@@ -72,22 +73,28 @@ describeBlock("futuresLiquidity query", () => {
     bookStatus = 200,
   ) => {
     vi.stubGlobal("Request", MockRequest);
+
     const fetchMock = vi.fn(async (request: MockRequest) => {
       const isBook = request.url.includes("/level2/depth100");
+
       return new Response(JSON.stringify(isBook ? book : contract), {
         status: isBook ? bookStatus : 200,
         headers: { "content-type": "application/json" },
       });
     });
+
     vi.stubGlobal("fetch", fetchMock);
+
     const store = configureStore({
       reducer: { [kucoinApiSlice.reducerPath]: kucoinApiSlice.reducer },
       middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware().concat(kucoinApiSlice.middleware),
     });
+
     const result = await store.dispatch(
       kucoinApiSlice.endpoints.futuresLiquidity.initiate("KGENUSDTM"),
     );
+
     store.dispatch(kucoinApiSlice.util.resetApiState());
     return { result, fetchMock };
   };
@@ -96,6 +103,7 @@ describeBlock("futuresLiquidity query", () => {
     "uses the existing proxy and exchange multiplier to value the book",
     async () => {
       const { result, fetchMock } = await runQuery();
+
       expectValue(result.data).toMatchObject({
         liquidity: "Low liquidity",
         obi: expectValue.any(Number),
@@ -120,6 +128,7 @@ describeBlock("futuresLiquidity query", () => {
         code: "400100",
         msg: "Symbol not found",
       });
+
       expectValue(result.error).toMatchObject({ status: "CUSTOM_ERROR" });
       expectValue(result.error).toMatchObject({ error: "Symbol not found" });
       expectValue(result.data).toBeUndefined();
@@ -134,6 +143,7 @@ describeBlock("futuresLiquidity query", () => {
         contractResponse,
         400,
       );
+
       expectValue(result.error).toMatchObject({
         status: 400,
         data: { msg: "Symbol not found" },
@@ -149,6 +159,7 @@ describeBlock("futuresLiquidity query", () => {
         contractResponse,
         429,
       );
+
       expectValue(result.error).toMatchObject({ status: 429 });
       expectValue(result.data).toBeUndefined();
     },
@@ -170,6 +181,7 @@ describeBlock("futuresLiquidity query", () => {
     },
   ])("rejects invalid or mismatched contract metadata", async (contract) => {
     const { result } = await runQuery(bookResponse, contract);
+
     expectValue(result.error).toMatchObject({ status: "CUSTOM_ERROR" });
     expectValue(result.data).toBeUndefined();
   });

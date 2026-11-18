@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom";
-import { render, screen as rtlScreen } from "../../utils/render";
-import FastestMovers from "./FastestMovers";
+import { render, screen as rtlScreen } from "../../../utils/render";
+import FastestMovers from "../FastestMovers";
 
 describe("FastestMovers", () => {
   it("links futures movers to new bots and shows both time windows as badges", () => {

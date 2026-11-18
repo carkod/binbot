@@ -5,6 +5,7 @@ import type { AppStore, RootState } from "../app/store";
 import { makeStore } from "../app/store";
 import type { RenderOptions } from "./render";
 import { render } from "./render";
+
 /**
  * This type extends the default options for
  * React Testing Library's render function. It allows for
@@ -30,6 +31,7 @@ interface ExtendedRenderOptions extends Omit<RenderOptions, "queries"> {
    */
   store?: AppStore;
 }
+
 /**
  * Renders the given React element with Redux Provider and custom store.
  * This function is useful for testing components that are connected to the Redux store.
@@ -48,9 +50,11 @@ export const renderWithProviders = (
     store = makeStore(preloadedState),
     ...renderOptions
   } = extendedRenderOptions;
+
   const Wrapper = ({ children }: PropsWithChildren) => (
     <Provider store={store}>{children}</Provider>
   );
+
   // Return an object with the store and all of RTL's query functions
   return {
     store,

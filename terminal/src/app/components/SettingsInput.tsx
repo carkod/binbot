@@ -1,5 +1,6 @@
 import { Input, Stack, TextInput } from "@mantine/core";
 import React, { type FC } from "react";
+
 type SettingsInputProps = {
   value?: string | number;
   name?: string;
@@ -13,6 +14,7 @@ type SettingsInputProps = {
   register?: any;
   required?: boolean;
 };
+
 const SettingsInput: FC<SettingsInputProps> = ({
   value,
   name,
@@ -27,6 +29,7 @@ const SettingsInput: FC<SettingsInputProps> = ({
   required = false,
 }) => {
   const inputStep = step ?? (type === "number" ? "any" : undefined);
+
   return (
     <Stack gap={4} mb="sm">
       <Input.Label htmlFor={name}>{label}</Input.Label>
@@ -45,4 +48,5 @@ const SettingsInput: FC<SettingsInputProps> = ({
     </Stack>
   );
 };
+
 export default SettingsInput;

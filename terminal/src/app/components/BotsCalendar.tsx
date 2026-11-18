@@ -1,12 +1,14 @@
 import { DatePickerInput } from "@mantine/dates";
 import { type FC } from "react";
 import { convertTsToInputDate } from "../../utils/time";
+
 interface BotsDateFilterProps {
   selectedDate: number | undefined;
   title: string;
   controlId: string; // Unique ID to identify
   handleDateChange: (ts: number | undefined) => void;
 }
+
 const BotsDateFilter: FC<BotsDateFilterProps> = ({
   title,
   selectedDate,
@@ -29,4 +31,5 @@ const BotsDateFilter: FC<BotsDateFilterProps> = ({
     />
   );
 };
+
 export default BotsDateFilter;

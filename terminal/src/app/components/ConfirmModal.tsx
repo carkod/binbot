@@ -1,5 +1,6 @@
 import { Button, Group, Modal } from "@mantine/core";
 import type { ReactNode } from "react";
+
 type ConfirmModalProps = {
   handleActions: (value: number) => void;
   show: boolean;
@@ -8,6 +9,7 @@ type ConfirmModalProps = {
   secondary?: ReactNode;
   children?: ReactNode;
 };
+
 const ConfirmModal = ({
   handleActions,
   show,
@@ -38,4 +40,5 @@ const ConfirmModal = ({
     </Modal>
   );
 };
+
 export default ConfirmModal;

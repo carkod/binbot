@@ -15,6 +15,7 @@ import { formatTimestamp } from "../../utils/time";
 import { listCssColors } from "../../utils/validations";
 import { useBreakpoint } from "../hooks";
 import PlotlyChart from "./PlotlyChart";
+
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -24,10 +25,12 @@ ChartJS.register(
   Tip,
   Legend,
 );
+
 const PortfolioBenchmarkChart: FC<{
   chartData: BenchmarkSeriesData;
 }> = ({ chartData }) => {
   const breakpoint = useBreakpoint();
+
   let processData = { ...chartData };
   if (breakpoint === "xs") {
     // Show only the last 5 data points due to size of the screen
@@ -35,8 +38,11 @@ const PortfolioBenchmarkChart: FC<{
     processData.fiatSeries = chartData.fiatSeries?.slice(-5);
     processData.btcSeries = chartData.btcSeries?.slice(-5);
   }
+
   const lastUsdt = processData.fiatSeries?.[processData.fiatSeries.length - 1];
+
   const lastBtc = processData.btcSeries?.[processData.btcSeries.length - 1];
+
   // Prepare Plotly data and layout for line plot
   const plotlyData = [
     {
@@ -56,6 +62,7 @@ const PortfolioBenchmarkChart: FC<{
       line: { color: listCssColors[1], shape: "spline" },
     },
   ];
+
   const PBLayout = {
     title: false,
     autosize: true,
@@ -76,6 +83,7 @@ const PortfolioBenchmarkChart: FC<{
     },
     responsive: true,
   };
+
   return (
     <Card mb="md">
       <Box mb="sm">
@@ -121,4 +129,5 @@ const PortfolioBenchmarkChart: FC<{
     </Card>
   );
 };
+
 export default PortfolioBenchmarkChart;

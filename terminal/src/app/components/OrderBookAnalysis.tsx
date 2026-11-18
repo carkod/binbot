@@ -3,15 +3,20 @@ import { getApiErrorMessage } from "../../utils/api";
 import { useMicrostructureData } from "../hooks/useMicrostructureData";
 import SpreadAndDepthCard from "./SpreadAndDepthCard";
 import SymbolCvdCard from "./SymbolCvdCard";
+
 const OrderBookAnalysis = ({
   enabled,
   showError = false,
+  depthWindowMinutes,
 }: {
   enabled: boolean;
   showError?: boolean;
+  depthWindowMinutes?: number;
 }) => {
   const { symbol, liquidity, orderBookHistory } = useMicrostructureData();
+
   const { isFetching, isError, error, refetch } = liquidity;
+
   return (
     <>
       {enabled && showError && isError && (
@@ -21,6 +26,7 @@ const OrderBookAnalysis = ({
       )}
       <SimpleGrid cols={{ base: 1, md: 2 }}>
         <SpreadAndDepthCard
+          depthWindowMinutes={depthWindowMinutes}
           orderBookHistory={orderBookHistory}
           enabled={enabled}
           isFetching={isFetching}
@@ -32,4 +38,5 @@ const OrderBookAnalysis = ({
     </>
   );
 };
+
 export default OrderBookAnalysis;

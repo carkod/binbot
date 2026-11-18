@@ -41,16 +41,22 @@ import { SpinnerContext } from "../spinner-context";
 import { type AppDispatch } from "../store";
 import { InputTooltip } from "./InputTooltip";
 import SymbolSearch from "./SymbolSearch";
+
 interface ErrorsState {
   pair?: string;
 }
+
 const BaseOrderTab: FC<{
   fiatAvailable?: number | undefined;
 }> = ({ fiatAvailable = undefined }) => {
   const { symbol, id } = useParams();
+
   const { pathname } = useLocation();
+
   const isNewRoute = matchNewRoutes(pathname);
+
   const dispatch: AppDispatch = useAppDispatch();
+
   const {
     symbolsList,
     quoteAsset,
@@ -58,16 +64,25 @@ const BaseOrderTab: FC<{
     futuresLeverage,
     updateQuoteBaseState,
   } = useSymbolData();
+
   const { bot } = useAppSelector(selectBot);
+
   const recoveryEnabled = bot.recovery_params != null;
+
   const isBusyBot =
     bot.status === BotStatus.ACTIVE || bot.status === BotStatus.COMPLETED;
+
   const { data: autotradeSettings, isLoading: loadingSettings } =
     useGetSettingsQuery();
+
   const [currentPrice, setCurrentPrice] = useState<number>(0);
+
   const [errorsState, setErrorsState] = useImmer<ErrorsState>({});
+
   const entryPriceEditedRef = useRef(false);
+
   const initializedSymbolRef = useRef<string | null>(null);
+
   const {
     register,
     setValue,
@@ -84,7 +99,9 @@ const BaseOrderTab: FC<{
       fiat_order_size: bot.fiat_order_size,
     },
   });
+
   const { spinner, setSpinner } = useContext(SpinnerContext);
+
   const handlePairSelection = (pair: string) => {
     // Only when selected not typed in
     // this way we avoid any errors
@@ -100,11 +117,13 @@ const BaseOrderTab: FC<{
       });
     }
   };
+
   const addAvailableFiat = () => {
     if (fiatAvailable) {
       dispatch(setField({ name: "fiat_order_size", value: fiatAvailable }));
     }
   };
+
   useEffect(() => {
     const { unsubscribe } = watch((v, { name }) => {
       if (v && v?.[name]) {
@@ -115,6 +134,7 @@ const BaseOrderTab: FC<{
         }
       }
     });
+
     return () => unsubscribe();
   }, [dispatch, watch]);
   useEffect(() => {
@@ -182,6 +202,7 @@ const BaseOrderTab: FC<{
         fiatAvailable && fiatAvailable > 0
           ? fiatAvailable
           : autotradeSettings?.base_order_size;
+
       if (!defaultFiatOrderSize) {
         return;
       }
@@ -346,6 +367,7 @@ const BaseOrderTab: FC<{
                           }
                           onChange={(event) => {
                             const entryMode = event.target.value as EntryMode;
+
                             dispatch(
                               setField({
                                 name: "entry_mode",
@@ -553,4 +575,5 @@ const BaseOrderTab: FC<{
     </Tabs.Panel>
   );
 };
+
 export default BaseOrderTab;

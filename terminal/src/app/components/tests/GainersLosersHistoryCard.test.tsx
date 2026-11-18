@@ -60,7 +60,9 @@ describeBlock("GainersLosersHistoryCard", () => {
 
     expectValue(rtlScreen.getByText("Balance +50.0%")).toBeInTheDocument();
     expectValue(plotlyChartMock).toHaveBeenCalledTimes(1);
+
     const chart = plotlyChartMock.mock.calls[0][0] as PlotlyProps;
+
     expectValue(chart.data.map((trace) => trace.name)).toEqual([
       "Gain/loss balance",
     ]);

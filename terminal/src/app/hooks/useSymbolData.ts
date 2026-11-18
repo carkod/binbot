@@ -27,6 +27,7 @@ export const SymbolContext = createContext<SymbolContextType | undefined>(
 
 export const useSymbolData = () => {
   const context = useContext(SymbolContext);
+
   if (!context) {
     throw new Error("useSymbolData must be used within a SymbolProvider");
   }
@@ -37,12 +38,19 @@ export const useSymbolDataProvider = (marketType?: MarketType) => {
   const { data: symbols } = useGetSymbolsQuery(
     marketType ? { market_type: marketType } : undefined,
   );
+
   const [triggerGetOneSymbol] = useLazyGetOneSymbolQuery();
+
   const [symbolsList, setSymbolsList] = useState<string[]>([]);
+
   const [quoteAsset, setQuoteAsset] = useState<string>("");
+
   const [baseAsset, setBaseAsset] = useState<string>("");
+
   const [futuresLeverage, setFuturesLeverage] = useState<number>(1);
+
   const [isLoading, setIsLoading] = useState(false);
+
   const latestSymbolRequestRef = useRef<string | null>(null);
 
   const updateQuoteBaseState = useCallback(
@@ -82,6 +90,7 @@ export const useSymbolDataProvider = (marketType?: MarketType) => {
     setSymbolsList((prev) => {
       if (prev.length === pairs.length) {
         const hasSameValues = prev.every((id, index) => id === pairs[index]);
+
         if (hasSameValues) {
           return prev;
         }

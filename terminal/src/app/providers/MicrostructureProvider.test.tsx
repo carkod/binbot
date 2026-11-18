@@ -21,7 +21,9 @@ import { MicrostructureProvider } from "./MicrostructureProvider";
 vi.mock("../../features/kucoinApiSlice", () => ({
   useFuturesLiquidityQuery: vi.fn(),
 }));
+
 const now = 1_790_000_040_000;
+
 const snapshot = {
   timestamp: now,
   liquidity: "High liquidity",
@@ -31,6 +33,7 @@ const snapshot = {
   askDepth: 20,
   multiplier: 10,
 };
+
 const queryResult = (timestamp = now) =>
   ({
     currentData: { ...snapshot, timestamp },
@@ -41,7 +44,9 @@ const queryResult = (timestamp = now) =>
 
 const Controls = () => {
   const navigate = useNavigate();
+
   const { selectSymbol } = useMicrostructureData();
+
   return (
     <>
       <input aria-label="Bot form state" defaultValue="draft" />
@@ -57,9 +62,12 @@ const Controls = () => {
     </>
   );
 };
+
 const Probe = () => {
   const { symbol: botSymbol } = useParams();
+
   const { symbol, selectSymbol, orderBookHistory } = useMicrostructureData();
+
   useEffect(() => {
     if (botSymbol) selectSymbol(botSymbol);
   }, [botSymbol, selectSymbol]);
@@ -72,6 +80,7 @@ const Probe = () => {
     </output>
   );
 };
+
 const renderCollector = (path = "/bots/futures/new/KGENUSDTM") =>
   render(
     <MemoryRouter initialEntries={[path]}>
@@ -109,9 +118,11 @@ describe("background order-book collection", () => {
       }),
     );
     fireEvent.click(testingScreen.getByRole("button", { name: "KGEN" }));
+
     const restored = JSON.parse(
       testingScreen.getByTestId("collector").textContent,
     );
+
     expect(restored.timestamps).toEqual([now, now + 15_000]);
   });
 
@@ -121,8 +132,11 @@ describe("background order-book collection", () => {
       queryResult(now + 15_000),
     );
     act(() => vi.advanceTimersByTime(15_000));
+
     const previousSymbol = queryResult(now + 15_000);
+
     const nextSymbol = queryResult(now + 30_000);
+
     vi.mocked(useFuturesLiquidityQuery).mockImplementation((symbol) =>
       symbol === "XBTUSDTM" ? nextSymbol : previousSymbol,
     );
@@ -131,9 +145,11 @@ describe("background order-book collection", () => {
       "XBTUSDTM",
       expect.objectContaining({ skip: false }),
     );
+
     const current = JSON.parse(
       testingScreen.getByTestId("collector").textContent,
     );
+
     expect(current.symbol).toBe("XBTUSDTM");
     expect(current.timestamps).toEqual([now + 30_000]);
   });
@@ -144,7 +160,9 @@ describe("background order-book collection", () => {
       "",
       expect.objectContaining({ skip: true }),
     );
+
     const form = testingScreen.getByRole("textbox", { name: "Bot form state" });
+
     fireEvent.change(form, { target: { value: "edited draft" } });
     fireEvent.click(testingScreen.getByRole("button", { name: "Bot KGEN" }));
     expect(useFuturesLiquidityQuery).toHaveBeenLastCalledWith(

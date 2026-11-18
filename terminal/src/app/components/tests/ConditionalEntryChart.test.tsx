@@ -37,6 +37,7 @@ vi.mock("../../../features/autotradeApiSlice", async () => ({
 
 function BotChart() {
   const { bot } = useAppSelector(selectBot);
+
   return (
     <ChartContainer
       bot={bot}
@@ -50,6 +51,7 @@ function BotChart() {
 // Supply only the drawing API normally loaded over the network in its iframe.
 async function readyChart(container: HTMLElement) {
   type Point = { time: number; price: number };
+
   const shapes = new Map<
     number,
     {
@@ -64,7 +66,9 @@ async function readyChart(container: HTMLElement) {
       setProperties(properties: { text: string }): void;
     }
   >();
+
   const events = new Map<string, (...args: unknown[]) => void>();
+
   const chart = {
     refreshMarks: vi.fn(),
     createShape: async (
@@ -72,6 +76,7 @@ async function readyChart(container: HTMLElement) {
       options: { text: string; lock: boolean; disableSelection: boolean },
     ) => {
       const id = shapes.size + 1;
+
       shapes.set(id, {
         text: options.text,
         points: [point],
@@ -98,8 +103,11 @@ async function readyChart(container: HTMLElement) {
     getShapeById: (id: number) => shapes.get(id),
     removeEntity: (id: number) => shapes.delete(id),
   };
+
   const iframe = container.querySelector("iframe")!;
+
   const frameWindow = iframe.contentWindow!;
+
   Object.assign(frameWindow, {
     widgetReady: (callback: () => void) => callback(),
     initializationFinished: vi.fn(),
@@ -135,6 +143,7 @@ it.each([BotPosition.LONG, BotPosition.SHORT])(
   "links the %s conditional input to the base drawing only while focused in conditional mode",
   async (position) => {
     const store = makeStore();
+
     store.dispatch(
       setBot({
         bot: {
@@ -149,6 +158,7 @@ it.each([BotPosition.LONG, BotPosition.SHORT])(
         },
       }),
     );
+
     const { container } = render(
       <Provider store={store}>
         <SymbolContext.Provider
@@ -172,16 +182,21 @@ it.each([BotPosition.LONG, BotPosition.SHORT])(
         </SymbolContext.Provider>
       </Provider>,
     );
+
     const { shapes, emit } = await readyChart(container);
+
     const [entityId, entry] = [...shapes.entries()].find(([, shape]) =>
       shape.text.startsWith("Base"),
     )!;
+
     // Both entry modes share this one base drawing.
     expect(
       [...shapes.values()].filter((shape) => shape.points[0].price === 100),
     ).toEqual([entry]);
     expect(entry.editable && entry.selectable).toBe(true);
+
     const input = testingScreen.getByLabelText("Entry limit price");
+
     await waitFor(() => expect(entry.editable && entry.selectable).toBe(true));
     fireEvent.change(input, { target: { value: "98" } });
     await waitFor(() => expect(entry.points[0].price).toBe(98));

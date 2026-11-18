@@ -28,11 +28,16 @@ import LightSwitch from "../components/LightSwitch";
 import SettingsInput from "../components/SettingsInput";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { type AppDispatch } from "../store";
+
 export const AutotradePage: FC<{}> = () => {
   const { data } = useGetSettingsQuery();
+
   const dispatch: AppDispatch = useAppDispatch();
+
   const { settings } = useAppSelector(selectSettings);
+
   const [updateSettings] = useEditSettingsMutation();
+
   const {
     register,
     watch,
@@ -66,8 +71,10 @@ export const AutotradePage: FC<{}> = () => {
       enable_grid_ladders: settings.enable_grid_ladders,
     },
   });
+
   const handleBlur = (e) => {
     const { name, value } = e.target;
+
     if (name && value) {
       if (typeof value === "string") {
         dispatch(setSettingsField({ name, value }));
@@ -76,9 +83,11 @@ export const AutotradePage: FC<{}> = () => {
       }
     }
   };
+
   const saveSettings = async (formData) => {
     await updateSettings({ ...settings, ...formData }).unwrap();
   };
+
   useEffect(() => {
     if (data) {
       dispatch(setSettings(data));
@@ -96,6 +105,7 @@ export const AutotradePage: FC<{}> = () => {
         }
       }
     });
+
     if (settings) {
       reset({
         candlestick_interval: settings.candlestick_interval,
@@ -151,6 +161,7 @@ export const AutotradePage: FC<{}> = () => {
                       name="exchange_id"
                       onChange={(e) => {
                         const { value } = e.target;
+
                         dispatch(
                           setSettingsField({
                             name: "exchange_id",
@@ -228,6 +239,7 @@ export const AutotradePage: FC<{}> = () => {
                     name="candlestick_interval"
                     onChange={(e) => {
                       const { value } = e.target;
+
                       dispatch(
                         setSettingsField({
                           name: "candlestick_interval",
@@ -456,4 +468,5 @@ export const AutotradePage: FC<{}> = () => {
     </Box>
   );
 };
+
 export default AutotradePage;

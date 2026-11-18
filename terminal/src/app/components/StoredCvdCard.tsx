@@ -2,6 +2,7 @@ import { Box, Card, Group, Text, Title } from "@mantine/core";
 import { useMemo } from "react";
 import type { CvdAggregate } from "../../features/marketApiSlice";
 import LivePlotlyChart from "./LivePlotlyChart";
+
 interface StoredCvdCardProps {
   result?: CvdAggregate;
   isLoading: boolean;
@@ -9,6 +10,7 @@ interface StoredCvdCardProps {
   symbol?: string;
   embedded?: boolean;
 }
+
 const StoredCvdCard = ({
   result,
   isLoading,
@@ -17,18 +19,24 @@ const StoredCvdCard = ({
   embedded = false,
 }: StoredCvdCardProps) => {
   const Container = embedded ? Box : Card;
+
   const subject = symbol ? `${symbol} CVD` : "Market CVD";
+
   const changeLabel = symbol
     ? "Contract multiplier changed"
     : "Universe changed";
+
   const data = useMemo(() => {
     const points = result?.data ?? [];
+
     const chartPoints = points.flatMap((point, index) => {
       const previous = points[index - 1];
+
       return previous && (previous.gap || point.gap || point.universe_changed)
         ? [null, point]
         : [point];
     });
+
     return [
       {
         type: "scatter",
@@ -75,9 +83,11 @@ const StoredCvdCard = ({
       },
     ];
   }, [result, subject, changeLabel]);
+
   const layout = useMemo(
     () => {
       const now = Date.now();
+
       return {
         autosize: true,
         height: 380,
@@ -110,6 +120,7 @@ const StoredCvdCard = ({
     // refit the rolling window without remounting the chart.
     [symbol, result],
   );
+
   return (
     <Container mb={embedded ? 0 : "md"}>
       <Box mb="sm">
@@ -167,4 +178,5 @@ const StoredCvdCard = ({
     </Container>
   );
 };
+
 export default StoredCvdCard;

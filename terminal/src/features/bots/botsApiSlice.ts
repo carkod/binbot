@@ -35,6 +35,7 @@ export const buildGetBotsPath = (
     end_date: endDate.toString(),
     status: status,
   });
+
   return params.toString();
 };
 
@@ -55,6 +56,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
           ...(startDate != null ? { start_date: startDate } : {}),
           ...(endDate != null ? { end_date: endDate } : {}),
         };
+
         return {
           url: `${import.meta.env.VITE_GET_BOTS}` || "/bots",
           params,
@@ -67,6 +69,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         }
 
         const totalProfit = computeTotalProfit(data);
+
         // normalize [] -> {}
         const bots = botsAdapter.setAll(botsAdapter.getInitialState(), data);
 

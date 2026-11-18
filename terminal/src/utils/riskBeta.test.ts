@@ -10,6 +10,7 @@ import {
 } from "./riskBeta";
 
 const completedBefore = 100 * FIFTEEN_MINUTES_MS;
+
 const btcCandles: CandleClose[] = Array.from({ length: 97 }, (_, index) => ({
   timestamp: (index + 3) * FIFTEEN_MINUTES_MS,
   close: 100 + index + (index % 3) * 2,
@@ -23,6 +24,7 @@ describeBlock("BTC risk beta from completed 15-minute returns", () => {
         timestamp: completedBefore,
         close: 999999,
       };
+
       const result = calculateRiskBeta(
         [...btcCandles, formingCandle],
         [{ quantity: 1, candles: [...btcCandles, formingCandle] }],
@@ -58,6 +60,7 @@ describeBlock("BTC risk beta from completed 15-minute returns", () => {
         timestamp: timestamp + 60_000,
         close,
       }));
+
       expectValue(
         calculateRiskBeta(
           btcCandles,

@@ -2,12 +2,12 @@ import "@testing-library/jest-dom";
 import type { ReactElement } from "react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
-import { filterSymbolByBaseAsset } from "../../utils/api";
-import { fireEvent, render, screen as rtlScreen } from "../../utils/render";
-import { SymbolContext } from "../hooks";
-import SymbolSearch from "./SymbolSearch";
+import { filterSymbolByBaseAsset } from "../../../utils/api";
+import { fireEvent, render, screen as rtlScreen } from "../../../utils/render";
+import { SymbolContext } from "../../hooks";
+import SymbolSearch from "../SymbolSearch";
 
-vi.mock("../../features/autotradeApiSlice", () => ({
+vi.mock("../../../features/autotradeApiSlice", () => ({
   useGetSettingsQuery: vi.fn(() => ({ data: {} })),
 }));
 
@@ -42,8 +42,11 @@ const renderWithSymbols = (ui: ReactElement, symbolsList: string[]) =>
 describe("Search symbols", () => {
   it("returns symbols only with the given baseAsset", () => {
     const baseAsset = "USDC";
+
     const listSymbols = ["USDCBNB", "BTCUSDC", "BTCETH", "ETHUSDT", "ETHUSDC"];
+
     const symbols = filterSymbolByBaseAsset(listSymbols, baseAsset);
+
     expect(symbols).toEqual(["BTCUSDC", "ETHUSDC"]);
   });
 });
@@ -51,8 +54,11 @@ describe("Search symbols", () => {
 describe("SymbolSearch component", () => {
   it("selects a suggestion with the keyboard while keeping typing separate", async () => {
     const user = userEvent.setup();
+
     const onChange = vi.fn();
+
     const onInputChange = vi.fn();
+
     renderWithSymbolProvider(
       <SymbolSearch
         name="pair"
@@ -62,6 +68,7 @@ describe("SymbolSearch component", () => {
     );
 
     const input = rtlScreen.getByRole("combobox");
+
     await user.type(input, "ETH");
     expect(onInputChange).toHaveBeenLastCalledWith("ETH");
     expect(onChange).not.toHaveBeenCalled();
@@ -72,7 +79,9 @@ describe("SymbolSearch component", () => {
 
   it("selects a suggestion with the mouse", async () => {
     const user = userEvent.setup();
+
     const onChange = vi.fn();
+
     renderWithSymbolProvider(<SymbolSearch name="pair" onChange={onChange} />);
 
     await user.click(rtlScreen.getByRole("combobox"));

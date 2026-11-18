@@ -22,11 +22,16 @@ import {
 import { TabsKeys } from "../../utils/enums";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { type AppDispatch } from "../store";
+
 const StopLossTab: FC = () => {
   const dispatch: AppDispatch = useAppDispatch();
+
   const { bot: liveBot } = useAppSelector(selectBot);
+
   const bot = liveBot;
+
   const recoveryEnabled = bot.recovery_params != null;
+
   const {
     watch,
     register,
@@ -39,9 +44,11 @@ const StopLossTab: FC = () => {
       stop_loss: bot.stop_loss,
     },
   });
+
   useEffect(() => {
     const { unsubscribe } = watch((values, { name }) => {
       const value = name ? values[name] : undefined;
+
       if (
         name &&
         value !== undefined &&
@@ -54,16 +61,19 @@ const StopLossTab: FC = () => {
         }
       }
     });
+
     return () => unsubscribe();
   }, [watch, dispatch]);
   useEffect(() => {
     setValue("stop_loss", bot.stop_loss);
   }, [bot.stop_loss, setValue]);
+
   const handleBlur = (e) => {
     if (e.target.value) {
       dispatch(setField({ name: e.target.name, value: watch(e.target.name) }));
     }
   };
+
   const handleRecoveryChange = (
     name: keyof RecoveryParams,
     value: RecoveryParams[keyof RecoveryParams],
@@ -76,6 +86,7 @@ const StopLossTab: FC = () => {
       }),
     );
   };
+
   return (
     <Tabs.Panel
       id={TabsKeys.STOPLOSS}
@@ -163,4 +174,5 @@ const StopLossTab: FC = () => {
     </Tabs.Panel>
   );
 };
+
 export default StopLossTab;

@@ -2,6 +2,7 @@ import { type FC } from "react";
 import { type GainerLosersData } from "../../features/marketApiSlice";
 import { listCssColors } from "../../utils/validations";
 import PlotlyChart from "./PlotlyChart";
+
 interface BarChartProps {
   data: GainerLosersData;
   width?: string;
@@ -9,6 +10,7 @@ interface BarChartProps {
   line1name?: string;
   line2name?: string;
 }
+
 const BarChart: FC<BarChartProps> = ({
   data,
   width = "100%",
@@ -18,17 +20,23 @@ const BarChart: FC<BarChartProps> = ({
   const gainers_percent = data.gainers.map((v: string) =>
     typeof v === "string" ? parseFloat(v.replace("%", "")) : v,
   );
+
   const losers_percent = data.losers.map((v: string) =>
     typeof v === "string" ? parseFloat(v.replace("%", "")) : v,
   );
+
   const reversalIndices: number[] = [];
+
   for (let i = 1; i < gainers_percent.length; i++) {
     const prevDiff = gainers_percent[i - 1] - losers_percent[i - 1];
+
     const currDiff = gainers_percent[i] - losers_percent[i];
+
     if ((prevDiff <= 0 && currDiff > 0) || (prevDiff >= 0 && currDiff < 0)) {
       reversalIndices.push(i);
     }
   }
+
   // Prepare vertical line shapes for reversals
   const reversalShapes = reversalIndices.map((i) => ({
     type: "line",
@@ -44,6 +52,7 @@ const BarChart: FC<BarChartProps> = ({
       dash: "dash",
     },
   }));
+
   const layout = {
     dragmode: "zoom",
     autosize: true,
@@ -71,6 +80,7 @@ const BarChart: FC<BarChartProps> = ({
     },
     shapes: reversalShapes,
   };
+
   return (
     <PlotlyChart
       data={[
@@ -101,4 +111,5 @@ const BarChart: FC<BarChartProps> = ({
     />
   );
 };
+
 export default BarChart;

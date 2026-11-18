@@ -9,7 +9,9 @@ export interface RiskExposure {
 }
 
 export const FIFTEEN_MINUTES_MS = 15 * 60 * 1000;
+
 export const RISK_BETA_CANDLE_COUNT = 97;
+
 const MIN_RETURNS = 20;
 
 export function calculateRiskBeta(
@@ -35,7 +37,9 @@ export function calculateRiskBeta(
     );
 
   const benchmark = completedCloses(benchmarkCandles);
+
   const prices = exposures.map(({ candles }) => completedCloses(candles));
+
   const timestamps = [...benchmark.keys()]
     .filter((timestamp) => prices.every((series) => series.has(timestamp)))
     .sort((left, right) => left - right)
@@ -44,9 +48,13 @@ export function calculateRiskBeta(
   if (timestamps.length < MIN_RETURNS + 1) return null;
 
   const latest = timestamps[timestamps.length - 1];
+
   const latestPrices = prices.map((series) => series.get(latest)!);
+
   const portfolioReturns: number[] = [];
+
   const benchmarkReturns: number[] = [];
+
   let previousTimestamp: number | undefined;
   let previousValue: number | undefined;
   let previousBenchmark: number | undefined;
@@ -61,9 +69,11 @@ export function calculateRiskBeta(
             (prices[index].get(timestamp)! - latestPrices[index]),
         0,
       );
+
     if (value <= 0) return null;
 
     const benchmarkPrice = benchmark.get(timestamp)!;
+
     if (
       previousTimestamp === timestamp - FIFTEEN_MINUTES_MS &&
       previousValue !== undefined &&
@@ -78,15 +88,20 @@ export function calculateRiskBeta(
   }
 
   const count = benchmarkReturns.length;
+
   if (count < MIN_RETURNS) return null;
+
   const benchmarkMean =
     benchmarkReturns.reduce((sum, value) => sum + value, 0) / count;
+
   const portfolioMean =
     portfolioReturns.reduce((sum, value) => sum + value, 0) / count;
+
   const variance = benchmarkReturns.reduce(
     (sum, value) => sum + (value - benchmarkMean) ** 2,
     0,
   );
+
   if (variance === 0) return null;
 
   const covariance = benchmarkReturns.reduce(
@@ -94,5 +109,6 @@ export function calculateRiskBeta(
       sum + (value - benchmarkMean) * (portfolioReturns[index] - portfolioMean),
     0,
   );
+
   return Math.round((covariance / variance) * 10000) / 10000;
 }

@@ -26,6 +26,8 @@ input[type="reset"] {
   border-color: #363532;
 }
 .terminal-sidebar .mantine-NavLink-root {
+  position: relative;
+  padding-right: calc(var(--mantine-spacing-md) + 12px);
   color: #dedbd5;
   border-radius: var(--mantine-radius-sm);
 }
@@ -33,8 +35,20 @@ input[type="reset"] {
   background: #ffffff10;
 }
 .terminal-sidebar .mantine-NavLink-root[data-active] {
-  color: var(--mantine-color-primary-5);
-  background: #51cbce20;
+  color: var(--terminal-background);
+  background: transparent;
+}
+.terminal-sidebar .mantine-NavLink-root[data-active]::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 10px;
+  height: 20px;
+  background: var(--terminal-background);
+  clip-path: polygon(100% 0, 100% 100%, 0 50%);
+  transform: translateY(-50%);
+  pointer-events: none;
 }
 .mantine-Card-root {
   overflow: visible;

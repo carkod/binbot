@@ -51,7 +51,9 @@ export function updateOrderLines(
 
 export function updateTimescaleMarks(bot: Bot): TimescaleMark[] {
   let totalTimescaleMarks: TimescaleMark[] = [];
+
   const quoteAsset = bot.quote_asset;
+
   if (bot.orders && bot.orders.length > 0) {
     bot.orders.forEach((order) => {
       // Skip conversion and cancelled orders
@@ -88,6 +90,7 @@ export function updateTimescaleMarks(bot: Bot): TimescaleMark[] {
       if (order.deal_type.startsWith("so")) {
         color = dealColors.safety_order;
       }
+
       const timescaleMark: TimescaleMark = {
         id: order.order_id,
         label: label,

@@ -11,6 +11,7 @@ import SignalsPage from "./pages/Signals";
 import SymbolsPage from "./pages/Symbols";
 import UserFormPage from "./pages/UserForm";
 import UsersPage from "./pages/Users";
+
 interface RouteMetadata {
   name?: string;
   icon?: string;
@@ -21,6 +22,7 @@ interface RouteMetadata {
 interface AppIndexRoute extends IndexRouteObject, RouteMetadata {}
 interface AppNonIndexRoute extends NonIndexRouteObject, RouteMetadata {}
 type AppRoute = AppIndexRoute | AppNonIndexRoute;
+
 export const routes: AppRoute[] = [
   {
     index: true,

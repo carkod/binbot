@@ -39,14 +39,18 @@ export const balancesApiSlice = userApiSlice.injectEndpoints({
         series.btc.forEach((element: number, index: number) => {
           if (index > 0) {
             const previousQty = series.btc[index - 1];
+
             const diff = (element - previousQty) / element;
+
             percentageSeries.btcSeries.push(diff * 100);
           }
         });
         series.fiat.forEach((element: number, index: number) => {
           if (index > 0) {
             const previousQty = series.fiat[index - 1];
+
             const diff = (element - previousQty) / element;
+
             percentageSeries.fiatSeries.push(diff * 100);
           }
         });

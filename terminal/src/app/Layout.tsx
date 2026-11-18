@@ -9,19 +9,26 @@ import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import { MicrostructureProvider } from "./providers/MicrostructureProvider";
 import { SpinnerContext } from "./spinner-context";
+
 export const Layout = () => {
   const token = getToken();
+
   const mobile = useMediaQuery("(max-width: 47.99em)", false, {
     getInitialValueInEffect: false,
   });
+
   const [mobileOpened, setMobileOpened] = useState(false);
+
   const [desktopOpened, setDesktopOpened] = useState(true);
+
   const [spinner, setSpinner] = useState(false);
+
   useEffect(() => {
     const timer = window.setTimeout(
       () => window.dispatchEvent(new Event("resize")),
       300,
     );
+
     return () => window.clearTimeout(timer);
   }, [mobileOpened, desktopOpened]);
   if (!token) return <Navigate to="/login" replace />;
@@ -60,7 +67,12 @@ export const Layout = () => {
           }
         />
       </AppShell.Header>
-      <AppShell.Navbar p="md" className="terminal-sidebar">
+      <AppShell.Navbar
+        p="md"
+        pr={0}
+        withBorder={false}
+        className="terminal-sidebar"
+      >
         <Sidebar onNavigate={() => setMobileOpened(false)} />
       </AppShell.Navbar>
       <AppShell.Main>

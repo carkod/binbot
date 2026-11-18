@@ -1,4 +1,5 @@
 import { Card, Center, Loader } from "@mantine/core";
+
 const CardLoadingSpinner = ({
   label,
   className,
@@ -16,4 +17,5 @@ const CardLoadingSpinner = ({
     </Center>
   </Card>
 );
+
 export default CardLoadingSpinner;

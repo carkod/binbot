@@ -15,6 +15,7 @@ export const MicrostructureContext = createContext<
 
 export const useMicrostructureData = () => {
   const data = useContext(MicrostructureContext);
+
   if (!data) throw new Error("MicrostructureProvider is required");
   return data;
 };

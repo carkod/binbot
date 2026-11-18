@@ -139,8 +139,11 @@ describe("Dashboard page", () => {
 
   it("groups account and market cards under headings on the dashboard background", () => {
     renderDashboard();
+
     const account = rtlScreen.getByRole("region", { name: "Account overview" });
+
     const market = rtlScreen.getByRole("region", { name: "Market analysis" });
+
     expect(account).toContainElement(
       rtlScreen.getByText("PortfolioBenchmarkChart"),
     );
@@ -213,7 +216,9 @@ describe("Dashboard page", () => {
     );
 
     const chart = rtlScreen.getByText("PortfolioBenchmarkChart");
+
     const reveal = chart.parentElement;
+
     expect(reveal).toHaveStyle({ opacity: "0" });
     await waitFor(() => {
       expect(reveal).toHaveStyle({ opacity: "1", transform: "none" });

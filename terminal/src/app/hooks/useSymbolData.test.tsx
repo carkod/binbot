@@ -26,6 +26,7 @@ type Deferred<T> = {
 const createDeferred = <T,>(): Deferred<T> => {
   let resolve: (value: T) => void = () => undefined;
   let reject: (error?: unknown) => void = () => undefined;
+
   const promise = new Promise<T>((promiseResolve, promiseReject) => {
     resolve = promiseResolve;
     reject = promiseReject;
@@ -41,7 +42,9 @@ describe("useSymbolDataProvider", () => {
 
   it("ignores stale symbol metadata responses when a newer pair is selected", async () => {
     const routeSymbolRequest = createDeferred<Partial<ISymbol>>();
+
     const selectedSymbolRequest = createDeferred<Partial<ISymbol>>();
+
     const latestState: {
       quoteAsset?: string;
       baseAsset?: string;

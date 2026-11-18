@@ -6,6 +6,7 @@ import {
   Divider,
   Grid,
   Group,
+  Stack,
   Text,
   Title,
   VisuallyHidden,
@@ -17,6 +18,7 @@ import { computeSingleBotProfit } from "../../features/bots/profits";
 import { MarketType } from "../../utils/enums";
 import { roundDecimals } from "../../utils/math";
 import { formatTimestamp, renderDuration } from "../../utils/time";
+
 type handleCallback = (id: string) => void;
 interface BotCardProps {
   bot: Bot;
@@ -25,6 +27,7 @@ interface BotCardProps {
   handleSelection?: handleCallback;
   handleDelete?: handleCallback;
 }
+
 /**
  * Dump component that displays bots
  * in a card format
@@ -40,9 +43,13 @@ const BotCard: FC<BotCardProps> = ({
   handleDelete,
 }) => {
   const botProfit = computeSingleBotProfit(bot);
+
   const navigate = useNavigate();
+
   const { pathname } = useLocation();
+
   const selectedIds = selectedCards ?? [];
+
   return (
     <Card
       tabIndex={botIndex}
@@ -55,7 +62,7 @@ const BotCard: FC<BotCardProps> = ({
         <Box w="100%">
           <Grid>
             <Grid.Col span={{ base: 12, md: 7 }}>
-              <Title order={5} fz="1.25rem" fw={700} c="info.8">
+              <Title order={2} size="h4" mt={0} c="dimmed">
                 {bot.pair}
               </Title>
               <Text c="dimmed">{bot.name}</Text>
@@ -87,148 +94,150 @@ const BotCard: FC<BotCardProps> = ({
             </Grid.Col>
           </Grid>
           <Divider my="sm" />
-          <Grid>
-            <Grid.Col span={{ base: 7, md: 6 }}>
-              <Text>Market</Text>
-            </Grid.Col>
-            <Grid.Col span={{ base: 5, md: 6 }}>
-              <Text>{bot.market_type || MarketType.SPOT}</Text>
-            </Grid.Col>
-          </Grid>
-          <Grid>
-            <Grid.Col span={{ base: 7, md: 6 }}>
-              <Text>Mode</Text>
-            </Grid.Col>
-            <Grid.Col span={{ base: 5, md: 6 }}>
-              <Text tt="capitalize">{bot.mode ? bot.mode : "Unknown"}</Text>
-            </Grid.Col>
-          </Grid>
-          <Grid>
-            <Grid.Col span={{ base: 7, md: 6 }}>
-              <Text>Position</Text>
-            </Grid.Col>
-            <Grid.Col span={{ base: 5, md: 6 }}>
-              <Text tt="capitalize">{bot.position}</Text>
-            </Grid.Col>
-          </Grid>
-          {bot.market_type === MarketType.FUTURES && (
+          <Stack gap="xs">
             <Grid>
               <Grid.Col span={{ base: 7, md: 6 }}>
-                <Text>Leverage</Text>
+                <Text>Market</Text>
+              </Grid.Col>
+              <Grid.Col span={{ base: 5, md: 6 }}>
+                <Text>{bot.market_type || MarketType.SPOT}</Text>
+              </Grid.Col>
+            </Grid>
+            <Grid>
+              <Grid.Col span={{ base: 7, md: 6 }}>
+                <Text>Mode</Text>
+              </Grid.Col>
+              <Grid.Col span={{ base: 5, md: 6 }}>
+                <Text tt="capitalize">{bot.mode ? bot.mode : "Unknown"}</Text>
+              </Grid.Col>
+            </Grid>
+            <Grid>
+              <Grid.Col span={{ base: 7, md: 6 }}>
+                <Text>Position</Text>
+              </Grid.Col>
+              <Grid.Col span={{ base: 5, md: 6 }}>
+                <Text tt="capitalize">{bot.position}</Text>
+              </Grid.Col>
+            </Grid>
+            {bot.market_type === MarketType.FUTURES && (
+              <Grid>
+                <Grid.Col span={{ base: 7, md: 6 }}>
+                  <Text>Leverage</Text>
+                </Grid.Col>
+                <Grid.Col span={{ base: 5, md: 6 }}>
+                  <Text>
+                    {bot.futures_leverage != null
+                      ? `${bot.futures_leverage}x`
+                      : "—"}
+                  </Text>
+                </Grid.Col>
+              </Grid>
+            )}
+            <Grid>
+              <Grid.Col span={{ base: 7, md: 6 }}>
+                <Text>Open @</Text>
               </Grid.Col>
               <Grid.Col span={{ base: 5, md: 6 }}>
                 <Text>
-                  {bot.futures_leverage != null
-                    ? `${bot.futures_leverage}x`
-                    : "—"}
+                  {(bot.deal?.opening_price &&
+                    roundDecimals(bot.deal.opening_price, 6)) ||
+                    bot.deal?.opening_qty}
                 </Text>
               </Grid.Col>
             </Grid>
-          )}
-          <Grid>
-            <Grid.Col span={{ base: 7, md: 6 }}>
-              <Text>Open @</Text>
-            </Grid.Col>
-            <Grid.Col span={{ base: 5, md: 6 }}>
-              <Text>
-                {(bot.deal?.opening_price &&
-                  roundDecimals(bot.deal.opening_price, 6)) ||
-                  bot.deal?.opening_qty}
-              </Text>
-            </Grid.Col>
-          </Grid>
-          {bot.deal?.opening_timestamp > 0 && (
-            <Grid>
-              <Grid.Col span={{ base: 7, md: 6 }}>
-                <Text>Open time</Text>
-              </Grid.Col>
-              <Grid.Col span={{ base: 5, md: 6 }}>
-                <Text>{formatTimestamp(bot.deal.opening_timestamp)}</Text>
-              </Grid.Col>
-            </Grid>
-          )}
-          {bot.trailing ? (
-            <>
+            {bot.deal?.opening_timestamp > 0 && (
               <Grid>
                 <Grid.Col span={{ base: 7, md: 6 }}>
-                  <Text>Trailing profit</Text>
+                  <Text>Open time</Text>
                 </Grid.Col>
                 <Grid.Col span={{ base: 5, md: 6 }}>
-                  <Text>{roundDecimals(bot.trailing_profit) + "%"}</Text>
+                  <Text>{formatTimestamp(bot.deal.opening_timestamp)}</Text>
                 </Grid.Col>
               </Grid>
+            )}
+            {bot.trailing ? (
+              <>
+                <Grid>
+                  <Grid.Col span={{ base: 7, md: 6 }}>
+                    <Text>Trailing profit</Text>
+                  </Grid.Col>
+                  <Grid.Col span={{ base: 5, md: 6 }}>
+                    <Text>{roundDecimals(bot.trailing_profit) + "%"}</Text>
+                  </Grid.Col>
+                </Grid>
+                <Grid>
+                  <Grid.Col span={{ base: 7, md: 6 }}>
+                    <Text>Trailing deviation</Text>
+                  </Grid.Col>
+                  <Grid.Col span={{ base: 5, md: 6 }}>
+                    <Text>{roundDecimals(bot.trailing_deviation) + "%"}</Text>
+                  </Grid.Col>
+                </Grid>
+              </>
+            ) : (
               <Grid>
                 <Grid.Col span={{ base: 7, md: 6 }}>
-                  <Text>Trailing deviation</Text>
+                  <Text>Take profit</Text>
                 </Grid.Col>
                 <Grid.Col span={{ base: 5, md: 6 }}>
-                  <Text>{roundDecimals(bot.trailing_deviation) + "%"}</Text>
+                  <Text>{roundDecimals(bot.take_profit) + "%"}</Text>
                 </Grid.Col>
               </Grid>
-            </>
-          ) : (
-            <Grid>
-              <Grid.Col span={{ base: 7, md: 6 }}>
-                <Text>Take profit</Text>
-              </Grid.Col>
-              <Grid.Col span={{ base: 5, md: 6 }}>
-                <Text>{roundDecimals(bot.take_profit) + "%"}</Text>
-              </Grid.Col>
-            </Grid>
-          )}
+            )}
 
-          {bot.stop_loss > 0 && (
-            <Grid>
-              <Grid.Col span={{ base: 7, md: 6 }}>
-                <Text>Stop loss</Text>
-              </Grid.Col>
-              <Grid.Col span={{ base: 5, md: 6 }}>
-                <Text>{roundDecimals(bot.stop_loss) + "%"}</Text>
-              </Grid.Col>
-            </Grid>
-          )}
+            {bot.stop_loss > 0 && (
+              <Grid>
+                <Grid.Col span={{ base: 7, md: 6 }}>
+                  <Text>Stop loss</Text>
+                </Grid.Col>
+                <Grid.Col span={{ base: 5, md: 6 }}>
+                  <Text>{roundDecimals(bot.stop_loss) + "%"}</Text>
+                </Grid.Col>
+              </Grid>
+            )}
 
-          {bot.deal?.total_commissions > 0 && (
-            <Grid>
-              <Grid.Col span={{ base: 7, md: 6 }}>
-                <Text>Commissions</Text>
-              </Grid.Col>
-              <Grid.Col span={{ base: 5, md: 6 }}>
-                <Text>{`${bot.deal.total_commissions} ${bot.quote_asset}`}</Text>
-              </Grid.Col>
-            </Grid>
-          )}
-          {bot.deal?.total_interests > 0 && (
-            <Grid>
-              <Grid.Col span={{ base: 7, md: 6 }}>
-                <Text>Interests</Text>
-              </Grid.Col>
-              <Grid.Col span={{ base: 5, md: 6 }}>
-                <Text>{`${bot.deal.total_interests} ${bot.quote_asset}`}</Text>
-              </Grid.Col>
-            </Grid>
-          )}
+            {bot.deal?.total_commissions > 0 && (
+              <Grid>
+                <Grid.Col span={{ base: 7, md: 6 }}>
+                  <Text>Commissions</Text>
+                </Grid.Col>
+                <Grid.Col span={{ base: 5, md: 6 }}>
+                  <Text>{`${bot.deal.total_commissions} ${bot.quote_asset}`}</Text>
+                </Grid.Col>
+              </Grid>
+            )}
+            {bot.deal?.total_interests > 0 && (
+              <Grid>
+                <Grid.Col span={{ base: 7, md: 6 }}>
+                  <Text>Interests</Text>
+                </Grid.Col>
+                <Grid.Col span={{ base: 5, md: 6 }}>
+                  <Text>{`${bot.deal.total_interests} ${bot.quote_asset}`}</Text>
+                </Grid.Col>
+              </Grid>
+            )}
 
-          {bot.deal?.closing_timestamp > 0 && (
-            <Grid>
-              <Grid.Col span={{ base: 7, md: 6 }}>
-                <Text>Close time</Text>
-              </Grid.Col>
-              <Grid.Col span={{ base: 5, md: 6 }}>
-                <Text>{formatTimestamp(bot.deal.closing_timestamp)}</Text>
-              </Grid.Col>
-            </Grid>
-          )}
-          {bot.deal?.closing_timestamp > 0 && (
-            <Grid>
-              <Grid.Col span={{ base: 7, md: 6 }}>
-                <Text>Duration</Text>
-              </Grid.Col>
-              <Grid.Col span={{ base: 5, md: 6 }}>
-                <Text>{renderDuration(bot)}</Text>
-              </Grid.Col>
-            </Grid>
-          )}
+            {bot.deal?.closing_timestamp > 0 && (
+              <Grid>
+                <Grid.Col span={{ base: 7, md: 6 }}>
+                  <Text>Close time</Text>
+                </Grid.Col>
+                <Grid.Col span={{ base: 5, md: 6 }}>
+                  <Text>{formatTimestamp(bot.deal.closing_timestamp)}</Text>
+                </Grid.Col>
+              </Grid>
+            )}
+            {bot.deal?.closing_timestamp > 0 && (
+              <Grid>
+                <Grid.Col span={{ base: 7, md: 6 }}>
+                  <Text>Duration</Text>
+                </Grid.Col>
+                <Grid.Col span={{ base: 5, md: 6 }}>
+                  <Text>{renderDuration(bot)}</Text>
+                </Grid.Col>
+              </Grid>
+            )}
+          </Stack>
         </Box>
       </Box>
       <Divider my="sm" />
@@ -280,4 +289,5 @@ const BotCard: FC<BotCardProps> = ({
     </Card>
   );
 };
+
 export default BotCard;

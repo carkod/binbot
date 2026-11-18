@@ -1,32 +1,45 @@
 import { Box, Button, Group, Text, Title } from "@mantine/core";
 import { useMemo } from "react";
-import { OBI_WINDOW_MS } from "../../features/kucoinLiquidity";
 import type { useOrderBookHistory } from "../hooks/useOrderBookHistory";
 import LivePlotlyChart from "./LivePlotlyChart";
+
 interface SpreadAndDepthCardProps {
   orderBookHistory: ReturnType<typeof useOrderBookHistory>;
   enabled: boolean;
   isFetching: boolean;
   isError: boolean;
   onRetry: () => void;
+  depthWindowMinutes?: number;
 }
+
 const SpreadAndDepthCard = ({
   orderBookHistory,
   enabled,
   isFetching,
   isError,
   onRetry,
+  depthWindowMinutes = 15,
 }: SpreadAndDepthCardProps) => {
-  const { history, chartPoints, now } = orderBookHistory;
+  const { chartPoints, now } = orderBookHistory;
+
+  const visiblePoints = useMemo(
+    () =>
+      chartPoints.filter(
+        ({ timestamp }) => timestamp >= now - depthWindowMinutes * 60_000,
+      ),
+    [chartPoints, now, depthWindowMinutes],
+  );
+
   const data = useMemo(() => {
-    const timestamps = chartPoints.map(({ timestamp }) =>
+    const timestamps = visiblePoints.map(({ timestamp }) =>
       new Date(timestamp).toISOString(),
     );
+
     return [
       {
-        ids: chartPoints.map(({ timestamp }) => String(timestamp)),
+        ids: visiblePoints.map(({ timestamp }) => String(timestamp)),
         x: timestamps,
-        y: chartPoints.map(({ bidDepth }) => bidDepth),
+        y: visiblePoints.map(({ bidDepth }) => bidDepth),
         type: "scatter",
         mode: "lines+markers",
         name: "Bid depth",
@@ -37,9 +50,9 @@ const SpreadAndDepthCard = ({
           "%{x|%H:%M:%S}<br>Bid depth: %{y:,.2f} USDT<extra></extra>",
       },
       {
-        ids: chartPoints.map(({ timestamp }) => String(timestamp)),
+        ids: visiblePoints.map(({ timestamp }) => String(timestamp)),
         x: timestamps,
-        y: chartPoints.map(({ askDepth }) => askDepth),
+        y: visiblePoints.map(({ askDepth }) => askDepth),
         type: "scatter",
         mode: "lines+markers",
         name: "Ask depth",
@@ -50,9 +63,9 @@ const SpreadAndDepthCard = ({
           "%{x|%H:%M:%S}<br>Ask depth: %{y:,.2f} USDT<extra></extra>",
       },
       {
-        ids: chartPoints.map(({ timestamp }) => String(timestamp)),
+        ids: visiblePoints.map(({ timestamp }) => String(timestamp)),
         x: timestamps,
-        y: chartPoints.map(({ spreadRatio }) =>
+        y: visiblePoints.map(({ spreadRatio }) =>
           spreadRatio === null ? null : spreadRatio * 100,
         ),
         yaxis: "y2",
@@ -65,7 +78,8 @@ const SpreadAndDepthCard = ({
         hovertemplate: "%{x|%H:%M:%S}<br>Spread: %{y:.4f}%<extra></extra>",
       },
     ];
-  }, [chartPoints]);
+  }, [visiblePoints]);
+
   const layout = useMemo(
     () => ({
       autosize: true,
@@ -75,10 +89,8 @@ const SpreadAndDepthCard = ({
         title: { text: "Time" },
         type: "date",
         tickformat: "%H:%M:%S",
-        range: [
-          new Date(now - OBI_WINDOW_MS).toISOString(),
-          new Date(now).toISOString(),
-        ],
+        autorange: true,
+        fixedrange: false,
         showgrid: false,
       },
       yaxis: {
@@ -97,8 +109,9 @@ const SpreadAndDepthCard = ({
       legend: { orientation: "h", y: -0.25 },
       showlegend: true,
     }),
-    [now],
+    [],
   );
+
   return (
     <Box>
       <Box mb="sm">
@@ -106,8 +119,9 @@ const SpreadAndDepthCard = ({
           Spread and Nearby Depth
         </Title>
         <Text c="dimmed" mb={0}>
-          Last 15 minutes. Spread as a percentage of the midpoint; bid and ask
-          depth within ±0.5% of the midpoint, valued in USDT.
+          Last {depthWindowMinutes} minutes. Spread as a percentage of the
+          midpoint; bid and ask depth within ±0.5% of the midpoint, valued in
+          USDT.
         </Text>
       </Box>
       <Box>
@@ -123,7 +137,7 @@ const SpreadAndDepthCard = ({
                 </Button>
               </Box>
             )}
-            {history.length > 0 ? (
+            {visiblePoints.length > 0 ? (
               <LivePlotlyChart data={data} layout={layout} />
             ) : (
               !isError && (
@@ -145,4 +159,5 @@ const SpreadAndDepthCard = ({
     </Box>
   );
 };
+
 export default SpreadAndDepthCard;

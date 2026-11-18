@@ -39,6 +39,7 @@ function renderUsers() {
 describe("user administration", () => {
   it("can reopen the same user's confirmation after cancelling and delete only on confirmation", async () => {
     const user = userEvent.setup();
+
     renderUsers();
 
     await user.click(screen.getByRole("button", { name: "Actions" }));
@@ -57,6 +58,7 @@ describe("user administration", () => {
 
   it("submits the selected role and active state when creating a user", async () => {
     const user = userEvent.setup();
+
     renderUsers();
 
     await user.click(screen.getByRole("button", { name: "Create User" }));

@@ -11,6 +11,7 @@ export const MicrostructureProvider = ({
 }) => {
   // Keep the last bot symbol collecting across tabs and navigation.
   const [symbol, selectSymbol] = useState("");
+
   const liquidity = useFuturesLiquidityQuery(symbol, {
     skip: !symbol,
     pollingInterval: OBI_POLL_INTERVAL_MS,
@@ -19,7 +20,9 @@ export const MicrostructureProvider = ({
     refetchOnFocus: true,
     refetchOnReconnect: true,
   });
+
   const snapshot = liquidity.currentData;
+
   const orderBookHistory = useOrderBookHistory(
     snapshot,
     Boolean(symbol),

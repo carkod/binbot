@@ -85,6 +85,7 @@ export const kucoinApiSlice = createApi({
           baseQuery({ url: "/level2/depth100", params: { symbol } }),
           baseQuery({ url: `/contracts/${encodeURIComponent(symbol)}` }),
         ]);
+
         if (bookResult.error) return { error: bookResult.error };
         if (contractResult.error) return { error: contractResult.error };
 
@@ -92,6 +93,7 @@ export const kucoinApiSlice = createApi({
           code: string;
           data?: KucoinOrderBook;
         };
+
         const contract = contractResult.data as {
           code: string;
           data?: {
@@ -101,6 +103,7 @@ export const kucoinApiSlice = createApi({
             isInverse: boolean;
           };
         };
+
         try {
           if (book?.code !== "200000") {
             throw new Error(
@@ -126,8 +129,10 @@ export const kucoinApiSlice = createApi({
           ) {
             throw new Error("KuCoin USDT futures liquidity is unavailable");
           }
+
           // KuCoin Futures depth timestamps are Unix nanoseconds.
           const timestamp = Number(book.data.ts) / 1_000_000;
+
           if (!Number.isFinite(timestamp) || timestamp <= 0) {
             throw new Error("Invalid KuCoin snapshot timestamp");
           }

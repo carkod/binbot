@@ -1,5 +1,6 @@
 import { Badge, Box, Card, Tabs, Text, Title } from "@mantine/core";
-import { useEffect, useId, useState, type ComponentProps } from "react";
+import { useUncontrolled } from "@mantine/hooks";
+import { useEffect, useId, type ComponentProps } from "react";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
 import { computeSingleBotProfit } from "../../features/bots/profits";
 import { BotStatus, MarketType } from "../../utils/enums";
@@ -7,26 +8,47 @@ import { capitalizeFirst } from "../../utils/strings";
 import { useMicrostructureData } from "../hooks/useMicrostructureData";
 import ChartContainer from "./ChartContainer";
 import OrderBookAnalysis from "./OrderBookAnalysis";
+
 const BotChartTabs = ({
   bot,
   setCurrentPrice,
   marketType,
-}: ComponentProps<typeof ChartContainer>) => {
+  activeTab: controlledTab,
+  onTabChange,
+  depthWindowMinutes,
+}: ComponentProps<typeof ChartContainer> & {
+  activeTab?: string;
+  onTabChange?: (tab: string | null) => void;
+  depthWindowMinutes?: number;
+}) => {
   const tabsId = useId();
-  const [activeTab, setActiveTab] = useState<string | null>("chart");
+
+  const [activeTab, setActiveTab] = useUncontrolled<string | null>({
+    value: controlledTab,
+    defaultValue: "chart",
+    onChange: onTabChange,
+  });
+
   useEffect(() => {
     const frame = requestAnimationFrame(() =>
       window.dispatchEvent(new Event("resize")),
     );
+
     return () => cancelAnimationFrame(frame);
   }, [activeTab]);
+
   const { data: settings } = useGetSettingsQuery();
+
   const { symbol, selectSymbol } = useMicrostructureData();
+
   const supportsAnalysis =
     marketType === MarketType.FUTURES &&
     settings?.exchange_id?.toLowerCase() === "kucoin";
+
   const pair = bot.pair.trim().toUpperCase();
+
   const profit = computeSingleBotProfit(bot);
+
   useEffect(() => {
     if (supportsAnalysis && pair) selectSymbol(pair);
   }, [supportsAnalysis, pair, selectSymbol]);
@@ -94,7 +116,11 @@ const BotChartTabs = ({
                 ) : symbol !== pair ? (
                   <Text role="status">Starting order book analysis…</Text>
                 ) : (
-                  <OrderBookAnalysis enabled showError />
+                  <OrderBookAnalysis
+                    enabled
+                    showError
+                    depthWindowMinutes={depthWindowMinutes}
+                  />
                 )}
               </>
             </Tabs.Panel>
@@ -104,4 +130,5 @@ const BotChartTabs = ({
     </>
   );
 };
+
 export default BotChartTabs;

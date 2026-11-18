@@ -41,7 +41,9 @@ const bot = {
   fiat_order_size: 100,
   deal: { ...singleBot.deal, opening_price: 100, current_price: 110 },
 };
+
 const selectSymbol = vi.fn();
+
 const props = { bot, setCurrentPrice, marketType: MarketType.FUTURES };
 
 describe("bot chart tabs", () => {
@@ -64,7 +66,9 @@ describe("bot chart tabs", () => {
 
   it("keeps the bot heading above the tabs and updates profit from current bot prices", () => {
     const { rerender } = render(<BotChartTabs {...props} />);
+
     const heading = testingScreen.getByRole("heading", { level: 2 });
+
     expect(heading).toHaveTextContent("PROMUSDTM 10% active long Futures");
     expect(heading.nextElementSibling).toContainElement(
       testingScreen.getByRole("tablist"),
@@ -89,8 +93,11 @@ describe("bot chart tabs", () => {
       "PROMUSDTM",
       expect.objectContaining({ skip: false, pollingInterval: 30_000 }),
     );
+
     const analysis = testingScreen.getByText("Shared order book charts");
+
     const chart = testingScreen.getByRole("textbox", { name: "Chart state" });
+
     fireEvent.change(chart, { target: { value: "zoomed" } });
     fireEvent.click(
       testingScreen.getByRole("tab", { name: "Order book analysis" }),
@@ -110,9 +117,37 @@ describe("bot chart tabs", () => {
     expect(chart).toHaveValue("zoomed");
   });
 
+  it("restores the analysis tab and reports changes to the page", () => {
+    const onTabChange = vi.fn();
+
+    const { rerender } = render(
+      <BotChartTabs
+        {...props}
+        activeTab="analysis"
+        onTabChange={onTabChange}
+      />,
+    );
+
+    expect(
+      testingScreen.getByRole("tab", { name: "Order book analysis" }),
+    ).toHaveAttribute("aria-selected", "true");
+
+    fireEvent.click(testingScreen.getByRole("tab", { name: "Chart" }));
+    expect(onTabChange).toHaveBeenCalledWith("chart");
+    rerender(
+      <BotChartTabs {...props} activeTab="chart" onTabChange={onTabChange} />,
+    );
+    expect(testingScreen.getByRole("tab", { name: "Chart" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
   it("requests stored CVD for the changed futures symbol even when its order book fails", () => {
     const { rerender } = render(<BotChartTabs {...props} />);
+
     const context = vi.mocked(useMicrostructureData).mock.results[0].value;
+
     vi.mocked(useMicrostructureData).mockReturnValue({
       ...context,
       symbol: "XBTUSDTM",
@@ -133,6 +168,7 @@ describe("bot chart tabs", () => {
 
   it("selects a changed symbol and waits for its collector before showing analysis", () => {
     const { rerender } = render(<BotChartTabs {...props} />);
+
     rerender(<BotChartTabs {...props} bot={{ ...bot, pair: "XBTUSDTM" }} />);
     expect(selectSymbol).toHaveBeenLastCalledWith("XBTUSDTM");
     fireEvent.click(
