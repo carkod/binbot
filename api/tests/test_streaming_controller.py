@@ -9,6 +9,8 @@ from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddO
 from kucoin_universal_sdk.model.common import RestError
 from pybinbot import (
     BinanceErrors,
+    BinanceKlineIntervals,
+    KucoinKlineIntervals,
     DealType,
     DealModel,
     ExchangeId,
@@ -168,6 +170,24 @@ class TestPositionManager:
 
         # Replace active pairs after init (init used dummies returning empty list)
         return base
+
+    @pytest.mark.parametrize(
+        "exchange, expected",
+        [
+            (ExchangeId.BINANCE, BinanceKlineIntervals.fifteen_minutes),
+            (ExchangeId.KUCOIN, KucoinKlineIntervals.FIFTEEN_MINUTES),
+        ],
+    )
+    def test_streaming_defaults_to_fifteen_minute_candles(
+        self, monkeypatch, exchange, expected
+    ):
+        settings = types.SimpleNamespace(exchange_id=exchange)
+        monkeypatch.setattr(
+            "streaming.base.AutotradeCrud.get_settings", lambda self: settings
+        )
+        base = self._make_base_streaming(monkeypatch)
+        assert base.binance_interval == BinanceKlineIntervals.fifteen_minutes
+        assert base.interval == expected
 
     def _make_bot(
         self,

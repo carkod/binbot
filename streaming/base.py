@@ -60,9 +60,7 @@ class BaseStreaming:
         self.benchmark_symbol = "XBTUSDTM"
         self.kucoin_benchmark_symbol = "BTC-USDT"
 
-        binance_interval = BinanceKlineIntervals(
-            self.autotrade_settings.candlestick_interval
-        )
+        binance_interval = BinanceKlineIntervals.fifteen_minutes
         kucoin_interval = KucoinKlineIntervals(
             BinanceKlineIntervals.to_kucoin_interval(binance_interval)
         )

@@ -1,14 +1,9 @@
 import { notifification } from "../utils/api";
-import {
-  type CloseConditions,
-  type BinanceKlineintervals,
-  type ExchangeId,
-} from "../utils/enums";
+import { type CloseConditions, type ExchangeId } from "../utils/enums";
 import { userApiSlice } from "./userApiSlice";
 
 export interface AutotradeSettings {
   id: "autotrade_settings";
-  candlestick_interval: BinanceKlineintervals;
   autotrade: boolean;
   trailing: boolean;
   trailing_deviation: number;

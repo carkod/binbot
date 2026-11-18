@@ -2,6 +2,7 @@ import {
   Box,
   Button,
   Card,
+  Divider,
   Group,
   Input,
   NativeSelect,
@@ -23,7 +24,7 @@ import {
   setSettingsField,
   setSettingsToggle,
 } from "../../features/autotradeSlice";
-import { BinanceKlineintervals, ExchangeId } from "../../utils/enums";
+import { ExchangeId } from "../../utils/enums";
 import LightSwitch from "../components/LightSwitch";
 import SettingsInput from "../components/SettingsInput";
 import { useAppDispatch, useAppSelector } from "../hooks";
@@ -55,7 +56,6 @@ export const AutotradePage: FC<{}> = () => {
     mode: "onTouched",
     reValidateMode: "onBlur",
     defaultValues: {
-      candlestick_interval: settings.candlestick_interval,
       autotrade: settings.autotrade,
       max_active_autotrade_bots: settings.max_active_autotrade_bots,
       base_order_size: settings.base_order_size,
@@ -128,7 +128,6 @@ export const AutotradePage: FC<{}> = () => {
 
     if (settings) {
       reset({
-        candlestick_interval: settings.candlestick_interval,
         autotrade: settings.autotrade,
         max_active_autotrade_bots: settings.max_active_autotrade_bots,
         base_order_size: settings.base_order_size,
@@ -254,30 +253,6 @@ export const AutotradePage: FC<{}> = () => {
                       />
                     </Group>
                   </Box>
-                  <NativeSelect
-                    id="candlestick_interval"
-                    name="candlestick_interval"
-                    onChange={(e) => {
-                      const { value } = e.target;
-
-                      dispatch(
-                        setSettingsField({
-                          name: "candlestick_interval",
-                          value,
-                        }),
-                      );
-                    }}
-                    onBlur={handleBlur}
-                    {...register("candlestick_interval", {
-                      required: true,
-                    })}
-                  >
-                    {Object.values(BinanceKlineintervals).map((interval, i) => (
-                      <option key={i} value={interval.toString()}>
-                        {interval.toString()}
-                      </option>
-                    ))}
-                  </NativeSelect>
                   <SettingsInput
                     value={settings.max_active_autotrade_bots}
                     name={"max_active_autotrade_bots"}
@@ -305,7 +280,7 @@ export const AutotradePage: FC<{}> = () => {
                     infoText="Careful! This is a global change of everything, from candlesticks to charts and bots as well as Binquant analytics"
                   />
                 </SimpleGrid>
-                <hr />
+                <Divider my="sm" />
                 <SimpleGrid cols={{ base: 1, md: 4 }}>
                   <SettingsInput
                     value={settings.stop_loss}
@@ -335,7 +310,7 @@ export const AutotradePage: FC<{}> = () => {
                     </Group>
                   </Box>
                 </SimpleGrid>
-                <hr />
+                <Divider my="sm" />
                 <SimpleGrid cols={{ base: 1, md: 4 }}>
                   <Box>
                     <label htmlFor="trailing">Trailing</label>
@@ -429,7 +404,7 @@ export const AutotradePage: FC<{}> = () => {
               </SimpleGrid>
               {settings.enable_grid_ladders && (
                 <>
-                  <hr />
+                  <Divider my="sm" />
                   <SimpleGrid cols={{ base: 1, md: 4 }}>
                     <SettingsInput
                       value={settings.grid_allocation_pct}

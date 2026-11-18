@@ -1,15 +1,10 @@
-import {
-  BinanceKlineintervals,
-  CloseConditions,
-  ExchangeId,
-} from "../utils/enums";
+import { CloseConditions, ExchangeId } from "../utils/enums";
 import { createAppSlice } from "../app/createAppSlice";
 import { type AutotradeSettings } from "./autotradeApiSlice";
 import { type PayloadAction } from "@reduxjs/toolkit";
 
 export const initialAutotradeSettings: AutotradeSettings = {
   id: "autotrade_settings",
-  candlestick_interval: BinanceKlineintervals.ONE_HOUR,
   autotrade: true,
   trailing: true,
   trailing_deviation: 0,
@@ -45,9 +40,6 @@ export interface AutotradeSettingsFormBoolean {
   value: boolean;
 }
 
-// In general, this will be unused
-// future plans include using it for bots e.g. to get fiat
-// or default candlestick_interval for all bots
 export const autotradeSettingsSlice = createAppSlice({
   name: "autotradeSettings",
   initialState: {

@@ -121,7 +121,6 @@ def create_test_tables():
             telegram_signals=True,
             close_condition=CloseConditions.dynamic_trailing,
             autotrade=True,
-            candlestick_interval=BinanceKlineIntervals.fifteen_minutes,
             updated_at=1732388868477.8518,
             trailing=True,
             trailing_profit=2.3,
