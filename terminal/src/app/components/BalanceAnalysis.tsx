@@ -1,4 +1,3 @@
-import { formGridBreakpoints } from "../../theme";
 import { Box, Card, Grid, Title } from "@mantine/core";
 import { type FC } from "react";
 import { type BalanceData } from "../../features/features.types";
@@ -25,9 +24,9 @@ const BalanceAnalysis: FC<{
         <Title order={5}>Account breakdown</Title>
       </Box>
       <Box>
-        <Grid type="container" breakpoints={formGridBreakpoints} mb="lg">
-          <Grid.Col span={{ base: 12, md: 8 }}>Available fiat</Grid.Col>
-          <Grid.Col span={{ base: 12, md: 4 }}>
+        <Grid mb="lg">
+          <Grid.Col span={6}>Available fiat</Grid.Col>
+          <Grid.Col span={6} ta="right">
             <Box c="primary.8" component="div">
               <strong>{`${
                 accountData.fiat_available > 0
@@ -37,9 +36,9 @@ const BalanceAnalysis: FC<{
             </Box>
           </Grid.Col>
         </Grid>
-        <Grid type="container" breakpoints={formGridBreakpoints} mb="lg">
-          <Grid.Col span={{ base: 12, md: 8 }}>Total fiat value</Grid.Col>
-          <Grid.Col span={{ base: 12, md: 4 }}>
+        <Grid mb="lg">
+          <Grid.Col span={6}>Total fiat value</Grid.Col>
+          <Grid.Col span={6} ta="right">
             <Box c="primary.8" component="div">
               <strong>{`${
                 accountData?.estimated_total_fiat > 0
@@ -49,9 +48,9 @@ const BalanceAnalysis: FC<{
             </Box>
           </Grid.Col>
         </Grid>
-        <Grid type="container" breakpoints={formGridBreakpoints} mb="lg">
-          <Grid.Col span={{ base: 12, md: 8 }}>Risk beta (BTC)</Grid.Col>
-          <Grid.Col span={{ base: 12, md: 4 }}>
+        <Grid mb="lg">
+          <Grid.Col span={6}>Risk beta (BTC)</Grid.Col>
+          <Grid.Col span={6} ta="right">
             <Box c="primary.8" component="div">
               <strong>
                 {loadingBeta
@@ -63,13 +62,13 @@ const BalanceAnalysis: FC<{
             </Box>
           </Grid.Col>
         </Grid>
-        <Grid type="container" breakpoints={formGridBreakpoints}>
-          <Grid.Col span={{ base: 12, md: 8 }}>
+        <Grid>
+          <Grid.Col span={6}>
             Portfolio of assets
             <br />
             (actual)
           </Grid.Col>
-          <Grid.Col span={{ base: 12, md: 4 }}>
+          <Grid.Col span={6} ta="right">
             {Object.entries(accountData.balances).map(([asset, amount], i) => (
               <Box key={i} c="primary.8" component="div">
                 <strong>{`${amount} ${asset}`}</strong>

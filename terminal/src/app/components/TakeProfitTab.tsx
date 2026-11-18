@@ -5,7 +5,6 @@ import {
   Group,
   Input,
   SimpleGrid,
-  Stack,
   Switch,
   Tabs,
   Text,
@@ -151,10 +150,9 @@ const TakeProfit: FC = () => {
             </Grid.Col>
           )}
           <Grid.Col span={{ base: 12, md: 3 }}>
-            <Stack gap={4} mb="sm">
+            <Box>
               <Input.Label htmlFor="trailing">Trailing</Input.Label>
-              <br />
-              <Group gap="xs">
+              <Group gap="xs" mih={36}>
                 <Switch
                   id="trailing"
                   name="trailing"
@@ -167,18 +165,14 @@ const TakeProfit: FC = () => {
                   label={bot.trailing ? "On" : "Off"}
                 />
               </Group>
-              <Input.Description>
-                {"Trailing won't trigger until trailing_stop_loss > base"}
-              </Input.Description>
-            </Stack>
+            </Box>
           </Grid.Col>
           <Grid.Col span={{ base: 12, md: 3 }}>
-            <Stack gap={4} mb="sm">
+            <Box>
               <Input.Label htmlFor="dynamic_trailing">
                 Dynamic trailing
               </Input.Label>
-              <br />
-              <Group gap="xs">
+              <Group gap="xs" mih={36}>
                 <Switch
                   id="dynamic_trailing"
                   name="dynamic_trailing"
@@ -194,10 +188,7 @@ const TakeProfit: FC = () => {
                   label={bot.dynamic_trailing ? "On" : "Off"}
                 />
               </Group>
-              <Input.Description>
-                {"Update the trailing_deviation according to volatility (SD)"}
-              </Input.Description>
-            </Stack>
+            </Box>
           </Grid.Col>
         </Grid>
         <SimpleGrid
