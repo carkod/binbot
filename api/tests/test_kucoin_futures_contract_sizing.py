@@ -209,6 +209,53 @@ def test_calculate_contracts_returns_zero_when_margin_is_below_one_contract():
     assert deal.calculate_contracts(balance=0.5, price=0.93269) == 0
 
 
+@pytest.mark.parametrize("balance, expected", [(9, 0), (10, 5), (19, 5), (20, 10)])
+def test_contract_sizing_rounds_down_to_complete_exchange_lots(balance, expected):
+    deal = make_sizing_deal(multiplier=1, lot_size=5)
+
+    assert deal.calculate_contracts(balance=balance, price=2) == expected
+
+
+@pytest.mark.parametrize("lot_size", [3, 5, 10])
+def test_affordable_contracts_are_complete_lots_within_margin(lot_size):
+    deal = make_sizing_deal(multiplier=1, lot_size=lot_size)
+
+    contracts = deal.max_contracts_for_margin(39, price=2)
+
+    assert contracts > 0
+    assert contracts % lot_size == 0
+    assert deal.required_margin_for_contracts(contracts, price=2) <= 39
+    assert deal.required_margin_for_contracts(contracts + lot_size, price=2) > 39
+
+
+@pytest.mark.parametrize(
+    "futures_available, spot_balances, expected",
+    [
+        (25, {}, 25),
+        (0, {}, 0),
+        (0, {"main": {"USDT": "0"}, "trade": {"USDT": "0"}}, 0),
+        (0, {"main": {"USDT": "12"}}, 12),
+        (0, {"main": {"USDT": "0"}, "trade": {"USDT": "8"}}, 8),
+    ],
+)
+def test_available_balance_handles_empty_accounts(
+    monkeypatch, futures_available, spot_balances, expected
+):
+    deal = make_sizing_deal()
+    deal.fiat = "USDT"
+    deal.compute_balance = Mock(return_value=(spot_balances, 0, 0))
+    balance = Mock()
+    balance.compute_futures_balance.return_value = ({}, 0, futures_available)
+    monkeypatch.setattr(
+        "api.exchange_apis.kucoin.futures.futures_deal.KucoinFuturesBalance",
+        Mock(return_value=balance),
+    )
+
+    assert deal.compute_available_balance() == expected
+    if futures_available > 0:
+        deal.compute_balance.assert_not_called()
+
+
 def test_notional_stays_within_thirty_at_autotrade_default_and_two_x_leverage():
     """
     Product invariant: with the autotrade default fiat_order_size of 15 USDT

@@ -15,6 +15,51 @@ from api.tools.handle_error import format_db_error
 symbols_blueprint = APIRouter()
 
 
+@symbols_blueprint.get("/symbol/store", tags=["Symbols"])
+def store_symbols(
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_session),
+    delete_existing: bool = False,
+    _: UserTokenData = Depends(get_current_user),
+):
+    """
+    Store all symbols from Binance (runs in background)
+    """
+    try:
+        background_tasks.add_task(
+            SymbolDataEtl().etl_symbols_ingestion, delete_existing
+        )
+        return GetOneSymbolResponse(message="Symbols ingestion started in background!")
+    except (IntegrityError, DataError, SQLAlchemyError) as e:
+        session.rollback()
+        return StandardResponse(message=format_db_error(e), error=1)
+    except BinbotErrors as e:
+        return StandardResponse(message=str(e), error=1)
+
+
+@symbols_blueprint.get("/symbol/reingest", tags=["Symbols"])
+def reingest_symbols(
+    background_tasks: BackgroundTasks,
+    delete_existing: bool = False,
+    session: Session = Depends(get_session),
+    _: UserTokenData = Depends(get_current_user),
+):
+    """
+    Reingest all symbols from Binance and Kucoin (runs in background)
+    """
+    try:
+        ingestion_task = SymbolDataEtl().etl_symbols_ingestion
+        background_tasks.add_task(ingestion_task, delete_existing)
+        return GetOneSymbolResponse(
+            message="Symbols reingestion started in background!"
+        )
+    except (IntegrityError, DataError, SQLAlchemyError) as e:
+        session.rollback()
+        return StandardResponse(message=format_db_error(e), error=1)
+    except BinbotErrors as e:
+        return StandardResponse(message=str(e), error=1)
+
+
 @symbols_blueprint.get("/symbols", tags=["Symbols"])
 def get_all_symbols(
     active: Optional[bool] = None,
@@ -103,6 +148,8 @@ def add_symbol(
             symbol=data.symbol,
             reason=data.blacklist_reason,
             active=data.active,
+            cooldown=data.cooldown or 0,
+            cooldown_start_ts=data.cooldown_start_ts or 0,
             quote_asset=data.quote_asset,
             base_asset=data.base_asset,
             min_notional=data.min_notional,
@@ -110,6 +157,7 @@ def add_symbol(
             qty_precision=data.qty_precision,
             exchange_id=data.exchange_id,
             futures_leverage=data.futures_leverage,
+            is_margin_trading_allowed=data.is_margin_trading_allowed,
             multiplier=data.multiplier,
         )
         return {
@@ -131,6 +179,7 @@ def add_symbol(
 def delete_symbol(
     pair: str,
     session: Session = Depends(get_session),
+    _: UserTokenData = Depends(get_current_user),
 ):
     """
     Given symbol/pair, delete a symbol
@@ -181,48 +230,3 @@ def edit_symbol(
         return StandardResponse(
             message=f"Unexpected error editing symbol: {e}", error=1
         )
-
-
-@symbols_blueprint.get("/symbol/store", tags=["Symbols"])
-def store_symbols(
-    background_tasks: BackgroundTasks,
-    session: Session = Depends(get_session),
-    delete_existing: bool = False,
-    _: UserTokenData = Depends(get_current_user),
-):
-    """
-    Store all symbols from Binance (runs in background)
-    """
-    try:
-        background_tasks.add_task(
-            SymbolDataEtl().etl_symbols_ingestion, delete_existing
-        )
-        return GetOneSymbolResponse(message="Symbols ingestion started in background!")
-    except (IntegrityError, DataError, SQLAlchemyError) as e:
-        session.rollback()
-        return StandardResponse(message=format_db_error(e), error=1)
-    except BinbotErrors as e:
-        return StandardResponse(message=str(e), error=1)
-
-
-@symbols_blueprint.get("/symbol/reingest", tags=["Symbols"])
-def reingest_symbols(
-    background_tasks: BackgroundTasks,
-    delete_existing: bool = False,
-    session: Session = Depends(get_session),
-    _: UserTokenData = Depends(get_current_user),
-):
-    """
-    Reingest all symbols from Binance and Kucoin (runs in background)
-    """
-    try:
-        ingestion_task = SymbolDataEtl().etl_symbols_ingestion
-        background_tasks.add_task(ingestion_task, delete_existing)
-        return GetOneSymbolResponse(
-            message="Symbols reingestion started in background!"
-        )
-    except (IntegrityError, DataError, SQLAlchemyError) as e:
-        session.rollback()
-        return StandardResponse(message=format_db_error(e), error=1)
-    except BinbotErrors as e:
-        return StandardResponse(message=str(e), error=1)

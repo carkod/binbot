@@ -1,3 +1,4 @@
+from decimal import Decimal, ROUND_DOWN
 from uuid import uuid4
 
 from typing import Callable
@@ -63,8 +64,13 @@ class KucoinPositionDeal(EntryPricing):
             symbol_data.multiplier or self.kucoin_futures_api.DEFAULT_MULTIPLIER or 1
         )
 
-        contracts = balance * self.active_bot.futures_leverage / (price * multiplier)
-        return int(round_numbers(contracts, self.symbol_info.qty_precision))
+        lot_size = Decimal(str(symbol_data.lot_size or 1))
+        lots = (
+            Decimal(str(balance))
+            * self.active_bot.futures_leverage
+            / (Decimal(str(price)) * Decimal(str(multiplier)) * lot_size)
+        ).to_integral_value(rounding=ROUND_DOWN)
+        return int(lots * lot_size)
 
     def contracts_to_fiat_order_size(self, contracts: float, price: float) -> float:
         """Convert contracts back to their initial-margin equivalent."""
@@ -90,10 +96,10 @@ class KucoinPositionDeal(EntryPricing):
         2. Main account (spot main wallet)
         3. Trade account (spot trading wallet)
 
-        Raises BinbotErrors if there is no fiat balance or if the
-        configured base order size exceeds the available balance.
+        Returns zero when no account has an available fiat balance.
         """
         _, _, futures_available = KucoinFuturesBalance().compute_futures_balance()
+        available_balance = 0.0
 
         if futures_available > 0:
             available_balance = futures_available
@@ -151,19 +157,16 @@ class KucoinPositionDeal(EntryPricing):
         if per_contract_margin <= 0:
             return 0
 
-        contracts = round_numbers(
-            (available_balance / per_contract_margin) * min_contract_step,
-            self.symbol_info.qty_precision,
-        )
+        lots = (
+            Decimal(str(available_balance)) / Decimal(str(per_contract_margin))
+        ).to_integral_value(rounding=ROUND_DOWN)
+        contracts = int(lots * Decimal(str(min_contract_step)))
 
         while (
             contracts > 0
             and self.required_margin_for_contracts(contracts, price) > available_balance
         ):
-            contracts = round_numbers(
-                contracts - min_contract_step,
-                self.symbol_info.qty_precision,
-            )
+            contracts -= min_contract_step
 
         return int(contracts)
 

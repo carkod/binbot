@@ -7,6 +7,7 @@ from pybinbot import BinbotErrors
 from api.user.models.user import EditUserDetails, UserDetails
 from api.user.services.auth import create_access_token, FormData
 from typing import Optional
+from uuid import UUID
 from api.tools.config import Config
 
 
@@ -61,7 +62,7 @@ class UserTableCrud:
         """
         statement = select(UserTable)
         if id:
-            statement = statement.where(UserTable.email == email)
+            statement = statement.where(UserTable.id == UUID(id))
         elif email:
             statement = statement.where(UserTable.email == email)
         else:
@@ -87,6 +88,8 @@ class UserTableCrud:
             raise BinbotErrors("Email and password are required")
 
         user = self.get_one(email=email)
+        if not user.is_active:
+            raise BinbotErrors("User is inactive")
         if user.password != password:
             raise BinbotErrors("Invalid password")
         else:

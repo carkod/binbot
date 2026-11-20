@@ -128,8 +128,8 @@ class BaseDeal(BinanceOrderController):
                     payload={"symbol": symbol, "orderId": order["orderId"]},
                 )
                 for bot_order in self.active_bot.orders:
-                    if bot_order.order_id == order["orderId"]:
-                        self.active_bot.orders.remove(order)
+                    if bot_order.order_id == str(order["orderId"]):
+                        self.active_bot.orders.remove(bot_order)
                         self.active_bot.add_log(
                             "base_order not executed, therefore cancelled"
                         )
