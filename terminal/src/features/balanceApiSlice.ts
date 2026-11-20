@@ -1,4 +1,5 @@
-import { notifification } from "../utils/api";
+import type { StandardResponse } from "../utils/api.types";
+import { notifification, readApiResponse } from "../utils/api";
 import type { BalanceData, BenchmarkCollection } from "./features.types";
 import { userApiSlice } from "./userApiSlice";
 
@@ -9,20 +10,15 @@ export const balancesApiSlice = userApiSlice.injectEndpoints({
         url: `${import.meta.env.VITE_ACCOUNT_BALANCE}` || "/balance",
         providesTags: ["balances"],
       }),
-      transformResponse: ({ data, message, error }, meta, arg) => {
-        if (error && error === 1) {
-          notifification("error", message);
-        }
-
-        return data;
-      },
+      transformResponse: (response: StandardResponse) =>
+        readApiResponse(response),
     }),
     getBenchmark: build.query<BenchmarkCollection, void>({
       query: () => ({
         url: `${import.meta.env.VITE_BALANCE_SERIES}` || "/balance",
         providesTags: ["benchmark"],
       }),
-      transformResponse: ({ data, message, error }, meta) => {
+      transformResponse: ({ data, message, error }) => {
         if (error && error === 1) {
           notifification("error", message);
         }

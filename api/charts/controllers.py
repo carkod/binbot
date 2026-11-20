@@ -7,7 +7,6 @@ from sqlmodel import Session
 from api.charts.models import MarketBreadthSample
 from api.databases.crud.autotrade_crud import AutotradeCrud
 from api.databases.crud.market_breadth_crud import MarketBreadthCrud
-from api.databases.crud.symbols_crud import SymbolsCrud
 from api.databases.crud.top_gainers_losers_series_crud import TopGainersLosersSeriesCrud
 from api.databases.tables.market_breadth_table import MarketBreadthTable
 from api.databases.utils import independent_session
@@ -27,7 +26,6 @@ class MarketDominationController:
         self.autotrade_db = AutotradeCrud(session=self.session)
         self.autotrade_settings = self.autotrade_db.get_settings()
         self.exchange = ExchangeId(self.autotrade_settings.exchange_id)
-        self.symbols_crud = SymbolsCrud()
         self.binance_api = BinanceApi(
             key=self.config.binance_key, secret=self.config.binance_secret
         )
@@ -202,36 +200,3 @@ class MarketDominationController:
         if series is None:
             return None
         return series.model_dump()
-
-    def gainers_losers(self) -> tuple[Iterable[Any], Iterable[Any]]:
-        """
-        Get market top gainers of the day
-
-        ATTENTION - This is a very heavy weight operation
-        ticker_24() retrieves all tokens
-        """
-        fiat = self.autotrade_db.get_fiat()
-        ticker_data = self.binance_api.ticker_24()
-
-        gainers = sorted(
-            [
-                item
-                for item in ticker_data
-                if float(item["priceChangePercent"]) > 0
-                and item["symbol"].endswith(fiat)
-            ],
-            key=lambda x: float(x["priceChangePercent"]),
-            reverse=True,
-        )
-
-        losers = sorted(
-            [
-                item
-                for item in ticker_data
-                if float(item["priceChangePercent"]) < 0
-                and item["symbol"].endswith(fiat)
-            ],
-            key=lambda x: float(x["priceChangePercent"]),
-        )
-
-        return gainers[:10], losers[:10]

@@ -269,34 +269,6 @@ class OrderExecution(KucoinBaseBalance):
 
         return self.active_bot
 
-    def remove_stale_orders(self) -> None:
-        stale_orders = [
-            order
-            for order in self.active_bot.orders
-            if order.deal_type == DealType.trailing_profit
-            and order.status == OrderStatus.FILLED
-            and order.price == 0
-            and order.qty == 0
-        ]
-        for stale_order in stale_orders:
-            try:
-                self.controller.delete_order(
-                    str(stale_order.order_id), str(self.active_bot.id)
-                )
-            except BinbotErrors:
-                pass
-
-        self.active_bot.orders = [
-            order
-            for order in self.active_bot.orders
-            if not (
-                order.deal_type == DealType.trailing_profit
-                and order.status == OrderStatus.FILLED
-                and order.price == 0
-                and order.qty == 0
-            )
-        ]
-
     def cancel_current_sl(self, *, deal_type: DealType | None = None) -> None:
         """Cancel only this bot's protection, retaining execution history."""
         # A replacement target can have been tightened in memory. Persist it
@@ -497,12 +469,6 @@ class OrderExecution(KucoinBaseBalance):
                 qty = abs(float(raw_qty)) if raw_qty is not None else None
                 return True, stop_price, qty
         return True, None, None
-
-    def _exchange_stop_loss_price(
-        self, order_id: str | None = None
-    ) -> tuple[bool, float | None]:
-        exchange_ok, exchange_price, _ = self._exchange_stop_loss_details(order_id)
-        return exchange_ok, exchange_price
 
     def should_replace_stop_loss_order(
         self,

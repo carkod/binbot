@@ -1,7 +1,7 @@
+import type { StandardResponse } from "../../utils/api.types";
 import { createEntityAdapter } from "@reduxjs/toolkit";
-import { notifification } from "../../utils/api";
+import { notifification, readApiResponse } from "../../utils/api";
 import { streamBotOperation } from "../../utils/botOperationStream";
-import { weekAgo } from "../../utils/time";
 import { userApiSlice } from "../userApiSlice";
 import type { Bot, BotEntity } from "./botInitialState";
 import { computeTotalProfit } from "./profits";
@@ -23,20 +23,6 @@ export type AlgoRankingItem = {
   name: string;
   count: number;
   bot_profit: number;
-};
-
-export const buildGetBotsPath = (
-  status: string = BotStatus.ALL,
-  startDate: number = weekAgo(),
-  endDate: number = new Date().getTime(),
-): string => {
-  const params = new URLSearchParams({
-    start_date: startDate.toString(),
-    end_date: endDate.toString(),
-    status: status,
-  });
-
-  return params.toString();
 };
 
 export const botsAdapter = createEntityAdapter<Bot>({
@@ -63,7 +49,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         };
       },
       providesTags: ["bots"],
-      transformResponse: ({ data, message, error }, meta, arg) => {
+      transformResponse: ({ data, message, error }) => {
         if (error && error === 1) {
           notifification("error", message);
         }
@@ -83,7 +69,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
       }),
       providesTags: (result) =>
         result?.bot ? [{ type: "bot", id: result.bot.id }] : [],
-      transformResponse: ({ data, message, error }, meta, arg) => {
+      transformResponse: ({ data, message, error }) => {
         if (error && error === 1) {
           notifification("error", message);
         }
@@ -100,7 +86,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
       }),
       providesTags: (result) =>
         result?.bot ? [{ type: "bot", id: result.bot.id }] : [],
-      transformResponse: ({ data, message, error }, meta, arg) => {
+      transformResponse: ({ data, message, error }) => {
         if (error && error === 1) {
           notifification("error", message);
         }
@@ -117,7 +103,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         body,
       }),
       invalidatesTags: ["bots"],
-      transformResponse: ({ data, message, error }, meta, arg) => {
+      transformResponse: ({ data, message, error }) => {
         if (error && error === 1) {
           notifification("error", message);
         } else {
@@ -138,7 +124,7 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         "bots",
         { type: "bot", id },
       ],
-      transformResponse: ({ data, message, error }, meta, arg) => {
+      transformResponse: ({ data, message, error }) => {
         if (error && error === 1) {
           notifification("error", message);
           return null;
@@ -157,15 +143,8 @@ export const botsApiSlice = userApiSlice.injectEndpoints({
         "bots",
         ...ids.map((id) => ({ type: "bot" as const, id })),
       ],
-      transformResponse: ({ data, message, error }, meta, arg) => {
-        if (error && error === 1) {
-          notifification("error", message);
-        } else {
-          notifification("success", message);
-        }
-        // Return payload to update UI
-        return data;
-      },
+      transformResponse: (response: StandardResponse) =>
+        readApiResponse(response, true),
     }),
     activateBot: build.mutation<BotDetailsState, string>({
       queryFn: (id) =>

@@ -53,16 +53,6 @@ class BalanceResponse(StandardResponse):
     data: BalanceSchema
 
 
-class ListSymbolsResponse(StandardResponse):
-    data: list[str]
-
-
-class BinanceBalanceResponse(BaseModel):
-    asset: str
-    free: float
-    locked: float
-
-
 class Binance24Ticker(BaseModel):
     symbol: str
     priceChange: str
@@ -87,21 +77,5 @@ class Binance24Ticker(BaseModel):
     count: int
 
 
-class BinanceBalance(BaseModel):
-    asset: str
-    free: float
-    locked: float
-
-
 class GainersLosersResponse(StandardResponse):
     data: list[Binance24Ticker]
-
-
-class EstimatedBalance(BaseModel):
-    time: str
-    assets: list
-    estimated_total_usdc: float
-
-
-class EstimatedBalancesResponse(StandardResponse):
-    data: EstimatedBalance

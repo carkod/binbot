@@ -55,7 +55,6 @@ export interface Bot {
   entry_expires_at?: number | null;
   // New bots inherit symbol leverage until the user chooses an override.
   futures_leverage?: number;
-  candle_interval?: string;
   close_condition?: string;
   dynamic_trailing: boolean;
   logs: string[];

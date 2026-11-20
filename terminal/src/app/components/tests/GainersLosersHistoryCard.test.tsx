@@ -28,7 +28,7 @@ type PlotlyProps = {
 };
 
 const plotlyChartMock = vi.hoisted(() =>
-  vi.fn((props: PlotlyProps) => <div data-testid="plotly-chart" />),
+  vi.fn((_props: PlotlyProps) => <div data-testid="plotly-chart" />),
 );
 
 vi.mock("../PlotlyChart", () => ({ default: plotlyChartMock }));

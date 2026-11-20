@@ -4,7 +4,6 @@ from pybinbot import (
     BinanceErrors,
     BinbotErrors,
     BotModel,
-    DealCreationError,
     InsufficientBalance,
     MarginLoanNotFound,
     OrderStatus,
@@ -115,23 +114,6 @@ class BaseDeal(BinanceOrderController):
         free = float(self.isolated_balance[0]["baseAsset"]["free"])
 
         return qty, free
-
-    def replace_order(self, cancel_order_id):
-        payload = {
-            "symbol": self.active_bot.pair,
-            "quantity": self.active_bot.deal.base_order_size,
-            "cancelOrderId": cancel_order_id,
-            "type": "MARKET",
-            "side": "SELL",
-            "cancelReplaceMode": "ALLOW_FAILURE",
-        }
-        response = self.signed_request(
-            url=self.cancel_replace_url, method="POST", payload=payload
-        )
-        if "code" in response:
-            raise DealCreationError(response["msg"], response["data"])
-
-        return response["newOrderResponse"]
 
     def close_open_orders(self, symbol):
         """

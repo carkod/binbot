@@ -216,8 +216,6 @@ export const BotsPage: FC<{}> = () => {
     }
     if (allSymbols?.length > 0 && !isFetchingSymbols) {
       setSpinner(false);
-
-      const pairs = allSymbols.map((symbol) => symbol.id);
     }
   }, [
     data?.bots?.ids,

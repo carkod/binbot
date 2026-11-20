@@ -6,7 +6,6 @@ from api.databases.crud.autotrade_crud import AutotradeCrud
 from api.databases.tables.bot_table import BotTable
 from api.exchange_apis.binance.deals.long import BinanceLongDeal
 from api.exchange_apis.binance.deals.short import BinanceShortDeal
-from api.exchange_apis.kucoin.deals.long_deal import KucoinLongDeal
 from api.exchange_apis.kucoin.deals.short_deal import KucoinShortDeal
 from api.exchange_apis.kucoin.futures.futures_deal import KucoinPositionDeal
 
@@ -35,7 +34,6 @@ class DealGateway:
         self.deal: Union[
             BinanceLongDeal,
             BinanceShortDeal,
-            KucoinLongDeal,
             KucoinShortDeal,
             KucoinPositionDeal,
         ]

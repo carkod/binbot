@@ -57,13 +57,8 @@ const BaseOrderTab: FC<{
 
   const dispatch: AppDispatch = useAppDispatch();
 
-  const {
-    symbolsList,
-    quoteAsset,
-    baseAsset,
-    futuresLeverage,
-    updateQuoteBaseState,
-  } = useSymbolData();
+  const { quoteAsset, baseAsset, futuresLeverage, updateQuoteBaseState } =
+    useSymbolData();
 
   const { bot } = useAppSelector(selectBot);
 
@@ -100,7 +95,7 @@ const BaseOrderTab: FC<{
     },
   });
 
-  const { spinner, setSpinner } = useContext(SpinnerContext);
+  const { setSpinner } = useContext(SpinnerContext);
 
   const handlePairSelection = (pair: string) => {
     // Only when selected not typed in

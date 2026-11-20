@@ -12,7 +12,7 @@ import {
   VisuallyHidden,
 } from "@mantine/core";
 import { type FC } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import { type Bot } from "../../features/bots/botInitialState";
 import { computeSingleBotProfit } from "../../features/bots/profits";
 import { MarketType } from "../../utils/enums";
@@ -45,8 +45,6 @@ const BotCard: FC<BotCardProps> = ({
   const botProfit = computeSingleBotProfit(bot);
 
   const navigate = useNavigate();
-
-  const { pathname } = useLocation();
 
   const selectedIds = selectedCards ?? [];
 

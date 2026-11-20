@@ -1,37 +1,6 @@
-from typing import Any, Union, Optional
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError, DataError
-
-
-"""
-All below functions should be deprecated
-- json_response, json_response_* functions should use default dict or a Pydantic model
-- encode_json shouldn't be needed as FastAPI internally does it once json_response_* removed
-- IResponseBase duplicate of StandardResponse which has migrated to pybinbot.models.routes. Replace all usage of it by StandardResponse.
-"""
-
-
-def api_response(detail: str, data: Any = None, error: Union[str, int] = 0, status=200):
-    """
-    Custom Fast API response
-
-    Args:
-    - detail: the message of the response
-    - data: Pydantic model returned
-    """
-    body = {"message": detail}
-    if data:
-        body["data"] = data
-
-    if error:
-        body["error"] = str(error)
-
-    return JSONResponse(
-        status_code=status,
-        content=body,
-    )
 
 
 def json_response(content, status=200):
@@ -71,15 +40,6 @@ def kucoin_rate_limit_detail(error: Exception) -> str | None:
         return f"Kucoin 429000 {message_text}"
 
     return None
-
-
-def encode_json(raw):
-    return jsonable_encoder(raw)
-
-
-class IResponseBase(BaseModel):
-    message: str
-    error: Optional[int] = Field(default=0)
 
 
 def format_db_error(e: SQLAlchemyError) -> str:

@@ -12,11 +12,6 @@ export enum BotStatus {
   ERROR = "error",
 }
 
-export enum BotMode {
-  MANUAL = "manual",
-  AUTO = "auto",
-}
-
 export enum EntryMode {
   IMMEDIATE = "immediate",
   CONDITIONAL_LIMIT = "conditional_limit",
@@ -39,24 +34,6 @@ export enum DealType {
   TRAILING_PROFIT = "trailing_profit",
   TRAILING_STOP_LOSS = "trailing_stop_loss",
   ALGORITHMIC_CLOSE = "algorithmic_close",
-}
-
-export enum BinanceKlineintervals {
-  ONE_MINUTE = "1m",
-  THREE_MINUTES = "3m",
-  FIVE_MINUTES = "5m",
-  FIFTEEN_MINUTES = "15m",
-  THIRTY_MINUTES = "30m",
-  ONE_HOUR = "1h",
-  TWO_HOURS = "2h",
-  FOUR_HOURS = "4h",
-  SIX_HOURS = "6h",
-  EIGHT_HOURS = "8h",
-  TWELVE_HOURS = "12h",
-  ONE_DAY = "1d",
-  THREE_DAYS = "3d",
-  ONE_WEEK = "1w",
-  ONE_MONTH = "1M",
 }
 
 export enum TabsKeys {

@@ -46,53 +46,6 @@ class BinanceDeal(BaseDeal):
         self.symbol_info = self.symbols_crud.get_symbol(self.active_bot.pair)
         self.conversion_threshold = 1.05
 
-    def handle_existing_quote_balance(self, symbol: str, is_quote_balance: float):
-        """
-        Handle case when we have existing quote balance
-        """
-        quote_balance = round_numbers_floor(is_quote_balance, self.quote_qty_precision)
-        quote_fiat_price = self.get_book_order_deep(
-            symbol=symbol, order_side=not self.active_bot.quote_asset.is_fiat()
-        )
-        total_qty_available = quote_fiat_price * quote_balance
-
-        if self.active_bot.quote_asset.is_fiat():
-            return quote_balance / quote_fiat_price
-
-        # Check if we have enough balance (with conversion threshold buffer)
-        required_amount = self.active_bot.fiat_order_size * self.conversion_threshold
-        if total_qty_available > required_amount:
-            return None
-
-        # Calculate amount missing and buy the difference
-        amount_missing = self.active_bot.fiat_order_size - total_qty_available
-        return self.buy_missing_amount(symbol, amount_missing, quote_fiat_price)
-
-    def handle_no_quote_balance(self, symbol: str):
-        """
-        Handle case when we have no quote balance
-        """
-        quote_fiat_price = self.get_book_order_deep(symbol=symbol, order_side=True)
-        quote_asset_qty = round_numbers_floor(
-            self.active_bot.fiat_order_size / quote_fiat_price,
-            self.quote_qty_precision,
-        )
-        total_qty_available_buy = round_numbers_floor(
-            quote_fiat_price * quote_asset_qty,
-            self.quote_qty_precision,
-        )
-
-        # Check if calculated amount exceeds required amount
-        if total_qty_available_buy > self.active_bot.fiat_order_size:
-            return None
-
-        # Buy the calculated amount with conversion threshold
-        return self.buy_order(
-            symbol=symbol,
-            qty=quote_asset_qty * self.conversion_threshold,
-            qty_precision=self.quote_qty_precision,
-        )
-
     def buy_missing_amount(
         self, symbol: str, amount_missing: float, quote_fiat_price: float
     ):

@@ -443,40 +443,6 @@ class KucoinPositionDeal(EntryPricing):
         self.reconcile_exchange_sl(allow_widening=allow_stop_loss_widening)
         return self.active_bot
 
-    def update_parameters_with_activation(self) -> BotModel:
-        """
-        update_parameters with some additional logic for activation:
-        - If the bot is already active, it means we are updating parameters without changing the position, so we just call update_parameters.
-        - If the bot is not active, it means we are activating the bot, so we need to set the parameters and then activate it. This is used for example when we open a new deal and we want to set the SL and TP at the same time, so we update parameters with activation right after opening the deal.
-        """
-        direction = self._direction_multiplier()
-
-        if self.active_bot.stop_loss > 0:
-            price = self.active_bot.deal.opening_price
-            delta = price * (self.active_bot.stop_loss / 100)
-            self.active_bot.deal.stop_loss_price = price - (delta * direction)
-
-        if self.active_bot.trailing:
-            trailing_profit = self.active_bot.deal.opening_price * (
-                1 + direction * (self.active_bot.trailing_profit / 100)
-            )
-            self.active_bot.deal.trailing_profit_price = trailing_profit
-            self.active_bot.deal.trailing_stop_loss_price = 0
-            self.active_bot.deal.take_profit_price = 0
-        else:
-            take_profit_price = self.active_bot.deal.opening_price * (
-                1 + direction * (self.active_bot.take_profit / 100)
-            )
-            self.active_bot.deal.take_profit_price = take_profit_price
-
-        self.active_bot.status = Status.active
-        if direction == -1:
-            self.active_bot.add_log("Bot re-activated (short)")
-        else:
-            self.active_bot.add_log("Bot re-activated")
-        self.controller.save(self.active_bot)
-        return self.active_bot
-
     def open_deal(
         self,
         progress: Callable[[int, str], None] | None = None,

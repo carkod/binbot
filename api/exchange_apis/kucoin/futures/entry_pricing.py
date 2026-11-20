@@ -490,12 +490,6 @@ class EntryPricing(OrderExecution):
         )
         return entry_limit_price
 
-    def recovery_entry_limit_price(self) -> float | None:
-        if self.active_bot.recovery_params is None:
-            return None
-
-        return self.body_capped_entry_limit_price()
-
     def prepare_entry_limit_price(self, candidate_limit_price: float) -> float:
         """Prepare a bounded limit price; the entry lifecycle owns fill decisions."""
         self._entry_post_only = False

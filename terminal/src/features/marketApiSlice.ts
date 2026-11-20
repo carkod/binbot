@@ -1,18 +1,6 @@
-import { notifification } from "../utils/api";
+import type { StandardResponse } from "../utils/api.types";
+import { readApiResponse } from "../utils/api";
 import { userApiSlice } from "./userApiSlice";
-
-export interface GainerLosersData {
-  dates: string[];
-  gainers_percent: number[];
-  losers_percent: number[];
-  gainers_count: number[];
-  losers_count: number[];
-  total_volume: number[];
-  gainers: string[];
-  losers: string[];
-  adr_ratio: number[];
-  adr_ma: number[];
-}
 
 export interface GainersLosersAggregatePoint {
   timestamp: string;
@@ -59,24 +47,15 @@ export const marketApiSlice = userApiSlice.injectEndpoints({
     }),
     fastestMovers: build.query<FastestMoversSnapshot, void>({
       query: () => ({ url: "/charts/fastest_movers?limit=10" }),
-      transformResponse: ({ data, message, error }) => {
-        if (error === 1) {
-          notifification("error", message);
-        }
-        return data;
-      },
+      transformResponse: (response: StandardResponse) =>
+        readApiResponse(response),
     }),
     gainersLosersAggregate: build.query<GainersLosersAggregatePoint[], void>({
       query: () => ({
         url: "/charts/gainers-losers-aggregate?limit=672",
       }),
-      transformResponse: ({ data, message, error }) => {
-        if (error && error === 1) {
-          notifification("error", message);
-        }
-
-        return data;
-      },
+      transformResponse: (response: StandardResponse) =>
+        readApiResponse(response),
     }),
   }),
 });

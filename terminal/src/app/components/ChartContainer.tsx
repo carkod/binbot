@@ -28,7 +28,8 @@ const ChartContainer: FC<{
   bot: Bot;
   setCurrentPrice: PayloadActionCreator<number>;
   marketType: MarketType;
-}> = ({ bot, setCurrentPrice }) => {
+  interval?: ResolutionString;
+}> = ({ bot, setCurrentPrice, interval = "15" as ResolutionString }) => {
   const dispatch: AppDispatch = useAppDispatch();
 
   const {
@@ -315,7 +316,7 @@ const ChartContainer: FC<{
         {bot?.pair && (
           <TVChartContainer
             symbol={exchangeSymbol}
-            interval={"60" as ResolutionString}
+            interval={interval}
             timescaleMarks={timescaleMarks}
             timeMarker={expiryMarker}
             onTimeMarkerMove={handleTimeMarkerMove}

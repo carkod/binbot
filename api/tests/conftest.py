@@ -64,18 +64,6 @@ def vcr_config():
     }
 
 
-class MockAsyncBaseProducer:
-    def __init__(self):
-        pass
-
-    def start_producer(self):
-        producer = MagicMock()
-        return producer
-
-    def update_required(self, action):
-        return action
-
-
 # Ensure all tables are created before any tests run
 @pytest.fixture(scope="session", autouse=True)
 def create_test_tables():
@@ -462,12 +450,6 @@ def create_test_tables():
 @pytest.fixture(scope="session")
 def test_engine(create_test_tables):
     return create_test_tables
-
-
-@pytest.fixture(scope="session")
-def mock_lifespan():
-    with patch("api.main.lifespan") as mock_lifespan:
-        yield mock_lifespan
 
 
 def override_get_current_user():

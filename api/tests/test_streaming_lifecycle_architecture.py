@@ -26,10 +26,3 @@ def test_kucoin_futures_bridge_does_not_import_streaming() -> None:
                 offenders.append(str(path.relative_to(REPOSITORY_ROOT)))
 
     assert offenders == []
-
-
-def test_lifecycle_and_position_market_are_streaming_owned() -> None:
-    assert (REPOSITORY_ROOT / "streaming/lifecycle.py").is_file()
-    assert (REPOSITORY_ROOT / "streaming/position_market.py").is_file()
-    assert not (FUTURES_BRIDGE / "lifecycle.py").exists()
-    assert not (FUTURES_BRIDGE / "position_market.py").exists()

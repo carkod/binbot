@@ -1,4 +1,5 @@
-import { notifification } from "../utils/api";
+import type { StandardResponse } from "../utils/api.types";
+import { readApiResponse } from "../utils/api";
 import { type CloseConditions, type ExchangeId } from "../utils/enums";
 import { userApiSlice } from "./userApiSlice";
 
@@ -36,13 +37,8 @@ export const autotradeApiSlice = userApiSlice.injectEndpoints({
         url: `${import.meta.env.VITE_RESEARCH_CONTROLLER}` || "/research",
         providesTags: ["autotrade-settings"],
       }),
-      transformResponse: ({ data, message, error }, meta, arg) => {
-        if (error && error === 1) {
-          notifification("error", message);
-        }
-
-        return data;
-      },
+      transformResponse: (response: StandardResponse) =>
+        readApiResponse(response),
     }),
     editSettings: build.mutation<void, AutotradeSettings>({
       query: (body) => ({
@@ -51,14 +47,8 @@ export const autotradeApiSlice = userApiSlice.injectEndpoints({
         body,
         invalidatesTags: ["autotrade-settings"],
       }),
-      transformResponse: ({ data, message, error }, meta, arg) => {
-        if (error && error === 1) {
-          notifification("error", message);
-        } else {
-          notifification("success", message);
-        }
-        return data;
-      },
+      transformResponse: (response: StandardResponse) =>
+        readApiResponse(response, true),
     }),
   }),
 });

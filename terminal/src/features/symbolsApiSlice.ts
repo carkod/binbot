@@ -1,5 +1,5 @@
-import { notifification } from "../utils/api";
-import { type StandardResponse } from "../utils/api.types";
+import type { StandardResponse } from "../utils/api.types";
+import { readApiResponse } from "../utils/api";
 import { userApiSlice } from "./userApiSlice";
 
 export interface SymbolRequestPayload {
@@ -42,10 +42,6 @@ export interface ISymbol {
   futures_leverage: number;
 }
 
-export interface SymbolResponse extends StandardResponse {
-  data: ISymbol[];
-}
-
 export interface GetSymbolsParams {
   market_type?: string;
 }
@@ -65,13 +61,8 @@ export const symbolsApiSlice = userApiSlice.injectEndpoints({
           providesTags: ["symbols"],
         };
       },
-      transformResponse: ({ data, message, error }, meta, arg) => {
-        if (error && error === 1) {
-          notifification("error", message);
-        }
-
-        return data;
-      },
+      transformResponse: (response: StandardResponse) =>
+        readApiResponse(response),
     }),
     getOneSymbol: build.query<ISymbol, string>({
       query: (pair) => ({
@@ -83,13 +74,8 @@ export const symbolsApiSlice = userApiSlice.injectEndpoints({
           },
         ],
       }),
-      transformResponse: ({ data, message, error }, meta, arg) => {
-        if (error && error === 1) {
-          notifification("error", message);
-        }
-
-        return data;
-      },
+      transformResponse: (response: StandardResponse) =>
+        readApiResponse(response),
     }),
     deleteSymbol: build.mutation<void, string>({
       query: (id) => ({
@@ -97,14 +83,8 @@ export const symbolsApiSlice = userApiSlice.injectEndpoints({
         method: "DELETE",
         invalidatesTags: ["symbols"],
       }),
-      transformResponse: ({ data, message, error }, meta, arg) => {
-        if (error && error === 1) {
-          notifification("error", message);
-        } else {
-          notifification("success", message);
-        }
-        return data;
-      },
+      transformResponse: (response: StandardResponse) =>
+        readApiResponse(response, true),
     }),
     updateSymbol: build.mutation<void, SymbolRequestPayload>({
       query: (body) => ({
@@ -113,14 +93,8 @@ export const symbolsApiSlice = userApiSlice.injectEndpoints({
         body: body,
         invalidatesTags: ["symbols"],
       }),
-      transformResponse: ({ data, message, error }, meta, arg) => {
-        if (error && error === 1) {
-          notifification("error", message);
-        } else {
-          notifification("success", message);
-        }
-        return data;
-      },
+      transformResponse: (response: StandardResponse) =>
+        readApiResponse(response, true),
     }),
   }),
 });

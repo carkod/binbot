@@ -114,7 +114,7 @@ export const AutotradePage: FC<{}> = () => {
     }
   }, [data]);
   useEffect(() => {
-    const { unsubscribe } = watch((v, { name, type }) => {
+    const { unsubscribe } = watch((v, { name }) => {
       if (v && v?.[name] && !GRID_PERCENTAGE_FIELDS.has(name)) {
         if (typeof v[name] === "boolean") {
           dispatch(setSettingsToggle({ name, value: v[name] }));
@@ -241,7 +241,7 @@ export const AutotradePage: FC<{}> = () => {
                       <Switch
                         id="autotrade"
                         checked={settings.autotrade}
-                        onChange={(e) => {
+                        onChange={() => {
                           dispatch(
                             setSettingsToggle({
                               name: "autotrade",
@@ -297,7 +297,7 @@ export const AutotradePage: FC<{}> = () => {
                       <Switch
                         id="autoswitch"
                         checked={settings.autoswitch}
-                        onChange={(e) => {
+                        onChange={() => {
                           dispatch(
                             setSettingsToggle({
                               name: "autoswitch",
@@ -389,7 +389,7 @@ export const AutotradePage: FC<{}> = () => {
                     <Switch
                       id="enable_grid_ladders"
                       checked={settings.enable_grid_ladders}
-                      onChange={(e) => {
+                      onChange={() => {
                         dispatch(
                           setSettingsToggle({
                             name: "enable_grid_ladders",
