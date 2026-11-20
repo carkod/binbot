@@ -1,13 +1,5 @@
 import { formGridBreakpoints } from "../../theme";
-import {
-  Box,
-  Group,
-  Input,
-  SimpleGrid,
-  Tabs,
-  Text,
-  TextInput,
-} from "@mantine/core";
+import { Box, Input, SimpleGrid, Tabs, Text, TextInput } from "@mantine/core";
 import { type FC, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import type { RecoveryParams } from "../../features/bots/botInitialState";
@@ -107,35 +99,32 @@ const StopLossTab: FC = () => {
                 *
               </Text>
             </Input.Label>
-            <Group gap="xs" wrap="nowrap" className="field-row">
-              <TextInput
-                type="number"
-                step="any"
-                name="stop_loss"
-                id="stop_loss"
-                onFocus={() => dispatch(focusOrderLine("stop_loss"))}
-                onBlur={(e) => handleBlur(e)}
-                {...register("stop_loss", {
-                  required: "Stop loss is required",
-                  valueAsNumber: true,
-                  min: {
-                    value: 0,
-                    message: "Minimum trailing deviation is 1",
-                  },
-                  max: {
-                    value: 100,
-                    message: "Maximum trailing deviation is 100",
-                  },
-                })}
-                error={!!errors?.stop_loss}
-              />
-              <Text component="span" c="dimmed">
-                %
-              </Text>
-              {errors.stop_loss && (
-                <Input.Error>{errors.stop_loss?.message}</Input.Error>
-              )}
-            </Group>
+            <TextInput
+              type="number"
+              rightSection="%"
+              rightSectionPointerEvents="none"
+              step="any"
+              name="stop_loss"
+              id="stop_loss"
+              onFocus={() => dispatch(focusOrderLine("stop_loss"))}
+              onBlur={(e) => handleBlur(e)}
+              {...register("stop_loss", {
+                required: "Stop loss is required",
+                valueAsNumber: true,
+                min: {
+                  value: 0,
+                  message: "Minimum trailing deviation is 1",
+                },
+                max: {
+                  value: 100,
+                  message: "Maximum trailing deviation is 100",
+                },
+              })}
+              error={!!errors?.stop_loss}
+            />
+            {errors.stop_loss && (
+              <Input.Error>{errors.stop_loss?.message}</Input.Error>
+            )}
           </Box>
         </SimpleGrid>
         {recoveryEnabled && (
@@ -148,25 +137,22 @@ const StopLossTab: FC = () => {
               <Input.Label htmlFor="recovery_stop_loss_pct">
                 Recovery stop loss
               </Input.Label>
-              <Group gap="xs" wrap="nowrap" className="field-row">
-                <TextInput
-                  id="recovery_stop_loss_pct"
-                  type="number"
-                  min={0}
-                  max={100}
-                  step="any"
-                  value={bot.recovery_params?.stop_loss_pct ?? 0}
-                  onChange={(event) =>
-                    handleRecoveryChange(
-                      "stop_loss_pct",
-                      Number(event.target.value) || 0,
-                    )
-                  }
-                />
-                <Text component="span" c="dimmed">
-                  %
-                </Text>
-              </Group>
+              <TextInput
+                id="recovery_stop_loss_pct"
+                rightSection="%"
+                rightSectionPointerEvents="none"
+                type="number"
+                min={0}
+                max={100}
+                step="any"
+                value={bot.recovery_params?.stop_loss_pct ?? 0}
+                onChange={(event) =>
+                  handleRecoveryChange(
+                    "stop_loss_pct",
+                    Number(event.target.value) || 0,
+                  )
+                }
+              />
             </Box>
           </SimpleGrid>
         )}

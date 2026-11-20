@@ -4,7 +4,8 @@ networks:
 
 services:
   api_db:
-    image: postgres:latest
+    # Keep the server major version aligned with the existing pg_data cluster.
+    image: postgres:18
     container_name: binbot_api_db
     restart: on-failure
     networks:

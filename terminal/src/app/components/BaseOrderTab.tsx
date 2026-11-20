@@ -272,11 +272,13 @@ const BaseOrderTab: FC<{
                 label="Fiat order size"
                 errors={errors}
                 required={true}
-                secondaryText={autotradeSettings?.fiat}
               >
                 <TextInput
                   type="number"
                   name="fiat_order_size"
+                  rightSection={autotradeSettings?.fiat}
+                  rightSectionWidth={64}
+                  rightSectionPointerEvents="none"
                   autoComplete="off"
                   required
                   disabled={isBusyBot}
@@ -340,15 +342,17 @@ const BaseOrderTab: FC<{
                       : "Base order size"
                   }
                   errors={errors}
-                  secondaryText={
-                    bot.market_type === MarketType.FUTURES
-                      ? baseAsset
-                      : quoteAsset
-                  }
                 >
                   <TextInput
                     type="number"
                     name="base_order_size"
+                    rightSection={
+                      bot.market_type === MarketType.FUTURES
+                        ? baseAsset
+                        : quoteAsset
+                    }
+                    rightSectionWidth={64}
+                    rightSectionPointerEvents="none"
                     autoComplete="off"
                     disabled={true}
                     value={bot.deal.base_order_size}
@@ -435,11 +439,13 @@ const BaseOrderTab: FC<{
                         tooltip={"Amount of asset to trade"}
                         label="Asset amount"
                         errors={errors}
-                        secondaryText={baseAsset}
                       >
                         <TextInput
                           type="number"
                           name="total_asset_amount"
+                          rightSection={baseAsset}
+                          rightSectionWidth={64}
+                          rightSectionPointerEvents="none"
                           autoComplete="off"
                           disabled={true}
                           value={bot.deal.base_order_size * currentPrice}

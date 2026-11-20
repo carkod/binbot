@@ -3,7 +3,6 @@ from typing import Optional
 from sqlalchemy import Column, Enum
 from sqlmodel import Field, SQLModel
 from pybinbot import (
-    BinanceKlineIntervals,
     ExchangeId,
     CloseConditions,
 )
@@ -64,10 +63,6 @@ class AutotradeTable(SettingsDocument, table=True):
         nullable=False,
         unique=True,
     )
-    candlestick_interval: BinanceKlineIntervals = Field(
-        default=BinanceKlineIntervals.fifteen_minutes,
-        sa_column=Column(Enum(BinanceKlineIntervals)),
-    )
     close_condition: CloseConditions = Field(
         default=CloseConditions.dynamic_trailing,
         sa_column=Column(Enum(CloseConditions)),
@@ -82,7 +77,6 @@ class AutotradeTable(SettingsDocument, table=True):
                 {
                     "autotrade": True,
                     "base_order_size": 15,
-                    "candlestick_interval": "15m",
                     "trailing": False,
                     "trailing_deviation": 3,
                     "trailing_profit": 2.4,

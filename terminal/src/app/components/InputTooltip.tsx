@@ -10,7 +10,6 @@ interface InputTooltipProps {
   label: string;
   errors?: FieldErrors<Bot>;
   required?: boolean;
-  secondaryText?: string;
 }
 
 export const InputTooltip = ({
@@ -20,7 +19,6 @@ export const InputTooltip = ({
   children,
   errors = {},
   required = false,
-  secondaryText,
 }: InputTooltipProps) => (
   <Stack gap={4} w="100%" style={{ minWidth: 0 }}>
     <Tooltip label={tooltip} multiline maw={320} withArrow>
@@ -30,7 +28,6 @@ export const InputTooltip = ({
     </Tooltip>
     <Group gap="xs" wrap="nowrap" className="field-row">
       {children}
-      {secondaryText && <Input.Description>{secondaryText}</Input.Description>}
     </Group>
     {errors[name] && (
       <Input.Error>

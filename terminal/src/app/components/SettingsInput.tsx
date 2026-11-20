@@ -6,13 +6,15 @@ type SettingsInputProps = {
   name?: string;
   label: string;
   handleChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleBlur?: (e: FocusEvent) => void;
+  handleBlur?: React.FocusEventHandler<HTMLInputElement>;
   errorMsg?: string;
   infoText?: string;
   type?: "text" | "number";
   step?: string | number;
   register?: any;
   required?: boolean;
+  rightSection?: string;
+  rightSectionWidth?: number;
 };
 
 const SettingsInput: FC<SettingsInputProps> = ({
@@ -27,6 +29,8 @@ const SettingsInput: FC<SettingsInputProps> = ({
   type = "text",
   step,
   required = false,
+  rightSection,
+  rightSectionWidth,
 }) => {
   const inputStep = step ?? (type === "number" ? "any" : undefined);
 
@@ -36,11 +40,13 @@ const SettingsInput: FC<SettingsInputProps> = ({
       <TextInput
         id={name}
         onChange={handleChange}
-        onBlur={handleBlur}
         defaultValue={type === "number" ? String(value) : value}
         type={type}
         step={inputStep}
-        {...register(name, { required: required })}
+        rightSection={rightSection}
+        rightSectionWidth={rightSectionWidth}
+        rightSectionPointerEvents="none"
+        {...register(name, { required: required, onBlur: handleBlur })}
         error={!!errorMsg}
       />
       {errorMsg && <Input.Error>{errorMsg}</Input.Error>}

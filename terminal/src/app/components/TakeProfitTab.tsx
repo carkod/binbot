@@ -84,33 +84,30 @@ const TakeProfit: FC = () => {
                   *
                 </Text>
               </Input.Label>
-              <Group gap="xs" wrap="nowrap" className="field-row">
-                <TextInput
-                  type="number"
-                  name="trailing_profit"
-                  id="trailing_profit"
-                  step="any"
-                  onFocus={() => dispatch(focusOrderLine("trailing_profit"))}
-                  {...register("trailing_profit", {
-                    required:
-                      "Trailing profit in percentage is required when trailing is activated",
-                    valueAsNumber: true,
-                    min: {
-                      value: 0,
-                      message: "Minimum trailing profit is 1",
-                    },
-                    max: {
-                      value: 100,
-                      message: "Maximum trailing profit is 100",
-                    },
-                    onBlur: (event) =>
-                      commitPercentage("trailing_profit", event.target.value),
-                  })}
-                />
-                <Text component="span" c="dimmed">
-                  %
-                </Text>
-              </Group>
+              <TextInput
+                type="number"
+                name="trailing_profit"
+                rightSection="%"
+                rightSectionPointerEvents="none"
+                id="trailing_profit"
+                step="any"
+                onFocus={() => dispatch(focusOrderLine("trailing_profit"))}
+                {...register("trailing_profit", {
+                  required:
+                    "Trailing profit in percentage is required when trailing is activated",
+                  valueAsNumber: true,
+                  min: {
+                    value: 0,
+                    message: "Minimum trailing profit is 1",
+                  },
+                  max: {
+                    value: 100,
+                    message: "Maximum trailing profit is 100",
+                  },
+                  onBlur: (event) =>
+                    commitPercentage("trailing_profit", event.target.value),
+                })}
+              />
             </Grid.Col>
           ) : (
             <Grid.Col span={{ base: 12, md: 6 }}>
@@ -120,30 +117,27 @@ const TakeProfit: FC = () => {
                   *
                 </Text>
               </Input.Label>
-              <Group gap="xs" wrap="nowrap" className="field-row">
-                <TextInput
-                  type="number"
-                  name="take_profit"
-                  id="take_profit"
-                  onFocus={() => dispatch(focusOrderLine("take_profit"))}
-                  {...register("take_profit", {
-                    valueAsNumber: true,
-                    min: {
-                      value: 0,
-                      message: "Minimum take profit is 1",
-                    },
-                    max: {
-                      value: 100,
-                      message: "Maximum take profit is 100",
-                    },
-                    onBlur: (event) =>
-                      commitPercentage("take_profit", event.target.value),
-                  })}
-                />
-                <Text component="span" c="dimmed">
-                  %
-                </Text>
-              </Group>
+              <TextInput
+                type="number"
+                name="take_profit"
+                rightSection="%"
+                rightSectionPointerEvents="none"
+                id="take_profit"
+                onFocus={() => dispatch(focusOrderLine("take_profit"))}
+                {...register("take_profit", {
+                  valueAsNumber: true,
+                  min: {
+                    value: 0,
+                    message: "Minimum take profit is 1",
+                  },
+                  max: {
+                    value: 100,
+                    message: "Maximum take profit is 100",
+                  },
+                  onBlur: (event) =>
+                    commitPercentage("take_profit", event.target.value),
+                })}
+              />
               {errors.take_profit && (
                 <Input.Error>{errors.take_profit.message}</Input.Error>
               )}
@@ -201,36 +195,30 @@ const TakeProfit: FC = () => {
               <Input.Label htmlFor="trailing_deviation">
                 Trailing deviation
               </Input.Label>
-              <Group gap="xs" wrap="nowrap" className="field-row">
-                <TextInput
-                  type="number"
-                  name="trailing_deviation"
-                  id="trailing_deviation"
-                  step="any"
-                  onFocus={() => dispatch(focusOrderLine("trailing_deviation"))}
-                  {...register("trailing_deviation", {
-                    required:
-                      "Trailing deviation in percentage is required when trailing is activated",
-                    valueAsNumber: true,
-                    min: {
-                      value: 0,
-                      message: "Minimum trailing deviation is 1",
-                    },
-                    max: {
-                      value: 100,
-                      message: "Maximum trailing deviation is 100",
-                    },
-                    onBlur: (event) =>
-                      commitPercentage(
-                        "trailing_deviation",
-                        event.target.value,
-                      ),
-                  })}
-                />
-                <Text component="span" c="dimmed">
-                  %
-                </Text>
-              </Group>
+              <TextInput
+                type="number"
+                name="trailing_deviation"
+                rightSection="%"
+                rightSectionPointerEvents="none"
+                id="trailing_deviation"
+                step="any"
+                onFocus={() => dispatch(focusOrderLine("trailing_deviation"))}
+                {...register("trailing_deviation", {
+                  required:
+                    "Trailing deviation in percentage is required when trailing is activated",
+                  valueAsNumber: true,
+                  min: {
+                    value: 0,
+                    message: "Minimum trailing deviation is 1",
+                  },
+                  max: {
+                    value: 100,
+                    message: "Maximum trailing deviation is 100",
+                  },
+                  onBlur: (event) =>
+                    commitPercentage("trailing_deviation", event.target.value),
+                })}
+              />
             </Box>
           )}
         </SimpleGrid>

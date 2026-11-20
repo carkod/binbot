@@ -2,6 +2,7 @@ import {
   Box,
   Button,
   Card,
+  Divider,
   Group,
   Input,
   NativeSelect,
@@ -23,11 +24,17 @@ import {
   setSettingsField,
   setSettingsToggle,
 } from "../../features/autotradeSlice";
-import { BinanceKlineintervals, ExchangeId } from "../../utils/enums";
+import { ExchangeId } from "../../utils/enums";
 import LightSwitch from "../components/LightSwitch";
 import SettingsInput from "../components/SettingsInput";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import { type AppDispatch } from "../store";
+
+const GRID_PERCENTAGE_FIELDS = new Set([
+  "grid_allocation_pct",
+  "grid_cash_reserve_pct",
+  "max_margin_per_ladder_pct",
+]);
 
 export const AutotradePage: FC<{}> = () => {
   const { data } = useGetSettingsQuery();
@@ -49,7 +56,6 @@ export const AutotradePage: FC<{}> = () => {
     mode: "onTouched",
     reValidateMode: "onBlur",
     defaultValues: {
-      candlestick_interval: settings.candlestick_interval,
       autotrade: settings.autotrade,
       max_active_autotrade_bots: settings.max_active_autotrade_bots,
       base_order_size: settings.base_order_size,
@@ -62,12 +68,12 @@ export const AutotradePage: FC<{}> = () => {
       telegram_signals: settings.telegram_signals,
       autoswitch: settings.autoswitch,
       exchange_id: settings.exchange_id,
-      grid_allocation_pct: settings.grid_allocation_pct,
-      grid_cash_reserve_pct: settings.grid_cash_reserve_pct,
+      grid_allocation_pct: settings.grid_allocation_pct * 100,
+      grid_cash_reserve_pct: settings.grid_cash_reserve_pct * 100,
       grid_total_margin: settings.grid_total_margin,
       grid_level_count: settings.grid_level_count,
       grid_max_active_ladders: settings.grid_max_active_ladders,
-      max_margin_per_ladder_pct: settings.max_margin_per_ladder_pct,
+      max_margin_per_ladder_pct: settings.max_margin_per_ladder_pct * 100,
       enable_grid_ladders: settings.enable_grid_ladders,
     },
   });
@@ -77,7 +83,14 @@ export const AutotradePage: FC<{}> = () => {
 
     if (name && value) {
       if (typeof value === "string") {
-        dispatch(setSettingsField({ name, value }));
+        dispatch(
+          setSettingsField({
+            name,
+            value: GRID_PERCENTAGE_FIELDS.has(name)
+              ? Number(value) / 100
+              : value,
+          }),
+        );
       } else {
         dispatch(setSettingsToggle({ name, value }));
       }
@@ -85,7 +98,14 @@ export const AutotradePage: FC<{}> = () => {
   };
 
   const saveSettings = async (formData) => {
-    await updateSettings({ ...settings, ...formData }).unwrap();
+    await updateSettings({
+      ...settings,
+      ...formData,
+      grid_allocation_pct: Number(formData.grid_allocation_pct) / 100,
+      grid_cash_reserve_pct: Number(formData.grid_cash_reserve_pct) / 100,
+      max_margin_per_ladder_pct:
+        Number(formData.max_margin_per_ladder_pct) / 100,
+    }).unwrap();
   };
 
   useEffect(() => {
@@ -95,7 +115,7 @@ export const AutotradePage: FC<{}> = () => {
   }, [data]);
   useEffect(() => {
     const { unsubscribe } = watch((v, { name, type }) => {
-      if (v && v?.[name]) {
+      if (v && v?.[name] && !GRID_PERCENTAGE_FIELDS.has(name)) {
         if (typeof v[name] === "boolean") {
           dispatch(setSettingsToggle({ name, value: v[name] }));
         } else {
@@ -108,7 +128,6 @@ export const AutotradePage: FC<{}> = () => {
 
     if (settings) {
       reset({
-        candlestick_interval: settings.candlestick_interval,
         autotrade: settings.autotrade,
         max_active_autotrade_bots: settings.max_active_autotrade_bots,
         base_order_size: settings.base_order_size,
@@ -121,12 +140,12 @@ export const AutotradePage: FC<{}> = () => {
         telegram_signals: settings.telegram_signals,
         autoswitch: settings.autoswitch,
         exchange_id: settings.exchange_id,
-        grid_allocation_pct: settings.grid_allocation_pct,
-        grid_cash_reserve_pct: settings.grid_cash_reserve_pct,
+        grid_allocation_pct: settings.grid_allocation_pct * 100,
+        grid_cash_reserve_pct: settings.grid_cash_reserve_pct * 100,
         grid_total_margin: settings.grid_total_margin,
         grid_level_count: settings.grid_level_count,
         grid_max_active_ladders: settings.grid_max_active_ladders,
-        max_margin_per_ladder_pct: settings.max_margin_per_ladder_pct,
+        max_margin_per_ladder_pct: settings.max_margin_per_ladder_pct * 100,
         enable_grid_ladders: settings.enable_grid_ladders,
       });
     }
@@ -234,30 +253,6 @@ export const AutotradePage: FC<{}> = () => {
                       />
                     </Group>
                   </Box>
-                  <NativeSelect
-                    id="candlestick_interval"
-                    name="candlestick_interval"
-                    onChange={(e) => {
-                      const { value } = e.target;
-
-                      dispatch(
-                        setSettingsField({
-                          name: "candlestick_interval",
-                          value,
-                        }),
-                      );
-                    }}
-                    onBlur={handleBlur}
-                    {...register("candlestick_interval", {
-                      required: true,
-                    })}
-                  >
-                    {Object.values(BinanceKlineintervals).map((interval, i) => (
-                      <option key={i} value={interval.toString()}>
-                        {interval.toString()}
-                      </option>
-                    ))}
-                  </NativeSelect>
                   <SettingsInput
                     value={settings.max_active_autotrade_bots}
                     name={"max_active_autotrade_bots"}
@@ -271,6 +266,8 @@ export const AutotradePage: FC<{}> = () => {
                     value={settings.base_order_size}
                     name={"base_order_size"}
                     label={"Base order size (quantity)"}
+                    rightSection={settings.fiat}
+                    rightSectionWidth={64}
                     type="text"
                     register={register}
                   />
@@ -283,12 +280,13 @@ export const AutotradePage: FC<{}> = () => {
                     infoText="Careful! This is a global change of everything, from candlesticks to charts and bots as well as Binquant analytics"
                   />
                 </SimpleGrid>
-                <hr />
+                <Divider my="sm" />
                 <SimpleGrid cols={{ base: 1, md: 4 }}>
                   <SettingsInput
                     value={settings.stop_loss}
                     name={"stop_loss"}
                     label={"Stop loss"}
+                    rightSection="%"
                     type="number"
                     register={register}
                   />
@@ -312,7 +310,7 @@ export const AutotradePage: FC<{}> = () => {
                     </Group>
                   </Box>
                 </SimpleGrid>
-                <hr />
+                <Divider my="sm" />
                 <SimpleGrid cols={{ base: 1, md: 4 }}>
                   <Box>
                     <label htmlFor="trailing">Trailing</label>
@@ -339,6 +337,7 @@ export const AutotradePage: FC<{}> = () => {
                       value={settings.trailing_deviation}
                       name={"trailing_deviation"}
                       label={"Trailing stop loss"}
+                      rightSection="%"
                       type="number"
                       infoText="Should be kept as small as possible as this will increase funds needed to start base_order_size"
                       register={register}
@@ -347,6 +346,7 @@ export const AutotradePage: FC<{}> = () => {
                       value={settings.trailing_profit}
                       name={"trailing_profit"}
                       label={"Trail profit"}
+                      rightSection="%"
                       type="number"
                       register={register}
                     />
@@ -357,6 +357,7 @@ export const AutotradePage: FC<{}> = () => {
                       value={settings.take_profit}
                       name={"take_profit"}
                       label={"Take profit"}
+                      rightSection="%"
                       type="number"
                       register={register}
                     />
@@ -403,19 +404,23 @@ export const AutotradePage: FC<{}> = () => {
               </SimpleGrid>
               {settings.enable_grid_ladders && (
                 <>
-                  <hr />
+                  <Divider my="sm" />
                   <SimpleGrid cols={{ base: 1, md: 4 }}>
                     <SettingsInput
                       value={settings.grid_allocation_pct}
                       name={"grid_allocation_pct"}
+                      handleBlur={handleBlur}
                       label={"Grid allocation pct"}
+                      rightSection="%"
                       type="number"
                       register={register}
                     />
                     <SettingsInput
                       value={settings.grid_cash_reserve_pct}
                       name={"grid_cash_reserve_pct"}
+                      handleBlur={handleBlur}
                       label={"Grid cash reserve pct"}
+                      rightSection="%"
                       type="number"
                       register={register}
                     />
@@ -423,6 +428,8 @@ export const AutotradePage: FC<{}> = () => {
                       value={settings.grid_total_margin}
                       name={"grid_total_margin"}
                       label={"Grid total margin"}
+                      rightSection={settings.fiat}
+                      rightSectionWidth={64}
                       type="number"
                       register={register}
                     />
@@ -447,7 +454,9 @@ export const AutotradePage: FC<{}> = () => {
                     <SettingsInput
                       value={settings.max_margin_per_ladder_pct}
                       name={"max_margin_per_ladder_pct"}
+                      handleBlur={handleBlur}
                       label={"Max margin per ladder pct"}
+                      rightSection="%"
                       type="number"
                       register={register}
                     />
