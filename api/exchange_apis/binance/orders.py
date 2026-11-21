@@ -1,5 +1,3 @@
-from time import time
-from uuid import uuid4
 from api.exchange_apis.binance.account import BinanceAccount
 from api.databases.crud.autotrade_crud import AutotradeCrud
 from pybinbot import (
@@ -9,10 +7,8 @@ from pybinbot import (
     OrderSide,
     OrderStatus,
     supress_notation,
-    round_timestamp,
     DeleteOrderError,
 )
-from api.tools.handle_error import json_response, json_response_message
 from api.databases.crud.symbols_crud import SymbolsCrud
 
 
@@ -34,27 +30,6 @@ class BinanceOrderController(BinanceAccount):
         self.symbols_crud = SymbolsCrud()
         self.autotrade_settings = AutotradeCrud().get_settings()
         self.exchange_id: ExchangeId = self.autotrade_settings.exchange_id
-
-    def generate_id(self):
-        return uuid4()
-
-    def generate_short_id(self):
-        id = uuid4().int
-        return int(str(id)[:8])
-
-    def get_ts(self):
-        """
-        Get timestamp in milliseconds
-        """
-        return round_timestamp(time() * 1000)
-
-    def calculate_price_precision(self, symbol: str) -> int:
-        """
-        Calculate the price precision for the symbol
-        taking data from API db
-        """
-        symbol_info = self.symbols_crud.get_symbol(symbol)
-        return symbol_info.price_precision
 
     def calculate_qty_precision(self, symbol: str) -> int:
         """
@@ -173,25 +148,6 @@ class BinanceOrderController(BinanceAccount):
             url=f"{self.order_url}", method="DELETE", payload=payload
         )
         return data
-
-    def delete_all_orders(self, symbol):
-        """
-        Delete All orders by symbol
-        - Optimal for open orders table
-        """
-        data = self.signed_request(
-            url=self.order_url,
-            method="DELETE",
-            payload={
-                "symbol": symbol,
-            },
-        )
-
-        if data and len(data) > 0:
-            resp = json_response({"message": "Orders deleted", "data": data})
-        else:
-            resp = json_response_message("No open orders found!")
-        return resp
 
     def buy_margin_order(self, symbol: str, qty: float):
         """

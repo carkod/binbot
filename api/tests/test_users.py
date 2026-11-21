@@ -1,14 +1,16 @@
 from contextlib import contextmanager
 from uuid import uuid4
 from urllib.parse import quote
+from unittest.mock import patch
 
 import pytest
 from pybinbot import UserRoles
+from api.databases.crud.user_crud import UserTableCrud
 from api.databases.tables.user_table import UserTable
 from api.databases.utils import get_session
 from api.main import app
-from api.user.models.user import UserDetails
-from api.user.services.auth import decode_access_token
+from api.user.models.user import UserDetails, UserTokenData
+from api.user.services.auth import decode_access_token, get_current_user
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
@@ -144,3 +146,57 @@ def test_edit_user_updates_password_when_supplied(
             select(UserTable).where(UserTable.email == user.email)
         ).one()
         assert edited_user.password == "updated123"
+
+
+def test_user_lookup_by_id_returns_matching_user(test_engine):
+    with Session(test_engine) as session:
+        user = add_user(session)
+        result = UserTableCrud(session).get_one(id=str(user.id))
+
+    assert result.id == user.id
+    assert result.email == user.email
+
+
+def test_inactive_user_cannot_log_in(client, test_engine):
+    with Session(test_engine) as session:
+        user = add_user(session)
+        user.is_active = False
+        session.add(user)
+        session.commit()
+        email = user.email
+
+    with patch("api.databases.crud.user_crud.create_access_token") as create_token:
+        response = client.post(
+            "/user/login", data={"username": email, "password": "secret123"}
+        )
+
+    assert response.json()["error"] == 1
+    create_token.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "role, expected_status", [(UserRoles.user, 403), (UserRoles.admin, 200)]
+)
+def test_register_user_requires_admin(client, role, expected_status):
+    original = app.dependency_overrides.get(get_current_user)
+    app.dependency_overrides[get_current_user] = lambda: UserTokenData(
+        email="caller@example.com", role=role, expires_in=1732388868477
+    )
+    try:
+        response = client.post(
+            "/user/register",
+            json={
+                "email": f"new-{uuid4()}@example.com",
+                "password": "secret123",
+                "role": "admin",
+            },
+        )
+    finally:
+        if original is None:
+            app.dependency_overrides.pop(get_current_user, None)
+        else:
+            app.dependency_overrides[get_current_user] = original
+
+    assert response.status_code == expected_status
+    if expected_status == 200:
+        assert response.json()["data"]["role"] == "admin"

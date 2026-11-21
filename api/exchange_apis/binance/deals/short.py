@@ -51,13 +51,17 @@ class BinanceShortDeal(BinanceMarginDeal):
 
         open_price is unused, but kept for interface consistency
         """
+        if self.active_bot.status != Status.active or close_price <= 0:
+            return self.active_bot
         self.close_conditions(close_price)
+        if self.active_bot.status != Status.active:
+            return self.active_bot
 
         self.active_bot.deal.current_price = close_price
         # Make sure current price is up to date
         self.controller.save(self.active_bot)
 
-        if self.active_bot.deal.stop_loss_price == 0:
+        if self.active_bot.stop_loss > 0 and self.active_bot.deal.stop_loss_price == 0:
             self.active_bot.deal.stop_loss_price = (
                 self.active_bot.deal.opening_price
                 + (
@@ -68,13 +72,20 @@ class BinanceShortDeal(BinanceMarginDeal):
 
         # Direction 3: upward trend (short)
         # Breaking trailing_stop_loss, sell for safety
-        if close_price > self.active_bot.deal.stop_loss_price:
+        if (
+            self.active_bot.stop_loss > 0
+            and self.active_bot.deal.stop_loss_price > 0
+            and close_price >= self.active_bot.deal.stop_loss_price
+        ):
             self.controller.update_logs(
                 f"Executing margin_short stop_loss reversal after hitting stop_loss_price {self.active_bot.deal.stop_loss_price}",
                 self.active_bot,
             )
             self.execute_stop_loss()
-            if self.active_bot.recovery_params is not None:
+            if (
+                self.active_bot.status == Status.completed
+                and self.active_bot.recovery_params is not None
+            ):
                 if not self.symbol_info.is_margin_trading_allowed:
                     self.active_bot.add_log(
                         f"Margin trading not allowed for {self.active_bot.pair}. Cannot switch to long bot."
@@ -85,6 +96,7 @@ class BinanceShortDeal(BinanceMarginDeal):
                 self.switch_to_long_bot()
 
             self.controller.save(self.active_bot)
+            return self.active_bot
 
         if (
             close_price > 0
@@ -95,13 +107,16 @@ class BinanceShortDeal(BinanceMarginDeal):
             # Direction 1.1: downward trend (short)
             # Breaking trailing
             # Trailing only to update when it's above opening_price
-            if close_price < self.active_bot.deal.trailing_profit_price:
+            if close_price <= self.active_bot.deal.trailing_profit_price:
                 self.update_trailing_profit(close_price)
 
             # Direction 2: upward trend (short). breaking the trailing_stop_loss
             # Make sure it's red candlestick, to avoid slippage loss
             # Sell after hitting trailing stop_loss and if price already broken trailing
-            if close_price > self.active_bot.deal.trailing_stop_loss_price:
+            if (
+                self.active_bot.deal.trailing_stop_loss_price > 0
+                and close_price >= self.active_bot.deal.trailing_stop_loss_price
+            ):
                 self.controller.update_logs(
                     f"Hit trailing_stop_loss_price {self.active_bot.deal.trailing_stop_loss_price}. Selling {self.active_bot.pair}",
                     self.active_bot,
@@ -157,11 +172,11 @@ class BinanceShortDeal(BinanceMarginDeal):
         if balance > 0:
             res = self.margin_liquidation(self.active_bot.pair)
 
-            price = float(res["price"])
-            if price == 0:
-                price = self.calculate_avg_price(res["fills"])
+            if res and "code" not in res:
+                price = float(res["price"])
+                if price == 0:
+                    price = self.calculate_avg_price(res["fills"])
 
-            if res:
                 order = OrderModel(
                     timestamp=int(res["transactTime"]),
                     deal_type=deal_type,

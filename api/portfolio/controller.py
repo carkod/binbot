@@ -12,7 +12,6 @@ from pybinbot import (
     KucoinApi,
     KucoinKlineIntervals,
     round_numbers,
-    ts_to_day,
 )
 from sqlmodel import Session
 from api.tools.config import Config
@@ -76,10 +75,10 @@ class PortfolioController:
         balances.append(live_estimated_total_fiat)
 
     def _consolidate_dates(self, klines: list[list], balance_date: int) -> int | None:
-        balance_date_day = ts_to_day(balance_date)
+        balance_date_day = balance_date // 86_400_000
 
         for idx, kline in enumerate(klines):
-            kline_day = datetime.fromtimestamp(kline[6] / 1000).strftime("%Y-%m-%d")
+            kline_day = int(kline[0]) // 86_400_000
             if kline_day == balance_date_day:
                 return idx
 
@@ -143,18 +142,16 @@ class PortfolioController:
         self.session.rollback()
 
         oldest_balance_id = balance_points[-1][0]
-        end_time = int(
-            datetime.fromtimestamp(oldest_balance_id / 1000)
-            .replace(hour=0, minute=0, second=0, microsecond=0)
-            .timestamp()
-            * 1000
+        newest_balance_id = balance_points[0][0]
+        candle_count = (
+            newest_balance_id // 86_400_000 - oldest_balance_id // 86_400_000 + 1
         )
 
         klines = self.api.get_ui_klines(
             symbol=self.benchmark_symbol,
             interval=self.interval,
-            limit=len(balance_points),
-            end_time=end_time,
+            limit=candle_count,
+            end_time=newest_balance_id,
         )
 
         fiat_series: list[float] = []
@@ -172,7 +169,7 @@ class PortfolioController:
 
             fiat_series.append(round_numbers(estimated_total_fiat, 4))
             btc_series.append(float(klines[btc_index][4]))
-            dates.append(int(klines[btc_index][6]))
+            dates.append(int(klines[btc_index][0]))
 
         fiat_series.reverse()
         btc_series.reverse()
@@ -186,8 +183,8 @@ class PortfolioController:
         )
 
         pnl = 0.0
-        if len(balances) >= 2:
-            returns = (balances[-1] - balances[-2]) / balances[-1]
+        if len(balances) >= 2 and balances[-2] != 0:
+            returns = (balances[-1] - balances[-2]) / balances[-2]
             pnl = round_numbers(returns, 4)
 
         stats = Stats(

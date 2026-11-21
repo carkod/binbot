@@ -2,7 +2,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 from sqlmodel import Field
 from pybinbot import UserRoles, timestamp
-from uuid import UUID, uuid4
+from uuid import UUID
 from typing import Sequence
 from pybinbot import StandardResponse
 
@@ -29,22 +29,6 @@ class UserDetails(BaseModel):
         return v
 
 
-class CreateUser(UserDetails):
-    """
-    Basic user schema for access to resources
-
-    For full customer data create a separate table
-    """
-
-    id: Optional[UUID] = Field(
-        default_factory=uuid4, primary_key=True, index=True, nullable=False, unique=True
-    )
-    # Future: Only required if customer table exists
-    # customer_id: Optional[UUID] = Field(
-    #     default_factory=uuid4, primary_key=True, index=True, nullable=False, unique=True
-    # )
-
-
 class EditUserDetails(BaseModel):
     email: EmailStr
     is_active: Optional[bool] = None
@@ -58,16 +42,6 @@ class EditUserDetails(BaseModel):
     )
     username: Optional[str] = None
     description: Optional[str] = None
-
-
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
-
-
-class LoggedInDetails(BaseModel):
-    email: EmailStr
-    token: str
 
 
 class UserPublic(BaseModel):

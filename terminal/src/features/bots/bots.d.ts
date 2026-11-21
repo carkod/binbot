@@ -1,4 +1,3 @@
-import type { EntityId, EntityState } from "@reduxjs/toolkit";
 import { type BotStatus } from "../../utils/enums";
 import type { Bot } from "./botInitialState";
 
@@ -6,11 +5,6 @@ export interface DefaultBotsResponse {
   error: number;
   data?: string;
   message?: string;
-}
-
-export interface GetBotsResponse {
-  bots: EntityState<Bot, EntityId>;
-  totalProfit: number;
 }
 
 export interface GetBotsParams {
@@ -24,20 +18,9 @@ export interface SingleBotResponse {
   bot: Bot | null;
 }
 
-export interface CreateBotResponse {
-  error: number;
-  data?: Bot;
-  message?: string;
-}
-
 export interface EditBotParams {
   body: Bot;
   id: string;
-}
-
-export interface BotsState {
-  bots: Bot[];
-  totalProfit: number;
 }
 
 export interface BotDetailsFormField {

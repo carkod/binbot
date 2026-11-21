@@ -1,40 +1,5 @@
-from collections.abc import Sequence
-
 from pybinbot import ExchangeId, StandardResponse, SymbolModel
 from pydantic import BaseModel, Field
-
-from api.databases.tables.symbol_table import SymbolTable
-
-
-class SymbolsResponse(StandardResponse):
-    data: Sequence[SymbolTable] = Field(default=[])
-
-    model_config = {"from_attributes": True}
-
-    @classmethod
-    def dump_from_table(cls, symbols: Sequence[SymbolTable]):
-        """
-        Same as model_dump() but from
-        BotTable
-
-        Use model_validate to cast/pre-validate data to avoid unecessary validation errors
-        """
-        new_data = []
-        for s in symbols:
-            symbol = s.model_dump()
-
-            if len(s.exchange_values) > 0:
-                symbol["is_margin_trading_allowed"] = s.exchange_values[
-                    0
-                ].is_margin_trading_allowed
-                symbol["price_precision"] = s.exchange_values[0].price_precision
-                symbol["qty_precision"] = s.exchange_values[0].qty_precision
-                symbol["min_notional"] = s.exchange_values[0].min_notional
-                symbol["multiplier"] = s.exchange_values[0].multiplier
-
-            new_data.append(symbol)
-
-        return new_data
 
 
 class SymbolRequestPayload(BaseModel):

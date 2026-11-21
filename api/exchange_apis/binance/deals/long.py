@@ -47,8 +47,12 @@ class BinanceLongDeal(BinanceSpotDeal):
     def deal_exit_orchestration(self, close_price: float, open_price: float):
         # interface consistency
         current_price = close_price
+        if self.active_bot.status != Status.active or current_price <= 0:
+            return self.active_bot
         self.check_failed_switch_long_bot()
         self.close_conditions(current_price)
+        if self.active_bot.status != Status.active:
+            return self.active_bot
 
         self.active_bot.deal.current_price = current_price
         self.controller.save(self.active_bot)
@@ -60,7 +64,7 @@ class BinanceLongDeal(BinanceSpotDeal):
         if (
             self.active_bot.stop_loss > 0
             # current_price below stop loss
-            and self.active_bot.deal.stop_loss_price > current_price
+            and self.active_bot.deal.stop_loss_price >= current_price
         ):
             self.execute_stop_loss()
             if self.active_bot.recovery_params is not None:
@@ -73,18 +77,20 @@ class BinanceLongDeal(BinanceSpotDeal):
 
                 self.switch_to_margin_short()
 
+            return self.active_bot
+
         # Trailing profit
         if self.active_bot.trailing and self.active_bot.deal.opening_price > 0:
             # If current price didn't break take_profit_trail (first time hitting take_profit or trailing_deviation lower than base_order buy_price so trailing stop loss is not set at this point)
             if self.active_bot.deal.trailing_stop_loss_price == 0:
-                trailing_price = float(self.active_bot.deal.opening_price) * (
-                    1 + (float(self.active_bot.trailing_profit) / 100)
+                trailing_price = self.active_bot.deal.opening_price * (
+                    1 + (self.active_bot.trailing_profit / 100)
                 )
             else:
                 # new trail price = current trailing stop loss + trail profit
-                trailing_price = float(
-                    self.active_bot.deal.trailing_stop_loss_price
-                ) * (1 + (self.active_bot.trailing_profit / 100))
+                trailing_price = self.active_bot.deal.trailing_stop_loss_price * (
+                    1 + (self.active_bot.trailing_profit / 100)
+                )
 
             self.active_bot.deal.trailing_profit_price = round_numbers(
                 trailing_price, self.price_precision
@@ -178,11 +184,12 @@ class BinanceLongDeal(BinanceSpotDeal):
         pair = self.active_bot.pair
         base_asset = self.symbols_crud.base_asset(pair)
         balance = self.get_single_spot_balance(base_asset)
-        if balance > 0:
-            qty = round_numbers(balance, self.qty_precision)
-        else:
+        qty = round_numbers(balance, self.qty_precision)
+        if qty <= 0:
             self.active_bot.status = Status.error
             self.active_bot.add_log("No balance found. Skipping panic sell")
+            self.controller.save(self.active_bot)
+            return self.active_bot
 
         try:
             res = self.sell_order(symbol=self.active_bot.pair, qty=qty)
@@ -219,6 +226,8 @@ class BinanceLongDeal(BinanceSpotDeal):
                 # we can ignore because the cronjob will clean dust
                 # continue execution to clean quote asset
                 pass
+            else:
+                raise
 
         self.active_bot = self.sell_quote_asset()
 

@@ -5,7 +5,7 @@ from api.databases.crud.symbols_crud import SymbolsCrud
 from api.databases.crud.autotrade_crud import AutotradeCrud
 from api.databases.tables.symbol_table import SymbolTable
 from api.databases.utils import get_db_session
-from pybinbot import QuoteAssets, ExchangeId, BinbotErrors
+from pybinbot import QuoteAssets, ExchangeId
 from kucoin_universal_sdk.generate.spot.market.model_get_all_symbols_resp import (
     GetAllSymbolsResp,
 )
@@ -24,32 +24,6 @@ class SymbolDataEtl(SymbolsCrud):
         super().__init__()
         self.autotrade_settings = AutotradeCrud().get_settings()
         self.fiat = self.autotrade_settings.fiat
-
-    def binance_symbols_reingestion(self):
-        exchange_info_data = self.binance_api.exchange_info()
-        for item in exchange_info_data["symbols"]:
-            if item["status"] != "TRADING":
-                continue
-            if item["quoteAsset"] == "TRY":
-                continue
-
-            try:
-                self.get_symbol(item["symbol"])
-            except BinbotErrors:
-                price_precision, qty_precision, min_notional = (
-                    self.calculate_precisions(item)
-                )
-                self.add_symbol(
-                    symbol=item["symbol"],
-                    quote_asset=item["quoteAsset"],
-                    base_asset=item["baseAsset"],
-                    exchange_id=ExchangeId.BINANCE,
-                    active=True,
-                    price_precision=price_precision,
-                    qty_precision=qty_precision,
-                    min_notional=min_notional,
-                    is_margin_trading_allowed=item.get("isMarginTradingAllowed", False),
-                )
 
     def binance_symbols_ingestion(self):
         exchange_info_data = self.binance_api.exchange_info()

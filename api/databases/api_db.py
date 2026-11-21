@@ -8,7 +8,7 @@ from api.databases.tables.market_breadth_table import MarketBreadthTable
 from api.databases.tables.order_table import ExchangeOrderTable
 from api.databases.tables.user_table import UserTable
 from api.databases.tables.bot_table import BotTable
-from sqlmodel import SQLModel, Session, select, text
+from sqlmodel import Session, select, text
 from pybinbot import (
     ExchangeId,
     Status,
@@ -144,16 +144,6 @@ class ApiDb:
             logging.error(f"Alembic migrations failed: {exc}", exc_info=True)
             raise
 
-    def delete_autotrade_settings_table(self, table_name: str):
-        """
-        Delete autotrade settings table
-        Used for testing purposes
-        """
-        with engine.connect() as conn:
-            conn.execute(text(f"DROP TABLE IF EXISTS {table_name} CASCADE"))
-            conn.commit()
-            SQLModel.metadata.create_all(engine)
-
     def init_autotrade_settings(self) -> None:
         """Create the production settings document on a fresh database."""
         statement = select(AutotradeTable).where(
@@ -279,20 +269,6 @@ class ApiDb:
         self.session.commit()
         self.session.refresh(bot)
         return bot
-
-    def select_bot(self, pair):
-        statement = select(BotTable).where(BotTable.pair == pair)
-        results = self.session.exec(statement)
-        bot = results.first()
-        return bot
-
-    def delete_bot(self, pair):
-        statement = select(BotTable).where(BotTable.pair == pair)
-        results = self.session.exec(statement)
-        self.session.delete(results.first())
-        self.session.commit()
-        self.session.close()
-        return results.first()
 
     def init_symbols(self):
         """

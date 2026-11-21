@@ -478,8 +478,17 @@ class BotTableCrud:
                 func.count(1).label("count"),
                 func.coalesce(
                     func.sum(
-                        (DealTable.closing_price - DealTable.opening_price)
-                        / func.nullif(DealTable.opening_price, 0)
+                        case(
+                            (
+                                DealTable.closing_price > 0,
+                                (DealTable.closing_price - DealTable.opening_price)
+                                / func.nullif(DealTable.opening_price, 0)
+                                * case(
+                                    (BotTable.position == Position.short, -1), else_=1
+                                ),
+                            ),
+                            else_=0.0,
+                        )
                     ),
                     0,
                 ).label("bot_profit"),

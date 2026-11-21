@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
 from api.databases.tables.symbol_exchange_table import SymbolExchangeTable
+from api.databases.tables.symbol_table import SymbolTable
 
 
 @pytest.fixture(autouse=True)
@@ -128,6 +129,33 @@ def test_add_symbol_persists_multiplier(client: TestClient, create_symbol_test_t
         ).first()
         assert exchange_link is not None
         assert exchange_link.multiplier == 0.001
+
+
+def test_add_symbol_persists_cooldown_and_margin_permission(
+    client, create_symbol_test_tables
+):
+    response = client.post(
+        "/symbol",
+        json={
+            "symbol": "COOLDOWNUSDT",
+            "exchange_id": "binance",
+            "cooldown": 300,
+            "cooldown_start_ts": 1_700_000_000_000,
+            "is_margin_trading_allowed": True,
+        },
+    )
+    assert response.status_code == 200
+    with Session(create_symbol_test_tables) as session:
+        symbol = session.get(SymbolTable, "COOLDOWNUSDT")
+        assert symbol is not None
+        assert symbol.cooldown == 300
+        assert symbol.cooldown_start_ts == 1_700_000_000_000
+        exchange = session.exec(
+            select(SymbolExchangeTable).where(
+                SymbolExchangeTable.symbol_id == symbol.id
+            )
+        ).one()
+        assert exchange.is_margin_trading_allowed is True
 
 
 def test_delete_symbol(client: TestClient):

@@ -126,11 +126,3 @@ export function computeTotalProfit(bots: Bot[] = []) {
 
   return closedBots > 0 ? roundDecimals(totalProfit / closedBots, 2) : 0;
 }
-
-export const getNetProfit = (bot) => {
-  // current price if bot is active
-  // sell price if bot is completed
-  let netProfit = computeSingleBotProfit(bot);
-  if (!netProfit) netProfit = 0;
-  return netProfit;
-};

@@ -9,14 +9,13 @@ from pybinbot import (
     MarketType,
     SymbolModel,
 )
-from sqlalchemy.sql import delete
-from sqlmodel import Session, select
+from sqlmodel import select
 
 from api.databases.crud.autotrade_crud import AutotradeCrud
 from api.databases.crud.symbols_crud_utils import SymbolsCrudUtils
 from api.databases.tables.symbol_exchange_table import SymbolExchangeTable
 from api.databases.tables.symbol_table import SymbolTable
-from api.databases.utils import engine, get_db_session
+from api.databases.utils import get_db_session
 from api.symbols.models import SymbolRequestPayload
 from api.tools.config import Config
 
@@ -270,8 +269,3 @@ class SymbolsCrud(SymbolsCrudUtils):
             s.delete(symbol_table)
             # deletion committed by get_db_session()
             return symbol_model
-
-    def delete_all(self):
-        with Session(engine) as session:
-            session.execute(delete(SymbolTable))
-            session.commit()

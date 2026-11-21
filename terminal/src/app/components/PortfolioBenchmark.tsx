@@ -1,30 +1,10 @@
 import { Box, Card, Grid, Group, Text, Title } from "@mantine/core";
-import {
-  CategoryScale,
-  Chart as ChartJS,
-  Title as ChartTitle,
-  Legend,
-  LinearScale,
-  LineElement,
-  PointElement,
-  Tooltip as Tip,
-} from "chart.js";
 import { type FC } from "react";
 import { type BenchmarkSeriesData } from "../../features/features.types";
 import { formatTimestamp } from "../../utils/time";
 import { listCssColors } from "../../utils/validations";
 import { useBreakpoint } from "../hooks";
 import PlotlyChart from "./PlotlyChart";
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  ChartTitle,
-  Tip,
-  Legend,
-);
 
 const PortfolioBenchmarkChart: FC<{
   chartData: BenchmarkSeriesData;

@@ -1,5 +1,39 @@
 import { vi } from "vitest";
-import { binbotBaseQuery, buildBackUrl, getApiErrorMessage } from "./api";
+import { toast } from "react-toastify";
+import {
+  binbotBaseQuery,
+  buildBackUrl,
+  getApiErrorMessage,
+  readApiResponse,
+} from "./api";
+
+describe("readApiResponse", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("returns data and reports application errors", () => {
+    const errorToast = vi.spyOn(toast, "error").mockReturnValue("error");
+
+    expect(
+      readApiResponse(
+        { data: null, error: 1, message: "Order rejected" },
+        true,
+      ),
+    ).toBeNull();
+    expect(errorToast).toHaveBeenCalledWith(
+      "Order rejected",
+      expect.any(Object),
+    );
+  });
+
+  it("reports successful mutations while preserving falsy data", () => {
+    const successToast = vi.spyOn(toast, "success").mockReturnValue("success");
+
+    expect(readApiResponse({ data: 0, error: 0, message: "Saved" }, true)).toBe(
+      0,
+    );
+    expect(successToast).toHaveBeenCalledWith("Saved", expect.any(Object));
+  });
+});
 
 class MockRequest {
   url: string;

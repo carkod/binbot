@@ -46,26 +46,12 @@ export const gridLaddersApiSlice = userApiSlice.injectEndpoints({
       ],
       transformResponse: ({ detail }: GridLaddersResponse) => detail,
     }),
-    getActiveGridLadders: build.query<GridLadder[], void>({
-      query: () => ({
-        url: "/grid-ladders/active",
-        method: "GET",
-      }),
-      providesTags: (result) => [
-        "grid-ladders",
-        ...(result ?? []).map((ladder) => ({
-          type: "grid-ladder" as const,
-          id: ladder.id,
-        })),
-      ],
-      transformResponse: ({ detail }: GridLaddersResponse) => detail,
-    }),
     getGridLadder: build.query<GridLadder, string>({
       query: (id) => ({
         url: `/grid-ladders/${id}`,
         method: "GET",
       }),
-      providesTags: (result, error, id) => [
+      providesTags: (result, _error, id) => [
         { type: "grid-ladder", id: result?.id ?? id },
       ],
       transformResponse: ({ detail }: GridLadderResponse) => detail,
@@ -75,7 +61,7 @@ export const gridLaddersApiSlice = userApiSlice.injectEndpoints({
         url: `/grid-ladders/${id}`,
         method: "DELETE",
       }),
-      invalidatesTags: (result, error, id) => [
+      invalidatesTags: (_result, _error, id) => [
         "grid-ladders",
         { type: "grid-ladder", id },
       ],
@@ -86,7 +72,7 @@ export const gridLaddersApiSlice = userApiSlice.injectEndpoints({
         method: "POST",
         body: { reason },
       }),
-      invalidatesTags: (result, error, arg) => [
+      invalidatesTags: (_result, _error, arg) => [
         "grid-ladders",
         { type: "grid-ladder", id: arg.id },
       ],
@@ -100,7 +86,6 @@ export const gridLaddersApiSlice = userApiSlice.injectEndpoints({
 
 export const {
   useGetGridLaddersQuery,
-  useGetActiveGridLaddersQuery,
   useGetGridLadderQuery,
   useDeleteGridLadderMutation,
   useCloseGridLadderMutation,

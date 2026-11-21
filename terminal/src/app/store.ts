@@ -1,18 +1,13 @@
-import type { Action, ThunkAction } from "@reduxjs/toolkit";
 import { combineSlices, configureStore } from "@reduxjs/toolkit";
 import { setupListeners } from "@reduxjs/toolkit/query";
-import { layoutSlice } from "../features/layoutSlice";
 import { userApiSlice } from "../features/userApiSlice";
 import { botSlice } from "../features/bots/botSlice";
-import { binanceApiSlice } from "../features/binanceApiSlice";
 import { autotradeSettingsSlice } from "../features/autotradeSlice";
 import { kucoinApiSlice } from "../features/kucoinApiSlice";
 
 export const rootReducer = combineSlices(
   userApiSlice,
-  layoutSlice,
   botSlice,
-  binanceApiSlice,
   kucoinApiSlice,
   autotradeSettingsSlice,
 );
@@ -29,7 +24,6 @@ export const makeStore = (preloadedState?: Partial<RootState>) => {
     middleware: (getDefaultMiddleware) => {
       return getDefaultMiddleware()
         .concat(userApiSlice.middleware)
-        .concat(binanceApiSlice.middleware)
         .concat(kucoinApiSlice.middleware);
     },
     preloadedState,
@@ -49,10 +43,3 @@ export type AppStore = typeof store;
 
 // Infer the `AppDispatch` type from the store itself
 export type AppDispatch = AppStore["dispatch"];
-
-export type AppThunk<ThunkReturnType = void> = ThunkAction<
-  ThunkReturnType,
-  RootState,
-  unknown,
-  Action
->;

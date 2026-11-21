@@ -1,4 +1,3 @@
-from datetime import datetime, timedelta
 from time import sleep
 from typing import Sequence
 
@@ -9,7 +8,6 @@ from pybinbot import (
     Position,
     Status,
     round_numbers,
-    ts_to_day,
 )
 
 from api.databases.crud.autotrade_crud import AutotradeCrud
@@ -44,24 +42,6 @@ class Assets(BinanceOrderController):
         self.balances_controller = BalancesCrud(session=session)
         self.symbols_crud = SymbolsCrud()
 
-    def get_pnl(self, days=7):
-        current_time = datetime.now()
-        start = current_time - timedelta(days=days)
-        ts = int(start.timestamp())
-        end_ts = int(current_time.timestamp())
-        data = self.balances_controller.query_balance_series(ts, end_ts)
-
-        resp = json_response({"data": data})
-        return resp
-
-    def _check_locked(self, b):
-        qty: float = 0
-        if "locked" in b:
-            qty = float(b["free"]) + float(b["locked"])
-        else:
-            qty = float(b["free"])
-        return qty
-
     def store_balance(self) -> dict:
         """
         Alternative PnL data that runs as a cronjob everyday once at 12:00.
@@ -92,36 +72,6 @@ class Assets(BinanceOrderController):
         )
         return response
 
-    def balance_estimate(self):
-        """
-        Estimated balance in given fiat coin
-        """
-        balances = self.get_raw_balance()
-        total_fiat: float = 0
-        left_to_allocate: float = 0
-        total_isolated_margin: float = 0
-        btc_rate = self.get_ticker_price(f"BTC{self.fiat}")
-        wallet_balance = self.get_wallet_balance()
-        for item in wallet_balance:
-            if item["walletName"] == "Spot":
-                total_fiat += float(item["balance"]) * float(btc_rate)
-            if item["walletName"] == "Isolated Margin":
-                total_isolated_margin += float(item["balance"]) * float(btc_rate)
-
-        for b in balances:
-            if b["asset"] == self.fiat:
-                left_to_allocate = float(b["free"])
-                break
-
-        balance = {
-            "balances": balances,
-            "total_fiat": total_fiat + total_isolated_margin,
-            "total_isolated_margin": total_isolated_margin,
-            "fiat_left": left_to_allocate,
-            "asset": self.fiat,
-        }
-        return balance
-
     async def retrieve_gainers_losers(self, market_asset="USDC"):
         """
         Create and return a ranking with gainers vs losers data
@@ -140,26 +90,6 @@ class Assets(BinanceOrderController):
                 "data": gainers_losers_list,
             }
         )
-
-    """
-    In order to create benchmark charts,
-    gaps in the balances' dates need to match with BTC dates
-    """
-
-    def consolidate_dates(self, klines, balance_date, i: int = 0) -> int | None:
-        if i == len(klines):
-            return None
-
-        balance_date_day = ts_to_day(balance_date)
-
-        for idx, d in enumerate(klines):
-            kline_day = datetime.fromtimestamp(d[6] / 1000).strftime("%Y-%m-%d")
-
-            # Match balance store dates with btc price dates
-            if kline_day == balance_date_day:
-                return idx
-        else:
-            return None
 
     def clean_balance_assets(self, bypass=False) -> list[str]:
         """

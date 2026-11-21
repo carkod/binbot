@@ -185,6 +185,8 @@ class BinanceMarginDeal(BinanceDeal):
                     )
                 return self.active_bot
 
+            raise
+
         self.controller.update_logs(
             bot=self.active_bot, log_message="Base order executed."
         )
@@ -235,7 +237,7 @@ class BinanceMarginDeal(BinanceDeal):
         not out of sync with the bot parameters
         """
 
-        if self.active_bot.position == Position.short:
+        if self.active_bot.position == Position.long:
             logging.error("Bot executing wrong short_update_deal_trailing_parameters")
             return self.active_bot
 
@@ -258,13 +260,12 @@ class BinanceMarginDeal(BinanceDeal):
                     trailing_profit, self.price_precision
                 )
 
-            if self.active_bot.deal.trailing_stop_loss_price == 0:
-                trailing_stop_loss = price + (
-                    price * (self.active_bot.trailing_deviation / 100)
-                )
-                self.active_bot.deal.trailing_stop_loss_price = round_numbers(
-                    trailing_stop_loss, self.price_precision
-                )
+        elif self.active_bot.take_profit > 0:
+            self.active_bot.deal.take_profit_price = round_numbers(
+                self.active_bot.deal.opening_price
+                * (1 - self.active_bot.take_profit / 100),
+                self.price_precision,
+            )
         return self.active_bot
 
     def short_open_deal_trailing_parameters(self) -> BotModel:
@@ -416,13 +417,19 @@ class BinanceMarginDeal(BinanceDeal):
         # Margin buy (buy back)
         res = self.margin_liquidation(self.active_bot.pair)
 
+        if not res or "code" in res:
+            reason = (
+                res.get("msg", "No liquidation fill returned")
+                if res
+                else "No liquidation fill returned"
+            )
+            self.active_bot.add_log(f"Unable to complete stop loss: {reason}")
+            self.controller.save(self.active_bot)
+            return self.active_bot
+
         price = float(res["price"])
         if price == 0:
             price = self.calculate_avg_price(res["fills"])
-
-        if "code" in res:
-            self.active_bot.add_log(f"Unable to complete stop loss {res['msg']}")
-            return self.active_bot
 
         stop_loss_order = OrderModel(
             timestamp=int(res["transactTime"]),
@@ -563,64 +570,25 @@ class BinanceMarginDeal(BinanceDeal):
         return self.active_bot
 
     def update_trailing_profit(self, close_price: float) -> BotModel:
-        # Direction 1: downward trend (short)
-        if self.active_bot.deal.trailing_stop_loss_price == 0:
-            price = (
-                close_price
-                if close_price < self.active_bot.deal.opening_price
-                else self.active_bot.deal.opening_price
-            )
-            trailing_take_profit = price - (
-                price * ((self.active_bot.take_profit) / 100)
-            )
-            stop_loss_trailing_price = trailing_take_profit - (
-                trailing_take_profit * ((self.active_bot.trailing_deviation) / 100)
-            )
-            # If trailing_stop_loss is above (margin) the opening_price do not update trailing stop loss, because it'll close at a loss
-            # stop_loss is the safe net in this case
-            if stop_loss_trailing_price < self.active_bot.deal.opening_price:
-                self.active_bot.deal.trailing_stop_loss_price = stop_loss_trailing_price
-                self.active_bot.add_log(
-                    f"{self.active_bot.pair} below opening_price, setting trailing_stop_loss (margin_short)"
-                )
-                self.controller.save(self.active_bot)
+        deal = self.active_bot.deal
+        if close_price <= 0 or close_price > deal.trailing_profit_price:
+            return self.active_bot
 
-        # Keep trailing_stop_loss up to date
-        if (
-            self.active_bot.deal.trailing_stop_loss_price > 0
-            and self.active_bot.deal.trailing_profit_price > 0
-            and self.active_bot.deal.trailing_stop_loss_price
-            < self.active_bot.deal.closing_price
+        deal.trailing_profit_price = round_numbers(
+            close_price * (1 - self.active_bot.trailing_profit / 100),
+            self.price_precision,
+        )
+        trailing_stop = round_numbers(
+            close_price * (1 + self.active_bot.trailing_deviation / 100),
+            self.price_precision,
+        )
+        # A short stop sits above the current price, below entry, and only
+        # moves down as profit increases. An unset closing price is unrelated.
+        if close_price < trailing_stop < deal.opening_price and (
+            deal.trailing_stop_loss_price == 0
+            or trailing_stop < deal.trailing_stop_loss_price
         ):
-            self.active_bot.deal.trailing_stop_loss_price = (
-                self.active_bot.deal.trailing_profit_price
-                * (1 + ((self.active_bot.trailing_deviation) / 100))
-            )
-
-            # Reset stop_loss_price to avoid confusion in front-end
-            self.active_bot.deal.stop_loss_price = 0
-            self.controller.update_logs(
-                f"{self.active_bot.pair} Updating after broken first trailing_profit (short)",
-                self.active_bot,
-            )
-
-        # Direction 1 (downward): breaking the current trailing
-        if close_price <= self.active_bot.deal.trailing_profit_price:
-            new_take_profit: float = close_price - (
-                close_price * (self.active_bot.take_profit / 100)
-            )
-            new_trailing_stop_loss = close_price * (
-                1 + (self.active_bot.trailing_deviation / 100)
-            )
-            # Update deal trailing profit
-            self.active_bot.deal.trailing_profit_price = new_take_profit
-
-            # Update trailing_stop_loss
-            if new_trailing_stop_loss < self.active_bot.deal.closing_price:
-                # Selling below buy_price will cause a loss
-                # instead let it drop until it hits safety order or stop loss
-                # Update trailing_stop_loss
-                self.active_bot.deal.trailing_stop_loss_price = new_trailing_stop_loss
+            deal.trailing_stop_loss_price = trailing_stop
 
         self.controller.save(self.active_bot)
 

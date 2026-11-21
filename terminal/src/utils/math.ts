@@ -2,38 +2,6 @@ const checkValue = (value: unknown): boolean => {
   return value === "" || value === null || value === undefined;
 };
 
-const checkMinValue = (value) => {
-  /**
-   * Check float value reaches minimum
-   */
-  const a = parseFloat(value);
-
-  // Min required to operate
-  const b = parseFloat("0.001");
-
-  if (a > b) {
-    return true;
-  }
-  return false;
-};
-
-const checkBalance = (value) => {
-  if (value === "0" || value === 0 || value === undefined || value === null) {
-    return true;
-  }
-  return false;
-};
-
-const getCurrentPairBalance = (balances, currentAsset) => {
-  let qty = "0";
-  balances.forEach((x) => {
-    if (currentAsset === x.asset) {
-      qty = x.free;
-    }
-  });
-  return qty;
-};
-
 const toPercentage = (value, decimals: number = 2) => {
   if (checkValue(value)) {
     return null;
@@ -50,10 +18,6 @@ const percentageToFloat = (value) => {
   const tofloat = parseFloat(value) / 100;
 
   return tofloat;
-};
-
-const replaceZeros = (value) => {
-  return value.replace(/^0+/, "");
 };
 
 const roundDecimals = (num: number, decimals: number = 2): number => {
@@ -84,12 +48,8 @@ const floorToMultiple = (value: number, interval: number): number => {
 
 export {
   checkValue,
-  checkMinValue,
-  checkBalance,
-  getCurrentPairBalance,
   toPercentage,
   percentageToFloat,
-  replaceZeros,
   roundDecimals,
   floatSafe,
   isPositiveFinite,

@@ -2,7 +2,6 @@ import "@testing-library/jest-dom";
 import type { ReactElement } from "react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
-import { filterSymbolByBaseAsset } from "../../../utils/api";
 import { fireEvent, render, screen as rtlScreen } from "../../../utils/render";
 import { SymbolContext } from "../../hooks";
 import SymbolSearch from "../SymbolSearch";
@@ -38,18 +37,6 @@ const renderWithSymbols = (ui: ReactElement, symbolsList: string[]) =>
       {ui}
     </SymbolContext.Provider>,
   );
-
-describe("Search symbols", () => {
-  it("returns symbols only with the given baseAsset", () => {
-    const baseAsset = "USDC";
-
-    const listSymbols = ["USDCBNB", "BTCUSDC", "BTCETH", "ETHUSDT", "ETHUSDC"];
-
-    const symbols = filterSymbolByBaseAsset(listSymbols, baseAsset);
-
-    expect(symbols).toEqual(["BTCUSDC", "ETHUSDC"]);
-  });
-});
 
 describe("SymbolSearch component", () => {
   it("selects a suggestion with the keyboard while keeping typing separate", async () => {

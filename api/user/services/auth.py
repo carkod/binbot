@@ -4,21 +4,14 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from pybinbot import UserRoles
-from pydantic import BaseModel
 from api.user.models.user import UserTokenData
 from api.tools.utils import utc_now
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/user/login")
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 Auth = Annotated[str, Depends(oauth2_scheme)]
 FormData = Annotated[OAuth2PasswordRequestForm, Depends()]
-
-
-class TokenData(BaseModel):
-    email: str | None = None
 
 
 credentials_exception = HTTPException(
@@ -26,10 +19,6 @@ credentials_exception = HTTPException(
     detail="Credentials are invalid",
     headers={"WWW-Authenticate": "Bearer"},
 )
-
-
-def get_password_hash(password):
-    return pwd_context.hash(password)
 
 
 def create_access_token(email: str, role: str):

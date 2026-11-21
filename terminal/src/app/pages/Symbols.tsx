@@ -48,9 +48,6 @@ const SymbolsPage: FC = () => {
 
   const {
     register,
-    setValue,
-    reset,
-    handleSubmit,
     formState: { errors },
   } = useForm<FieldValues>({
     mode: "onTouched",
@@ -112,7 +109,7 @@ const SymbolsPage: FC = () => {
                           value={seletedSymbolsItem.active}
                           name="active"
                           register={register}
-                          toggle={(name, value) => {
+                          toggle={(_name, value) => {
                             setSeletedSymbolsItem({
                               ...seletedSymbolsItem,
                               active: !value,

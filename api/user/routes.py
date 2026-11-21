@@ -1,6 +1,6 @@
 from urllib.parse import unquote
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.exceptions import ResponseValidationError
 from api.user.models.user import EditUserDetails, UserDetails, UserTokenData
 from pybinbot import StandardResponse, BinbotErrors, UserRoles
@@ -67,14 +67,19 @@ def login(form_data: FormData, session: Session = Depends(get_session)):
 
 @user_blueprint.post(
     "/user/register",
-    dependencies=[Depends(decode_access_token)],
     response_model=GetOneUser | StandardResponse,
     tags=["users"],
 )
-def add(data: UserDetails, session: Session = Depends(get_session)):
+def add(
+    data: UserDetails,
+    session: Session = Depends(get_session),
+    user: UserTokenData = Depends(get_current_user),
+):
     """
     Create/register a new user
     """
+    if user.role != UserRoles.admin:
+        raise HTTPException(status_code=403, detail="Only admins can create users.")
     try:
         added_user = UserTableCrud(session).add(data)
         return GetOneUser(message="Added new user!", data=added_user)

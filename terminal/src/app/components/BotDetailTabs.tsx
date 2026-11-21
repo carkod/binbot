@@ -1,5 +1,5 @@
 import { Box, Button, SimpleGrid, Tabs } from "@mantine/core";
-import { useEffect, useState, type FC } from "react";
+import { useContext, useEffect, useState, type FC } from "react";
 import { useNavigate, useParams } from "react-router";
 import {
   useActivateBotMutation,
@@ -8,7 +8,7 @@ import {
   useEditBotMutation,
 } from "../../features/bots/botsApiSlice";
 import { selectBot, setBot } from "../../features/bots/botSlice";
-import { setSpinner } from "../../features/layoutSlice";
+import { SpinnerContext } from "../spinner-context";
 import { BotStatus, MarketType, TabsKeys } from "../../utils/enums";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import BaseOrderTab from "./BaseOrderTab";
@@ -30,6 +30,8 @@ const BotDetailTabs: FC<{
   const navigate = useNavigate();
 
   const dispatch = useAppDispatch();
+
+  const { setSpinner } = useContext(SpinnerContext);
 
   const [updateBot] = useEditBotMutation();
 
@@ -87,7 +89,7 @@ const BotDetailTabs: FC<{
 
   useEffect(() => {
     if (isActivating || isDeactivating) {
-      dispatch(setSpinner(true));
+      setSpinner(true);
     } else {
       if (activatedBot) {
         dispatch(setBot({ bot: activatedBot.bot }));
@@ -95,9 +97,16 @@ const BotDetailTabs: FC<{
       if (deactivatedBot) {
         dispatch(setBot({ bot: deactivatedBot.bot }));
       }
-      dispatch(setSpinner(false));
+      setSpinner(false);
     }
-  }, [isActivating, isDeactivating, dispatch, activatedBot, deactivatedBot]);
+  }, [
+    isActivating,
+    isDeactivating,
+    dispatch,
+    activatedBot,
+    deactivatedBot,
+    setSpinner,
+  ]);
   return (
     <Tabs
       key={`${marketType}-${id ?? "new"}-${bot.id}`}

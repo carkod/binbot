@@ -287,15 +287,15 @@ class BinanceSpotDeal(BinanceDeal):
         # Update stop loss regarless of base order
         if self.active_bot.stop_loss > 0:
             price = self.active_bot.deal.opening_price
-            self.active_bot.deal.stop_loss_price = price + (
+            self.active_bot.deal.stop_loss_price = price - (
                 price * (self.active_bot.stop_loss / 100)
             )
 
         # Keep trailing_stop_loss_price up to date in case of failure to update in autotrade
         # if we don't do this, the trailing stop loss will trigger
         if self.active_bot.trailing:
-            trailing_profit = float(self.active_bot.deal.opening_price) * (
-                1 + (float(self.active_bot.trailing_profit) / 100)
+            trailing_profit = self.active_bot.deal.opening_price * (
+                1 + (self.active_bot.trailing_profit / 100)
             )
             self.active_bot.deal.trailing_profit_price = trailing_profit
             # Reset trailing stop loss
@@ -306,8 +306,8 @@ class BinanceSpotDeal(BinanceDeal):
 
         else:
             # No trailing so only update take_profit
-            take_profit_price = float(self.active_bot.deal.opening_price) * (
-                1 + (float(self.active_bot.take_profit) / 100)
+            take_profit_price = self.active_bot.deal.opening_price * (
+                1 + (self.active_bot.take_profit / 100)
             )
             self.active_bot.deal.take_profit_price = take_profit_price
 
@@ -343,8 +343,8 @@ class BinanceSpotDeal(BinanceDeal):
             and self.active_bot.trailing_deviation > 0
             and self.active_bot.trailing_profit > 0
         ):
-            trailing_profit_price = float(self.active_bot.deal.opening_price) * (
-                1 + (float(self.active_bot.take_profit) / 100)
+            trailing_profit_price = self.active_bot.deal.opening_price * (
+                1 + (self.active_bot.trailing_profit / 100)
             )
             self.active_bot.deal.trailing_profit_price = round_numbers(
                 trailing_profit_price, self.price_precision
@@ -354,5 +354,12 @@ class BinanceSpotDeal(BinanceDeal):
                 # trailing_stop_loss_price should be updated during streaming
                 # This resets it after "Update deal" because parameters have changed
                 self.active_bot.deal.trailing_stop_loss_price = 0
+
+        elif not self.active_bot.trailing and self.active_bot.take_profit > 0:
+            self.active_bot.deal.take_profit_price = round_numbers(
+                self.active_bot.deal.opening_price
+                * (1 + self.active_bot.take_profit / 100),
+                self.price_precision,
+            )
 
         return self.active_bot

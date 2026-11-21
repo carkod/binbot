@@ -55,7 +55,7 @@ describe("Autotrade page", () => {
   beforeEach(() => updateSettings.mockClear());
 
   it("renders without crashing", () => {
-    const { container } = renderAutotradePage();
+    renderAutotradePage();
 
     expect(
       rtlScreen.getByRole("heading", { name: "General bot autotrade" }),

@@ -62,15 +62,6 @@ export function renderDuration(bot) {
   let enterPositionTs = new Date().getTime();
   let exitPositionTs = new Date().getTime();
 
-  // Duration for long positions
-  if (bot.deal.opening_timestamp > 0) {
-    enterPositionTs = bot.deal.opening_timestamp;
-  }
-  if (bot.deal.closing_timestamp > 0) {
-    exitPositionTs = bot.deal.closing_timestamp;
-  }
-
-  // Duration for short positions
   if (bot.deal.opening_timestamp > 0) {
     enterPositionTs = bot.deal.opening_timestamp;
   }
@@ -97,10 +88,5 @@ export function convertTsToInputDate(ts: number) {
 export function matchTsToTimescale(
   ts: number | string | null | undefined,
 ): number {
-  const date = new Date(Number(ts));
-
-  date.setMinutes(0);
-  date.setSeconds(0);
-  date.setMilliseconds(0);
-  return date.getTime() / 1000;
+  return Math.floor(Number(ts) / 1000);
 }

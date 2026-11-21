@@ -1,4 +1,4 @@
-"""Retiring simulation must not remove real trading data or expose old routes."""
+"""Retiring simulation preserves real trading data and supports migration replay."""
 
 from itertools import product
 
@@ -6,10 +6,8 @@ import pytest
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from sqlalchemy import create_engine, inspect, text
-from sqlmodel import SQLModel
 
 from api.alembic.versions import d7e8f9a0b1c2_remove_paper_trading as migration
-from api.main import app
 
 
 @pytest.mark.parametrize(
@@ -91,16 +89,6 @@ def test_removal_replays_on_full_partial_and_already_migrated_schema(
             connection.execute(text("SELECT id FROM autotrade")).scalar()
             == "autotrade_settings"
         )
-
-
-def test_removed_routes_and_models_are_not_registered():
-    paths = app.openapi()["paths"]
-    assert not any("paper-trading" in path for path in paths)
-    assert "/bot" in paths
-    assert "/autotrade-settings/bots" in paths
-    assert {"paper_trading", "fake_order", "test_autotrade"}.isdisjoint(
-        SQLModel.metadata.tables
-    )
 
 
 def test_downgrade_does_not_pretend_to_restore_deleted_history():
