@@ -15,6 +15,8 @@ from websockets.asyncio.client import connect
 log = logging.getLogger(__name__)
 REST = "https://api-futures.kucoin.com"
 ACK_TIMEOUT = 10.0
+EXECUTION_MAX_QUEUE = 16
+EXECUTION_MAX_SIZE = 64 * 1024
 
 
 def public_request(path: str, method: str = "GET") -> Any:
@@ -54,7 +56,13 @@ async def stream_executions(
             interval = min(9.0, float(server["pingInterval"]) / 2000)
             timeout = float(server["pingTimeout"]) / 1000
             async with connect(
-                url, ping_interval=None, max_queue=4096, open_timeout=20
+                url,
+                ping_interval=None,
+                # Execution envelopes are small; apply backpressure promptly
+                # instead of retaining thousands of frames per shard.
+                max_queue=EXECUTION_MAX_QUEUE,
+                max_size=EXECUTION_MAX_SIZE,
+                open_timeout=20,
             ) as ws:
                 welcome = json.loads(await asyncio.wait_for(ws.recv(), 10))
                 if welcome.get("type") != "welcome":

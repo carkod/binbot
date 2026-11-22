@@ -57,3 +57,21 @@ Python process. Apply the CVD migration before restarting streaming; no extra
 service, image, or Compose profile is required. Allow 30 seconds for graceful
 shutdown. See [market CVD operations and protocol](market-cvd.md) for rollout,
 retention, ownership, restart and gap semantics.
+
+The streaming image uses `uv sync --frozen` during its build, then runs
+`/app/.venv/bin/python -m streaming.main` directly. This avoids retaining a
+separate `uv run` launcher process and checking dependencies on every startup
+and healthcheck. This follows uv's
+[installed-environment approach](https://docs.astral.sh/uv/guides/integration/docker/#using-the-environment).
+
+Production's host-managed Compose file overrides the image healthcheck. Update
+that override alongside the new image so it also uses the installed interpreter:
+
+```yaml
+healthcheck:
+  test: ["CMD", "/app/.venv/bin/python", "-m", "streaming.healthcheck"]
+```
+
+Keep the existing healthcheck timings. Removing the launcher reduces process
+overhead; measure the resulting container memory after rollout because Docker's
+memory accounting also includes file cache and kernel allocations.

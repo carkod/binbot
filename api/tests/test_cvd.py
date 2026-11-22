@@ -58,6 +58,47 @@ def test_execution_uses_taker_side_contract_multiplier_and_symbol_qualified_ids(
     assert flow.minutes[START].symbols["OTHERUSDTM"].buy == pytest.approx(2.86952)
 
 
+def test_execution_ids_stay_deduplicated_across_minutes_until_retention_expires():
+    flow = flow_at_start()
+    assert flow.trade(execution(trade_id=1, second=59), START + 59)
+    assert not flow.trade(execution(trade_id="1", second=60), START + 60)
+    assert flow.trade(execution(trade_id="001", second=60), START + 60)
+    assert flow.seen_count == 2
+    assert flow.rejected == 0
+
+    flow.prune(START + 180)
+    assert flow.seen_count == 2
+    flow.prune(START + 181)
+    assert flow.seen_count == 1
+    assert not flow.trade(execution(trade_id="001", second=181), START + 181)
+    assert flow.trade(execution(trade_id="new", second=181), START + 181)
+    assert flow.seen_count == 2
+    flow.prune(START + 361)
+    assert flow.seen_count == 0
+    assert not flow.seen
+
+
+def test_execution_safety_cap_releases_capacity_after_persisted_minutes_expire(
+    monkeypatch,
+):
+    monkeypatch.setattr("streaming.cvd.flow.MAX_SEEN_TRADES", 2)
+    flow = flow_at_start()
+    assert flow.trade(execution(trade_id="first"), START + 2)
+    assert flow.trade(execution(trade_id="second", second=61), START + 61)
+    assert not flow.trade(execution(trade_id="over-cap", second=61), START + 61)
+    assert flow.rejected == 1
+    assert not flow.trade(execution(trade_id="second", second=62), START + 62)
+    assert flow.rejected == 1
+    assert flow.trades == flow.seen_count == 2
+
+    flow.prune(START + 181)
+    assert flow.seen_count == 1
+    assert flow.trade(execution(trade_id="next", second=181), START + 181)
+    assert flow.seen_count == 2
+    assert flow.minutes[START + 60].symbols["SOLUSDTM"].buy == pytest.approx(28.6952)
+    assert flow.minutes[START + 180].symbols["SOLUSDTM"].buy == pytest.approx(28.6952)
+
+
 @pytest.mark.parametrize(
     "overrides",
     [
@@ -428,7 +469,8 @@ def test_plausible_exchange_clock_skew_can_cross_minute_boundary():
 
 
 @pytest.mark.asyncio
-async def test_websocket_ack_ping_and_reconnect_gap(monkeypatch):
+@pytest.mark.parametrize("trade_count", [1, 500])
+async def test_websocket_ack_ping_and_reconnect_gap(monkeypatch, trade_count):
     import asyncio
     import json
     import time
@@ -438,7 +480,13 @@ async def test_websocket_ack_ping_and_reconnect_gap(monkeypatch):
     flow.tick(time.time())
     subscribed = asyncio.Event()
     received_ping = asyncio.Event()
+    received_trades = asyncio.Event()
     connections = []
+
+    def on_message(message, pending, symbols):
+        handle_message(flow, message, pending, symbols)
+        if flow.trades == trade_count:
+            received_trades.set()
 
     async def exchange(ws):
         connections.append(ws)
@@ -449,16 +497,18 @@ async def test_websocket_ack_ping_and_reconnect_gap(monkeypatch):
                 assert message["topic"] == "/contractMarket/execution:SOLUSDTM"
                 assert message["response"]
                 await ws.send(json.dumps({"type": "ack", "id": message["id"]}))
-                await ws.send(
-                    json.dumps(
-                        {
-                            "type": "message",
-                            "subject": "match",
-                            "topic": "/contractMarket/execution:SOLUSDTM",
-                            "data": execution() | {"ts": time.time_ns()},
-                        }
+                for index in range(trade_count):
+                    await ws.send(
+                        json.dumps(
+                            {
+                                "type": "message",
+                                "subject": "match",
+                                "topic": "/contractMarket/execution:SOLUSDTM",
+                                "data": execution(trade_id=str(index + 1))
+                                | {"ts": time.time_ns()},
+                            }
+                        )
                     )
-                )
                 subscribed.set()
             elif message["type"] == "ping":
                 received_ping.set()
@@ -481,18 +531,17 @@ async def test_websocket_ack_ping_and_reconnect_gap(monkeypatch):
         )
         stop = asyncio.Event()
         task = asyncio.create_task(
-            stream_executions(
-                ["SOLUSDTM"], stop, partial(handle_message, flow), flow.disconnect
-            )
+            stream_executions(["SOLUSDTM"], stop, on_message, flow.disconnect)
         )
         try:
             await asyncio.wait_for(subscribed.wait(), 2)
             await asyncio.wait_for(received_ping.wait(), 2)
+            await asyncio.wait_for(received_trades.wait(), 2)
             assert "SOLUSDTM" in flow.acknowledged
-            assert flow.trades == 1
+            assert flow.trades == flow.seen_count == trade_count
             assert sum(
                 b.buy for m in flow.minutes.values() for b in m.symbols.values()
-            ) == pytest.approx(28.6952)
+            ) == pytest.approx(28.6952 * trade_count)
             await connections[0].close()
             for _ in range(100):
                 if "SOLUSDTM" not in flow.acknowledged:

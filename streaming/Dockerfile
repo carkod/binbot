@@ -9,5 +9,5 @@ WORKDIR /app
 RUN uv sync --frozen --no-cache
 STOPSIGNAL SIGTERM
 HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
-    CMD uv run -m streaming.healthcheck
-ENTRYPOINT ["uv", "run", "-m", "streaming.main"]
+    CMD /app/.venv/bin/python -m streaming.healthcheck
+ENTRYPOINT ["/app/.venv/bin/python", "-m", "streaming.main"]
