@@ -1,6 +1,5 @@
 """Execution notionals, frozen minute universes, deduplication and coverage."""
 
-from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from hashlib import sha256
@@ -11,6 +10,7 @@ import time
 from api.databases.tables.cvd_table import SOURCE
 
 LATE_SECONDS = 120
+MAX_SEEN_TRADES = 2_000_000
 
 
 @dataclass
@@ -34,9 +34,10 @@ class Flow:
     started_ns: int
     minutes: dict[int, Minute] = field(default_factory=dict)
     acknowledged: dict[str, float] = field(default_factory=dict)
-    seen: dict[int, set[tuple[str, str, str]]] = field(
-        default_factory=lambda: defaultdict(set)
-    )
+    # Keep the symbol once per minute, rather than in every execution key.
+    # A Flow has one fixed SOURCE, so source needn't be repeated either.
+    seen: dict[int, dict[str, set[str]]] = field(default_factory=dict)
+    seen_count: int = field(default=0, init=False)
     rejected: int = 0
     trades: int = 0
     last_trade_ns: int = 0
@@ -111,8 +112,10 @@ class Flow:
             minute = timestamp_ns // 60_000_000_000 * 60
             self.ensure_minute(minute)
             bucket = self.minutes[minute].symbols[symbol]
-            key = (SOURCE, symbol, str(trade_id))
-            if any(key in keys for keys in self.seen.values()):
+            trade_key = str(trade_id)
+            if any(
+                trade_key in symbols.get(symbol, ()) for symbols in self.seen.values()
+            ):
                 return False
             notional = price * contracts * bucket.multiplier
             if not math.isfinite(notional):
@@ -121,10 +124,15 @@ class Flow:
             self.rejected += 1
             return False
         # Bounded by three exchange minutes plus a hard fail-closed safety cap.
-        if sum(map(len, self.seen.values())) >= 2_000_000:
+        if self.seen_count >= MAX_SEEN_TRADES:
             self.rejected += 1
             return False
-        self.seen[minute].add(key)
+        minute_keys = self.seen.setdefault(minute, {})
+        symbol_keys = minute_keys.get(symbol)
+        if symbol_keys is None:
+            symbol_keys = minute_keys[symbol] = set()
+        symbol_keys.add(trade_key)
+        self.seen_count += 1
         if side == "buy":
             bucket.buy += notional
         else:
@@ -167,10 +175,11 @@ class Flow:
 
     def prune(self, now: float) -> None:
         # Only after successful persistence; late arrivals can no longer target these.
-        for mapping in (self.minutes, self.seen):
-            for minute in list(mapping):
-                if minute + 60 < now - LATE_SECONDS:
-                    del mapping[minute]
+        for minute in list(self.minutes):
+            if minute + 60 < now - LATE_SECONDS:
+                del self.minutes[minute]
+                expired_keys = self.seen.pop(minute, {})
+                self.seen_count -= sum(map(len, expired_keys.values()))
 
 
 def handle_message(

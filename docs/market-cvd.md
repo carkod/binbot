@@ -30,6 +30,19 @@ FastAPI Swagger at `/docs` under **charts** (`/charts/cvd-aggregate` and
 - Save absolute per-symbol minute buckets and market rollups atomically every ten
   seconds. Retain seven days: about 1.12 million symbol rows/day for 780 symbols.
   Provision Postgres disk, autovacuum and I/O accordingly.
+- In memory, retain exact execution IDs grouped by exchange minute and symbol;
+  release them only after a successful checkpoint and expiry of the two-minute
+  late-arrival window. The two-million-ID safety cap remains in force.
+  Checkpoint logs include `dedup_entries`, the current retained ID count, alongside
+  cumulative `trades`. A local 100,000-execution replay across 780 symbols retained
+  10.9 MiB of traced allocations, down from 19.7 MiB with per-trade tuple keys;
+  these measurements exclude imported dependencies and other worker memory.
+- Each execution WebSocket shard uses a 16-frame receive queue high-water mark
+  to apply backpressure, with a 64 KiB message limit. This replaces the previous
+  4,096-frame queue. Larger messages close the connection and invalidate coverage
+  through the normal disconnect path. Monitor disconnects, rejected executions,
+  checkpoint freshness and container memory after rollout. See the
+  [WebSocket buffer documentation](https://websockets.readthedocs.io/en/stable/topics/memory.html).
 - A session advisory lock on the writer connection prevents overlapping owners.
   Retried checkpoints replace totals without adding them again. Lost ownership
   or database failures restart collection with backoff; position management

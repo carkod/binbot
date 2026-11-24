@@ -82,13 +82,14 @@ async def run(stop: asyncio.Event) -> None:
                     raise
                 flow.prune(now)
                 log.info(
-                    "checkpoint=%s expected=%s acknowledged=%s covered=%s last_trade_ns=%s trades=%s rejected=%s",
+                    "checkpoint=%s expected=%s acknowledged=%s covered=%s last_trade_ns=%s trades=%s dedup_entries=%s rejected=%s",
                     int(now),
                     len(flow.contracts),
                     len(flow.acknowledged),
                     snapshot[1][-1]["covered_symbols"] if snapshot[1] else 0,
                     flow.last_trade_ns,
                     flow.trades,
+                    flow.seen_count,
                     flow.rejected,
                 )
                 try:
