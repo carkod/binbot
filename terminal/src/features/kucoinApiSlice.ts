@@ -6,6 +6,7 @@ import {
   type KucoinOrderBook,
   type ObiSnapshot,
 } from "./kucoinLiquidity";
+import type { KucoinMarketTrade } from "./kucoinTrades";
 
 export interface KucoinFuturesTicker24 {
   sequence: number;
@@ -196,6 +197,33 @@ export const kucoinApiSlice = createApi({
         return allPercentageChanges;
       },
     }),
+    futuresTrades: build.query<KucoinMarketTrade[], string>({
+      // KuCoin returns only the latest ~100 public trades, newest data first.
+      query: (symbol) => ({ url: "/trade/history", params: { symbol } }),
+      transformResponse: (response: {
+        code: string;
+        data?: {
+          tradeId: string;
+          side: "buy" | "sell";
+          price: string;
+          size: number;
+          ts: number | string;
+        }[];
+      }) => {
+        if (response.code !== "200000" || !response.data) {
+          throw new Error("KuCoin trade history request failed");
+        }
+
+        return response.data.map((trade) => ({
+          tradeId: trade.tradeId,
+          side: trade.side,
+          price: Number(trade.price),
+          size: Number(trade.size),
+          // KuCoin Futures trade timestamps are Unix nanoseconds.
+          timestamp: Number(trade.ts) / 1_000_000,
+        }));
+      },
+    }),
     futuresContract: build.query<KucoinFuturesContract, string>({
       query: (symbol) => ({
         url: `/contracts/${symbol}`,
@@ -213,4 +241,5 @@ export const {
   useBtcCloseSeriesQuery,
   useFuturesRankingsQuery,
   useFuturesContractQuery,
+  useFuturesTradesQuery,
 } = kucoinApiSlice;
