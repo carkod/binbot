@@ -1,4 +1,4 @@
-import { Box, Group, Text, Title } from "@mantine/core";
+import { Box, Button, Group, Text, Title } from "@mantine/core";
 import { useEffect, useMemo, useState } from "react";
 import {
   useFuturesContractQuery,
@@ -30,15 +30,23 @@ const SymbolTradesCard = ({ symbol, enabled }: SymbolTradesCardProps) => {
 
   const {
     currentData: trades,
-    isFetching,
-    isError,
+    isFetching: isFetchingTrades,
+    isError: isTradesError,
+    refetch: refetchTrades,
   } = useFuturesTradesQuery(symbol, {
     skip,
     pollingInterval: TRADES_POLL_INTERVAL_MS,
     refetchOnMountOrArgChange: true,
   });
 
-  const { currentData: contract } = useFuturesContractQuery(symbol, { skip });
+  const {
+    currentData: contract,
+    isFetching: isFetchingContract,
+    isError: isContractError,
+    refetch: refetchContract,
+  } = useFuturesContractQuery(symbol, { skip });
+
+  const isFetching = isFetchingTrades || isFetchingContract;
 
   const [now, setNow] = useState(Date.now);
 
@@ -146,8 +154,30 @@ const SymbolTradesCard = ({ symbol, enabled }: SymbolTradesCardProps) => {
         {!summary && isFetching && (
           <Text role="status">Loading {symbol} trades…</Text>
         )}
-        {isError && (
-          <Text role="alert">{symbol} trades could not be refreshed.</Text>
+        {(isTradesError || isContractError) && (
+          <Group role="alert" gap="sm">
+            <Box>
+              {isTradesError && (
+                <Text mb={0}>{symbol} trades could not be refreshed.</Text>
+              )}
+              {isContractError && (
+                <Text mb={0}>
+                  {symbol} contract details could not be loaded.
+                </Text>
+              )}
+            </Box>
+            <Button
+              type="button"
+              variant="subtle"
+              disabled={isFetching}
+              onClick={() => {
+                if (isTradesError) void refetchTrades();
+                if (isContractError) void refetchContract();
+              }}
+            >
+              Retry
+            </Button>
+          </Group>
         )}
         {summary && !summary.trades.length && (
           <Text>No trades for {symbol} in the last 5 minutes.</Text>
@@ -162,8 +192,8 @@ const SymbolTradesCard = ({ symbol, enabled }: SymbolTradesCardProps) => {
         Larger vertical changes between dots mean larger price moves. Check the
         y-axis to judge their size.
         <br />
-        Positive delta: buyers eating sellers&apos; offers (buy pressure), with more
-        USDT traded by buyers taking offers than sellers taking bids.
+        Positive delta: buyers eating sellers&apos; offers (buy pressure), with
+        more USDT traded by buyers taking offers than sellers taking bids.
       </Text>
     </Box>
   );

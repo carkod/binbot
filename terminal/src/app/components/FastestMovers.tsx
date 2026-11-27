@@ -58,6 +58,12 @@ function MoverList({
                   {roundDecimals(mover.price_change_3h_percent, 2)}% in 3h
                 </Badge>
               )}
+              <Badge
+                color={mover.price_change_percent > 0 ? "success" : "danger"}
+                variant="light"
+              >
+                {roundDecimals(mover.price_change_percent, 2)}% in 24h
+              </Badge>
             </Box>
           </Box>
         ))}
@@ -80,6 +86,10 @@ export default function FastestMovers({
             As of {formatTimestamp(data.recorded_at)}
           </Text>
         )}
+        <Text size="sm" c="dimmed" mt={8}>
+          Ranks symbols by one-hour price change with three-hour and 24-hour
+          changes included as context.
+        </Text>
         <Alert color="warning" mt={8} mb={0} py={8}>
           When gainers dominate losers, look at Rising. When losers dominate
           gainers, look at Falling.

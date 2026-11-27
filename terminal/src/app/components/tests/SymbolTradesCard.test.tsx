@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom";
+import { fireEvent } from "@testing-library/react";
 import { vi } from "vitest";
 import {
   useFuturesContractQuery,
@@ -17,18 +18,30 @@ vi.mock("../LivePlotlyChart", () => ({
   ),
 }));
 
-const respond = (trades: unknown, extra: Record<string, unknown> = {}) => {
+const respond = (
+  trades: unknown,
+  extra: Record<string, unknown> = {},
+  contractExtra: Record<string, unknown> = {},
+) => {
+  const refetchTrades = vi.fn();
+
+  const refetchContract = vi.fn();
+
   vi.mocked(useFuturesTradesQuery).mockReturnValue({
     currentData: trades,
-    refetch: vi.fn(),
+    refetch: refetchTrades,
     isFetching: false,
     isError: false,
     ...extra,
   } as ReturnType<typeof useFuturesTradesQuery>);
   vi.mocked(useFuturesContractQuery).mockReturnValue({
-    refetch: vi.fn(),
+    refetch: refetchContract,
     currentData: { symbol: "SOLUSDTM", multiplier: 1 },
+    isFetching: false,
+    isError: false,
+    ...contractExtra,
   } as ReturnType<typeof useFuturesContractQuery>);
+  return { refetchTrades, refetchContract };
 };
 
 describe("symbol market trades", () => {
@@ -77,13 +90,81 @@ describe("symbol market trades", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows an alert when the trade request fails", () => {
-    respond(undefined, { isError: true });
+  it("retries a failed trade request", () => {
+    const { refetchTrades, refetchContract } = respond(undefined, {
+      isError: true,
+    });
 
     render(<SymbolTradesCard symbol="SOLUSDTM" enabled />);
 
     expect(testingScreen.getByRole("alert")).toHaveTextContent(
       "SOLUSDTM trades could not be refreshed.",
     );
+    fireEvent.click(testingScreen.getByRole("button", { name: "Retry" }));
+    expect(refetchTrades).toHaveBeenCalledOnce();
+    expect(refetchContract).not.toHaveBeenCalled();
+  });
+
+  it("shows loading while contract details are being fetched", () => {
+    respond([], {}, { currentData: undefined, isFetching: true });
+
+    render(<SymbolTradesCard symbol="SOLUSDTM" enabled />);
+
+    expect(testingScreen.getByRole("status")).toHaveTextContent(
+      "Loading SOLUSDTM trades…",
+    );
+  });
+
+  it("recovers from a contract request failure without remounting the card", () => {
+    const trades = [
+      { tradeId: "a", side: "buy", price: 10, size: 5, timestamp: Date.now() },
+    ];
+
+    const { refetchTrades, refetchContract } = respond(
+      trades,
+      {},
+      { currentData: undefined, isError: true },
+    );
+
+    const { rerender } = render(<SymbolTradesCard symbol="SOLUSDTM" enabled />);
+
+    expect(testingScreen.getByRole("alert")).toHaveTextContent(
+      "SOLUSDTM contract details could not be loaded.",
+    );
+    fireEvent.click(testingScreen.getByRole("button", { name: "Retry" }));
+    expect(refetchContract).toHaveBeenCalledOnce();
+    expect(refetchTrades).not.toHaveBeenCalled();
+
+    respond(trades);
+    rerender(<SymbolTradesCard symbol="SOLUSDTM" enabled />);
+
+    expect(testingScreen.getByText("1 trades")).toBeInTheDocument();
+    expect(testingScreen.getByTestId("chart")).toBeInTheDocument();
+  });
+
+  it("retries both requests when trades and contract details fail", () => {
+    const { refetchTrades, refetchContract } = respond(
+      undefined,
+      { isError: true },
+      { currentData: undefined, isError: true },
+    );
+
+    render(<SymbolTradesCard symbol="SOLUSDTM" enabled />);
+    fireEvent.click(testingScreen.getByRole("button", { name: "Retry" }));
+
+    expect(refetchTrades).toHaveBeenCalledOnce();
+    expect(refetchContract).toHaveBeenCalledOnce();
+  });
+
+  it("disables retry until an in-flight request finishes", () => {
+    respond(
+      [],
+      { isFetching: true },
+      { currentData: undefined, isError: true },
+    );
+
+    render(<SymbolTradesCard symbol="SOLUSDTM" enabled />);
+
+    expect(testingScreen.getByRole("button", { name: "Retry" })).toBeDisabled();
   });
 });

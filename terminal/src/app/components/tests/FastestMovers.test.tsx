@@ -3,7 +3,7 @@ import { render, screen as rtlScreen } from "../../../utils/render";
 import FastestMovers from "../FastestMovers";
 
 describe("FastestMovers", () => {
-  it("links futures movers to new bots and shows both time windows as badges", () => {
+  it("links futures movers to new bots and shows ranking and context windows", () => {
     render(
       <FastestMovers
         data={{
@@ -49,6 +49,7 @@ describe("FastestMovers", () => {
       rtlScreen.getByRole("link", { name: "KOMAUSDTM" }).getAttribute("href"),
     ).toBe("/bots/futures/new/KOMAUSDTM");
     expect(rtlScreen.getByText("7.3% in 1h")).toBeInTheDocument();
+    expect(rtlScreen.getByText("13.8% in 24h")).toBeInTheDocument();
     expect(
       rtlScreen.getByText("5.4% in 3h").closest(".mantine-Badge-root"),
     ).toHaveAttribute("data-variant", "light");

@@ -18,13 +18,13 @@ from api.tools.config import Config
 
 class TopGainersLosersSeriesCrud:
     """
-    CRUD operations for `top_gainers_losers_series` — hourly snapshots of the
+    CRUD operations for `top_gainers_losers_series` — half-hourly snapshots of the
     biggest 24h KuCoin futures movers, kept to identify strategy patterns.
     """
 
     SOURCE = "kucoin_futures"
     HISTORY_RETENTION_DAYS = 365
-    # Keep full-contract snapshots for the dashboard's seven-day hourly trend.
+    # Keep full-contract snapshots for the dashboard's seven-day price trend.
     PRICE_HISTORY_HOURS = 168
 
     def __init__(self, session: Session | None = None):
@@ -81,7 +81,7 @@ class TopGainersLosersSeriesCrud:
     def ingest(self, top: int = 10) -> list[TopGainersLosersSeriesTable]:
         """
         Pull the current 24h ticker ranking from KuCoin futures and persist the
-        top N gainers and top N losers as one row each. Called once an hour
+        top N gainers and top N losers as one row each. Called at :00 and :30 UTC
         by the cron. Exchange clients are built here rather than in
         __init__ so the read path (query_series, used by the public,
         unauthenticated GET endpoint) never needs KuCoin credentials.
@@ -144,7 +144,7 @@ class TopGainersLosersSeriesCrud:
         self, limit: int = 168, source: str = SOURCE
     ) -> list[dict[str, Any]]:
         """
-        Return up to `limit` most recent hourly snapshots, newest first, each
+        Return up to `limit` most recent snapshots, newest first, each
         with its top gainers and top losers ordered by rank.
         """
         with get_db_session(self._external_session) as session:
@@ -285,7 +285,7 @@ class TopGainersLosersSeriesCrud:
             ).all()
             result: dict[str, Any] = {
                 "source": self.SOURCE,
-                "recorded_at": timestamps[0] if timestamps else None,
+                "recorded_at": None,
                 "comparison_at": None,
                 "gainers": [],
                 "losers": [],
@@ -294,6 +294,11 @@ class TopGainersLosersSeriesCrud:
                 return result
 
             latest_at = timestamps[0]
+            result["recorded_at"] = (
+                latest_at.replace(tzinfo=timezone.utc)
+                if latest_at.tzinfo is None
+                else latest_at
+            )
             previous_at = min(
                 (
                     timestamp
@@ -307,7 +312,11 @@ class TopGainersLosersSeriesCrud:
             )
             if previous_at is None:
                 return result
-            result["comparison_at"] = previous_at
+            result["comparison_at"] = (
+                previous_at.replace(tzinfo=timezone.utc)
+                if previous_at.tzinfo is None
+                else previous_at
+            )
             three_hours_at = min(
                 (
                     timestamp
@@ -382,7 +391,7 @@ class TopGainersLosersSeriesCrud:
 
     def delete_entries_older_than_one_year(self) -> int:
         """
-        Keep roughly 175,200 rows at the default top-10 hourly ingestion rate.
+        Keep roughly 350,400 rows at the default top-10 half-hourly ingestion rate.
         """
 
         cutoff = datetime.now(timezone.utc) - timedelta(

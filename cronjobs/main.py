@@ -80,9 +80,12 @@ def main():
     )
     scheduler.add_job(
         func=top_gainers_losers_series_crud.ingest,
-        trigger="interval",
-        timezone=config.timezone,
-        hours=1,
+        trigger="cron",
+        timezone="UTC",
+        minute="0,30",
+        second=0,
+        coalesce=True,
+        misfire_grace_time=60,
         id="ingest_top_gainers_losers",
     )
     scheduler.start()
