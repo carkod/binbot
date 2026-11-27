@@ -3,7 +3,7 @@ import { render, screen as rtlScreen } from "../../../utils/render";
 import FastestMovers from "../FastestMovers";
 
 describe("FastestMovers", () => {
-  it("links futures movers to new bots and shows both time windows as badges", () => {
+  it("links futures movers to new bots and shows ranking and context windows", () => {
     render(
       <FastestMovers
         data={{

@@ -221,6 +221,30 @@ def test_fastest_movers_waits_for_an_hourly_comparison():
     assert result["losers"] == []
 
 
+def test_half_hourly_samples_keep_one_hour_ranking_and_three_hour_context():
+    session = _make_session()
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    session.add_all(
+        FuturesPriceSampleTable(
+            source="kucoin_futures",
+            recorded_at=now - timedelta(minutes=minutes_ago),
+            symbol="FASTUSDCM",
+            last_price=price,
+            price_change_percent=25.0,
+            turnover_24h=10000,
+        )
+        for minutes_ago, price in ((180, 80), (60, 100), (30, 200), (0, 110))
+    )
+    session.commit()
+
+    result = TopGainersLosersSeriesCrud(session=session).query_fastest_movers()
+
+    assert result["recorded_at"] == now
+    assert result["comparison_at"] == now - timedelta(hours=1)
+    assert result["gainers"][0]["price_change_1h_percent"] == pytest.approx(10)
+    assert result["gainers"][0]["price_change_3h_percent"] == pytest.approx(37.5)
+
+
 def test_fastest_movers_prefers_snapshot_closest_to_one_hour():
     session = _make_session()
     now = datetime.now(timezone.utc).replace(microsecond=0)

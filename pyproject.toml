@@ -19,7 +19,7 @@ dependencies = [
     "numpy==2.5.4",
     "pandas==3.1.1",
     "websockets>=17.4",
-    "pybinbot>=2.1.5",
+    "pybinbot>=2.1.7",
 ]
 
 [project.urls]
