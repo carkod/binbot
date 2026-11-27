@@ -50,6 +50,9 @@ for the per-symbol bot-detail tab.
 
 ## Telegram alerts
 
+Half-hourly futures snapshot ingestion sends alerts when symbols enter the fastest-movers lists.
+These alerts rank one-hour price changes, include three-hour context, and respect `telegram_signals`.
+
 Active futures bots send ephemeral Telegram alerts when last traded price reaches an
 armed stop-loss or trailing-stop threshold. Each qualifying sweep attempts a
 message before order reconciliation; completed bots do not notify. Messages
