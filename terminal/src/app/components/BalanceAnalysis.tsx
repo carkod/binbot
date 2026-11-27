@@ -1,15 +1,20 @@
-import { Box, Card, Grid, Title } from "@mantine/core";
+import { Box, Card, Grid, Title, Tooltip } from "@mantine/core";
 import { type FC } from "react";
+import { selectBot } from "../../features/bots/botSlice";
 import { type BalanceData } from "../../features/features.types";
-import { type MarketType } from "../../utils/enums";
 import { roundDecimals } from "../../utils/math";
+import { useAppSelector } from "../hooks";
 import { useRiskBeta } from "../hooks/useRiskBeta";
 
 const BalanceAnalysis: FC<{
   accountData: BalanceData;
-  marketType: MarketType;
-}> = ({ accountData, marketType }) => {
-  const { beta, isLoading: loadingBeta } = useRiskBeta(accountData, marketType);
+}> = ({ accountData }) => {
+  const { bot } = useAppSelector(selectBot);
+
+  const { beta, isLoading: loadingBeta } = useRiskBeta(
+    bot.pair,
+    bot.market_type,
+  );
 
   return (
     <Card mb="md">
@@ -49,14 +54,22 @@ const BalanceAnalysis: FC<{
           </Grid.Col>
         </Grid>
         <Grid mb="lg">
-          <Grid.Col span={6}>Risk beta (BTC)</Grid.Col>
+          <Grid.Col span={6}>
+            <Tooltip
+              label={`${bot.pair || "Selected symbol"} sensitivity to BTC, using completed 15-minute returns over the past 24 hours.`}
+              multiline
+              w={280}
+            >
+              <span>Symbol risk beta (BTC)</span>
+            </Tooltip>
+          </Grid.Col>
           <Grid.Col span={6} ta="right">
             <Box c="primary.8" component="div">
               <strong>
                 {loadingBeta
                   ? "Calculating..."
                   : beta === null
-                    ? "—"
+                    ? "Unavailable"
                     : beta.toFixed(2)}
               </strong>
             </Box>

@@ -1,12 +1,16 @@
 import "@testing-library/jest-dom";
+import { Provider } from "react-redux";
 import {
   describe as describeBlock,
   expect as expectValue,
   it as testCase,
   vi,
 } from "vitest";
+import { type Bot } from "../../../features/bots/botInitialState";
+import { resetBot, setField } from "../../../features/bots/botSlice";
+import { makeStore } from "../../store";
 import { MarketType } from "../../../utils/enums";
-import { render, screen as rtlScreen } from "../../../utils/render";
+import { act, render, screen as rtlScreen } from "../../../utils/render";
 
 const useRiskBeta = vi.hoisted(() => vi.fn());
 
@@ -24,6 +28,18 @@ const accountData = {
   total_deposit: 0,
 };
 
+function renderBalanceAnalysis(bot: Partial<Bot>) {
+  const store = makeStore();
+
+  store.dispatch(resetBot(bot));
+  render(
+    <Provider store={store}>
+      <BalanceAnalysis accountData={accountData} />
+    </Provider>,
+  );
+  return store;
+}
+
 describeBlock("BalanceAnalysis risk beta", () => {
   testCase("shows BTC beta calculated from 15-minute spot returns", () => {
     useRiskBeta.mockReturnValue({
@@ -31,34 +47,80 @@ describeBlock("BalanceAnalysis risk beta", () => {
       isLoading: false,
     });
 
-    render(
-      <BalanceAnalysis
-        accountData={accountData}
-        marketType={MarketType.SPOT}
-      />,
-    );
+    renderBalanceAnalysis({ pair: "ETHUSDT", market_type: MarketType.SPOT });
 
-    expectValue(rtlScreen.getByText("Risk beta (BTC)")).toBeInTheDocument();
+    expectValue(
+      rtlScreen.getByText("Symbol risk beta (BTC)"),
+    ).toBeInTheDocument();
     expectValue(rtlScreen.getByText("0.46")).toBeInTheDocument();
-    expectValue(useRiskBeta).toHaveBeenCalledWith(accountData, MarketType.SPOT);
+    expectValue(useRiskBeta).toHaveBeenCalledWith("ETHUSDT", MarketType.SPOT);
   });
 
-  testCase("shows beta for live futures positions", () => {
+  testCase("shows beta for the selected futures symbol", () => {
     useRiskBeta.mockReturnValue({
       beta: -1.2345,
       isLoading: false,
     });
 
-    render(
-      <BalanceAnalysis
-        accountData={accountData}
-        marketType={MarketType.FUTURES}
-      />,
-    );
+    renderBalanceAnalysis({
+      pair: "HAEDALUSDTM",
+      market_type: MarketType.FUTURES,
+    });
 
     expectValue(rtlScreen.getByText("-1.23")).toBeInTheDocument();
     expectValue(useRiskBeta).toHaveBeenCalledWith(
-      accountData,
+      "HAEDALUSDTM",
+      MarketType.FUTURES,
+    );
+  });
+
+  testCase.each([
+    { beta: null, isLoading: true, label: "Calculating..." },
+    { beta: null, isLoading: false, label: "Unavailable" },
+  ])(
+    "shows $label while beta cannot be displayed",
+    ({ beta, isLoading, label }) => {
+      useRiskBeta.mockReturnValue({ beta, isLoading });
+
+      renderBalanceAnalysis({
+        pair: "HAEDALUSDTM",
+        market_type: MarketType.FUTURES,
+      });
+
+      expectValue(rtlScreen.getByText(label)).toBeInTheDocument();
+    },
+  );
+
+  testCase("follows bot replacement and symbol edits in botSlice", () => {
+    useRiskBeta.mockReturnValue({ beta: 1, isLoading: false });
+
+    const store = renderBalanceAnalysis({
+      pair: "ETHUSDT",
+      market_type: MarketType.SPOT,
+    });
+
+    expectValue(useRiskBeta).toHaveBeenLastCalledWith(
+      "ETHUSDT",
+      MarketType.SPOT,
+    );
+
+    act(() => {
+      store.dispatch(
+        resetBot({ pair: "HAEDALUSDTM", market_type: MarketType.FUTURES }),
+      );
+    });
+
+    expectValue(useRiskBeta).toHaveBeenLastCalledWith(
+      "HAEDALUSDTM",
+      MarketType.FUTURES,
+    );
+
+    act(() => {
+      store.dispatch(setField({ name: "pair", value: "ETHUSDTM" }));
+    });
+
+    expectValue(useRiskBeta).toHaveBeenLastCalledWith(
+      "ETHUSDTM",
       MarketType.FUTURES,
     );
   });
