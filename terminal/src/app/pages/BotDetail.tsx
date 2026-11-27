@@ -96,12 +96,7 @@ export const BotDetail: FC<{}> = () => {
               </Card>
             </Grid.Col>
             <Grid.Col span={{ base: 12, md: 5 }}>
-              {accountData && (
-                <BalanceAnalysis
-                  accountData={accountData}
-                  marketType={currentMarketType}
-                />
-              )}
+              {accountData && <BalanceAnalysis accountData={accountData} />}
             </Grid.Col>
           </Grid>
         </Box>

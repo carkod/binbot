@@ -25,6 +25,9 @@ vi.mock("../ChartContainer", () => ({
 vi.mock("../SpreadAndDepthCard", () => ({
   default: () => <div>Shared order book charts</div>,
 }));
+vi.mock("../SymbolTradesCard", () => ({
+  default: () => <div>Market trades card</div>,
+}));
 vi.mock("../LivePlotlyChart", () => ({
   default: () => <div>Stored CVD chart</div>,
 }));

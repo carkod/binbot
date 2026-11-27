@@ -1,29 +1,13 @@
 import { useEffect, useState } from "react";
 import { useGetSettingsQuery } from "../../features/autotradeApiSlice";
-import { useGetBotsQuery } from "../../features/bots/botsApiSlice";
-import { type BalanceData } from "../../features/features.types";
-import { buildBackUrl } from "../../utils/api";
-import { BotStatus, ExchangeId, MarketType } from "../../utils/enums";
-import { getToken } from "../../utils/login";
+import { ExchangeId, MarketType } from "../../utils/enums";
 import { floorToMultiple } from "../../utils/math";
 import {
   calculateRiskBeta,
   FIFTEEN_MINUTES_MS,
   RISK_BETA_CANDLE_COUNT,
   type CandleClose,
-  type RiskExposure,
 } from "../../utils/riskBeta";
-
-async function fetchJson(url: string, signal: AbortSignal, token?: string) {
-  const response = await fetch(url, {
-    signal,
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  });
-
-  if (!response.ok)
-    throw new Error(`Risk beta data request failed: ${response.status}`);
-  return response.json();
-}
 
 export async function loadCandles(
   symbol: string,
@@ -65,10 +49,15 @@ export async function loadCandles(
     url = `/binance/api/v3/klines?${params}`;
   }
 
-  const response = await fetchJson(url, signal);
+  const response = await fetch(url, { signal });
+
+  if (!response.ok)
+    throw new Error(`Risk beta data request failed: ${response.status}`);
+
+  const payload = await response.json();
 
   const rows =
-    exchange === ExchangeId.BINANCE && !futures ? response : response.data;
+    exchange === ExchangeId.BINANCE && !futures ? payload : payload.data;
 
   if (!Array.isArray(rows)) throw new Error("Invalid candlestick response");
   return rows.map((row: unknown) => {
@@ -82,25 +71,30 @@ export async function loadCandles(
   });
 }
 
-export function useRiskBeta(accountData: BalanceData, marketType: MarketType) {
+export function useRiskBeta(symbol: string, marketType: MarketType) {
   const { data: settings, isLoading: loadingSettings } = useGetSettingsQuery();
 
-  const { data: activeBots, isLoading: loadingBots } = useGetBotsQuery(
-    { status: BotStatus.ACTIVE },
-    { skip: marketType !== MarketType.FUTURES },
-  );
+  const exchange = settings?.exchange_id;
+
+  const fiat = settings?.fiat;
 
   const [beta, setBeta] = useState<number | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (loadingSettings || (marketType === MarketType.FUTURES && loadingBots)) {
+    setBeta(null);
+    if (loadingSettings) {
       setIsLoading(true);
       return;
     }
-    if (!settings || (marketType === MarketType.FUTURES && !activeBots)) {
-      setBeta(null);
+    if (
+      !symbol ||
+      !exchange ||
+      !fiat ||
+      (marketType === MarketType.FUTURES &&
+        (exchange !== ExchangeId.KUCOIN || !symbol.endsWith("USDTM")))
+    ) {
       setIsLoading(false);
       return;
     }
@@ -109,127 +103,39 @@ export function useRiskBeta(accountData: BalanceData, marketType: MarketType) {
 
     const completedBefore = floorToMultiple(Date.now(), FIFTEEN_MINUTES_MS);
 
-    const exchange = settings.exchange_id;
+    const futures = marketType === MarketType.FUTURES;
 
-    const fiat = accountData.fiat_currency;
+    const benchmarkSymbol = futures
+      ? "XBTUSDTM"
+      : exchange === ExchangeId.KUCOIN
+        ? `BTC-${symbol.split("-")[1] ?? fiat}`
+        : `BTC${fiat}`;
 
-    setBeta(null);
     setIsLoading(true);
 
-    async function calculate() {
-      if (
-        marketType === MarketType.FUTURES &&
-        (exchange !== ExchangeId.KUCOIN || fiat !== "USDT")
-      ) {
-        return null;
-      }
+    const benchmarkRequest = loadCandles(
+      benchmarkSymbol,
+      exchange,
+      completedBefore,
+      controller.signal,
+      futures,
+    );
 
-      const benchmarkSymbol =
-        marketType === MarketType.FUTURES
-          ? "XBTUSDTM"
-          : exchange === ExchangeId.KUCOIN
-            ? `BTC-${fiat}`
-            : `BTC${fiat}`;
-
-      const benchmark = await loadCandles(
-        benchmarkSymbol,
-        exchange,
-        completedBefore,
-        controller.signal,
-        marketType === MarketType.FUTURES,
-      );
-
-      let exposures: RiskExposure[];
-
-      if (marketType === MarketType.FUTURES) {
-        const pairs = [
-          ...new Set(
-            activeBots!.bots.ids
-              .map((id) => activeBots!.bots.entities[id])
-              .filter((bot) => bot?.market_type === MarketType.FUTURES)
-              .map((bot) => bot!.pair),
+    Promise.all([
+      benchmarkRequest,
+      symbol === benchmarkSymbol
+        ? benchmarkRequest
+        : loadCandles(
+            symbol,
+            exchange,
+            completedBefore,
+            controller.signal,
+            futures,
           ),
-        ];
-
-        exposures = (
-          await Promise.all(
-            pairs.map(async (pair) => {
-              const positionResponse = await fetchJson(
-                `${buildBackUrl()}/order/kucoin/futures/position/${encodeURIComponent(pair)}`,
-                controller.signal,
-                getToken(),
-              );
-
-              if (positionResponse.error)
-                throw new Error("Position request failed");
-
-              const position = positionResponse.data;
-
-              if (!position?.is_open || !position.current_qty) return null;
-              if (position.is_inverse || position.settle_currency !== fiat) {
-                throw new Error("Unsupported futures position");
-              }
-
-              const [contractResponse, candles] = await Promise.all([
-                fetchJson(
-                  `/kucoin-futures/api/v1/contracts/${encodeURIComponent(pair)}`,
-                  controller.signal,
-                ),
-                pair === benchmarkSymbol
-                  ? Promise.resolve(benchmark)
-                  : loadCandles(
-                      pair,
-                      exchange,
-                      completedBefore,
-                      controller.signal,
-                      true,
-                    ),
-              ]);
-
-              const multiplier = Number(contractResponse.data?.multiplier);
-
-              if (!Number.isFinite(multiplier) || multiplier <= 0) {
-                throw new Error("Invalid futures contract multiplier");
-              }
-              return {
-                quantity: Number(position.current_qty) * multiplier,
-                candles,
-              };
-            }),
-          )
-        ).filter((exposure): exposure is RiskExposure => exposure !== null);
-      } else {
-        exposures = await Promise.all(
-          Object.entries(accountData.balances)
-            .filter(([asset, quantity]) => asset !== fiat && quantity > 0)
-            .map(async ([asset, quantity]) => ({
-              quantity,
-              candles:
-                asset === "BTC"
-                  ? benchmark
-                  : await loadCandles(
-                      exchange === ExchangeId.KUCOIN
-                        ? `${asset}-${fiat}`
-                        : `${asset}${fiat}`,
-                      exchange,
-                      completedBefore,
-                      controller.signal,
-                    ),
-            })),
-        );
-      }
-
-      return calculateRiskBeta(
-        benchmark,
-        exposures,
-        accountData.estimated_total_fiat,
-        completedBefore,
-      );
-    }
-
-    calculate()
-      .then((value) => {
-        if (!controller.signal.aborted) setBeta(value);
+    ])
+      .then(([benchmark, asset]) => {
+        if (!controller.signal.aborted)
+          setBeta(calculateRiskBeta(benchmark, asset, completedBefore));
       })
       .catch(() => {
         if (!controller.signal.aborted) setBeta(null);
@@ -239,14 +145,7 @@ export function useRiskBeta(accountData: BalanceData, marketType: MarketType) {
       });
 
     return () => controller.abort();
-  }, [
-    accountData,
-    activeBots,
-    loadingBots,
-    loadingSettings,
-    marketType,
-    settings,
-  ]);
+  }, [symbol, marketType, exchange, fiat, loadingSettings]);
 
   return { beta, isLoading };
 }

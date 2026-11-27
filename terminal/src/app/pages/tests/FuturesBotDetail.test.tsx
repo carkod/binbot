@@ -127,9 +127,7 @@ vi.mock("../../components/BotDetailTabs", () => {
   return { default: BotDetailTabs };
 });
 vi.mock("../../components/BalanceAnalysis", () => {
-  const BalanceAnalysis = (_props: any) => (
-    <div data-testid="balance-analysis" />
-  );
+  const BalanceAnalysis = () => <div data-testid="balance-analysis" />;
 
   BalanceAnalysis.displayName = "BalanceAnalysis";
   return { default: BalanceAnalysis };
@@ -327,7 +325,7 @@ describe("FuturesBotDetail page", () => {
         <SpinnerContext.Provider
           value={{ spinner: false, setSpinner: vi.fn() }}
         >
-          <MemoryRouter initialEntries={["/bots/futures/new/KOMAUSDTM"]}>
+          <MemoryRouter initialEntries={["/bots/futures/new/HAEDALUSDTM"]}>
             <Routes>
               <Route
                 path="/bots/futures/new/:symbol"
@@ -341,7 +339,7 @@ describe("FuturesBotDetail page", () => {
 
     const state = store.getState().bot.bot;
 
-    expect(state.pair).toBe("KOMAUSDTM");
+    expect(state.pair).toBe("HAEDALUSDTM");
     expect(state.market_type).toBe(MarketType.FUTURES);
   });
 
